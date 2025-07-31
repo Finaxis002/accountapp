@@ -7,15 +7,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { clients } from "@/lib/data";
-import { MoreHorizontal, PlusCircle, List, LayoutGrid, Eye, Edit, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { MoreHorizontal, PlusCircle, List, LayoutGrid, Edit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientCard } from "@/components/clients/client-card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ClientForm } from "@/components/clients/client-form";
+import type { Client } from "@/lib/types";
 
 export default function ClientManagementPage() {
-  const [viewMode, setViewMode] = React.useState<'card' | 'list'>('card');
+  const [viewMode, setViewMode] = React.useState<'card' | 'list'>('list');
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
+
+  const handleEdit = (client: Client) => {
+    setSelectedClient(client);
+    setIsDialogOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedClient(null);
+    setIsDialogOpen(true);
+  };
+
+  const onFormSubmit = () => {
+    setIsDialogOpen(false);
+    // In a real app you might want to refresh data here
+  }
 
   return (
     <div className="space-y-6">
@@ -35,13 +54,25 @@ export default function ClientManagementPage() {
                     <List className="h-4 w-4" />
                 </Button>
             </div>
-            <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Client
+            <Button onClick={handleAddNew}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Client
             </Button>
         </div>
       </div>
       
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[625px]">
+          <DialogHeader>
+            <DialogTitle>{selectedClient ? 'Edit Client' : 'Add New Client'}</DialogTitle>
+            <DialogDescription>
+              {selectedClient ? `Update the details for ${selectedClient.companyName}.` : 'Fill in the form below to add a new client.'}
+            </DialogDescription>
+          </DialogHeader>
+          <ClientForm client={selectedClient || undefined} onFormSubmit={onFormSubmit} />
+        </DialogContent>
+      </Dialog>
+
       <Card className="w-full">
         <CardHeader>
             <div className="flex items-center justify-between gap-4">
@@ -80,7 +111,7 @@ export default function ClientManagementPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Subscription</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -104,19 +135,11 @@ export default function ClientManagementPage() {
                           {client.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem>View Client Dashboard</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Client</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Deactivate Client</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(client)}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit Client</span>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -124,9 +147,9 @@ export default function ClientManagementPage() {
               </Table>
               </div>
            ) : (
-             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                 {clients.map(client => (
-                    <ClientCard key={client.id} client={client} />
+                    <ClientCard key={client.id} client={client} onEdit={() => handleEdit(client)} />
                 ))}
              </div>
            )}
