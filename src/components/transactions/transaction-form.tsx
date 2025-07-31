@@ -24,27 +24,22 @@ import { CalendarIcon, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import React from "react"
 import { useToast } from "@/hooks/use-toast"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { categorizeTransaction } from "@/ai/flows/categorize-transaction"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Separator } from "../ui/separator"
+import { ScrollArea } from "../ui/scroll-area"
 
 const formSchema = z.object({
-  party: z.string().min(2, {
-    message: "Party must be at least 2 characters.",
-  }),
-  description: z.string().min(10, {
-    message: "Description must be at least 10 characters.",
-  }),
-  amount: z.coerce.number().positive({
-    message: "Amount must be a positive number.",
-  }),
-  date: z.date({
-    required_error: "A date is required.",
-  }),
-  category: z.string({
-    required_error: "Please select a category.",
-  }),
-  type: z.enum(["income", "expense"]),
+  type: z.enum(["sales", "purchases", "general"]),
+  companyName: z.string().min(1, "Please select a company."),
+  party: z.string().min(2, "Party name must be at least 2 characters."),
+  date: z.date({ required_error: "A date is required." }),
+  amount: z.coerce.number().positive("Amount must be a positive number."),
+  gst: z.coerce.number().min(0, "GST must be a non-negative number."),
+  invoiceNumber: z.string().optional(),
+  description: z.string().min(10, "Description must be at least 10 characters."),
+  category: z.string({ required_error: "Please select a category." }),
 });
 
 const generalLedgerCategories = [
@@ -52,6 +47,12 @@ const generalLedgerCategories = [
     "Marketing", "Software", "Office Supplies", "Meals & Entertainment", 
     "Travel", "Furniture & Equipment", "Miscellaneous"
 ];
+
+const companies = ["TechCorp Solutions", "Green Energy Ltd", "Fashion Forward Inc"];
+
+interface TransactionFormProps {
+    onFormSubmit: () => void;
+}
 
 const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -68,9 +69,8 @@ const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) =
 };
 
 
-export function TransactionForm() {
+export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isCategorizing, setIsCategorizing] = React.useState(false);
 
@@ -80,7 +80,10 @@ export function TransactionForm() {
       party: "",
       description: "",
       amount: 0,
-      type: "expense"
+      gst: 0,
+      type: "sales",
+      companyName: companies[0],
+      invoiceNumber: `INV-${String(Date.now()).slice(-4)}`,
     },
   });
 
@@ -117,7 +120,6 @@ export function TransactionForm() {
     setIsSubmitting(true);
     console.log(values);
     
-    // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
       toast({
@@ -125,134 +127,168 @@ export function TransactionForm() {
         description: "Your transaction has been successfully recorded.",
         action: (
           <Button asChild variant="secondary" size="sm">
-            <Link href="/invoices/inv_4">View Invoice</Link>
+            <Link href={`/invoices/inv_4`}>View Invoice</Link>
           </Button>
         ),
       });
-      router.push("/transactions");
+      onFormSubmit();
     }, 1500);
   }
 
+  const type = form.watch("type");
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="party"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Party / Vendor</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g. Acme Inc." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="px-6 space-y-6">
+            <Tabs value={type} onValueChange={(value) => form.setValue('type', value as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="sales">Sales</TabsTrigger>
+                <TabsTrigger value="purchases">Purchases</TabsTrigger>
+                <TabsTrigger value="general">General Journal</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="companyName"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Company</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Select a company" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="party"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{type === 'sales' ? 'Customer Name' : 'Vendor Name'}</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g. Acme Inc." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                        <FormLabel>Transaction Date</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <FormControl>
+                                <Button
+                                variant={"outline"}
+                                className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                >
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                            </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                initialFocus
+                            />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="invoiceNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Invoice / Bill #</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g. INV-001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+
             <FormField
               control={form.control}
-              name="amount"
+              name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} />
+                    <Textarea
+                      placeholder="e.g. Monthly software subscription for design tools"
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        debouncedDescriptionChange(e.target.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-                <FormItem className="flex flex-col">
-                <FormLabel>Transaction Date</FormLabel>
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <FormControl>
-                        <Button
-                        variant={"outline"}
-                        className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                        )}
-                        >
-                        {field.value ? (
-                            format(field.value, "PPP")
-                        ) : (
-                            <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                    </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                        }
-                        initialFocus
-                    />
-                    </PopoverContent>
-                </Popover>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        </div>
+            
+            <Separator />
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="e.g. Monthly software subscription for design tools"
-                  {...field}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    debouncedDescriptionChange(e.target.value);
-                  }}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Amount (before tax)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
                 />
-              </FormControl>
-              <FormDescription>
-                This helps in categorizing the transaction.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Transaction Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select transaction type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="expense">Expense</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                    control={form.control}
+                    name="gst"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>GST (%)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="0.0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <div className="space-y-2">
+                    <FormLabel>Total Amount</FormLabel>
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-secondary px-3 py-2 text-sm">
+                        ${((form.watch('amount') || 0) * (1 + (form.watch('gst') || 0) / 100)).toFixed(2)}
+                    </div>
+                </div>
+            </div>
 
             <FormField
             control={form.control}
@@ -284,12 +320,14 @@ export function TransactionForm() {
                 </FormItem>
             )}
             />
+          </div>
+        </ScrollArea>
+        <div className="flex justify-end p-6 border-t">
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Transaction
+            </Button>
         </div>
-
-        <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Submit Transaction
-        </Button>
       </form>
     </Form>
   )

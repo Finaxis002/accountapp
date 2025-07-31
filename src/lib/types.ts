@@ -19,15 +19,18 @@ export type Kpi = {
 };
 
 export type User = {
+  username?: string;
   name: string;
   email: string;
   avatar: string;
   initials: string;
-  role: 'admin' | 'customer';
+  role: 'master' | 'customer';
+  token?: string;
 };
 
 export type Client = {
     id: string;
+    username?: string;
     companyName: string;
     contactName: string;
     email: string;
