@@ -36,6 +36,8 @@ export type Client = {
     revenue: number;
     joinedDate: Date;
     phone: string;
+    users: number;
+    companies: number;
 };
 
 export type Invoice = {

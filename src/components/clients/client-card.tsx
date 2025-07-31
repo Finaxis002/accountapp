@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { Client } from "@/lib/types";
 import { Eye, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface ClientCardProps {
   client: Client;
@@ -32,8 +33,10 @@ export function ClientCard({ client, onEdit }: ClientCardProps) {
           <p className="text-sm text-muted-foreground">{client.email}</p>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Eye className="h-4 w-4" />
+          <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+            <Link href={`/admin/client-management/${client.id}`}>
+              <Eye className="h-4 w-4" />
+            </Link>
           </Button>
           <Button
             variant="ghost"

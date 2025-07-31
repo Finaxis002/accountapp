@@ -129,7 +129,9 @@ export const clients: Client[] = [
         status: 'Active',
         revenue: 125000,
         joinedDate: new Date('2024-01-15'),
-        phone: '+1 (555) 123-4567'
+        phone: '+1 (555) 123-4567',
+        users: 15,
+        companies: 3,
     },
     {
         id: 'client_2',
@@ -140,7 +142,9 @@ export const clients: Client[] = [
         status: 'Active',
         revenue: 89000,
         joinedDate: new Date('2024-02-20'),
-        phone: '+1 (555) 987-6543'
+        phone: '+1 (555) 987-6543',
+        users: 8,
+        companies: 1,
     },
     {
         id: 'client_3',
@@ -151,6 +155,8 @@ export const clients: Client[] = [
         status: 'Inactive',
         revenue: 45000,
         joinedDate: new Date('2024-03-10'),
-        phone: '+1 (555) 456-7890'
+        phone: '+1 (555) 456-7890',
+        users: 3,
+        companies: 1,
     },
 ];
