@@ -55,7 +55,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const handleSettingsClick = () => {
-    if (currentUser?.role === 'admin') {
+    if (currentUser?.role === 'master') {
       router.push('/admin/settings');
     } else {
       router.push('/profile');
@@ -71,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <SidebarTrigger className="md:hidden" />
               <div>
-                <h1 className="text-lg font-semibold">Welcome back, {currentUser?.role === 'admin' ? 'Master!' : currentUser?.name?.split(' ')[0]}</h1>
+                <h1 className="text-lg font-semibold">Welcome back, {currentUser?.role === 'master' ? 'Master!' : currentUser?.name?.split(' ')[0]}</h1>
                 <p className="text-sm text-muted-foreground">{dateString}</p>
               </div>
             </div>
