@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RevenueChart } from '@/components/dashboard/revenue-chart';
 import { ClientStatusChart } from '@/components/dashboard/client-status-chart';
-import { Users, Building, DollarSign, ArrowUpRight } from 'lucide-react';
+import { Users, Building, DollarSign, ArrowUpRight , IndianRupee} from 'lucide-react';
 
 const kpiData = [
   { 
@@ -22,9 +22,9 @@ const kpiData = [
   },
   { 
     title: 'Total Revenue', 
-    value: '$259,000', 
+    value: '₹259,000', 
     change: '+15.3%', 
-    icon: DollarSign,
+    icon: IndianRupee,
     iconBg: 'bg-purple-500/20',
     iconColor: 'text-purple-500'
   },
