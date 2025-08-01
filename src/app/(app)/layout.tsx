@@ -1,46 +1,60 @@
+"use client";
 
-
-'use client';
-
-import { AppSidebar } from '@/components/layout/app-sidebar';
-import { UserNav } from '@/components/layout/user-nav';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Search, Moon, Bell, FileText, DollarSign, Clock } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { getCurrentUser } from '@/lib/auth';
-import type { User } from '@/lib/types';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { useRouter } from 'next/navigation';
-import { ThemeToggle } from '@/components/layout/theme-toggle';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { UserNav } from "@/components/layout/user-nav";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, Moon, Bell, FileText, DollarSign, Clock } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { getCurrentUser } from "@/lib/auth";
+import type { User } from "@/lib/types";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [dateString, setDateString] = useState('');
+  const [dateString, setDateString] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const today = new Date();
-    setDateString(today.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    }));
-    
+    setDateString(
+      today.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    );
+
     try {
       const user = getCurrentUser();
       if (!user) {
-          router.push('/login');
+        router.push("/login");
       } else {
-          setCurrentUser(user);
+        setCurrentUser(user);
       }
-    } catch(e) {
-      router.push('/login');
+    } catch (e) {
+      router.push("/login");
     } finally {
       setIsLoading(false);
     }
@@ -55,10 +69,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const handleSettingsClick = () => {
-    if (currentUser?.role === 'master') {
-      router.push('/admin/settings');
+    if (currentUser?.role === "master") {
+      router.push("/admin/settings");
     } else {
-      router.push('/profile');
+      router.push("/profile");
     }
   };
 
@@ -71,15 +85,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <SidebarTrigger className="md:hidden" />
               <div>
-                <h1 className="text-lg font-semibold">Welcome back, {currentUser?.role === 'master' ? 'Master!' : currentUser?.name?.split(' ')[0]}</h1>
+                <h1 className="text-lg font-semibold">
+                  Welcome back,{" "}
+                  {currentUser?.role === "master"
+                    ? "Master!"
+                    : currentUser?.name?.split(" ")[0]}
+                </h1>
                 <p className="text-sm text-muted-foreground">{dateString}</p>
               </div>
             </div>
             <div className="flex flex-1 items-center gap-4">
-               <div className="relative w-full max-w-md">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                 <Input placeholder="Search..." className="pl-9 bg-background" />
-               </div>
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search..." className="pl-9 bg-background" />
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -93,7 +112,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <SheetContent>
                   <SheetHeader>
                     <SheetTitle>Notifications</SheetTitle>
-                    <SheetDescription>You have 3 unread messages.</SheetDescription>
+                    <SheetDescription>
+                      You have 3 unread messages.
+                    </SheetDescription>
                   </SheetHeader>
                   <div className="py-4">
                     <div className="space-y-4">
@@ -102,28 +123,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium">New invoice #INV-2024-003</p>
-                          <p className="text-sm text-muted-foreground">Created for Data Systems Ltd.</p>
+                          <p className="text-sm font-medium">
+                            New invoice #INV-2024-003
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Created for Data Systems Ltd.
+                          </p>
                         </div>
                       </div>
                       <Separator />
-                       <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-4">
                         <div className="bg-green-500/10 p-2 rounded-full">
                           <DollarSign className="h-5 w-5 text-green-500" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium">Payment Received</p>
-                          <p className="text-sm text-muted-foreground">$5,000.00 from Client Innovations LLC.</p>
+                          <p className="text-sm font-medium">
+                            Payment Received
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Rs5,000.00 from Client Innovations LLC.
+                          </p>
                         </div>
                       </div>
                       <Separator />
-                       <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-4">
                         <div className="bg-orange-500/10 p-2 rounded-full">
                           <Clock className="h-5 w-5 text-orange-500" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium">Reminder: Invoice Due</p>
-                          <p className="text-sm text-muted-foreground">Invoice #INV-2024-002 is due tomorrow.</p>
+                          <p className="text-sm font-medium">
+                            Reminder: Invoice Due
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Invoice #INV-2024-002 is due tomorrow.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -133,17 +166,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className='flex items-center gap-2 p-2 h-auto'>
-                        <UserNav />
-                    </Button>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 p-2 h-auto hover:bg-blue-800 "
+                  >
+                    <UserNav />
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/profile')}>Profile</DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleSettingsClick}>Settings</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                     <DropdownMenuItem onClick={() => router.push('/login')}>Logout</DropdownMenuItem>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push("/profile")}>
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSettingsClick}>
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push("/login")}>
+                    Logout
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

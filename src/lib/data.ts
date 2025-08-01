@@ -122,6 +122,7 @@ export const balanceSheetData: BalanceSheet = {
 export const clients: Client[] = [
     {
         id: 'client_1',
+        clientUsername: 'techcorp',
         companyName: 'TechCorp Solutions',
         contactName: 'TechCorp Client',
         email: 'admin@techcorp.com',
@@ -135,6 +136,7 @@ export const clients: Client[] = [
     },
     {
         id: 'client_2',
+        clientUsername: 'greenenergy',
         companyName: 'Green Energy Ltd',
         contactName: 'Customer User',
         email: 'contact@greenenergy.com',
@@ -148,6 +150,7 @@ export const clients: Client[] = [
     },
     {
         id: 'client_3',
+        clientUsername: 'fashioninc',
         companyName: 'Fashion Forward Inc',
         contactName: 'Alex Doe',
         email: 'hello@fashionforward.com',

@@ -19,7 +19,7 @@ export type Kpi = {
 };
 
 export type User = {
-  username?: string;
+  username: string;
   name: string;
   email: string;
   avatar: string;
@@ -29,18 +29,16 @@ export type User = {
 };
 
 export type Client = {
-    id: string;
-    username?: string;
-    companyName: string;
-    contactName: string;
-    email: string;
-    subscriptionPlan: 'Premium' | 'Standard' | 'Basic';
-    status: 'Active' | 'Inactive';
-    revenue: number;
-    joinedDate: Date;
-    phone: string;
-    users: number;
-    companies: number;
+  _id: string;
+  clientUsername: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  role: string;
+  createdAt?: string;
+  companyName?: string;
+  subscriptionPlan?: 'Premium' | 'Standard' | 'Basic';
+  status?: 'Active' | 'Inactive';
 };
 
 export type Invoice = {
