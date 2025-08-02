@@ -19,6 +19,7 @@ import {
   Users,
   Settings,
   Shield,
+  Building
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -175,6 +176,14 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
+       <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={isActive('/companies')} tooltip="Companies">
+            <Link href="/companies">
+              <Building />
+              <span>Companies</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
 
       <Collapsible defaultOpen={isReportsActive}>
         <SidebarMenuItem>

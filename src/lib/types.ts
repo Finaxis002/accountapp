@@ -6,7 +6,7 @@ export type Transaction = {
   party: string;
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   category: string;
 };
 
@@ -14,7 +14,7 @@ export type Kpi = {
   title: string;
   value: string;
   change: string;
-  changeType: 'increase' | 'decrease';
+  changeType: "increase" | "decrease";
   icon: LucideIcon;
 };
 
@@ -24,7 +24,7 @@ export type User = {
   email: string;
   avatar: string;
   initials: string;
-  role: 'master' | 'customer';
+  role: "master" | "customer";
   token?: string;
 };
 
@@ -37,8 +37,11 @@ export type Client = {
   role: string;
   createdAt?: string;
   companyName?: string;
-  subscriptionPlan?: 'Premium' | 'Standard' | 'Basic';
-  status?: 'Active' | 'Inactive';
+  subscriptionPlan?: "Premium" | "Standard" | "Basic";
+  status?: "Active" | "Inactive";
+  revenue?: number;
+  users?: number;
+  companies?: number;
 };
 
 export type Invoice = {
@@ -52,8 +55,8 @@ export type Invoice = {
     description: string;
     amount: number;
   }[];
-  status: 'Paid' | 'Pending' | 'Overdue';
-}
+  status: "Paid" | "Pending" | "Overdue";
+};
 
 export type ProfitLossStatement = {
   revenue: { name: string; amount: number }[];
@@ -78,4 +81,30 @@ export type BalanceSheet = {
     retainedEarnings: number;
     total: number;
   };
+};
+
+export type Company = {
+  _id: string;
+  name: string;
+  businessType: string;
+  registrationNumber: string;
+  address: string;
+  companyOwner: string;
+  contactNumber: string;
+  gstin: string;
+  companyType: string;
+  companyName: string;
+};
+
+
+export type Party = {
+    _id: string;
+    name: string;
+    createdByClient: string;
+};
+
+export type Product = {
+    _id: string;
+    name: string;
+    createdByClient: string;
 };

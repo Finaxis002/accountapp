@@ -9,8 +9,9 @@ import Link from "next/link"
 interface ClientCardProps {
   client: Client;
   onEdit: () => void;
+  onDelete: () => void;
+  onResetPassword: () => void;
 }
-
 const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(dateString));

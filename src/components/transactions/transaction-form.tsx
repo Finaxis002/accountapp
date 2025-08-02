@@ -29,17 +29,19 @@ import { categorizeTransaction } from "@/ai/flows/categorize-transaction"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "../ui/separator"
 import { ScrollArea } from "../ui/scroll-area"
+import type { Company, Party, Product } from "@/lib/types"
+import { Combobox } from "../ui/combobox"
 
 const formSchema = z.object({
-  type: z.enum(["sales", "purchases", "general"]),
-  companyName: z.string().min(1, "Please select a company."),
-  party: z.string().min(2, "Party name must be at least 2 characters."),
+  type: z.enum(["sales", "purchases"]),
+  companyId: z.string().min(1, "Please select a company."),
+  partyName: z.string().min(2, "Party name must be at least 2 characters."),
   date: z.date({ required_error: "A date is required." }),
   amount: z.coerce.number().positive("Amount must be a positive number."),
-  gst: z.coerce.number().min(0, "GST must be a non-negative number."),
+  gstPercentage: z.coerce.number().min(0, "GST must be a non-negative number."),
   invoiceNumber: z.string().optional(),
   description: z.string().min(10, "Description must be at least 10 characters."),
-  category: z.string({ required_error: "Please select a category." }),
+  product: z.string({ required_error: "Please select a product." }),
 });
 
 const generalLedgerCategories = [
@@ -48,94 +50,174 @@ const generalLedgerCategories = [
     "Travel", "Furniture & Equipment", "Miscellaneous"
 ];
 
-const companies = ["TechCorp Solutions", "Green Energy Ltd", "Fashion Forward Inc"];
-
 interface TransactionFormProps {
     onFormSubmit: () => void;
 }
-
-const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-  
-    const debounced = (...args: Parameters<F>) => {
-      if (timeout !== null) {
-        clearTimeout(timeout);
-        timeout = null;
-      }
-      timeout = setTimeout(() => func(...args), waitFor);
-    };
-  
-    return debounced as (...args: Parameters<F>) => void;
-};
-
 
 export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isCategorizing, setIsCategorizing] = React.useState(false);
 
+  const [companies, setCompanies] = React.useState<Company[]>([]);
+  const [parties, setParties] = React.useState<Party[]>([]);
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function fetchData() {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error("Authentication token not found.");
+            
+            const [companiesRes, partiesRes, productsRes] = await Promise.all([
+                fetch("http://localhost:5000/api/companies/my", { headers: { "Authorization": `Bearer ${token}` } }),
+                fetch("http://localhost:5000/api/parties", { headers: { "Authorization": `Bearer ${token}` } }),
+                fetch("http://localhost:5000/api/products", { headers: { "Authorization": `Bearer ${token}` } })
+            ]);
+
+            if (!companiesRes.ok || !partiesRes.ok || !productsRes.ok) {
+                throw new Error('Failed to fetch initial data.');
+            }
+
+            const companiesData = await companiesRes.json();
+            const partiesData = await partiesRes.json();
+            const productsData = await productsRes.json();
+
+            setCompanies(companiesData);
+            setParties(partiesData);
+            setProducts(productsData);
+
+            if (companiesData.length > 0) {
+              form.setValue('companyId', companiesData[0]._id);
+            }
+            
+        } catch (error) {
+            toast({ variant: "destructive", title: "Failed to load data", description: error instanceof Error ? error.message : "An unknown error occurred." });
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    fetchData();
+  }, []);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      party: "",
+      partyName: "",
       description: "",
-      amount: 0,
-      gst: 0,
+      amount: undefined,
+      gstPercentage: 0,
       type: "sales",
-      companyName: companies[0],
       invoiceNumber: `INV-${String(Date.now()).slice(-4)}`,
     },
   });
 
-  const handleDescriptionChange = React.useCallback(
-    async (description: string) => {
-      if (description.length > 10) {
-        setIsCategorizing(true);
-        try {
-          const result = await categorizeTransaction({ description });
-          if (result && generalLedgerCategories.includes(result.suggestedCategory)) {
-            form.setValue("category", result.suggestedCategory, { shouldValidate: true });
-          }
-        } catch (error) {
-          console.error("AI categorization failed:", error);
-          toast({
-            variant: "destructive",
-            title: "AI Categorization Failed",
-            description: "Could not suggest a category. Please select one manually.",
-          });
-        } finally {
-          setIsCategorizing(false);
-        }
-      }
-    },
-    [form, toast]
-  );
-  
-  const debouncedDescriptionChange = React.useMemo(
-    () => debounce(handleDescriptionChange, 500),
-    [handleDescriptionChange]
-  );
-
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    console.log(values);
-    
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast({
-        title: "Transaction Submitted!",
-        description: "Your transaction has been successfully recorded.",
-        action: (
-          <Button asChild variant="secondary" size="sm">
-            <Link href={`/invoices/inv_4`}>View Invoice</Link>
-          </Button>
-        ),
-      });
-      onFormSubmit();
-    }, 1500);
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentication token not found.");
+
+        const endpoint = values.type === 'sales' ? '/api/sales' : '/api/purchase';
+        
+        const payload = {
+            ...values,
+            invoiceType: values.type,
+        };
+
+        const res = await fetch(`http://localhost:5000${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message || `Failed to create ${values.type} entry.`);
+        }
+
+        toast({
+            title: "Transaction Submitted!",
+            description: `Your ${values.type} entry has been successfully recorded.`,
+            action: (
+              <Button asChild variant="secondary" size="sm">
+                <Link href={`/invoices/inv_4`}>View Invoice</Link>
+              </Button>
+            ),
+        });
+        onFormSubmit();
+
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Submission Failed",
+            description: error instanceof Error ? error.message : "An unknown error occurred."
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  const handleCreateParty = async (partyName: string) => {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentication token not found.");
+        const res = await fetch('http://localhost:5000/api/parties', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ name: partyName })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to create party.');
+        const newParty = data.party;
+        setParties(prev => [...prev, newParty]);
+        form.setValue('partyName', newParty.name, { shouldValidate: true });
+        toast({ title: "Party Created", description: `${newParty.name} has been added.` });
+        return newParty;
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Failed to create party', description: error instanceof Error ? error.message : "Unknown error" });
+        return null;
+    }
+  }
+  
+  const handleCreateProduct = async (productName: string) => {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentication token not found.");
+        const res = await fetch('http://localhost:5000/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ name: productName })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to create product.');
+        const newProduct = data.product;
+        setProducts(prev => [...prev, newProduct]);
+        form.setValue('product', newProduct.name, { shouldValidate: true });
+        toast({ title: "Product Created", description: `${newProduct.name} has been added.` });
+        return newProduct;
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Failed to create product', description: error instanceof Error ? error.message : "Unknown error" });
+        return null;
+    }
   }
 
   const type = form.watch("type");
+
+  if (isLoading) {
+    return (
+        <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="ml-4">Loading form data...</p>
+        </div>
+    )
+  }
 
   return (
     <Form {...form}>
@@ -143,17 +225,16 @@ export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
         <ScrollArea className="flex-1 overflow-y-auto">
           <div className="px-6 space-y-6">
             <Tabs value={type} onValueChange={(value) => form.setValue('type', value as any)} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="sales">Sales</TabsTrigger>
                 <TabsTrigger value="purchases">Purchases</TabsTrigger>
-                <TabsTrigger value="general">General Journal</TabsTrigger>
               </TabsList>
             </Tabs>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
-                    name="companyName"
+                    name="companyId"
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Company</FormLabel>
@@ -162,7 +243,7 @@ export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
                             <SelectTrigger><SelectValue placeholder="Select a company" /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            {companies.map(c => <SelectItem key={c._id} value={c._id}>{c.companyName}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <FormMessage />
@@ -171,13 +252,20 @@ export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
                 />
                  <FormField
                     control={form.control}
-                    name="party"
+                    name="partyName"
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>{type === 'sales' ? 'Customer Name' : 'Vendor Name'}</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g. Acme Inc." {...field} />
-                        </FormControl>
+                        <Combobox
+                            options={parties.map(p => ({ value: p.name, label: p.name }))}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select or create a party..."
+                            searchPlaceholder="Search parties..."
+                            noResultsText="No party found."
+                            creatable
+                            onCreate={handleCreateParty}
+                        />
                         <FormMessage />
                         </FormItem>
                     )}
@@ -231,6 +319,26 @@ export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
                     )}
                 />
             </div>
+             <FormField
+                control={form.control}
+                name="product"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Product / Service</FormLabel>
+                    <Combobox
+                        options={products.map(p => ({ value: p.name, label: p.name }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select or create a product..."
+                        searchPlaceholder="Search products..."
+                        noResultsText="No product found."
+                        creatable
+                        onCreate={handleCreateProduct}
+                    />
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
 
             <FormField
               control={form.control}
@@ -242,10 +350,6 @@ export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
                     <Textarea
                       placeholder="e.g. Monthly software subscription for design tools"
                       {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        debouncedDescriptionChange(e.target.value);
-                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -271,7 +375,7 @@ export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
                 />
                 <FormField
                     control={form.control}
-                    name="gst"
+                    name="gstPercentage"
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>GST (%)</FormLabel>
@@ -285,41 +389,10 @@ export function TransactionForm({ onFormSubmit }: TransactionFormProps) {
                  <div className="space-y-2">
                     <FormLabel>Total Amount</FormLabel>
                     <div className="flex h-10 w-full items-center rounded-md border border-input bg-secondary px-3 py-2 text-sm">
-                        ${((form.watch('amount') || 0) * (1 + (form.watch('gst') || 0) / 100)).toFixed(2)}
+                        ${((form.watch('amount') || 0) * (1 + (form.watch('gstPercentage') || 0) / 100)).toFixed(2)}
                     </div>
                 </div>
             </div>
-
-            <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>General Ledger Category</FormLabel>
-                <div className="relative">
-                    <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                        <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        {generalLedgerCategories.map(cat => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
-                    {isCategorizing && (
-                        <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
-                </div>
-                <FormDescription>
-                    The AI can help suggest a category based on the description.
-                </FormDescription>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
           </div>
         </ScrollArea>
         <div className="flex justify-end p-6 border-t">
