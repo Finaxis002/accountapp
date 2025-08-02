@@ -73,8 +73,8 @@ body {
     --muted: 215 28% 17%;
     --muted-foreground: 218 24% 65%; /* #949EB4 */
 
-    --accent: 142 71% 45%; /* #86C47D */
-    --accent-foreground: 0 0% 98%;
+   --accent: 215 28% 17%; /* #21293D - Changed from green to match secondary */
+    --accent-foreground: 213 31% 91%; /* Changed from white to match secondary-foreground */
     
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;

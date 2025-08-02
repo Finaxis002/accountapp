@@ -1,44 +1,125 @@
+
+'use client';
+
+import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RevenueChart } from '@/components/dashboard/revenue-chart';
 import { ClientStatusChart } from '@/components/dashboard/client-status-chart';
-import { Users, Building, DollarSign, ArrowUpRight , IndianRupee} from 'lucide-react';
-
-const kpiData = [
-  { 
-    title: 'Total Clients', 
-    value: '3', 
-    change: '+2 this month', 
-    icon: Users,
-    iconBg: 'bg-blue-500/20',
-    iconColor: 'text-blue-500'
-  },
-  { 
-    title: 'Active Clients', 
-    value: '2', 
-    change: '+1 this week', 
-    icon: Building,
-    iconBg: 'bg-green-500/20',
-    iconColor: 'text-green-500'
-  },
-  { 
-    title: 'Total Revenue', 
-    value: '₹259,000', 
-    change: '+15.3%', 
-    icon: IndianRupee,
-    iconBg: 'bg-purple-500/20',
-    iconColor: 'text-purple-500'
-  },
-  { 
-    title: 'Monthly Growth', 
-    value: '12.5%', 
-    change: '+2.1%', 
-    icon: ArrowUpRight,
-    iconBg: 'bg-orange-500/20',
-    iconColor: 'text-orange-500'
-  },
-];
+import { Users, Building, Database, FileText, Loader2 } from 'lucide-react';
+import type { Client } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminDashboardPage() {
+  const [clients, setClients] = React.useState<Client[]>([]);
+  const [companies , setCompanies] = React.useState<Client[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    const fetchClients = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentication token not found.");
+        const res = await fetch("http://localhost:5000/api/clients", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to fetch clients.");
+        }
+        const data = await res.json();
+        setClients(data);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Failed to load dashboard data",
+          description: error instanceof Error ? error.message : "Something went wrong."
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+     const fetchCompanies = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentication token not found.");
+        const res = await fetch("http://localhost:5000/api/companies/all", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to fetch clients.");
+        }
+        const data = await res.json();
+        setCompanies(data);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Failed to load dashboard data",
+          description: error instanceof Error ? error.message : "Something went wrong."
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCompanies();
+    fetchClients();
+  }, [toast]);
+
+  const totalClients = clients.length;
+  const activeClients = clients.filter(c => c.status === 'Active').length;
+
+  // Mock data for new KPIs. Replace with API calls when endpoints are ready.
+  const totalCompanies = companies.length;
+  const totalTransactions = 1452;
+  const pendingInvoices = 23;
+
+  const kpiData = [
+    { 
+      title: 'Total Clients', 
+      value: totalClients.toString(), 
+      change: `+${Math.floor(Math.random()*5)} this month`, 
+      icon: Users,
+      iconBg: 'bg-blue-500/20',
+      iconColor: 'text-blue-500'
+    },
+    { 
+      title: 'Companies Managed', 
+      value: totalCompanies.toString(), 
+      change: '+5 this month', 
+      icon: Building,
+      iconBg: 'bg-green-500/20',
+      iconColor: 'text-green-500'
+    },
+    { 
+      title: 'Total Transactions', 
+      value: totalTransactions.toLocaleString(), 
+      change: '+120 this week', 
+      icon: Database,
+      iconBg: 'bg-purple-500/20',
+      iconColor: 'text-purple-500'
+    },
+    { 
+      title: 'Pending Invoices', 
+      value: pendingInvoices.toString(), 
+      change: 'Across all clients', 
+      icon: FileText,
+      iconBg: 'bg-orange-500/20',
+      iconColor: 'text-orange-500'
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -53,7 +134,7 @@ export default function AdminDashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {kpiData.map((kpi) => (
           <Card key={kpi.title}>
-            <CardContent className="p-6">
+            <CardContent className="p-2">
               <div className="flex items-start justify-between">
                 <div className='space-y-2'>
                     <p className="text-sm font-medium text-muted-foreground">{kpi.title}</p>
@@ -87,7 +168,7 @@ export default function AdminDashboardPage() {
             <CardDescription>Active vs inactive clients</CardDescription>
           </CardHeader>
           <CardContent>
-            <ClientStatusChart />
+            <ClientStatusChart active={activeClients} inactive={totalClients - activeClients} />
           </CardContent>
         </Card>
       </div>

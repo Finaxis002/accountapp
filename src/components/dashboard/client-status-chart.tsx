@@ -4,10 +4,10 @@
 import { Pie, PieChart, ResponsiveContainer, Cell } from 'recharts';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 
-const data = [
-  { status: 'Active', count: 2, fill: 'hsl(var(--chart-1))' },
-  { status: 'Inactive', count: 1, fill: 'hsl(var(--muted-foreground))' },
-];
+interface ClientStatusChartProps {
+  active: number;
+  inactive: number;
+}
 
 const chartConfig = {
   count: {
@@ -23,7 +23,12 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ClientStatusChart() {
+export function ClientStatusChart({ active, inactive }: ClientStatusChartProps) {
+  const data = [
+    { status: 'Active', count: active, fill: 'hsl(var(--chart-1))' },
+    { status: 'Inactive', count: inactive, fill: 'hsl(var(--muted-foreground))' },
+  ];
+
   return (
     <div className="flex flex-col items-center h-full">
       <ChartContainer config={chartConfig} className="min-h-[200px] w-full flex-1">
@@ -50,11 +55,11 @@ export function ClientStatusChart() {
       <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground -mt-4">
         <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: chartConfig.active.color }} />
-            <span>Active: {data[0].count}</span>
+            <span>Active: {active}</span>
         </div>
         <div className="flex items-center gap-2">
              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: chartConfig.inactive.color }} />
-            <span>Inactive: {data[1].count}</span>
+            <span>Inactive: {inactive}</span>
         </div>
       </div>
     </div>
