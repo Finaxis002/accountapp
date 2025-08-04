@@ -52,7 +52,21 @@ export function Combobox({
     }
   }
 
-  const filteredOptions = options.filter(option => option.label.toLowerCase().includes(inputValue.toLowerCase()));
+  const handleInputChange = (text: string) => {
+    if (creatable) {
+        // When user types, we clear the selection
+        // so form validation uses the new typed value.
+        const match = options.find(option => option.label.toLowerCase() === text.toLowerCase());
+        if (!match) {
+            onChange("");
+        }
+    }
+    setInputValue(text);
+  }
+
+  const filteredOptions = options.filter(option => 
+    typeof option.label === 'string' && option.label.toLowerCase().includes(inputValue.toLowerCase())
+  );
   const showCreateOption = creatable && inputValue && !filteredOptions.some(opt => opt.label.toLowerCase() === inputValue.toLowerCase());
 
   return (
@@ -75,7 +89,7 @@ export function Combobox({
           <CommandInput 
             placeholder={searchPlaceholder} 
             value={inputValue}
-            onValueChange={setInputValue}
+            onValueChange={handleInputChange}
           />
           <CommandList>
             <CommandEmpty>

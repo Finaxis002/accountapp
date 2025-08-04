@@ -1,17 +1,13 @@
+
 'use client';
 
+import * as React from 'react';
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 
-const data = [
-  { month: 'Jan', revenue: 45000 },
-  { month: 'Feb', revenue: 52000 },
-  { month: 'Mar', revenue: 48000 },
-  { month: 'Apr', revenue: 60000 },
-  { month: 'May', revenue: 55000 },
-  { month: 'Jun', revenue: 72000 },
-  { month: 'Jul', revenue: 80000 },
-];
+interface RevenueChartProps {
+    totalRevenue: number;
+}
 
 const chartConfig = {
   revenue: {
@@ -20,7 +16,25 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function RevenueChart() {
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
+
+export function RevenueChart({ totalRevenue }: RevenueChartProps) {
+    const data = React.useMemo(() => {
+        if (totalRevenue === 0) {
+            return months.map(month => ({ month, revenue: 0 }));
+        }
+
+        let runningTotal = 0;
+        const randomPoints = Array.from({ length: months.length }, () => Math.random());
+        const totalRandom = randomPoints.reduce((acc, val) => acc + val, 0);
+
+        return months.map((month, index) => {
+            const monthShare = (randomPoints[index] / totalRandom);
+            runningTotal += monthShare * totalRevenue;
+            return { month, revenue: Math.round(runningTotal) };
+        });
+    }, [totalRevenue]);
+    
   return (
     <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
       <LineChart 
@@ -50,7 +64,7 @@ export function RevenueChart() {
         <Tooltip
           cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 2, strokeDasharray: '3 3' }}
           content={<ChartTooltipContent 
-            formatter={(value, name) => (`$${value.toLocaleString()}`)}
+            formatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value as number)}
           />}
         />
         <Line

@@ -1,0 +1,106 @@
+
+"use client"
+
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Loader2 } from "lucide-react"
+import React from "react"
+import { useToast } from "@/hooks/use-toast"
+import type { Product } from "@/lib/types"
+
+interface ProductFormProps {
+    product?: Product;
+    onSuccess: (product: Product) => void;
+}
+
+const formSchema = z.object({
+  name: z.string().min(2, "Product name is required."),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+export function ProductForm({ product, onSuccess }: ProductFormProps) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: product?.name || "",
+    },
+  });
+
+  async function onSubmit(values: FormData) {
+    setIsSubmitting(true);
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentication token not found.");
+
+        const url = product 
+            ? `http://localhost:5000/api/products/${product._id}` 
+            : "http://localhost:5000/api/products";
+        
+        const method = product ? "PUT" : "POST";
+
+        const res = await fetch(url, {
+            method,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(values),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.message || `Failed to ${product ? 'update' : 'create'} product.`);
+        }
+        
+        onSuccess(data.product);
+
+    } catch (error) {
+       toast({
+            variant: "destructive",
+            title: "Operation Failed",
+            description: error instanceof Error ? error.message : "An unknown error occurred.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+        <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Product/Service Name</FormLabel>
+                <FormControl><Input placeholder="e.g. Website Development" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+        <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {product ? "Save Changes" : "Create Product"}
+            </Button>
+        </div>
+      </form>
+    </Form>
+  )
+}

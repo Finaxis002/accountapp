@@ -1,17 +1,35 @@
 import type { LucideIcon } from "lucide-react";
 
+export type Product = {
+    _id:string;
+    name: string;
+    stock?: number;
+    createdByClient: string;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+
 export type Transaction = {
   _id: string;
   date: Date;
-  party: { _id: string; name: string } | string;
-  description: string;
+  party?: { _id: string; name: string } | string;
+  vendor?: { _id: string; vendorName: string } | string;
+  description?: string;
   amount: number;
-  type: "sales" | "purchases" | "income" | "expense";
+  quantity?: number;
+  pricePerUnit?: number;
+  type: "sales" | "purchases" | "receipt" | "payment" | "journal";
   category?: string;
-  product?: { _id: string; name: string };
+  product?: Product;
   company?: { _id: string; companyName: string };
-  invoiceNumber?: string;
-  gstPercentage?: number;
+  voucher?: string;
+  // For Journal Entries
+  debitAccount?: string;
+  creditAccount?: string;
+  narration?: string;
+  // For Receipts/Payments
+  referenceNumber?: string;
 };
 
 export type Kpi = {
@@ -60,6 +78,7 @@ export type Client = {
   canSendInvoiceEmail?: boolean;
   canSendInvoiceWhatsapp?: boolean;
 };
+
 
 export type Invoice = {
   id: string;
@@ -116,7 +135,6 @@ export type Company = {
 };
 
 export type Party = {
-  [x: string]: unknown;
   _id: string;
   name: string;
   type: "party" | "vendor";
@@ -124,6 +142,22 @@ export type Party = {
   email?: string;
   contactNumber?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  gstin?: string;
+  gstRegistrationType?:
+    | "Regular"
+    | "Composition"
+    | "Unregistered"
+    | "Consumer"
+    | "Overseas"
+    | "Special Economic Zone"
+    | "Unknown";
+  pan?: string;
+  isTDSApplicable?: boolean;
+  tdsRate?: number;
+  tdsSection?: string;
+  vendorName?: string; // For vendor compatibility
 };
 
 export type Vendor = Party & {
@@ -141,10 +175,4 @@ export type Vendor = Party & {
     | "Unknown";
   pan?: string;
   isTDSApplicable?: boolean;
-};
-
-export type Product = {
-  _id: string;
-  name: string;
-  createdByClient: string;
 };
