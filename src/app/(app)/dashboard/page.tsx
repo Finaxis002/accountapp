@@ -1,195 +1,179 @@
-"use client";
 
-import * as React from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+'use client';
 
-import { RecentTransactions } from "@/components/dashboard/recent-transactions";
-import { transactions as staticTransactions } from "@/lib/data";
-import { useCompany } from "@/contexts/company-context";
-import { DollarSign, CreditCard, Users, Building, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Company } from "@/lib/types";
+import * as React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCompany } from '@/contexts/company-context';
+import { DollarSign, CreditCard, Users, Building, Loader2, PlusCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { RecentTransactions } from '@/components/dashboard/recent-transactions';
+import type { Transaction } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { TransactionForm } from '@/components/transactions/transaction-form';
+import { ProductStock } from '@/components/dashboard/product-stock';
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "INR" }).format(
-    amount
-  );
+const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
 export default function DashboardPage() {
   const { selectedCompanyId } = useCompany();
   const [companyData, setCompanyData] = React.useState<any>(null);
-  const [companyName, setCompanyName] = React.useState("");
-  const [companies, setCompanies] = React.useState<Company[]>([]);
+  const [recentTransactions, setRecentTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [users, setUsers] = React.useState<any[]>([]);
-
   const { toast } = useToast();
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    async function fetchCompanyDashboard() {
-      if (!selectedCompanyId) {
-        setIsLoading(false);
-        setCompanyData(null);
-        setCompanyName("");
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("Authentication token not found.");
 
-        // TODO: Replace with a real API endpoint when available
-        // For now, simulating an API call
-        console.log(`Fetching dashboard for company: ${selectedCompanyId}`);
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
-        const mockCompanyName = "Acme Corporation";
-
-        const mockData = {
-          totalSales: Math.random() * 100000,
-          totalPurchases: Math.random() * 50000,
-          users: Math.floor(Math.random() * 20) + 1,
-          id: selectedCompanyId,
-        };
-
-        setCompanyData(mockData);
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Failed to load dashboard data",
-          description:
-            error instanceof Error ? error.message : "Something went wrong.",
-        });
-        setCompanyData(null);
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchCompanyDashboard = React.useCallback(async () => {
+    if (!selectedCompanyId) {
+      setIsLoading(false);
+      setCompanyData(null);
+      setRecentTransactions([]);
+      return;
     }
-
-    fetchCompanyDashboard();
-  }, [selectedCompanyId, toast]);
-
-  const fetchCompanies = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    const res = await fetch("http://localhost:5000/api/companies/my", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setCompanies(data);
-  };
-
-  React.useEffect(() => {
-    fetchCompanies();
-  }, []);
-
-  const fetchUsers = async () => {
-    const token = localStorage.getItem("token");
+    setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/users", {
-        headers: { Authorization: `Bearer ${token}` },
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error("Authentication token not found.");
+      
+      const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      
+      const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes, usersRes] = await Promise.all([
+          buildRequest(`http://localhost:5000/api/sales?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/receipts?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/payments?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/journals?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/users`), // Assuming this fetches users for the client
+      ]);
+
+      const salesData = await salesRes.json();
+      const purchasesData = await purchasesRes.json();
+      const receiptsData = await receiptsRes.json();
+      const paymentsData = await paymentsRes.json();
+      const journalsData = await journalsRes.json();
+      const usersData = await usersRes.json();
+
+      const allTransactions = [
+        ...(salesData.entries?.map((s: any) => ({ ...s, type: 'sales' })) || []),
+        ...(purchasesData?.map((p: any) => ({ ...p, type: 'purchases' })) || []),
+        ...(receiptsData?.map((r: any) => ({ ...r, type: 'receipt' })) || []),
+        ...(paymentsData?.map((p: any) => ({ ...p, type: 'payment' })) || []),
+        ...(journalsData?.map((j: any) => ({ ...j, description: j.narration, type: 'journal' })) || [])
+      ].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setRecentTransactions(allTransactions.slice(0, 5));
+
+      const totalSales = (salesData.entries || []).reduce((acc: number, curr: any) => acc + curr.amount, 0);
+      const totalPurchases = (purchasesData || []).reduce((acc: number, curr: any) => acc + curr.amount, 0);
+
+      setCompanyData({
+        totalSales,
+        totalPurchases,
+        users: usersData.length || 0,
       });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      const data = await res.json();
-      setUsers(data);
-    } catch (err: any) {
+
+    } catch (error) {
       toast({
         variant: "destructive",
-        title: err.message || "Error fetching users",
+        title: "Failed to load dashboard data",
+        description: error instanceof Error ? error.message : "Something went wrong."
       });
+      setCompanyData(null);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [selectedCompanyId, toast]);
 
   React.useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchCompanyDashboard();
+  }, [selectedCompanyId, fetchCompanyDashboard]);
 
-  const usersOfSelectedCompany = users.filter((user) =>
-    user.companies.some((company: any) =>
-      typeof company === "string"
-        ? company === selectedCompanyId
-        : company._id === selectedCompanyId
-    )
-  );
+  const handleFormSubmit = () => {
+    setIsFormOpen(false);
+    fetchCompanyDashboard();
+  };
 
-  const totalUsers = usersOfSelectedCompany.length;
-
-  const selectedCompany = companies.find(
-    (company) => company._id === selectedCompanyId
-  );
 
   const kpiData = [
-    {
-      title: "Total Sales",
-      value: formatCurrency(companyData?.totalSales || 0),
-      icon: DollarSign,
-    },
-    {
-      title: "Total Purchases",
-      value: formatCurrency(companyData?.totalPurchases || 0),
-      icon: CreditCard,
-    },
-    {
-      title: "Users of selected company",
-      value: totalUsers.toString(),
-      icon: Users,
-    },
-    {
-      title: "Selected Company",
-      value: selectedCompany?.companyName || "N/A",
-      icon: Building,
-    },
+    { title: 'Total Sales', value: formatCurrency(companyData?.totalSales || 0), icon: DollarSign },
+    { title: 'Total Purchases', value: formatCurrency(companyData?.totalPurchases || 0), icon: CreditCard },
+    { title: 'Active Users', value: (companyData?.users || 0).toString(), icon: Users },
+    { title: 'Companies', value: '1', icon: Building }, // Since one is selected
   ];
 
   return (
     <div className="space-y-6">
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 bg-muted rounded w-2/3" />
-                <div className="h-4 w-4 bg-muted rounded-full" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-1/2 mb-2" />
-                <div className="h-3 bg-muted rounded w-1/3" />
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex items-center justify-between">
+            <div>
+                <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+                <p className="text-muted-foreground">
+                    An overview of your selected company's performance.
+                </p>
+            </div>
+            {selectedCompanyId && (
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Transaction
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+                  <DialogHeader className="p-6">
+                    <DialogTitle>Create a New Transaction</DialogTitle>
+                    <DialogDescription>
+                      Fill in the details below to record a new financial event.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <TransactionForm onFormSubmit={handleFormSubmit} />
+                </DialogContent>
+              </Dialog>
+            )}
         </div>
-      ) : !selectedCompanyId ? (
-        <Card className="flex flex-col items-center justify-center p-12 border-dashed">
-          <Building className="h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No Company Selected</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Please select a company from the header to view its dashboard.
-          </p>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {kpiData.map((kpi) => (
-            <Card key={kpi.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {kpi.title}
-                </CardTitle>
-                <kpi.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpi.value}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+       {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+             {Array.from({ length: 4 }).map((_, index) => (
+              <Card key={index}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
+                  <div className="h-4 w-4 bg-muted rounded-full animate-pulse" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 bg-muted rounded w-1/2 mb-2 animate-pulse" />
+                  <div className="h-3 bg-muted rounded w-1/3 animate-pulse" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+       ) : !selectedCompanyId ? (
+          <Card className="flex flex-col items-center justify-center p-12 border-dashed">
+            <Building className="h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No Company Selected</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Please select a company from the header to view its dashboard.</p>
+          </Card>
+       ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {kpiData.map((kpi) => (
+              <Card key={kpi.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                  <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{kpi.value}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+           <div className="grid grid-cols-1 gap-6 lg:grid-cols-1">
+            <ProductStock />
+              <RecentTransactions transactions={recentTransactions} />
+              
+           </div>
+        </>
       )}
-
-      <RecentTransactions transactions={staticTransactions.slice(0, 5)} />
     </div>
   );
 }

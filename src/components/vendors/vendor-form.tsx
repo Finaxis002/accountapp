@@ -41,6 +41,8 @@ const formSchema = z.object({
   gstRegistrationType: z.enum(gstRegistrationTypes).default("Unregistered"),
   pan: z.string().length(10, "PAN must be 10 characters.").optional().or(z.literal('')),
   isTDSApplicable: z.boolean().default(false),
+  tdsRate: z.coerce.number().optional(),
+  tdsSection: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -62,8 +64,12 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
       gstRegistrationType: vendor?.gstRegistrationType || "Unregistered",
       pan: vendor?.pan || "",
       isTDSApplicable: vendor?.isTDSApplicable || false,
+      tdsRate: vendor?.tdsRate || 0,
+      tdsSection: vendor?.tdsSection || "",
     },
   });
+
+  const isTDSApplicable = form.watch("isTDSApplicable");
 
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
@@ -121,8 +127,8 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
                     )}
                 />
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="contactNumber" render={({ field }) => (<FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. 9876543210" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. contact@acme.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="contactNumber" render={({ field }) => (<FormItem><FormLabel>Mobile Number / Whatsapp</FormLabel><FormControl><Input placeholder="e.g. 9876543210" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email ID</FormLabel><FormControl><Input type="email" placeholder="e.g. contact@acme.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
                 <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="e.g. 123 Industrial Area" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-2 gap-4">
@@ -157,15 +163,38 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
                     render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                         <div className="space-y-0.5">
-                            <FormLabel>TDS Applicable</FormLabel>
-                             <p className="text-xs text-muted-foreground">
-                                Enable if Tax Deducted at Source is applicable for this vendor.
-                            </p>
+                            <FormLabel>TDS Applicable or Not</FormLabel>
                         </div>
                         <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                         </FormItem>
                     )}
                 />
+                {/* {isTDSApplicable && (
+                    <div className="grid grid-cols-2 gap-4 p-4 border rounded-md">
+                         <FormField
+                            control={form.control}
+                            name="tdsRate"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>TDS Rate (%)</FormLabel>
+                                <FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="tdsSection"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>TDS Section</FormLabel>
+                                <FormControl><Input placeholder="e.g. 194J" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                )} */}
             </div>
         </ScrollArea>
         <div className="flex justify-end p-6 border-t bg-background">
