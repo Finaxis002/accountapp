@@ -1,9 +1,10 @@
-"use client";
 
-import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
+"use client"
 
-import { Button } from "@/components/ui/button";
+import { ColumnDef } from "@tanstack/react-table"
+import { ArrowUpDown, MoreHorizontal, Copy, Edit, Trash2, FileDown } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,20 +12,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import type { Transaction } from "@/lib/types";
-import { pdf } from "@react-pdf/renderer";
-import { saveAs } from "file-saver";
-import { InvoicePDF } from "@/components/pdf/InvoicePDF";
+} from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
+import type { Transaction } from "@/lib/types"
 
-const generateInvoicePDF = async (transaction: Transaction) => {
-  const blob = await pdf(<InvoicePDF transaction={transaction} />).toBlob();
-  saveAs(blob, `Invoice-${transaction.id}.pdf`);
-};
+interface ColumnsProps {
+  generateInvoicePDF: (transaction: Transaction) => void;
+}
 
-export const columns: ColumnDef<Transaction>[] = [
+export const columns = ({ generateInvoicePDF }: ColumnsProps): ColumnDef<Transaction>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -51,16 +48,15 @@ export const columns: ColumnDef<Transaction>[] = [
     accessorKey: "party",
     header: "Party",
     cell: ({ row }) => {
-      const transaction = row.original;
-      return (
-        <div>
-          <div className="font-medium">{transaction.party}</div>
-          <div className="text-sm text-muted-foreground">
-            {transaction.description}
-          </div>
-        </div>
-      );
-    },
+        const transaction = row.original
+        const partyName = typeof transaction.party === 'object' && transaction.party !== null ? transaction.party.name : transaction.party;
+        return (
+            <div>
+                <div className="font-medium">{partyName}</div>
+                <div className="text-sm text-muted-foreground">{transaction.product?.name}</div>
+            </div>
+        )
+    }
   },
   {
     accessorKey: "amount",
@@ -74,35 +70,39 @@ export const columns: ColumnDef<Transaction>[] = [
           Amount
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
-      );
+      )
     },
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
-      const formatted = new Intl.NumberFormat("en-US", {
+      const amount = parseFloat(row.getValue("amount"))
+      const formatted = new Intl.NumberFormat("en-IN", {
         style: "currency",
-        currency: "USD",
-      }).format(amount);
-
-      return <div className="text-right font-medium">{formatted}</div>;
+        currency: "INR",
+      }).format(amount)
+ 
+      return <div className="text-right font-medium">{formatted}</div>
     },
   },
   {
     accessorKey: "date",
     header: "Date",
-    cell: ({ row }) =>
-      new Intl.DateTimeFormat("en-US").format(row.getValue("date")),
+    cell: ({ row }) => new Intl.DateTimeFormat('en-US').format(new Date(row.getValue("date")))
   },
   {
-    accessorKey: "category",
-    header: "Category",
+    accessorKey: "type",
+    header: "Type",
     cell: ({ row }) => {
-      return <Badge variant="outline">{row.getValue("category")}</Badge>;
-    },
+        const type = row.getValue("type") as string;
+        const variant = type === 'sales' ? 'default' : 'secondary';
+        const colorClass = type === 'sales' 
+            ? 'bg-green-500/20 text-green-700 dark:text-green-300' 
+            : 'bg-orange-500/20 text-orange-700 dark:text-orange-300';
+        return <Badge variant={variant} className={colorClass}>{type}</Badge>
+    }
   },
   {
     id: "actions",
     cell: ({ row }) => {
-      const transaction = row.original;
+      const transaction = row.original
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -114,21 +114,27 @@ export const columns: ColumnDef<Transaction>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(transaction.id)}
+              onClick={() => navigator.clipboard.writeText(transaction._id)}
             >
-              Copy transaction ID
+              <Copy className="mr-2 h-4 w-4" />
+              <span>Copy transaction ID</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => generateInvoicePDF(transaction)}>
-              Generate Invoice
+             <DropdownMenuItem onClick={() => generateInvoicePDF(transaction)}>
+                <FileDown className="mr-2 h-4 w-4" />
+                <span>Generate Invoice</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Edit transaction</DropdownMenuItem>
+            <DropdownMenuItem>
+                <Edit className="mr-2 h-4 w-4" />
+                <span>Edit transaction</span>
+            </DropdownMenuItem>
             <DropdownMenuItem className="text-destructive">
-              Delete transaction
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Delete transaction</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      );
+      )
     },
   },
-];
+]

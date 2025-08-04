@@ -53,7 +53,7 @@ export default function InvoicesPage() {
                       {invoice.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(invoice.items.reduce((sum, item) => sum + item.amount, 0))}</TableCell>
+                  <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(invoice.items.reduce((sum, item) => sum + item.amount, 0))}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

@@ -28,6 +28,14 @@ import {
   Phone,
   Eye,
   EyeOff,
+  ShieldCheck,
+  CheckCircle2,
+  XCircle,
+  KeyRound,
+  Check,
+  X,
+  Building,
+  Users,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -39,6 +47,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { ClientForm } from "@/components/clients/client-form";
 import type { Client } from "@/lib/types";
@@ -64,16 +73,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { IoIosKey } from "react-icons/io";
 import { MoreHorizontal } from "lucide-react";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import Link from "next/link";
 import { Combobox } from "@/components/ui/combobox";
-
-type FilterType = "contactName" | "clientUsername";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export default function ClientManagementPage() {
   const [viewMode, setViewMode] = React.useState<"card" | "list">("card");
@@ -89,6 +93,12 @@ export default function ClientManagementPage() {
   );
   const [clients, setClients] = React.useState<Client[]>([]);
   const [clientToResetPassword, setClientToResetPassword] =
+    React.useState<Client | null>(null);
+
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] =
+    React.useState(false);
+
+  const [clientForPermissions, setClientForPermissions] =
     React.useState<Client | null>(null);
   const [newPassword, setNewPassword] = React.useState("");
   const [isSubmittingPassword, setIsSubmittingPassword] = React.useState(false);
@@ -231,6 +241,11 @@ export default function ClientManagementPage() {
     }
   };
 
+  const handleViewPermissions = (client: Client) => {
+    setClientForPermissions(client);
+    setIsPermissionsDialogOpen(true);
+  };
+
   React.useEffect(() => {
     fetchClients();
   }, [fetchClients]);
@@ -320,8 +335,8 @@ export default function ClientManagementPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[625px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[625px] grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+          <DialogHeader className="p-6">
             <DialogTitle>
               {selectedClient ? "Edit Client" : "Add New Client"}
             </DialogTitle>
@@ -408,6 +423,73 @@ export default function ClientManagementPage() {
               Reset Password
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* permissions dialogue */}
+       <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle>Permissions for {clientForPermissions?.contactName}</DialogTitle>
+                <DialogDescription>
+                    Reviewing usage limits and feature permissions for this client.
+                </DialogDescription>
+            </DialogHeader>
+            {clientForPermissions && (
+              <div className="grid gap-6 py-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
+                      <CardTitle className="text-base">Feature Permissions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Check className={cn("h-5 w-5 p-1 rounded-full", clientForPermissions.canSendInvoiceEmail ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500")} />
+                            <span className="font-medium">Send Invoice via Email</span>
+                          </div>
+                          <Badge variant={clientForPermissions.canSendInvoiceEmail ? "default" : "secondary"} className={cn(clientForPermissions.canSendInvoiceEmail ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300" : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300")}>
+                            {clientForPermissions.canSendInvoiceEmail ? "Enabled" : "Disabled"}
+                          </Badge>
+                       </div>
+                        <Separator />
+                       <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-3">
+                            <Check className={cn("h-5 w-5 p-1 rounded-full", clientForPermissions.canSendInvoiceWhatsapp ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500")} />
+                            <span className="font-medium">Send Invoice via WhatsApp</span>
+                          </div>
+                           <Badge variant={clientForPermissions.canSendInvoiceWhatsapp ? "default" : "secondary"} className={cn(clientForPermissions.canSendInvoiceWhatsapp ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300" : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300")}>
+                            {clientForPermissions.canSendInvoiceWhatsapp ? "Enabled" : "Disabled"}
+                          </Badge>
+                       </div>
+                    </CardContent>
+                  </Card>
+                   <Card>
+                    <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
+                      <CardTitle className="text-base">Usage Limits</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Building className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium">Max Companies</span>
+                          </div>
+                          <Badge variant="outline" className="font-mono text-lg font-semibold">{clientForPermissions.maxCompanies}</Badge>
+                       </div>
+                        <Separator />
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Users className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium">Max Users</span>
+                          </div>
+                          <Badge variant="outline" className="font-mono text-lg font-semibold">{clientForPermissions.maxUsers}</Badge>
+                       </div>
+                    </CardContent>
+                  </Card>
+              </div>
+            )}
+             <DialogFooter>
+                <Button onClick={() => setIsPermissionsDialogOpen(false)}>Close</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -508,23 +590,36 @@ export default function ClientManagementPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(client)}
-                              className="text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 dark:hover:bg-blue-500/20"
-                            >
-                              <Edit className="mr-2 h-4 w-4 " /> Edit
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/admin/analytics?clientId=${client._id}`}
+                              >
+                                <Eye className="mr-2 h-4 w-4" /> View Analytics
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleDelete(client)}
-                              className="text-destructive text-red-500 hover:bg-red-500/10 hover:text-red-700 dark:hover:bg-red-500/20"
+                              onClick={() => handleViewPermissions(client)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              <ShieldCheck className="mr-2 h-4 w-4" /> View
+                              Permissions
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(client)}
+                            >
+                              <Edit className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleResetPassword(client)}
-                              className="text-destructive text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-700 dark:hover:bg-yellow-500/20"
                             >
-                              <IoIosKey className="mr-2 h-4 w-4" /> Reset
+                              <KeyRound className="mr-2 h-4 w-4" /> Reset
+                              Password
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(client)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -543,6 +638,7 @@ export default function ClientManagementPage() {
                   onEdit={() => handleEdit(client)}
                   onDelete={() => handleDelete(client)}
                   onResetPassword={() => handleResetPassword(client)}
+                  onViewPermissions={() => handleViewPermissions(client)}
                 />
               ))}
             </div>

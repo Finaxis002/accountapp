@@ -1,13 +1,17 @@
 import type { LucideIcon } from "lucide-react";
 
 export type Transaction = {
-  id: string;
+  _id: string;
   date: Date;
-  party: string;
+  party: { _id: string; name: string } | string;
   description: string;
   amount: number;
-  type: "income" | "expense";
-  category: string;
+  type: "sales" | "purchases" | "income" | "expense";
+  category?: string;
+  product?: { _id: string; name: string };
+  company?: { _id: string; companyName: string };
+  invoiceNumber?: string;
+  gstPercentage?: number;
 };
 
 export type Kpi = {
@@ -19,15 +23,22 @@ export type Kpi = {
 };
 
 export type User = {
-  username: string;
-  name: string;
-  email: string;
-  avatar: string;
-  initials: string;
-  role: "master" | "customer";
+  _id: string;
+  userName: string;
+  userId: string;
+  contactNumber: string;
+  address: string;
+  password?: string;
+  name?: string; // For compatibility
+  username?: string; // For compatibility
+  email?: string;
+  avatar?: string;
+  initials?: string;
+  role?: "master" | "customer" | "Manager" | "Accountant" | "Viewer";
   token?: string;
+  status?: "Active" | "Inactive";
+  companies?: string[];
 };
-
 export type Client = {
   _id: string;
   clientUsername: string;
@@ -42,6 +53,12 @@ export type Client = {
   revenue?: number;
   users?: number;
   companies?: number;
+  totalSales?: number;
+  totalPurchases?: number;
+  maxCompanies?: number;
+  maxUsers?: number;
+  canSendInvoiceEmail?: boolean;
+  canSendInvoiceWhatsapp?: boolean;
 };
 
 export type Invoice = {
@@ -94,17 +111,20 @@ export type Company = {
   gstin: string;
   companyType: string;
   companyName: string;
+  client: string | Client;
+  selectedClient?: string | Client;
 };
 
-
 export type Party = {
-    _id: string;
-    name: string;
-    createdByClient: string;
+  [x: string]: unknown;
+  _id: string;
+  name: string;
+  type: "party" | "vendor";
+  createdByClient: string;
 };
 
 export type Product = {
-    _id: string;
-    name: string;
-    createdByClient: string;
+  _id: string;
+  name: string;
+  createdByClient: string;
 };
