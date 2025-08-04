@@ -15,12 +15,20 @@ import type { Transaction } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 export default function TransactionsPage() {
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
+  const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
+  const [transactionToEdit, setTransactionToEdit] = React.useState<Transaction | null>(null);
+
   const [sales, setSales] = React.useState<Transaction[]>([]);
   const [purchases, setPurchases] = React.useState<Transaction[]>([]);
+  const [receipts, setReceipts] = React.useState<Transaction[]>([]);
+  const [payments, setPayments] = React.useState<Transaction[]>([]);
+  const [journals, setJournals] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { selectedCompanyId } = useCompany();
   const { toast } = useToast();
@@ -30,6 +38,9 @@ export default function TransactionsPage() {
         setIsLoading(false);
         setSales([]);
         setPurchases([]);
+        setReceipts([]);
+        setPayments([]);
+        setJournals([]);
         return;
     }
     
@@ -38,29 +49,27 @@ export default function TransactionsPage() {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
         
-        const salesPromise = fetch(`http://localhost:5000/api/sales?companyId=${selectedCompanyId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const purchasesPromise = fetch(`http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        const [salesRes, purchasesRes] = await Promise.all([salesPromise, purchasesPromise]);
-
-        if (!salesRes.ok) {
-            const errorData = await salesRes.json();
-            throw new Error(errorData.message || 'Failed to fetch sales');
-        }
-         if (!purchasesRes.ok) {
-            const errorData = await purchasesRes.json();
-            throw new Error(errorData.message || 'Failed to fetch purchases');
-        }
+        const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        
+        const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes] = await Promise.all([
+            buildRequest(`http://localhost:5000/api/sales?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/receipts?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/payments?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/journals?companyId=${selectedCompanyId}`)
+        ]);
 
         const salesData = await salesRes.json();
         const purchasesData = await purchasesRes.json();
+        const receiptsData = await receiptsRes.json();
+        const paymentsData = await paymentsRes.json();
+        const journalsData = await journalsRes.json();
 
-        setSales(salesData.entries.map((s: any) => ({ ...s, type: 'sales' })));
-        setPurchases(purchasesData.map((p: any) => ({ ...p, party: p.vendor, type: 'purchases' })));
+        setSales(salesData.entries?.map((s: any) => ({ ...s, type: 'sales' })) || []);
+        setPurchases(purchasesData?.map((p: any) => ({ ...p, type: 'purchases' })) || []);
+        setReceipts(receiptsData?.map((r: any) => ({ ...r, type: 'receipt' })) || []);
+        setPayments(paymentsData?.map((p: any) => ({ ...p, type: 'payment' })) || []);
+        setJournals(journalsData?.map((j: any) => ({ ...j, description: j.narration, type: 'journal' })) || []);
 
     } catch (error) {
         toast({
@@ -76,8 +85,68 @@ export default function TransactionsPage() {
   React.useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
+  
+  const handleOpenForm = (transaction: Transaction | null = null) => {
+    setTransactionToEdit(transaction);
+    setIsFormOpen(true);
+  };
+  
+  const handleOpenDeleteDialog = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setIsAlertOpen(true);
+  };
 
-  const allTransactions = React.useMemo(() => [...sales, ...purchases].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [sales, purchases]);
+  const handleDeleteTransaction = async () => {
+    if (!transactionToDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const endpointMap: Record<string, string> = {
+        sales: `/api/sales/${transactionToDelete._id}`,
+        purchases: `/api/purchase/${transactionToDelete._id}`,
+        receipt: `/api/receipts/${transactionToDelete._id}`,
+        payment: `/api/payments/${transactionToDelete._id}`,
+        journal: `/api/journals/${transactionToDelete._id}`,
+      };
+      
+      const endpoint = endpointMap[transactionToDelete.type];
+      if (!endpoint) throw new Error(`Invalid transaction type: ${transactionToDelete.type}`);
+
+      const res = await fetch(`http://localhost:5000${endpoint}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to delete transaction.");
+      }
+
+      toast({
+        title: "Transaction Deleted",
+        description: "The transaction has been successfully removed.",
+      });
+
+      fetchTransactions();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsAlertOpen(false);
+      setTransactionToDelete(null);
+    }
+  };
+
+
+  const allTransactions = React.useMemo(() => 
+    [...sales, ...purchases, ...receipts, ...payments, ...journals]
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()), 
+    [sales, purchases, receipts, payments, journals]);
 
   const generateInvoicePDF = (transaction: Transaction) => {
     const doc = new jsPDF();
@@ -91,7 +160,7 @@ export default function TransactionsPage() {
     doc.text(`Date: ${new Intl.DateTimeFormat('en-US').format(new Date(transaction.date))}`, 150, 28);
     doc.setFontSize(12);
     doc.text("Bill To:", 14, 50);
-    const partyName = typeof transaction.party === 'object' && transaction.party !== null ? transaction.party.name : transaction.party;
+    const partyName = typeof transaction.party === 'object' && transaction.party !== null ? transaction.party.name : String(transaction.party || '');
     doc.text(partyName, 14, 56);
 
     const tableColumn = ["Description", "Product", "Amount"];
@@ -128,7 +197,7 @@ export default function TransactionsPage() {
             </Card>
         )
     }
-    return <DataTable columns={columns({ generateInvoicePDF })} data={data} />;
+    return <DataTable columns={columns({ generateInvoicePDF, onEdit: handleOpenForm, onDelete: handleOpenDeleteDialog })} data={data} />;
   }
 
   return (
@@ -140,33 +209,57 @@ export default function TransactionsPage() {
             A list of all financial activities for the selected company.
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => handleOpenForm(null)}>
               <PlusCircle className="mr-2 h-4 w-4" />
               New Transaction
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
             <DialogHeader className="p-6">
-              <DialogTitle>Create a New Transaction</DialogTitle>
+              <DialogTitle>{transactionToEdit ? 'Edit Transaction' : 'Create a New Transaction'}</DialogTitle>
               <DialogDescription>
-                Fill in the details below to record a new financial event.
+                {transactionToEdit ? 'Update the details of the financial event.' : 'Fill in the details below to record a new financial event.'}
               </DialogDescription>
             </DialogHeader>
-            <TransactionForm onFormSubmit={() => {
-                setIsDialogOpen(false);
+            <TransactionForm 
+              transactionToEdit={transactionToEdit}
+              onFormSubmit={() => {
+                setIsFormOpen(false);
+                setTransactionToEdit(null);
                 fetchTransactions();
             }} />
           </DialogContent>
         </Dialog>
       </div>
       
+       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              transaction.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTransaction}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       <Tabs defaultValue="all">
           <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="sales">Sales</TabsTrigger>
               <TabsTrigger value="purchases">Purchases</TabsTrigger>
+              <TabsTrigger value="receipts">Receipts</TabsTrigger>
+              <TabsTrigger value="payments">Payments</TabsTrigger>
+              <TabsTrigger value="journals">Journals</TabsTrigger>
           </TabsList>
           <TabsContent value="all" className="mt-4">
             {renderContent(allTransactions)}
@@ -176,6 +269,15 @@ export default function TransactionsPage() {
           </TabsContent>
           <TabsContent value="purchases" className="mt-4">
             {renderContent(purchases)}
+          </TabsContent>
+          <TabsContent value="receipts" className="mt-4">
+            {renderContent(receipts)}
+          </TabsContent>
+           <TabsContent value="payments" className="mt-4">
+            {renderContent(payments)}
+          </TabsContent>
+           <TabsContent value="journals" className="mt-4">
+            {renderContent(journals)}
           </TabsContent>
       </Tabs>
     </div>

@@ -1,8 +1,8 @@
 
 "use client"
 
-import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Copy, Edit, Trash2, FileDown } from "lucide-react"
+import { ColumnDef, FilterFn } from "@tanstack/react-table"
+import { ArrowUpDown, MoreHorizontal, Copy, Edit, Trash2, FileDown, Building, Package } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,9 +19,36 @@ import type { Transaction } from "@/lib/types"
 
 interface ColumnsProps {
   generateInvoicePDF: (transaction: Transaction) => void;
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => void;
 }
 
-export const columns = ({ generateInvoicePDF }: ColumnsProps): ColumnDef<Transaction>[] => [
+const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
+    const transaction = row.original;
+    const searchTerm = String(filterValue).toLowerCase();
+
+    let partyName = '';
+    const partyOrVendor = transaction.party || transaction.vendor;
+    if (partyOrVendor && typeof partyOrVendor === 'object') {
+        if ('name' in partyOrVendor) {
+            partyName = partyOrVendor.name || '';
+        } else if ('vendorName' in partyOrVendor) {
+            partyName = partyOrVendor.vendorName || '';
+        }
+    }
+
+    const description = transaction.description || '';
+    const productName = transaction.product?.name || '';
+    
+    return (
+        partyName.toLowerCase().includes(searchTerm) ||
+        description.toLowerCase().includes(searchTerm) ||
+        productName.toLowerCase().includes(searchTerm)
+    );
+};
+
+
+export const columns = ({ generateInvoicePDF, onEdit, onDelete }: ColumnsProps): ColumnDef<Transaction>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -46,14 +73,73 @@ export const columns = ({ generateInvoicePDF }: ColumnsProps): ColumnDef<Transac
   },
   {
     accessorKey: "party",
-    header: "Party",
+    header: "Party / Details",
+    filterFn: customFilterFn,
     cell: ({ row }) => {
-        const transaction = row.original
-        const partyName = typeof transaction.party === 'object' && transaction.party !== null ? transaction.party.name : transaction.party;
+        const transaction = row.original;
+        
+        if (transaction.type === 'journal') {
+            return (
+                 <div>
+                    <div className="font-medium">Journal Entry</div>
+                    <div className="text-sm text-muted-foreground">
+                        {transaction.debitAccount} / {transaction.creditAccount}
+                    </div>
+                </div>
+            )
+        }
+
+        const partyOrVendor = transaction.party || transaction.vendor;
+        let partyName = '';
+        if (partyOrVendor && typeof partyOrVendor === 'object') {
+          if ('name' in partyOrVendor) {
+            partyName = partyOrVendor.name;
+          } else if ('vendorName' in partyOrVendor) {
+            partyName = partyOrVendor.vendorName;
+          }
+        } else if (typeof partyOrVendor === 'string') {
+          // This case might need to fetch the name, but for now, it's a fallback.
+          partyName = 'Loading...';
+        }
+        
         return (
             <div>
                 <div className="font-medium">{partyName}</div>
-                <div className="text-sm text-muted-foreground">{transaction.product?.name}</div>
+                <div className="text-sm text-muted-foreground">{transaction.description}</div>
+            </div>
+        )
+    }
+  },
+  {
+    accessorKey: "company",
+    header: "Company",
+    cell: ({ row }) => {
+      const company = row.original.company;
+      const companyName = typeof company === 'object' && company !== null ? company.companyName : 'N/A';
+      return (
+        <div className="flex items-center gap-2">
+            <Building className="h-4 w-4 text-muted-foreground" />
+            <span>{companyName}</span>
+        </div>
+      );
+    }
+  },
+  {
+    accessorKey: "product",
+    header: "Product",
+    cell: ({ row }) => {
+        const product = row.original.product;
+        if (!product) return 'N/A';
+        
+        const stockInfo = product.stock !== undefined ? `(Stock: ${product.stock})` : '';
+
+        return (
+            <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <div>
+                    <div>{product.name}</div>
+                    {stockInfo && <div className="text-xs text-muted-foreground">{stockInfo}</div>}
+                </div>
             </div>
         )
     }
@@ -92,11 +178,17 @@ export const columns = ({ generateInvoicePDF }: ColumnsProps): ColumnDef<Transac
     header: "Type",
     cell: ({ row }) => {
         const type = row.getValue("type") as string;
+        
+        const typeStyles: { [key: string]: string } = {
+          sales: 'bg-green-500/20 text-green-700 dark:text-green-300',
+          purchases: 'bg-orange-500/20 text-orange-700 dark:text-orange-300',
+          receipt: 'bg-blue-500/20 text-blue-700 dark:text-blue-300',
+          payment: 'bg-red-500/20 text-red-700 dark:text-red-300',
+          journal: 'bg-purple-500/20 text-purple-700 dark:text-purple-300',
+        };
+
         const variant = type === 'sales' ? 'default' : 'secondary';
-        const colorClass = type === 'sales' 
-            ? 'bg-green-500/20 text-green-700 dark:text-green-300' 
-            : 'bg-orange-500/20 text-orange-700 dark:text-orange-300';
-        return <Badge variant={variant} className={colorClass}>{type}</Badge>
+        return <Badge variant={variant} className={typeStyles[type]}>{type}</Badge>
     }
   },
   {
@@ -119,16 +211,16 @@ export const columns = ({ generateInvoicePDF }: ColumnsProps): ColumnDef<Transac
               <Copy className="mr-2 h-4 w-4" />
               <span>Copy transaction ID</span>
             </DropdownMenuItem>
-             <DropdownMenuItem onClick={() => generateInvoicePDF(transaction)}>
+             <DropdownMenuItem onClick={() => generateInvoicePDF(transaction)} disabled={transaction.type !== 'sales'}>
                 <FileDown className="mr-2 h-4 w-4" />
                 <span>Generate Invoice</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit(transaction)}>
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Edit transaction</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem onClick={() => onDelete(transaction)} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
                 <span>Delete transaction</span>
             </DropdownMenuItem>

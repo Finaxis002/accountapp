@@ -2,54 +2,79 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, IndianRupee, TrendingUp, Building, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Users, IndianRupee, Building, Loader2 } from 'lucide-react';
 import { RevenueChart } from '@/components/dashboard/revenue-chart';
 import { ExpenseChart } from '@/components/dashboard/expense-chart';
 import type { Client, Company } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 0
-  }).format(amount);
+const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
 
 interface DashboardTabProps {
     selectedClient: Client;
 }
 
 export function DashboardTab({ selectedClient }: DashboardTabProps) {
-    const [companies, setCompanies] = React.useState<Company[]>([]);
+    const [stats, setStats] = React.useState({ totalSales: 0, totalPurchases: 0 });
+    const [isLoading, setIsLoading] = React.useState(true);
     const { toast } = useToast();
 
     React.useEffect(() => {
-        async function fetchCompanies(clientId: string) {
-          if (!clientId) return;
-          try {
-            const token = localStorage.getItem("token");
-            if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error("Failed to fetch companies for the selected client.");
-            const data = await res.json();
-            setCompanies(data);
-          } catch (error) {
-            toast({ variant: "destructive", title: "Failed to load companies", description: error instanceof Error ? error.message : "Something went wrong." });
-          }
-        }
-        fetchCompanies(selectedClient._id);
-      }, [selectedClient, toast]);
+        async function fetchStats() {
+            if (!selectedClient._id) return;
+            setIsLoading(true);
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) throw new Error("Authentication token not found.");
+                
+                // TODO: In a real app, these would be dedicated aggregation endpoints for performance.
+                const salesRes = await fetch(`http://localhost:5000/api/sales/by-client/${selectedClient._id}`, { headers: { Authorization: `Bearer ${token}` } });
+                const purchasesRes = await fetch(`http://localhost:5000/api/purchase/by-client/${selectedClient._id}`, { headers: { Authorization: `Bearer ${token}` } });
 
-    const kpiData = selectedClient ? [
-        { title: 'Total Sales', value: formatCurrency(selectedClient.totalSales || 0), icon: ArrowUpCircle },
-        { title: 'Total Purchases', value: formatCurrency(selectedClient.totalPurchases || 0), icon: ArrowDownCircle },
-        { title: 'Total Companies', value: (companies.length || 0).toString(), icon: Building },
-        { title: 'Total Users', value: (selectedClient.users || 0).toString(), icon: Users },
-    ] : [];
+                const salesData = await salesRes.json();
+                const purchasesData = await purchasesRes.json();
+
+                const totalSales = (salesData.entries || []).reduce((acc: number, item: any) => acc + item.amount, 0);
+                const totalPurchases = (purchasesData || []).reduce((acc: number, item: any) => acc + item.amount, 0);
+
+                setStats({ totalSales, totalPurchases });
+
+            } catch (error) {
+                toast({ variant: "destructive", title: "Failed to load stats", description: "Could not fetch client's financial summary." });
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        fetchStats();
+    }, [selectedClient, toast]);
+
+    const kpiData = [
+        { title: 'Total Sales', value: formatCurrency(stats.totalSales || 0), icon: IndianRupee },
+        { title: 'Total Purchases', value: formatCurrency(stats.totalPurchases || 0), icon: IndianRupee },
+        { title: 'Company Users', value: (selectedClient.users || 0).toString(), icon: Users },
+        { title: 'Companies', value: (selectedClient.companies || 0).toString(), icon: Building },
+    ];
+
+    if (isLoading) {
+        return (
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {Array.from({length: 4}).map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                             <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
+                             <div className="h-6 w-6 bg-muted rounded-md animate-pulse" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-8 w-1/2 bg-muted rounded animate-pulse" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
+
 
     return (
         <div className="space-y-6">
@@ -70,14 +95,20 @@ export function DashboardTab({ selectedClient }: DashboardTabProps) {
                 <Card className="lg:col-span-3">
                     <CardHeader>
                         <CardTitle>Revenue vs. Expenses</CardTitle>
+                         <CardDescription>A visual representation of sales vs purchases.</CardDescription>
                     </CardHeader>
-                    <CardContent className="pl-2"><RevenueChart /></CardContent>
+                    <CardContent className="pl-2">
+                        <RevenueChart totalRevenue={stats.totalSales}/>
+                    </CardContent>
                 </Card>
                 <Card className="lg:col-span-2">
                     <CardHeader>
                         <CardTitle>Expense Breakdown</CardTitle>
+                        <CardDescription>A breakdown of purchase categories.</CardDescription>
                     </CardHeader>
-                    <CardContent><ExpenseChart /></CardContent>
+                    <CardContent>
+                        <ExpenseChart totalExpenses={stats.totalPurchases} />
+                    </CardContent>
                 </Card>
             </div>
         </div>
