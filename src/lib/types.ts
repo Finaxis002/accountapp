@@ -121,6 +121,26 @@ export type Party = {
   name: string;
   type: "party" | "vendor";
   createdByClient: string;
+  email?: string;
+  contactNumber?: string;
+  address?: string;
+};
+
+export type Vendor = Party & {
+  vendorName: string;
+  city?: string;
+  state?: string;
+  gstin?: string;
+  gstRegistrationType?:
+    | "Regular"
+    | "Composition"
+    | "Unregistered"
+    | "Consumer"
+    | "Overseas"
+    | "Special Economic Zone"
+    | "Unknown";
+  pan?: string;
+  isTDSApplicable?: boolean;
 };
 
 export type Product = {

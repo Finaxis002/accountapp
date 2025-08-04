@@ -100,15 +100,19 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
-       <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={isActive('/admin/companies')} tooltip="Companies">
-            <Link href="/admin/companies">
-              <Building />
-              <span>Companies</span>
-            </Link>
-          </SidebarMenuButton>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive("/admin/companies")}
+          tooltip="Companies"
+        >
+          <Link href="/admin/companies">
+            <Building />
+            <span>Companies</span>
+          </Link>
+        </SidebarMenuButton>
       </SidebarMenuItem>
-      
+
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
@@ -186,7 +190,7 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem> */}
-      <SidebarMenuItem>
+      {/* <SidebarMenuItem>
         <SidebarMenuButton
           asChild
           isActive={isActive("/companies")}
@@ -197,9 +201,9 @@ export function AppSidebar() {
             <span>Companies</span>
           </Link>
         </SidebarMenuButton>
-      </SidebarMenuItem>
+      </SidebarMenuItem> */}
 
-       <SidebarMenuItem>
+      <SidebarMenuItem>
         <SidebarMenuButton
           asChild
           isActive={isActive("/users")}
@@ -211,7 +215,6 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
-
 
       <Collapsible defaultOpen={isReportsActive}>
         <SidebarMenuItem>
