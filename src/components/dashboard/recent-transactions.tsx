@@ -59,7 +59,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                   {new Intl.DateTimeFormat('en-US').format(transaction.date)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(transaction.amount)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(transaction.amount)}
                 </TableCell>
               </TableRow>
             ))}

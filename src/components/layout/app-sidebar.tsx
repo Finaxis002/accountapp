@@ -19,7 +19,8 @@ import {
   Users,
   Settings,
   Shield,
-  Building
+  Building,
+  Users2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -99,6 +100,15 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
+       <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={isActive('/admin/companies')} tooltip="Companies">
+            <Link href="/admin/companies">
+              <Building />
+              <span>Companies</span>
+            </Link>
+          </SidebarMenuButton>
+      </SidebarMenuItem>
+      
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
@@ -111,7 +121,7 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
-      <SidebarMenuItem>
+      {/* <SidebarMenuItem>
         <SidebarMenuButton
           asChild
           isActive={isActive("/admin/permissions")}
@@ -122,7 +132,7 @@ export function AppSidebar() {
             <span>Permissions</span>
           </Link>
         </SidebarMenuButton>
-      </SidebarMenuItem>
+      </SidebarMenuItem> */}
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
@@ -164,7 +174,7 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
-      <SidebarMenuItem>
+      {/* <SidebarMenuItem>
         <SidebarMenuButton
           asChild
           isActive={isActive("/invoices")}
@@ -175,15 +185,33 @@ export function AppSidebar() {
             <span>Invoices</span>
           </Link>
         </SidebarMenuButton>
+      </SidebarMenuItem> */}
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive("/companies")}
+          tooltip="Companies"
+        >
+          <Link href="/companies">
+            <Building />
+            <span>Companies</span>
+          </Link>
+        </SidebarMenuButton>
       </SidebarMenuItem>
+
        <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={isActive('/companies')} tooltip="Companies">
-            <Link href="/companies">
-              <Building />
-              <span>Companies</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive("/users")}
+          tooltip="Users"
+        >
+          <Link href="/users">
+            <Users2 />
+            <span>Users</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+
 
       <Collapsible defaultOpen={isReportsActive}>
         <SidebarMenuItem>

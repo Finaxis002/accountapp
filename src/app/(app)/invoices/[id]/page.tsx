@@ -87,7 +87,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                     {invoice.items.map((item, index) => (
                         <TableRow key={index}>
                             <TableCell>{item.description}</TableCell>
-                            <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.amount)}</TableCell>
+                            <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(item.amount)}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -97,7 +97,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                 <div className="w-full max-w-xs space-y-2">
                     <div className="flex justify-between">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalAmount)}</span>
+                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(totalAmount)}</span>
                     </div>
                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Tax (0%)</span>
@@ -106,7 +106,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                     <Separator/>
                      <div className="flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalAmount)}</span>
+                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(totalAmount)}</span>
                     </div>
                 </div>
             </div>

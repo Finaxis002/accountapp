@@ -5,7 +5,7 @@ import { UserNav } from "@/components/layout/user-nav";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Moon, Bell, FileText, DollarSign, Clock } from "lucide-react";
+import { Search, Moon, Bell, FileText, DollarSign, Clock , Loader2} from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import type { User } from "@/lib/types";
@@ -28,6 +28,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import {CompanySwitcher} from "@/components/layout/company-switcher";
+import { CompanyProvider } from "@/contexts/company-context";
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dateString, setDateString] = useState("");
@@ -63,8 +66,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <p>Loading...</p>
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Loading, please wait...</p>
       </div>
+    </div>
     );
   }
 
@@ -76,8 +82,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const role = localStorage.getItem("role");
+  console.log("User role:", role);
+
   return (
-    <SidebarProvider>
+   <CompanyProvider>
+     <SidebarProvider>
       <div className="flex min-h-screen bg-background text-foreground">
         <div className="flex-1">
           <AppSidebar />
@@ -96,6 +106,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <p className="text-sm text-muted-foreground">{dateString}</p>
               </div>
             </div>
+            {currentUser?.role === 'customer' && <CompanySwitcher />}
             <div className="flex flex-1 items-center gap-4">
               <div className="relative w-full max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -170,7 +181,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex items-center gap-2 p-2 h-auto hover:bg-blue-800 "
+                    className="flex items-center gap-2 p-2 h-auto "
                   >
                     <UserNav />
                   </Button>
@@ -198,5 +209,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </SidebarProvider>
+   </CompanyProvider>
   );
 }
