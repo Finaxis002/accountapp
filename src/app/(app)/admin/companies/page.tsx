@@ -191,7 +191,7 @@ export default function AdminCompaniesPage() {
       clientIdentifier !== null &&
       "_id" in clientIdentifier
     ) {
-      clientId = clientIdentifier._id;
+      clientId = (clientIdentifier as Client)._id;
     } else {
       clientId = String(clientIdentifier);
     }
