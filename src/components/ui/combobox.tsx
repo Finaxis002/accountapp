@@ -52,6 +52,7 @@ export function Combobox({
     }
   }
 
+  
   const filteredOptions = options.filter(option => option.label.toLowerCase().includes(inputValue.toLowerCase()));
   const showCreateOption = creatable && inputValue && !filteredOptions.some(opt => opt.label.toLowerCase() === inputValue.toLowerCase());
 
