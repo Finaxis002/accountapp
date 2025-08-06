@@ -5,7 +5,7 @@
 import type { User, Client } from './types';
 
 const USER_STORAGE_KEY = 'accountech_pro_user';
-const baseURL = 'https://accountapp-theta.vercel.app';
+const baseURL = 'https://account-app-backend-eight.vercel.app';
 // const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 
@@ -13,7 +13,7 @@ export async function loginMasterAdmin(username?: string, password?: string): Pr
   if (!username || !password) throw new Error("Username and password are required.");
   
   try {
-    const res = await fetch(`${baseURL}/api/master-admin/login`, {
+    const res = await fetch(`https://account-app-backend-eight.vercel.app/api/master-admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -51,7 +51,7 @@ export async function loginCustomer(clientUsername?: string, password?: string):
   if (!clientUsername || !password) throw new Error("Username and password are required.");
 
   try {
-     const res = await fetch(`${baseURL}/api/clients/login`, {
+     const res = await fetch(`https://account-app-backend-eight.vercel.app/api/clients/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientUsername, password }),
