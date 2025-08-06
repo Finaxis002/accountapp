@@ -14,6 +14,7 @@ import type { Product } from '@/lib/types';
 import { ProductForm } from '@/components/products/product-form';
 
 export function ProductSettings() {
+    const baseURL = process.env.REACT_APP_BASE_URL;
     const [products, setProducts] = React.useState<Product[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -27,7 +28,7 @@ export function ProductSettings() {
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/products`, {
+            const res = await fetch(`${baseURL}/api/products`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to fetch products.");
@@ -66,7 +67,7 @@ export function ProductSettings() {
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/products/${productToDelete._id}`, {
+            const res = await fetch(`${baseURL}/api/products/${productToDelete._id}`, {
                 method: 'DELETE',
                 headers: { "Authorization": `Bearer ${token}` }
             });

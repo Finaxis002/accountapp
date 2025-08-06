@@ -10,6 +10,7 @@ import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminDashboardPage() {
+  const baseURL = process.env.REACT_APP_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);
   const [companies , setCompanies] = React.useState<Client[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -21,7 +22,7 @@ export default function AdminDashboardPage() {
       try {
         const token = localStorage.getItem('token');
         if (!token) throw new Error("Authentication token not found.");
-        const res = await fetch("http://localhost:5000/api/clients", {
+        const res = await fetch(`${baseURL}/api/clients`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (!res.ok) {
@@ -46,7 +47,7 @@ export default function AdminDashboardPage() {
       try {
         const token = localStorage.getItem('token');
         if (!token) throw new Error("Authentication token not found.");
-        const res = await fetch("http://localhost:5000/api/companies/all", {
+        const res = await fetch(`${baseURL}/api/companies/all`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (!res.ok) {

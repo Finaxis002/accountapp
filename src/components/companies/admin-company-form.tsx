@@ -201,8 +201,8 @@
 //       if (!token) throw new Error("Authentication token not found.");
 
 //       const url = company
-//         ? `http://localhost:5000/api/companies/${company._id}`
-//         : "http://localhost:5000/api/companies";
+//         ? `${baseURL}/api/companies/${company._id}`
+//         : "${baseURL}/api/companies";
 
 //       const method = company ? "PUT" : "POST";
 
@@ -524,7 +524,7 @@ const formSchema = z.object({
   PeriodicityofGSTReturns: z.string().optional(),
   GSTUsername: z.string().optional(),
   GSTPassword: z.string().optional(),
-  ewayBillApplicable: z.enum(["Yes", "No"]),
+  ewayBillApplicable: z.enum(["true", "false"]),
   EWBBillUsername: z.string().optional(),
   EWBBillPassword: z.string().optional(),
   TANNumber: z.string().optional(),
@@ -550,6 +550,7 @@ export function AdminCompanyForm({
   clients,
   onFormSubmit,
 }: AdminCompanyFormProps) {
+  const baseURL = process.env.REACT_APP_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [step, setStep] = React.useState(1);
@@ -583,7 +584,7 @@ export function AdminCompanyForm({
       PeriodicityofGSTReturns: company?.PeriodicityofGSTReturns || "",
       GSTUsername: company?.GSTUsername || "",
       GSTPassword: company?.GSTPassword || "",
-      ewayBillApplicable: company?.ewayBillApplicable || "No",
+      ewayBillApplicable: company?.ewayBillApplicable || "false",
       EWBBillUsername: company?.EWBBillUsername || "",
       EWBBillPassword: company?.EWBBillPassword || "",
       TANNumber: company?.TANNumber || "",
@@ -601,8 +602,8 @@ export function AdminCompanyForm({
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
       const url = company
-        ? `http://localhost:5000/api/companies/${company._id}`
-        : "http://localhost:5000/api/companies";
+        ? `${baseURL}/api/companies/${company._id}`
+        : `${baseURL}/api/companies`;
       const method = company ? "PUT" : "POST";
       const { client, ...rest } = values;
       const submissionBody = { ...rest, selectedClient: client };

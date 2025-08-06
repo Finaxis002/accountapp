@@ -48,6 +48,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export function CustomerForm({ customer, initialName, onSuccess }: CustomerFormProps) {
+    const baseURL = process.env.REACT_APP_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -78,8 +79,8 @@ export function CustomerForm({ customer, initialName, onSuccess }: CustomerFormP
         if (!token) throw new Error("Authentication token not found.");
 
         const url = customer 
-            ? `http://localhost:5000/api/parties/${customer._id}` 
-            : "http://localhost:5000/api/parties";
+            ? `${baseURL}/api/parties/${customer._id}` 
+            : `${baseURL}/api/parties`;
         
         const method = customer ? "PUT" : "POST";
 
