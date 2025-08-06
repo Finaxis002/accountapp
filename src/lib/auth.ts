@@ -5,7 +5,8 @@
 import type { User, Client } from './types';
 
 const USER_STORAGE_KEY = 'accountech_pro_user';
-const baseURL = process.env.REACT_APP_BASE_URL;
+// const baseURL = 'https://accountapp-theta.vercel.app';
+const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 
 export async function loginMasterAdmin(username?: string, password?: string): Promise<User | null> {
