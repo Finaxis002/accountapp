@@ -48,7 +48,7 @@ export async function loginCustomer(clientUsername?: string, password?: string):
   if (!clientUsername || !password) throw new Error("Username and password are required.");
 
   try {
-     const res = await fetch("http://localhost:5000/api/clients/login", {
+     const res = await fetch("https://account-app-backend-eight.vercel.app/api/clients/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientUsername, password }),

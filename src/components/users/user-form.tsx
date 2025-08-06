@@ -38,6 +38,7 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
     contactNumber: "",
     address: "",
     companies: [] as string[],
+    role: "user"
   });
 
   const [allCompanies, setAllCompanies] = useState<Company[]>([]);
@@ -78,6 +79,7 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
             contactNumber: user.contactNumber || "",
             address: user.address || "",
             companies: user.companies || [],
+            role: user.role || "user",
           }
         : {
             userName: "",
@@ -86,6 +88,7 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
             contactNumber: "",
             address: "",
             companies: [],
+            role: "user", 
           }
     );
   }, [user]);
