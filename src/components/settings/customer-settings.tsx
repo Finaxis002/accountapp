@@ -16,6 +16,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 
 export function CustomerSettings() {
+    const baseURL = process.env.REACT_APP_BASE_URL;
     const [customers, setCustomers] = React.useState<Party[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -29,7 +30,7 @@ export function CustomerSettings() {
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/parties`, {
+            const res = await fetch(`${baseURL}/api/parties`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to fetch customers.");
@@ -68,7 +69,7 @@ export function CustomerSettings() {
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/parties/${customerToDelete._id}`, {
+            const res = await fetch(`${baseURL}/api/parties/${customerToDelete._id}`, {
                 method: 'DELETE',
                 headers: { "Authorization": `Bearer ${token}` }
             });

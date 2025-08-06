@@ -16,6 +16,7 @@ interface CompaniesTabProps {
 }
 
 export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabProps) {
+    const baseURL = process.env.REACT_APP_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(false);
     const { toast } = useToast();
@@ -27,7 +28,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
           try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, {
+            const res = await fetch(`${baseURL}/api/companies/by-client/${clientId}`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to fetch companies for the selected client.");

@@ -16,6 +16,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 
 export function VendorSettings() {
+    const baseURL = process.env.REACT_APP_BASE_URL;
     const [vendors, setVendors] = React.useState<Vendor[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -29,7 +30,7 @@ export function VendorSettings() {
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/vendors`, {
+            const res = await fetch(`${baseURL}/api/vendors`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to fetch vendors.");
@@ -68,7 +69,7 @@ export function VendorSettings() {
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/vendors/${vendorToDelete._id}`, {
+            const res = await fetch(`${baseURL}/api/vendors/${vendorToDelete._id}`, {
                 method: 'DELETE',
                 headers: { "Authorization": `Bearer ${token}` }
             });

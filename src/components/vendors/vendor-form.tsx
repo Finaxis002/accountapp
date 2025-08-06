@@ -48,6 +48,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) {
+
+    const baseURL = process.env.REACT_APP_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -78,8 +80,8 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
         if (!token) throw new Error("Authentication token not found.");
 
         const url = vendor 
-            ? `http://localhost:5000/api/vendors/${vendor._id}` 
-            : "http://localhost:5000/api/vendors";
+            ? `${baseURL}/api/vendors/${vendor._id}` 
+            : `${baseURL}/api/vendors`;
         
         const method = vendor ? "PUT" : "POST";
 

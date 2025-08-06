@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { MoreHorizontal } from 'lucide-react';
 
 export default function CompaniesPage() {
+    const baseURL = process.env.REACT_APP_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -32,7 +33,7 @@ export default function CompaniesPage() {
             const token = localStorage.getItem('token');
             if (!token) throw new Error("Authentication token not found.");
 
-            const res = await fetch("http://localhost:5000/api/companies/my", {
+            const res = await fetch(`${baseURL}/api/companies/my`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
 
@@ -78,7 +79,7 @@ export default function CompaniesPage() {
             const token = localStorage.getItem('token');
             if (!token) throw new Error("Authentication token not found.");
 
-            const res = await fetch(`http://localhost:5000/api/companies/${companyToDelete._id}`, {
+            const res = await fetch(`${baseURL}/api/companies/${companyToDelete._id}`, {
                 method: 'DELETE',
                 headers: { "Authorization": `Bearer ${token}` }
             });

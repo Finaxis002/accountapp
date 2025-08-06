@@ -11,6 +11,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Input } from '../ui/input';
 
 export function ProductStock() {
+    const baseURL = process.env.REACT_APP_BASE_URL;
     const [products, setProducts] = React.useState<Product[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -22,7 +23,7 @@ export function ProductStock() {
             try {
                 const token = localStorage.getItem("token");
                 if (!token) throw new Error("Authentication token not found.");
-                const res = await fetch(`http://localhost:5000/api/products`, {
+                const res = await fetch(`${baseURL}/api/products`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Failed to fetch products.");

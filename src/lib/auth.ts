@@ -5,12 +5,14 @@
 import type { User, Client } from './types';
 
 const USER_STORAGE_KEY = 'accountech_pro_user';
+const baseURL = process.env.REACT_APP_BASE_URL;
+
 
 export async function loginMasterAdmin(username?: string, password?: string): Promise<User | null> {
   if (!username || !password) throw new Error("Username and password are required.");
   
   try {
-    const res = await fetch("http://localhost:5000/api/master-admin/login", {
+    const res = await fetch(`${baseURL}/api/master-admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -48,7 +50,7 @@ export async function loginCustomer(clientUsername?: string, password?: string):
   if (!clientUsername || !password) throw new Error("Username and password are required.");
 
   try {
-     const res = await fetch("https://account-app-backend-eight.vercel.app/api/clients/login", {
+     const res = await fetch(`${baseURL}/api/clients/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientUsername, password }),

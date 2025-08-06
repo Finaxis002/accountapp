@@ -16,6 +16,7 @@ import { ProductStock } from '@/components/dashboard/product-stock';
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
 export default function DashboardPage() {
+  const baseURL = process.env.REACT_APP_BASE_URL;
   const { selectedCompanyId } = useCompany();
   const [companyData, setCompanyData] = React.useState<any>(null);
   const [recentTransactions, setRecentTransactions] = React.useState<Transaction[]>([]);
@@ -39,12 +40,12 @@ export default function DashboardPage() {
       const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       
       const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes, usersRes] = await Promise.all([
-          buildRequest(`http://localhost:5000/api/sales?companyId=${selectedCompanyId}`),
-          buildRequest(`http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`),
-          buildRequest(`http://localhost:5000/api/receipts?companyId=${selectedCompanyId}`),
-          buildRequest(`http://localhost:5000/api/payments?companyId=${selectedCompanyId}`),
-          buildRequest(`http://localhost:5000/api/journals?companyId=${selectedCompanyId}`),
-          buildRequest(`http://localhost:5000/api/users`), // Assuming this fetches users for the client
+          buildRequest(`${baseURL}/api/sales?companyId=${selectedCompanyId}`),
+          buildRequest(`${baseURL}/api/purchase?companyId=${selectedCompanyId}`),
+          buildRequest(`${baseURL}/api/receipts?companyId=${selectedCompanyId}`),
+          buildRequest(`${baseURL}/api/payments?companyId=${selectedCompanyId}`),
+          buildRequest(`${baseURL}/api/journals?companyId=${selectedCompanyId}`),
+          buildRequest(`${baseURL}/api/users`), // Assuming this fetches users for the client
       ]);
 
       const salesData = await salesRes.json();
