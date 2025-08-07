@@ -104,6 +104,7 @@ export function ProductSettings() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Product Name</TableHead>
+                                    <TableHead>Stock</TableHead>
                                     <TableHead>Created At</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -113,6 +114,9 @@ export function ProductSettings() {
                                     <TableRow key={product._id}>
                                         <TableCell>
                                             <div className='font-medium'>{product.name}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {product.stock ?? 0}
                                         </TableCell>
                                          <TableCell>
                                             {new Intl.DateTimeFormat('en-US').format(new Date(product.createdAt!))}

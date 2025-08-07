@@ -46,6 +46,10 @@ import {
 } from "../ui/dialog";
 import { VendorForm } from "../vendors/vendor-form";
 import { CustomerForm } from "../customers/customer-form";
+import { useCompany } from "@/contexts/company-context";
+import { ProductForm } from "../products/product-form";
+
+const unitTypes = ["Kg", "Litre", "Piece", "Box", "Meter", "Dozen", "Pack", "Other"] as const;
 
 const formSchema = z
   .object({
@@ -55,6 +59,7 @@ const formSchema = z
     date: z.date({ required_error: "A date is required." }),
     amount: z.coerce.number().positive("Amount must be a positive number."),
     quantity: z.coerce.number().optional(),
+    unitType: z.enum(unitTypes).default("Piece").optional(),
     pricePerUnit: z.coerce.number().optional(),
     description: z
       .string()
@@ -134,7 +139,8 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isEntityDialogOpen, setIsEntityDialogOpen] = React.useState(false);
+  const [isPartyDialogOpen, setIsPartyDialogOpen] = React.useState(false);
+  const [isProductDialogOpen, setIsProductDialogOpen] = React.useState(false);
   const [newEntityName, setNewEntityName] = React.useState("");
 
   const [companies, setCompanies] = React.useState<Company[]>([]);
@@ -142,6 +148,8 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
   const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const { selectedCompanyId } = useCompany();
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -151,12 +159,15 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
       amount: 0,
       quantity: 1,
       pricePerUnit: 0,
+      unitType: "Piece",
       type: "sales",
       product: "",
       referenceNumber: "",
       fromAccount: "",
       toAccount: "",
       narration: "",
+      company: selectedCompanyId || "",
+      date: new Date(),
     },
   });
   
@@ -213,13 +224,14 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
       setParties(
         Array.isArray(partiesData) ? partiesData : partiesData.parties || []
       );
-      setProducts(productsData);
+      setProducts(Array.isArray(productsData) ? productsData : productsData.products || []);
       setVendors(
         Array.isArray(vendorsData) ? vendorsData : vendorsData.vendors || []
       );
 
       if (companiesData.length > 0 && !transactionToEdit) {
-        form.setValue("company", companiesData[0]._id);
+        // Use the context-based selected company if available, otherwise default to first.
+        form.setValue("company", selectedCompanyId || companiesData[0]._id);
       }
     } catch (error) {
       toast({
@@ -231,7 +243,7 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
     } finally {
       setIsLoading(false);
     }
-  }, [toast, form, transactionToEdit]);
+  }, [toast, form, transactionToEdit, selectedCompanyId]);
 
   React.useEffect(() => {
     fetchInitialData();
@@ -256,6 +268,7 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
         amount: transactionToEdit.amount,
         quantity: transactionToEdit.quantity,
         pricePerUnit: price,
+        unitType: transactionToEdit.unitType || "Piece",
         description: transactionToEdit.description || '',
         narration: transactionToEdit.narration || '',
         party: partyId,
@@ -265,24 +278,24 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
         toAccount: transactionToEdit.creditAccount,
       });
     } else {
-      const company = form.getValues("company");
       form.reset({
         party: "",
         description: "",
         amount: 0,
         quantity: 1,
         pricePerUnit: 0,
+        unitType: "Piece",
         type: type,
         product: "",
         referenceNumber: "",
         fromAccount: "",
         toAccount: "",
         narration: "",
-        company: company,
+        company: selectedCompanyId || form.getValues("company"),
         date: new Date(),
       });
     }
-  }, [transactionToEdit, type, form]);
+  }, [transactionToEdit, type, form, selectedCompanyId]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -301,8 +314,8 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
 
       const method = transactionToEdit ? 'PUT' : 'POST';
       let endpoint = endpointMap[values.type];
-      if (transactionToEdit) {
-        const transactionTypeEndpoint = transactionToEdit.type === 'purchases' ? '/api/purchases' : `/api/${transactionToEdit.type}s`;
+       if (transactionToEdit) {
+        const transactionTypeEndpoint = transactionToEdit.type === 'purchases' ? '/api/purchase' : `/api/${transactionToEdit.type}s`;
         endpoint = `${transactionTypeEndpoint}/${transactionToEdit._id}`;
       }
       
@@ -360,12 +373,12 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
     }
   }
 
-  const handleTriggerCreateEntity = (name: string) => {
+  const handleTriggerCreateParty = (name: string) => {
     setNewEntityName(name);
-    setIsEntityDialogOpen(true);
+    setIsPartyDialogOpen(true);
   };
 
-  const handleEntityCreated = (newEntity: Party | Vendor) => {
+  const handlePartyCreated = (newEntity: Party | Vendor) => {
     const entityId = newEntity._id;
     const entityName = newEntity.name || newEntity.vendorName;
 
@@ -388,40 +401,22 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
       } Created`,
       description: `${entityName} has been added.`,
     });
-    setIsEntityDialogOpen(false);
+    setIsPartyDialogOpen(false);
   };
 
-  const handleCreateProduct = async (productName: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Authentication token not found.");
-      const res = await fetch("${baseURL}/api/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: productName }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create product.");
-      const newProduct = data.product;
-      setProducts((prev) => [...prev, newProduct]);
-      form.setValue("product", newProduct._id, { shouldValidate: true });
-      toast({
-        title: "Product Created",
-        description: `${newProduct.name} has been added.`,
-      });
-      return newProduct;
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to create product",
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
-      return null;
-    }
-  };
+  const handleTriggerCreateProduct = () => {
+    setIsProductDialogOpen(true);
+  }
+
+  const handleProductCreated = (newProduct: Product) => {
+    setProducts((prev) => [...prev, newProduct]);
+    form.setValue("product", newProduct._id, { shouldValidate: true });
+    toast({
+      title: "Product Created",
+      description: `${newProduct.name} has been added.`,
+    });
+    setIsProductDialogOpen(false);
+  }
 
   const getPartyOptions = () => {
     if (type === 'sales' || type === 'receipt') {
@@ -502,7 +497,7 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
                                 noResultsText={`No results found.`}
                                 creatable
                                 onCreate={async (name) => {
-                                handleTriggerCreateEntity(name);
+                                handleTriggerCreateParty(name);
                                 return Promise.resolve();
                                 }}
                             />
@@ -514,13 +509,25 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
                 
                 {includeQuantityAndPrice && (
                   <>
-                    <FormField control={form.control} name="quantity" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Quantity</FormLabel>
-                            <FormControl><Input type="number" placeholder="1" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="quantity" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Quantity</FormLabel>
+                                <FormControl><Input type="number" placeholder="1" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="unitType" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Unit</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                    <SelectContent>{unitTypes.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
                      <FormField control={form.control} name="pricePerUnit" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Price per Unit</FormLabel>
@@ -565,7 +572,10 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
                                 searchPlaceholder="Search products..."
                                 noResultsText="No product found."
                                 creatable
-                                onCreate={handleCreateProduct}
+                                onCreate={async () => {
+                                    handleTriggerCreateProduct();
+                                    return Promise.resolve();
+                                }}
                             />
                             <FormMessage />
                         </FormItem>
@@ -658,7 +668,7 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
           </div>
         </form>
       </Form>
-      <Dialog open={isEntityDialogOpen} onOpenChange={setIsEntityDialogOpen}>
+      <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
         <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
           <DialogHeader className="p-6">
             <DialogTitle>
@@ -671,14 +681,23 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
           {(type === "sales" || type === 'receipt') ? (
             <CustomerForm
               initialName={newEntityName}
-              onSuccess={handleEntityCreated}
+              onSuccess={handlePartyCreated}
             />
           ) : (
             <VendorForm
               initialName={newEntityName}
-              onSuccess={handleEntityCreated}
+              onSuccess={handlePartyCreated}
             />
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle>Create New Product</DialogTitle>
+                <DialogDescription>Fill in the form to add a new product or service.</DialogDescription>
+            </DialogHeader>
+            <ProductForm onSuccess={handleProductCreated} />
         </DialogContent>
       </Dialog>
     </>

@@ -26,6 +26,7 @@ interface ProductFormProps {
 
 const formSchema = z.object({
   name: z.string().min(2, "Product name is required."),
+  stock: z.coerce.number().min(0, "Stock cannot be negative.").optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -40,6 +41,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: product?.name || "",
+      stock: product?.stocks || 0,
     },
   });
 
@@ -92,6 +94,17 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                 <FormItem>
                 <FormLabel>Product/Service Name</FormLabel>
                 <FormControl><Input placeholder="e.g. Website Development" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+        <FormField
+            control={form.control}
+            name="stock"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Opening Stock (Optional)</FormLabel>
+                <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}
