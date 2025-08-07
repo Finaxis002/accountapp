@@ -1,17 +1,19 @@
-
 // NOTE: This is a mock authentication service for demonstration purposes.
 // In a real application, you would use a proper authentication library and a secure backend.
 
-import type { User, Client } from './types';
+import type { User, Client } from "./types";
 
-const USER_STORAGE_KEY = 'accountech_pro_user';
+const USER_STORAGE_KEY = "accountech_pro_user";
 // const baseURL = 'https://account-app-backend-eight.vercel.app';
 const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
+export async function loginMasterAdmin(
+  username?: string,
+  password?: string
+): Promise<User | null> {
+  if (!username || !password)
+    throw new Error("Username and password are required.");
 
-export async function loginMasterAdmin(username?: string, password?: string): Promise<User | null> {
-  if (!username || !password) throw new Error("Username and password are required.");
-  
   try {
     const res = await fetch(`${baseURL}/api/master-admin/login`, {
       method: "POST",
@@ -28,18 +30,17 @@ export async function loginMasterAdmin(username?: string, password?: string): Pr
       name: data.admin.username,
       username: data.admin.username,
       email: `${data.admin.username}@accountech.com`,
-      avatar: '/avatars/01.png',
+      avatar: "/avatars/01.png",
       initials: data.admin.username.substring(0, 2).toUpperCase(),
-      role: 'master',
-      token: data.token
+      role: "master",
+      token: data.token,
     };
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('token', user.token!);
-      localStorage.setItem('role', user.role);
-      localStorage.setItem('username', user.username!);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("token", user.token!);
+      localStorage.setItem("role", user.role ?? "");
+      localStorage.setItem("username", user.username!);
     }
-
     return user;
   } catch (error) {
     console.error("API login failed:", error);
@@ -47,12 +48,16 @@ export async function loginMasterAdmin(username?: string, password?: string): Pr
   }
 }
 
-export async function loginCustomer(clientUsername?: string, password?: string): Promise<User | null> {
-  console.log('baseURL', baseURL)
-  if (!clientUsername || !password) throw new Error("Username and password are required.");
+export async function loginCustomer(
+  clientUsername?: string,
+  password?: string
+): Promise<User | null> {
+  console.log("baseURL", baseURL);
+  if (!clientUsername || !password)
+    throw new Error("Username and password are required.");
 
   try {
-     const res = await fetch(`${baseURL}/api/clients/login`, {
+    const res = await fetch(`${baseURL}/api/clients/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientUsername, password }),
@@ -64,33 +69,32 @@ export async function loginCustomer(clientUsername?: string, password?: string):
     }
 
     const user: User = {
-        name: data.client.contactName,
-        username: data.client.clientUsername,
-        email: data.client.email,
-        avatar: '/avatars/02.png',
-        initials: data.client.contactName.substring(0, 2).toUpperCase(),
-        role: 'customer',
-        token: data.token
+      name: data.client.contactName,
+      username: data.client.clientUsername,
+      email: data.client.email,
+      avatar: "/avatars/02.png",
+      initials: data.client.contactName.substring(0, 2).toUpperCase(),
+      role: "customer",
+      token: data.token,
     };
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('token', user.token!);
-      localStorage.setItem('role', user.role);
-      localStorage.setItem('username', user.username!);
-      localStorage.setItem('name', user.name!);
-      localStorage.setItem('email', user.email!);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("token", user.token!);
+       localStorage.setItem("role", user.role ?? "");
+      localStorage.setItem("username", user.username!);
+      localStorage.setItem("name", user.name!);
+      localStorage.setItem("email", user.email!);
     }
-    
+
     return user;
-  } catch(error) {
+  } catch (error) {
     console.error("Client API login failed:", error);
     throw error;
   }
 }
 
-
 export function logout() {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     localStorage.removeItem(USER_STORAGE_KEY);
     localStorage.removeItem("token");
     localStorage.removeItem("role");
@@ -101,34 +105,36 @@ export function logout() {
 }
 
 export function getCurrentUser(): User | null {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return null;
   }
-  
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role') as User['role'];
-  const username = localStorage.getItem('username');
+
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role") as User["role"];
+  const username = localStorage.getItem("username");
 
   if (token && role && username) {
-    if (role === 'master') {
-        return {
-            name: username,
-            username: username,
-            email: `${username}@accountech.com`,
-            avatar: '/avatars/01.png',
-            initials: username.substring(0, 2).toUpperCase(),
-            role: 'master'
-        };
+    if (role === "master") {
+      return {
+        name: username,
+        username: username,
+        email: `${username}@accountech.com`,
+        avatar: "/avatars/01.png",
+        initials: username.substring(0, 2).toUpperCase(),
+        role: "master",
+      };
     }
-    if (role === 'customer') {
-       return {
-            name: localStorage.getItem('name') || '',
-            username: username,
-            email: localStorage.getItem('email') || '',
-            avatar: '/avatars/02.png',
-            initials: (localStorage.getItem('name') || '').substring(0, 2).toUpperCase(),
-            role: 'customer'
-        };
+    if (role === "customer") {
+      return {
+        name: localStorage.getItem("name") || "",
+        username: username,
+        email: localStorage.getItem("email") || "",
+        avatar: "/avatars/02.png",
+        initials: (localStorage.getItem("name") || "")
+          .substring(0, 2)
+          .toUpperCase(),
+        role: "customer",
+      };
     }
   }
 

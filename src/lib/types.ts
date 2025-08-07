@@ -1,14 +1,14 @@
 import type { LucideIcon } from "lucide-react";
 
 export type Product = {
-    _id:string;
-    name: string;
-    stocks?: number;
-    createdByClient: string;
-    createdAt?: string;
-    updatedAt?: string;
+  _id: string;
+  name: string;
+  stocks?: number;
+  createdByClient: string;
+  createdAt?: string;
+  updatedAt?: string;
+  stock?: string;
 };
-
 
 export type Transaction = {
   _id: string;
@@ -20,7 +20,15 @@ export type Transaction = {
   quantity?: number;
   pricePerUnit?: number;
   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
-  unitType?: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
+  unitType?:
+    | "Kg"
+    | "Litre"
+    | "Piece"
+    | "Box"
+    | "Meter"
+    | "Dozen"
+    | "Pack"
+    | "Other";
 
   category?: string;
   product?: Product;
@@ -43,11 +51,11 @@ export type Kpi = {
 };
 
 export type User = {
-  _id: string;
-  userName: string;
-  userId: string;
-  contactNumber: string;
-  address: string;
+  _id?: string;
+  userName?: string;
+  userId?: string;
+  contactNumber?: string;
+  address?: string;
   password?: string;
   name?: string; // For compatibility
   username?: string; // For compatibility
@@ -80,7 +88,6 @@ export type Client = {
   canSendInvoiceEmail?: boolean;
   canSendInvoiceWhatsapp?: boolean;
 };
-
 
 export type Invoice = {
   id: string;
@@ -121,38 +128,44 @@ export type BalanceSheet = {
   };
 };
 
+
 export type Company = {
   _id: string;
   registrationNumber: string;
-      businessName: string;
-      businessType: string;
-      address: string;
-      City:string;
-      addressState: string;
-      Country: string;
-      Pincode: string;
-      Telephone: string;
-      mobileNumber: string;
-      emailId:string;
-      Website: string;
-      PANNumber: string;
-      IncomeTaxLoginPassword: string;
-      gstin: string;
-      gstState: string;
-      RegistrationType: string;
-      PeriodicityofGSTReturns: string;
-      GSTUsername: string;
-      GSTPassword: string;
-      ewayBillApplicable: boolean;
-      EWBBillUsername: string;
-      EWBBillPassword: string;
-      TANNumber: string;
-      TAXDeductionCollectionAcc: string;
-      DeductorType: string;
-      TDSLoginUsername: string;
-      TDSLoginPassword: string;
-      client: string | Client;
-  selectedClient?: string | Client;
+  businessName: string;
+  businessType: string;
+  address: string;
+  City?: string;
+  addressState?: string;
+  Country?: string;
+  Pincode?: string;
+  Telephone?: string;
+  mobileNumber: string;
+  emailId?: string;
+  Website?: string;
+  PANNumber?: string;
+  IncomeTaxLoginPassword?: string;
+  gstin?: string;
+  gstState?: string;
+  RegistrationType?: string;
+  PeriodicityofGSTReturns?: string;
+  GSTUsername?: string;
+  GSTPassword?: string;
+  ewayBillApplicable?: boolean;
+  EWBBillUsername?: string;
+  EWBBillPassword?: string;
+  TANNumber?: string;
+  TAXDeductionCollectionAcc?: string;
+  DeductorType?: string;
+  TDSLoginUsername?: string;
+  TDSLoginPassword?: string;
+  client?: Client | string;
+  selectedClient?: Client | string;
+  // Deprecated fields - use new fields above
+  companyName?: string;
+  companyType?: string;
+  companyOwner?: string;
+  contactNumber?: string;
 };
 
 export type Party = {

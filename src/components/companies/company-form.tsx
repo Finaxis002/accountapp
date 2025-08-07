@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, PlusCircle, X } from "lucide-react";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Company } from "@/lib/types";
+import type { Company, Client } from "@/lib/types";
 import {
   Select,
   SelectContent,
@@ -31,58 +31,111 @@ interface CompanyFormProps {
 }
 
 const formSchema = z.object({
-  companyName: z.string().min(2, "Company name must be at least 2 characters."),
   registrationNumber: z.string().min(1, "Registration number is required."),
-  address: z.string().min(5, "Address must be at least 5 characters."),
-  companyOwner: z.string().min(2, "Owner name is required."),
-  contactNumber: z.string().min(10, "A valid contact number is required."),
-  gstin: z
-    .string()
-    .length(15, "GSTIN must be 15 characters long.")
-    .optional()
-    .or(z.literal("")),
-  companyType: z.string().min(2, "Company type is required."),
+  businessName: z.string().min(1, "Business name is required."),
+  businessType: z.string().min(1, "Business type is required."),
+  address: z.string().min(1, "Address is required."),
+  City: z.string().optional(),
+  addressState: z.string().optional(),
+  Country: z.string().optional(),
+  Pincode: z.string().optional(),
+  Telephone: z.string().optional(),
+  mobileNumber: z.string().optional(),
+  emailId: z.string().optional(),
+  Website: z.string().optional(),
+  PANNumber: z.string().optional(),
+  IncomeTaxLoginPassword: z.string().optional(),
+  gstin: z.string().optional(),
+  gstState: z.string().optional(),
+  RegistrationType: z.string().optional(),
+  PeriodicityofGSTReturns: z.string().optional(),
+  GSTUsername: z.string().optional(),
+  GSTPassword: z.string().optional(),
+  ewayBillApplicable: z.enum(["true", "false"]).default("false"),
+  EWBBillUsername: z.string().optional(),
+  EWBBillPassword: z.string().optional(),
+  TANNumber: z.string().optional(),
+  TAXDeductionCollectionAcc: z.string().optional(),
+  DeductorType: z.string().optional(),
+  TDSLoginUsername: z.string().optional(),
+  TDSLoginPassword: z.string().optional(),
+  client: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const defaultCompanyTypes = ["Services", "Manufacturing", "Trading"];
+const defaultbusinessTypes = ["Services", "Manufacturing", "Trading"];
 
 export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [companyTypes, setCompanyTypes] =
-    React.useState<string[]>(defaultCompanyTypes);
+  const [businessTypes, setbusinessTypes] =
+    React.useState<string[]>(defaultbusinessTypes);
   const [isAddingNewType, setIsAddingNewType] = React.useState(false);
-  const [newCompanyType, setNewCompanyType] = React.useState("");
+  const [newbusinessType, setNewbusinessType] = React.useState("");
 
+  const getClientId = (client: string | Client | undefined) => {
+    if (!client) return "";
+    if (typeof client === "string") return client;
+    return client._id;
+  };
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      companyName: company?.companyName || "",
       registrationNumber: company?.registrationNumber || "",
+      businessName: company?.businessName || "",
+      businessType: company?.businessType || "",
       address: company?.address || "",
-      companyOwner: company?.companyOwner || "",
-      contactNumber: company?.contactNumber || "",
+      City: company?.City || "",
+      addressState: company?.addressState || "",
+      Country: company?.Country || "",
+      Pincode: company?.Pincode || "",
+      Telephone: company?.Telephone || "",
+      mobileNumber: company?.mobileNumber || "",
+      emailId: company?.emailId || "",
+      Website: company?.Website || "",
+      PANNumber: company?.PANNumber || "",
+      IncomeTaxLoginPassword: company?.IncomeTaxLoginPassword || "",
       gstin: company?.gstin || "",
-      companyType: company?.companyType || "",
+      gstState: company?.gstState || "",
+      RegistrationType: company?.RegistrationType || "",
+      PeriodicityofGSTReturns: company?.PeriodicityofGSTReturns || "",
+      GSTUsername: company?.GSTUsername || "",
+      GSTPassword: company?.GSTPassword || "",
+      ewayBillApplicable:
+        company?.ewayBillApplicable === true
+          ? "true"
+          : company?.ewayBillApplicable === false
+          ? "false"
+          : "false",
+      EWBBillUsername: company?.EWBBillUsername || "",
+      EWBBillPassword: company?.EWBBillPassword || "",
+      TANNumber: company?.TANNumber || "",
+      TAXDeductionCollectionAcc: company?.TAXDeductionCollectionAcc || "",
+      DeductorType: company?.DeductorType || "",
+      TDSLoginUsername: company?.TDSLoginUsername || "",
+      TDSLoginPassword: company?.TDSLoginPassword || "",
+      client: getClientId(company?.client),
     },
   });
 
   React.useEffect(() => {
-    if (company?.companyType && !companyTypes.includes(company.companyType)) {
-      setCompanyTypes((prev) => [...prev, company.companyType]);
+    if (
+      company?.businessType &&
+      !businessTypes.includes(company.businessType)
+    ) {
+      setbusinessTypes((prev) => [...prev, company.businessType]);
     }
-  }, [company, companyTypes]);
+  }, [company, businessTypes]);
 
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
 
     let submissionValues = { ...values };
 
-    if (isAddingNewType && newCompanyType) {
-      submissionValues.companyType = newCompanyType;
+    if (isAddingNewType && newbusinessType) {
+      submissionValues.businessType = newbusinessType;
     }
 
     try {
@@ -113,18 +166,18 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
 
       toast({
         title: company ? "Company Updated!" : "Company Added!",
-        description: `${submissionValues.companyName} has been successfully saved.`,
+        description: `${submissionValues.businessName} has been successfully saved.`,
       });
 
       if (
         isAddingNewType &&
-        newCompanyType &&
-        !companyTypes.includes(newCompanyType)
+        newbusinessType &&
+        !businessTypes.includes(newbusinessType)
       ) {
-        setCompanyTypes((prev) => [...prev, newCompanyType]);
+        setbusinessTypes((prev) => [...prev, newbusinessType]);
       }
       setIsAddingNewType(false);
-      setNewCompanyType("");
+      setNewbusinessType("");
       onFormSubmit();
     } catch (error) {
       toast({
@@ -139,16 +192,16 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
   }
 
   const handleAddNewType = () => {
-    form.setValue("companyType", ""); // Clear validation error
+    form.setValue("businessType", ""); // Clear validation error
     setIsAddingNewType(true);
   };
 
   const handleCancelNewType = () => {
     setIsAddingNewType(false);
-    setNewCompanyType("");
-    const defaultType = company?.companyType || companyTypes[0];
+    setNewbusinessType("");
+    const defaultType = company?.businessType || businessTypes[0];
     if (defaultType) {
-      form.setValue("companyType", defaultType, { shouldValidate: true });
+      form.setValue("businessType", defaultType, { shouldValidate: true });
     }
   };
 
@@ -156,8 +209,8 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((values) => {
-          if (isAddingNewType && newCompanyType.trim()) {
-            values.companyType = newCompanyType.trim();
+          if (isAddingNewType && newbusinessType.trim()) {
+            values.businessType = newbusinessType.trim();
           }
           onSubmit(values);
         })}
@@ -166,7 +219,7 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="companyName"
+            name="businessName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Company Name</FormLabel>
@@ -210,22 +263,10 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         
           <FormField
             control={form.control}
-            name="companyOwner"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Company Owner</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Jane Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="contactNumber"
+            name="mobileNumber"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Contact Number</FormLabel>
@@ -254,7 +295,7 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
           />
           <FormField
             control={form.control}
-            name="companyType"
+            name="businessType"
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
@@ -287,11 +328,11 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
                   <FormControl>
                     <Input
                       placeholder="e.g. Technology"
-                      value={newCompanyType}
+                      value={newbusinessType}
                       onChange={(e) => {
                         const value = e.target.value;
-                        setNewCompanyType(value);
-                        form.setValue("companyType", value, {
+                        setNewbusinessType(value);
+                        form.setValue("businessType", value, {
                           shouldValidate: true,
                         });
                       }}
@@ -308,7 +349,7 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {companyTypes.map((type) => (
+                      {businessTypes.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
                         </SelectItem>

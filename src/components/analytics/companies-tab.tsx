@@ -16,7 +16,6 @@ interface CompaniesTabProps {
 }
 
 export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabProps) {
-   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(false);
     const { toast } = useToast();
@@ -28,7 +27,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
           try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`${baseURL}/api/companies/by-client/${clientId}`, {
+            const res = await fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to fetch companies for the selected client.");
@@ -58,26 +57,40 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
                             <TableRow>
                                 <TableHead>Company</TableHead>
                                 <TableHead>Owner & Contact</TableHead>
-                                <TableHead>Registration no.</TableHead>
-                                <TableHead>GSTIN</TableHead>
+                                <TableHead>Identifiers</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {companies.map(company => (
                                 <TableRow key={company._id}>
-                                    <TableCell><div className="font-semibold">{company.companyName}</div><div className="text-xs text-muted-foreground">{company.companyType}</div></TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2 mb-1"><User className="h-4 w-4 text-muted-foreground"/><span className="text-sm">{company.companyOwner}</span></div>
-                                        <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground"/><span className="text-sm">{company.contactNumber}</span></div>
+                                        <div className="font-semibold">{company.companyName}</div>
+                                        <div className="text-xs text-muted-foreground">{company.companyType}</div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2 mb-1 bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded"><Hash className="h-4 w-4 text-muted-foreground"/><span className="text-sm font-mono ">{company.registrationNumber}</span></div>
-                                      
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <User className="h-4 w-4 text-muted-foreground"/>
+                                            <span className="text-sm">{company.companyOwner}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Phone className="h-4 w-4 text-muted-foreground"/>
+                                            <span className="text-sm">{company.contactNumber}</span>
+                                        </div>
                                     </TableCell>
-
-                                    <TableCell >
-                                        <div className="flex items-center px-2 py-0.5 rounded gap-2 bg-green-500/10 text-green-700 dark:text-green-300"><FileText className="h-4 w-4 text-muted-foreground"/><span className="text-sm font-mono  ">{company.gstin || 'N/A'}</span></div>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Hash className="h-4 w-4 text-muted-foreground"/>
+                                            <span className="text-sm font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                                                {company.registrationNumber}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-muted-foreground"/>
+                                            <span className="text-sm font-mono bg-green-500/10 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                                                {company.gstin || 'N/A'}
+                                            </span>
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
