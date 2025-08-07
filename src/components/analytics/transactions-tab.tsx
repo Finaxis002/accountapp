@@ -14,7 +14,7 @@ interface TransactionsTabProps {
 }
 
 export function TransactionsTab({ selectedClient }: TransactionsTabProps) {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [transactions, setTransactions] = React.useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const { toast } = useToast();

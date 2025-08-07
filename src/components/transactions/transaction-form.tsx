@@ -131,7 +131,7 @@ interface TransactionFormProps {
 
 export function TransactionForm({ transactionToEdit, onFormSubmit }: TransactionFormProps) {
 
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isEntityDialogOpen, setIsEntityDialogOpen] = React.useState(false);

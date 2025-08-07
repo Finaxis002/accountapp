@@ -18,7 +18,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
 
 export default function ClientDetailPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [client, setClient] = React.useState<Client | null>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);

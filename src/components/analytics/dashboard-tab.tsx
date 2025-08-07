@@ -17,7 +17,7 @@ interface DashboardTabProps {
 }
 
 export function DashboardTab({ selectedClient }: DashboardTabProps) {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [stats, setStats] = React.useState({ totalSales: 0, totalPurchases: 0 });
     const [isLoading, setIsLoading] = React.useState(true);
     const { toast } = useToast();

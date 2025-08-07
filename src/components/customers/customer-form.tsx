@@ -48,7 +48,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export function CustomerForm({ customer, initialName, onSuccess }: CustomerFormProps) {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 

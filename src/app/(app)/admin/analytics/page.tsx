@@ -38,7 +38,7 @@ import { UsersTab } from "@/components/analytics/users-tab";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function AnalyticsDashboardPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = React.useState<string>("");
   const [isClientsLoading, setIsClientsLoading] = React.useState(true);

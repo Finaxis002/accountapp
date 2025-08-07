@@ -16,7 +16,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 
 export function CustomerSettings() {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [customers, setCustomers] = React.useState<Party[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isFormOpen, setIsFormOpen] = React.useState(false);

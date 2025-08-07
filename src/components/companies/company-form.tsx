@@ -49,7 +49,7 @@ type FormData = z.infer<typeof formSchema>;
 const defaultCompanyTypes = ["Services", "Manufacturing", "Trading"];
 
 export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [companyTypes, setCompanyTypes] =

@@ -60,7 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AdminCompaniesPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+ const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
