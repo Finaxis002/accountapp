@@ -27,6 +27,7 @@ import { UserTable } from "@/components/users/user-table";
 import { UserForm } from "@/components/users/user-form";
 
 export default function UsersPage() {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [users, setUsers] = useState<User[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -37,7 +38,7 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://localhost:5000/api/users", {
+      const res = await fetch(`${baseURL}/api/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to fetch users");
@@ -70,8 +71,8 @@ export default function UsersPage() {
 
     const isEditing = !!selectedUser?._id;
     const url = isEditing
-      ? `http://localhost:5000/api/users/${selectedUser._id}`
-      : `http://localhost:5000/api/users`;
+      ? `${baseURL}/api/users/${selectedUser._id}`
+      : `${baseURL}/api/users`;
     const method = isEditing ? "PUT" : "POST";
 
     try {
@@ -116,7 +117,7 @@ export default function UsersPage() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/users/${userToDelete._id}`,
+        `${baseURL}/api/users/${userToDelete._id}`,
         {
           method: "DELETE",
           headers: {

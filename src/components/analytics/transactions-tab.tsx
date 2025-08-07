@@ -14,6 +14,7 @@ interface TransactionsTabProps {
 }
 
 export function TransactionsTab({ selectedClient }: TransactionsTabProps) {
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [transactions, setTransactions] = React.useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const { toast } = useToast();
@@ -31,11 +32,11 @@ export function TransactionsTab({ selectedClient }: TransactionsTabProps) {
                 
                 // Note: These endpoints likely need to be adjusted to filter by clientId on the backend
                 const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes] = await Promise.all([
-                    buildRequest(`http://localhost:5000/api/sales/by-client/${selectedClient._id}`),
-                    buildRequest(`http://localhost:5000/api/purchase/by-client/${selectedClient._id}`),
-                    buildRequest(`http://localhost:5000/api/receipts/by-client/${selectedClient._id}`),
-                    buildRequest(`http://localhost:5000/api/payments/by-client/${selectedClient._id}`),
-                    buildRequest(`http://localhost:5000/api/journals/by-client/${selectedClient._id}`)
+                    buildRequest(`${baseURL}/api/sales/by-client/${selectedClient._id}`),
+                    buildRequest(`${baseURL}/api/purchase/by-client/${selectedClient._id}`),
+                    buildRequest(`${baseURL}/api/receipts/by-client/${selectedClient._id}`),
+                    buildRequest(`${baseURL}/api/payments/by-client/${selectedClient._id}`),
+                    buildRequest(`${baseURL}/api/journals/by-client/${selectedClient._id}`)
                 ]);
 
                 const salesData = await salesRes.json();

@@ -80,6 +80,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export default function ClientManagementPage() {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [viewMode, setViewMode] = React.useState<"card" | "list">("card");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
@@ -116,7 +117,7 @@ export default function ClientManagementPage() {
       if (!token) {
         throw new Error("Authentication token not found.");
       }
-      const res = await fetch("http://localhost:5000/api/clients", {
+      const res = await fetch(`${baseURL}/api/clients`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -152,7 +153,7 @@ export default function ClientManagementPage() {
       if (!token) throw new Error("Authentication token not found.");
 
       const res = await fetch(
-        `http://localhost:5000/api/clients/${clientToDelete._id}`,
+        `${baseURL}/api/clients/${clientToDelete._id}`,
         {
           method: "DELETE",
           headers: {

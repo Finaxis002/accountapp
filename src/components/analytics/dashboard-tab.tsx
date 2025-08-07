@@ -17,6 +17,7 @@ interface DashboardTabProps {
 }
 
 export function DashboardTab({ selectedClient }: DashboardTabProps) {
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [stats, setStats] = React.useState({ totalSales: 0, totalPurchases: 0 });
     const [isLoading, setIsLoading] = React.useState(true);
     const { toast } = useToast();
@@ -30,8 +31,8 @@ export function DashboardTab({ selectedClient }: DashboardTabProps) {
                 if (!token) throw new Error("Authentication token not found.");
                 
                 // TODO: In a real app, these would be dedicated aggregation endpoints for performance.
-                const salesRes = await fetch(`http://localhost:5000/api/sales/by-client/${selectedClient._id}`, { headers: { Authorization: `Bearer ${token}` } });
-                const purchasesRes = await fetch(`http://localhost:5000/api/purchase/by-client/${selectedClient._id}`, { headers: { Authorization: `Bearer ${token}` } });
+                const salesRes = await fetch(`${baseURL}/api/sales/by-client/${selectedClient._id}`, { headers: { Authorization: `Bearer ${token}` } });
+                const purchasesRes = await fetch(`${baseURL}/api/purchase/by-client/${selectedClient._id}`, { headers: { Authorization: `Bearer ${token}` } });
 
                 const salesData = await salesRes.json();
                 const purchasesData = await purchasesRes.json();

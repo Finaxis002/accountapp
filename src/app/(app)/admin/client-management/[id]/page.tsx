@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
 
 export default function ClientDetailPage() {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [client, setClient] = React.useState<Client | null>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -35,7 +36,7 @@ export default function ClientDetailPage() {
           throw new Error("Authentication token not found.");
         }
 
-        const res = await fetch(`http://localhost:5000/api/clients/${clientId}`, {
+        const res = await fetch(`${baseURL}/api/clients/${clientId}`, {
           headers: {
             "Authorization": `Bearer ${token}`
           },
@@ -78,7 +79,7 @@ export default function ClientDetailPage() {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
 
-        const res = await fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, {
+        const res = await fetch(`${baseURL}/api/companies/by-client/${clientId}`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
 

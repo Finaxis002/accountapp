@@ -32,6 +32,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export function ProductForm({ product, onSuccess }: ProductFormProps) {
+
+ const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -50,8 +52,8 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         if (!token) throw new Error("Authentication token not found.");
 
         const url = product 
-            ? `http://localhost:5000/api/products/${product._id}` 
-            : "http://localhost:5000/api/products";
+            ? `${baseURL}/api/products/${product._id}` 
+            : `${baseURL}/api/products`;
         
         const method = product ? "PUT" : "POST";
 

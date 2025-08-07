@@ -38,6 +38,7 @@ import { UsersTab } from "@/components/analytics/users-tab";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function AnalyticsDashboardPage() {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = React.useState<string>("");
   const [isClientsLoading, setIsClientsLoading] = React.useState(true);
@@ -62,7 +63,7 @@ export default function AnalyticsDashboardPage() {
       try {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
-        const res = await fetch("http://localhost:5000/api/clients", {
+        const res = await fetch(`${baseURL}/api/clients`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch clients");

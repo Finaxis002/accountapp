@@ -30,6 +30,8 @@ interface UserFormProps {
 }
 
 export function UserForm({ user, onSave, onCancel }: UserFormProps) {
+
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     userName: "",
@@ -38,6 +40,7 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
     contactNumber: "",
     address: "",
     companies: [] as string[],
+    role: "user"
   });
 
   const [allCompanies, setAllCompanies] = useState<Company[]>([]);
@@ -49,7 +52,7 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
 
-        const res = await fetch("http://localhost:5000/api/companies/my", {
+        const res = await fetch(`${baseURL}/api/companies/my`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -78,6 +81,7 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
             contactNumber: user.contactNumber || "",
             address: user.address || "",
             companies: user.companies || [],
+            role: user.role || "user",
           }
         : {
             userName: "",
@@ -86,6 +90,7 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
             contactNumber: "",
             address: "",
             companies: [],
+            role: "user", 
           }
     );
   }, [user]);

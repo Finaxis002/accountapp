@@ -22,6 +22,7 @@ import type { Client } from "@/lib/types"
 import { Separator } from "../ui/separator"
 import { Switch } from "../ui/switch"
 import { ScrollArea } from "../ui/scroll-area"
+const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 interface ClientFormProps {
     client?: Client;
@@ -103,8 +104,8 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
 
     try {
         const url = client 
-            ? `http://localhost:5000/api/clients/${client._id}` 
-            : "http://localhost:5000/api/clients";
+            ? `${baseURL}/api/clients/${client._id}` 
+            : `${baseURL}/api/clients`;
         
         const method = client ? "PATCH" : "POST";
 

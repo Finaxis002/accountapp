@@ -123,16 +123,35 @@ export type BalanceSheet = {
 
 export type Company = {
   _id: string;
-  name: string;
-  businessType: string;
   registrationNumber: string;
-  address: string;
-  companyOwner: string;
-  contactNumber: string;
-  gstin: string;
-  companyType: string;
-  companyName: string;
-  client: string | Client;
+      businessName: string;
+      businessType: string;
+      address: string;
+      City:string;
+      addressState: string;
+      Country: string;
+      Pincode: string;
+      Telephone: string;
+      mobileNumber: string;
+      emailId:string;
+      Website: string;
+      PANNumber: string;
+      IncomeTaxLoginPassword: string;
+      gstin: string;
+      gstState: string;
+      RegistrationType: string;
+      PeriodicityofGSTReturns: string;
+      GSTUsername: string;
+      GSTPassword: string;
+      ewayBillApplicable: boolean;
+      EWBBillUsername: string;
+      EWBBillPassword: string;
+      TANNumber: string;
+      TAXDeductionCollectionAcc: string;
+      DeductorType: string;
+      TDSLoginUsername: string;
+      TDSLoginPassword: string;
+      client: string | Client;
   selectedClient?: string | Client;
 };
 

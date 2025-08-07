@@ -13,6 +13,7 @@ interface ClientAnalyticsContextType {
 const ClientAnalyticsContext = React.createContext<ClientAnalyticsContextType | undefined>(undefined);
 
 export function ClientAnalyticsProvider({ clientId, children }: { clientId: string, children: React.ReactNode }) {
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isClientDataLoading, setIsClientDataLoading] = React.useState(false);
@@ -30,7 +31,7 @@ export function ClientAnalyticsProvider({ clientId, children }: { clientId: stri
             try {
                 const token = localStorage.getItem("token");
                 if (!token) throw new Error("Authentication token not found.");
-                const res = await fetch(`http://localhost:5000/api/clients/${id}`, {
+                const res = await fetch(`${baseURL}/api/clients/${id}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Failed to fetch client data");
@@ -56,7 +57,7 @@ export function ClientAnalyticsProvider({ clientId, children }: { clientId: stri
             try {
                 const token = localStorage.getItem("token");
                 if (!token) throw new Error("Authentication token not found.");
-                const res = await fetch(`http://localhost:5000/api/companies/by-client/${id}`, {
+                const res = await fetch(`${baseURL}/api/companies/by-client/${id}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Failed to fetch companies");

@@ -49,6 +49,7 @@ type FormData = z.infer<typeof formSchema>;
 const defaultCompanyTypes = ["Services", "Manufacturing", "Trading"];
 
 export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [companyTypes, setCompanyTypes] =
@@ -89,8 +90,8 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
       if (!token) throw new Error("Authentication token not found.");
 
       const url = company
-        ? `http://localhost:5000/api/companies/${company._id}`
-        : "http://localhost:5000/api/companies";
+        ? `${baseURL}/api/companies/${company._id}`
+        : `${baseURL}/api/companies`;
 
       const method = company ? "PUT" : "POST";
 
