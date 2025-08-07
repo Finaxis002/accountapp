@@ -17,7 +17,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { MoreHorizontal } from 'lucide-react';
 
 export default function CompaniesPage() {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);

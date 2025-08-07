@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 
 export default function TransactionsPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);

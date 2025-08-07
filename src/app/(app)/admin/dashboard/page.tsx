@@ -10,7 +10,7 @@ import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminDashboardPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);
   const [companies , setCompanies] = React.useState<Client[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);

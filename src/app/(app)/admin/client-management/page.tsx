@@ -80,7 +80,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export default function ClientManagementPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [viewMode, setViewMode] = React.useState<"card" | "list">("card");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);

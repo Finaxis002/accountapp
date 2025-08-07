@@ -16,7 +16,7 @@ interface CompaniesTabProps {
 }
 
 export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabProps) {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(false);
     const { toast } = useToast();

@@ -13,7 +13,7 @@ interface ClientAnalyticsContextType {
 const ClientAnalyticsContext = React.createContext<ClientAnalyticsContextType | undefined>(undefined);
 
 export function ClientAnalyticsProvider({ clientId, children }: { clientId: string, children: React.ReactNode }) {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isClientDataLoading, setIsClientDataLoading] = React.useState(false);

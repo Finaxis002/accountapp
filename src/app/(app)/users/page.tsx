@@ -27,7 +27,7 @@ import { UserTable } from "@/components/users/user-table";
 import { UserForm } from "@/components/users/user-form";
 
 export default function UsersPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [users, setUsers] = useState<User[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);

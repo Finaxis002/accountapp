@@ -550,7 +550,7 @@ export function AdminCompanyForm({
   clients,
   onFormSubmit,
 }: AdminCompanyFormProps) {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [step, setStep] = React.useState(1);

@@ -16,7 +16,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 
 export function VendorSettings() {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [vendors, setVendors] = React.useState<Vendor[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isFormOpen, setIsFormOpen] = React.useState(false);

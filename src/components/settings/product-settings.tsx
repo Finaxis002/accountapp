@@ -14,7 +14,7 @@ import type { Product } from '@/lib/types';
 import { ProductForm } from '@/components/products/product-form';
 
 export function ProductSettings() {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [products, setProducts] = React.useState<Product[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isFormOpen, setIsFormOpen] = React.useState(false);

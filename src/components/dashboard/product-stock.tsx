@@ -11,7 +11,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Input } from '../ui/input';
 
 export function ProductStock() {
-    const baseURL = process.env.REACT_APP_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [products, setProducts] = React.useState<Product[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState('');

@@ -16,7 +16,7 @@ import { ProductStock } from '@/components/dashboard/product-stock';
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
 export default function DashboardPage() {
-  const baseURL = process.env.REACT_APP_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { selectedCompanyId } = useCompany();
   const [companyData, setCompanyData] = React.useState<any>(null);
   const [recentTransactions, setRecentTransactions] = React.useState<Transaction[]>([]);

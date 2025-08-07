@@ -22,7 +22,7 @@ import type { Client } from "@/lib/types"
 import { Separator } from "../ui/separator"
 import { Switch } from "../ui/switch"
 import { ScrollArea } from "../ui/scroll-area"
-const baseURL = process.env.REACT_APP_BASE_URL;
+const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 interface ClientFormProps {
     client?: Client;
