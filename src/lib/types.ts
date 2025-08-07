@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 export type Product = {
     _id:string;
     name: string;
-    stock?: number;
+    stocks?: number;
     createdByClient: string;
     createdAt?: string;
     updatedAt?: string;
@@ -20,6 +20,8 @@ export type Transaction = {
   quantity?: number;
   pricePerUnit?: number;
   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
+  unitType?: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
+
   category?: string;
   product?: Product;
   company?: { _id: string; companyName: string };
