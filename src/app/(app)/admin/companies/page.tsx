@@ -60,7 +60,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AdminCompaniesPage() {
- const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -82,10 +81,10 @@ export default function AdminCompaniesPage() {
       if (!token) throw new Error("Authentication token not found.");
 
       const [companiesRes, clientsRes] = await Promise.all([
-        fetch(`${baseURL}/api/companies/all`, {
+        fetch("http://localhost:5000/api/companies/all", {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${baseURL}/api/clients`, {
+        fetch("http://localhost:5000/api/clients", {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -140,7 +139,7 @@ export default function AdminCompaniesPage() {
       if (!token) throw new Error("Authentication token not found.");
 
       const res = await fetch(
-        `${baseURL}/api/companies/${companyToDelete._id}`,
+        `http://localhost:5000/api/companies/${companyToDelete._id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -153,7 +152,7 @@ export default function AdminCompaniesPage() {
       }
       toast({
         title: "Company Deleted",
-        description: `${companyToDelete.companyName} has been successfully deleted.`,
+        description: `${companyToDelete.businessName} has been successfully deleted.`,
       });
       fetchAllData();
     } catch (error) {
@@ -190,7 +189,7 @@ export default function AdminCompaniesPage() {
     } else if (
       typeof clientIdentifier === "object" &&
       clientIdentifier !== null &&
-      "_id" in clientIdentifier
+      typeof (clientIdentifier as Client)._id === "string"
     ) {
       clientId = (clientIdentifier as Client)._id;
     } else {
@@ -240,14 +239,14 @@ export default function AdminCompaniesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-4xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+          <DialogHeader className="p-6">
             <DialogTitle>
               {selectedCompany ? "Edit Company" : "Create New Company"}
             </DialogTitle>
             <DialogDescription>
               {selectedCompany
-                ? `Update the details for ${selectedCompany.companyName}.`
+                ? `Update the details for ${selectedCompany.businessName}.`
                 : "Fill in the form to create a new company for a client."}
             </DialogDescription>
           </DialogHeader>
@@ -265,8 +264,8 @@ export default function AdminCompaniesPage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
-              company and all associated data for {companyToDelete?.companyName}
-              .
+              company and all associated data for{" "}
+              {companyToDelete?.businessName}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -285,12 +284,12 @@ export default function AdminCompaniesPage() {
           </div>
         ) : companies.length > 0 ? (
           viewMode === "card" ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
               {companies.map((company) => (
                 <CompanyCard
                   key={company._id}
                   company={company}
-                  clientName={getClientInfo(company.client).name}
+                  clientName={getClientInfo(company.selectedClient || company.client).name}
                   onEdit={() => handleEdit(company)}
                   onDelete={() => handleDelete(company)}
                 />
@@ -311,15 +310,17 @@ export default function AdminCompaniesPage() {
                   </TableHeader>
                   <TableBody>
                     {companies.map((company) => {
-                      const clientInfo = getClientInfo(company.client);
+                      const clientInfo = getClientInfo(
+                        company.selectedClient || company.client
+                      );
                       return (
                         <TableRow key={company._id}>
                           <TableCell>
                             <div className="font-semibold">
-                              {company.companyName}
+                              {company.businessName}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {company.companyType}
+                              {company.businessType}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -331,16 +332,10 @@ export default function AdminCompaniesPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2 mb-1">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">
-                                {company.companyOwner}
-                              </span>
-                            </div>
                             <div className="flex items-center gap-2">
                               <Phone className="h-4 w-4 text-muted-foreground" />
                               <span className="text-sm">
-                                {company.contactNumber}
+                                {company.mobileNumber}
                               </span>
                             </div>
                           </TableCell>

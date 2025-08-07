@@ -15,14 +15,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
-const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
+const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
 
 export default function ClientDetailPage() {
-  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [client, setClient] = React.useState<Client | null>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
+  const [kpiStats, setKpiStats] = React.useState({ totalSales: 0, userCount: 0, companyCount: 0 });
   const [isLoading, setIsLoading] = React.useState(true);
   const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(true);
+  const [isKpiLoading, setIsKpiLoading] = React.useState(true);
   const { toast } = useToast();
   const params = useParams();
   const id = params.id as string;
@@ -36,7 +37,7 @@ export default function ClientDetailPage() {
           throw new Error("Authentication token not found.");
         }
 
-        const res = await fetch(`${baseURL}/api/clients/${clientId}`, {
+        const res = await fetch(`http://localhost:5000/api/clients/${clientId}`, {
           headers: {
             "Authorization": `Bearer ${token}`
           },
@@ -79,7 +80,7 @@ export default function ClientDetailPage() {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
 
-        const res = await fetch(`${baseURL}/api/companies/by-client/${clientId}`, {
+        const res = await fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
 
@@ -104,10 +105,48 @@ export default function ClientDetailPage() {
       }
     }
 
+    async function fetchClientStats(clientId: string) {
+        setIsKpiLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) throw new Error("Authentication token not found.");
+            const headers = { "Authorization": `Bearer ${token}` };
+
+            const [salesRes, usersRes, companiesRes] = await Promise.all([
+                fetch(`http://localhost:5000/api/sales/by-client/${clientId}`, { headers }),
+                fetch(`http://localhost:5000/api/users/by-client/${clientId}`, { headers }),
+                fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, { headers }),
+            ]);
+
+            const salesData = await salesRes.json();
+            const usersData = await usersRes.json();
+            const companiesData = await companiesRes.json();
+
+            const totalSales = (salesData.entries || []).reduce((acc: number, item: any) => acc + item.amount, 0);
+
+            setKpiStats({
+                totalSales,
+                userCount: usersData.length || 0,
+                companyCount: companiesData.length || 0,
+            });
+
+        } catch (error) {
+             toast({
+                variant: "destructive",
+                title: "Failed to load client stats",
+                description: error instanceof Error ? error.message : "An error occurred."
+            });
+        } finally {
+            setIsKpiLoading(false);
+        }
+    }
+
+
     if (id) {
       getClient(id).then(clientData => {
         if (clientData) {
           fetchCompanies(id);
+          fetchClientStats(id);
         }
       });
     }
@@ -127,10 +166,10 @@ export default function ClientDetailPage() {
   }
 
   const kpiData = [
-      { title: 'Lifetime Revenue', value: formatCurrency(client.revenue || 0), icon: DollarSign },
-      { title: 'Net Profit', value: formatCurrency((client.revenue || 0) * 0.45), icon: TrendingUp }, // Dummy calculation
-      { title: 'Active Users', value: (client.users || 0).toString(), icon: Users },
-      { title: 'Companies', value: (client.companies || 0).toString(), icon: Building },
+      { title: 'Lifetime Revenue', value: formatCurrency(kpiStats.totalSales), icon: DollarSign },
+      { title: 'Net Profit', value: formatCurrency(kpiStats.totalSales * 0.45), icon: TrendingUp }, // Dummy calculation
+      { title: 'Active Users', value: kpiStats.userCount.toString(), icon: Users },
+      { title: 'Companies', value: kpiStats.companyCount.toString(), icon: Building },
   ];
 
   return (
@@ -158,7 +197,19 @@ export default function ClientDetailPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {kpiData.map(kpi => (
+        {isKpiLoading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+                <Card key={index}>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
+                        <div className="h-6 w-6 bg-muted rounded-md animate-pulse" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-8 w-1/2 bg-muted rounded animate-pulse" />
+                    </CardContent>
+                </Card>
+            ))
+        ) : kpiData.map(kpi => (
             <Card key={kpi.title}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
@@ -178,7 +229,7 @@ export default function ClientDetailPage() {
           <TabsTrigger value="companies">Companies</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="space-y-6 mt-6">
+        {/* <TabsContent value="overview" className="space-y-6 mt-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="lg:col-span-3">
                     <CardHeader>
@@ -199,7 +250,7 @@ export default function ClientDetailPage() {
                     </CardContent>
                 </Card>
             </div>
-        </TabsContent>
+        </TabsContent> */}
         <TabsContent value="financials" className="mt-6">
              <Card>
                 <CardHeader>
@@ -255,8 +306,8 @@ export default function ClientDetailPage() {
                                 {companies.map(company => (
                                     <TableRow key={company._id}>
                                         <TableCell>
-                                            <div className="font-semibold">{company.companyName}</div>
-                                            <div className="text-xs text-muted-foreground">{company.companyType}</div>
+                                            <div className="font-semibold">{company.businessName}</div>
+                                            <div className="text-xs text-muted-foreground">{company.businessType}</div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2 mb-1">

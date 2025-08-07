@@ -2,8 +2,10 @@
 import { Card, CardContent, CardHeader, CardFooter, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { Company } from "@/lib/types"
-import { Building, Edit, Trash2, User, Phone, Hash, FileText } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
+import { Building, Edit, Trash2 } from "lucide-react"
+import { Badge } from "../ui/badge"
+import { Table, TableBody, TableCell, TableRow } from "../ui/table"
+import { ScrollArea } from "../ui/scroll-area"
 
 interface CompanyCardProps {
   company: Company;
@@ -14,44 +16,60 @@ interface CompanyCardProps {
 
 export function CompanyCard({ company, clientName, onEdit, onDelete }: CompanyCardProps) {
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col w-full">
         <CardHeader>
             <div className="flex items-start gap-4">
                  <div className="p-3 bg-primary/10 rounded-lg">
                     <Building className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                    <CardTitle>{company.companyName}</CardTitle>
-                    <CardDescription>{company.companyType}</CardDescription>
+                    <CardTitle>{company.businessName}</CardTitle>
+                    <CardDescription>{company.businessType}</CardDescription>
+                     {clientName && (
+                        <Badge variant="outline" className="mt-2">Client: {clientName}</Badge>
+                    )}
                 </div>
             </div>
         </CardHeader>
-        <CardContent className="flex-grow space-y-3 text-sm">
-            {clientName && (
-                <div className="flex items-center gap-3 font-medium">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span>Client: {clientName}</span>
-                </div>
-            )}
-             <div className="flex items-center gap-3">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span>Owner: {company.companyOwner}</span>
-            </div>
-             <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{company.contactNumber}</span>
-            </div>
-             <div className="flex items-center gap-3">
-                <Hash className="h-4 w-4 text-muted-foreground" />
-                <span>Reg No: {company.registrationNumber}</span>
-            </div>
-            {company.gstin && (
-                 <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span>GSTIN: {company.gstin}</span>
-                </div>
-            )}
-             <p className="text-xs text-muted-foreground pt-2">{company.address}</p>
+        <CardContent className="flex-grow space-y-4 px-0 text-sm">
+           <ScrollArea className="h-72">
+                <Table>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell className="text-muted-foreground font-medium w-[180px]">Owner</TableCell>
+                            <TableCell>{company.companyOwner}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell className="text-muted-foreground font-medium">Contact Number</TableCell>
+                            <TableCell>{company.mobileNumber}</TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell className="text-muted-foreground font-medium">Registration No.</TableCell>
+                            <TableCell><span className="font-mono bg-secondary px-2 py-1 rounded-md">{company.registrationNumber}</span></TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell className="text-muted-foreground font-medium">GSTIN</TableCell>
+                            <TableCell><span className="font-mono bg-secondary px-2 py-1 rounded-md">{company.gstin || 'N/A'}</span></TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell className="text-muted-foreground font-medium">PAN Number</TableCell>
+                            <TableCell><span className="font-mono bg-secondary px-2 py-1 rounded-md">{company.PANNumber || 'N/A'}</span></TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell className="text-muted-foreground font-medium">Address</TableCell>
+                            <TableCell>{company.address}, {company.City}, {company.addressState}, {company.Country} - {company.Pincode}</TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell className="text-muted-foreground font-medium">Email</TableCell>
+                            <TableCell>{company.emailId || 'N/A'}</TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell className="text-muted-foreground font-medium">E-Way Bill</TableCell>
+                            <TableCell>{company.ewayBillApplicable ? 'Yes' : 'No'}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+           </ScrollArea>
         </CardContent>
         <CardFooter className="mt-auto border-t p-2 flex justify-end gap-1">
             {onEdit && (

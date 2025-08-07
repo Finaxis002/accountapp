@@ -90,7 +90,7 @@ export default function CompaniesPage() {
             }
             toast({
                 title: "Company Deleted",
-                description: `${companyToDelete.companyName} has been successfully deleted.`,
+                description: `${companyToDelete.businessName} has been successfully deleted.`,
             });
             fetchCompanies();
         } catch (error) {
@@ -140,7 +140,7 @@ export default function CompaniesPage() {
                 <DialogHeader>
                     <DialogTitle>{selectedCompany ? 'Edit Company' : 'Add New Company'}</DialogTitle>
                     <DialogDescription>
-                    {selectedCompany ? `Update the details for ${selectedCompany.companyName}.` : 'Fill in the form below to add a new company.'}
+                    {selectedCompany ? `Update the details for ${selectedCompany.businessName}.` : 'Fill in the form below to add a new company.'}
                     </DialogDescription>
                 </DialogHeader>
                 <CompanyForm company={selectedCompany || undefined} onFormSubmit={onFormSubmit} />
@@ -153,7 +153,7 @@ export default function CompaniesPage() {
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete the company
-                     and all associated data for {companyToDelete?.companyName}.
+                     and all associated data for {companyToDelete?.businessName}.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -202,12 +202,12 @@ export default function CompaniesPage() {
                                                         <Building className="h-5 w-5 text-primary" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium">{company.companyName}</p>
-                                                        <p className="text-xs text-muted-foreground">{company.companyType}</p>
+                                                        <p className="font-medium">{company.businessName}</p>
+                                                        <p className="text-xs text-muted-foreground">{company.businessType}</p>
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                             <TableCell>
+                                             {/* <TableCell>
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-2">
                                                         <div className="p-1 bg-blue-500/10 rounded-md">
@@ -222,7 +222,7 @@ export default function CompaniesPage() {
                                                         <span className="text-sm text-muted-foreground">{company.contactNumber}</span>
                                                     </div>
                                                 </div>
-                                            </TableCell>
+                                            </TableCell> */}
                                             <TableCell>
                                                  <div className="flex flex-col gap-1">
                                                     <Badge variant="outline" className="font-mono bg-secondary/50">

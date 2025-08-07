@@ -1,3 +1,353 @@
+// "use client"
+
+// import { zodResolver } from "@hookform/resolvers/zod"
+// import { useForm } from "react-hook-form"
+// import { z } from "zod"
+// import { Button } from "@/components/ui/button"
+// import {
+//   Form,
+//   FormControl,
+//   FormField,
+//   FormItem,
+//   FormLabel,
+//   FormMessage,
+// } from "@/components/ui/form"
+// import { Input } from "@/components/ui/input"
+// import { Loader2 } from "lucide-react"
+// import React from "react"
+// import { useToast } from "@/hooks/use-toast"
+// import type { Company, Client } from "@/lib/types"
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "../ui/select"
+// import { ScrollArea } from "../ui/scroll-area"
+
+// interface AdminCompanyFormProps {
+//   company?: Company;
+//   clients: Client[];
+//   onFormSubmit: () => void;
+// }
+
+// const formSchema = z.object({
+//   registrationNumber: z.string().min(1, "Registration number is required"),
+//   businessName: z.string().min(2, "Business name must be at least 2 characters."),
+//   businessType: z.string().min(2, "Business type is required."),
+//   address: z.string().min(5, "Address is required."),
+//   City: z.string().optional(),
+//   addressState: z.string().optional(),
+//   Country: z.string().optional(),
+//   Pincode: z.string().optional(),
+//   Telephone: z.string().optional(),
+//   mobileNumber: z.string().min(10, "A valid mobile number is required"),
+//   emailId: z.string().email("Invalid email format").optional().or(z.literal('')),
+//   Website: z.string().optional(),
+//   PANNumber: z.string().optional(),
+//   IncomeTaxLoginPassword: z.string().optional(),
+//   gstin: z.string().optional(),
+//   gstState: z.string().optional(),
+//   RegistrationType: z.string().optional(),
+//   PeriodicityofGSTReturns: z.string().optional(),
+//   GSTUsername: z.string().optional(),
+//   GSTPassword: z.string().optional(),
+//   ewayBillApplicable: z.boolean().default(false),
+//   EWBBillUsername: z.string().optional(),
+//   EWBBillPassword: z.string().optional(),
+//   TANNumber: z.string().optional(),
+//   TAXDeductionCollectionAcc: z.string().optional(),
+//   DeductorType: z.string().optional(),
+//   TDSLoginUsername: z.string().optional(),
+//   TDSLoginPassword: z.string().optional(),
+//   client: z.string().min(1, "You must select a client."),
+// });
+
+// type FormData = z.infer<typeof formSchema>;
+
+// const defaultBusinessTypes = [
+//   "Sole Proprietorship",
+//   "Partnership",
+//   "Private Limited Company",
+//   "Limited Company",
+//   "Others",
+// ];
+
+// export function AdminCompanyForm({
+//   company,
+//   clients,
+//   onFormSubmit,
+// }: AdminCompanyFormProps) {
+//   const { toast } = useToast();
+//   const [isSubmitting, setIsSubmitting] = React.useState(false);
+//   const [step, setStep] = React.useState(1);
+
+//   const getClientId = (client: string | Client | undefined) => {
+//     if (!client) return "";
+//     if (typeof client === "string") return client;
+//     return client._id;
+//   };
+
+//   const form = useForm<FormData>({
+//     resolver: zodResolver(formSchema),
+//     defaultValues: {
+//       registrationNumber: company?.registrationNumber || "",
+//       businessName: company?.businessName || company?.companyName || "",
+//       businessType: company?.businessType || company?.companyType || "",
+//       address: company?.address || "",
+//       City: company?.City || "",
+//       addressState: company?.addressState || "",
+//       Country: company?.Country || "",
+//       Pincode: company?.Pincode || "",
+//       Telephone: company?.Telephone || "",
+//       mobileNumber: company?.mobileNumber || company?.contactNumber || "",
+//       emailId: company?.emailId || "",
+//       Website: company?.Website || "",
+//       PANNumber: company?.PANNumber || "",
+//       IncomeTaxLoginPassword: company?.IncomeTaxLoginPassword || "",
+//       gstin: company?.gstin || "",
+//       gstState: company?.gstState || "",
+//       RegistrationType: company?.RegistrationType || "",
+//       PeriodicityofGSTReturns: company?.PeriodicityofGSTReturns || "",
+//       GSTUsername: company?.GSTUsername || "",
+//       GSTPassword: company?.GSTPassword || "",
+//       ewayBillApplicable: company?.ewayBillApplicable || false,
+//       EWBBillUsername: company?.EWBBillUsername || "",
+//       EWBBillPassword: company?.EWBBillPassword || "",
+//       TANNumber: company?.TANNumber || "",
+//       TAXDeductionCollectionAcc: company?.TAXDeductionCollectionAcc || "",
+//       DeductorType: company?.DeductorType || "",
+//       TDSLoginUsername: company?.TDSLoginUsername || "",
+//       TDSLoginPassword: company?.TDSLoginPassword || "",
+//       client: getClientId(company?.client || company?.selectedClient),
+//     },
+//   });
+
+//   async function onSubmit(values: FormData) {
+//     setIsSubmitting(true);
+//     try {
+//       const token = localStorage.getItem("token");
+//       if (!token) throw new Error("Authentication token not found.");
+
+//       const url = company
+//         ? `http://localhost:5000/api/companies/${company._id}`
+//         : `http://localhost:5000/api/companies`;
+
+//       const method = company ? "PUT" : "POST";
+
+//       const { client, ...rest } = values;
+//       const submissionBody = { ...rest, selectedClient: client };
+
+//       const res = await fetch(url, {
+//         method,
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${token}`,
+//         },
+//         body: JSON.stringify(submissionBody),
+//       });
+
+//       const data = await res.json();
+//       if (!res.ok) throw new Error(data.message || "Operation failed.");
+
+//       toast({
+//         title: company ? "Company Updated!" : "Company Created!",
+//         description: `${values.businessName} has been successfully saved.`,
+//       });
+//       onFormSubmit();
+//     } catch (error) {
+//       toast({
+//         variant: "destructive",
+//         title: "Operation Failed",
+//         description:
+//           error instanceof Error ? error.message : "An error occurred.",
+//       });
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   }
+
+//   const renderStepContent = () => {
+//     const fieldsByStep: { [key: number]: (keyof FormData | "spacer")[] } = {
+//         1: [
+//             "client", "businessType", "businessName", "registrationNumber", "address",
+//             "City", "addressState", "Country", "Pincode", "Telephone",
+//             "mobileNumber", "emailId", "Website", "PANNumber", "IncomeTaxLoginPassword"
+//         ],
+//         2: [
+//             "gstin", "gstState", "RegistrationType", "PeriodicityofGSTReturns",
+//             "GSTUsername", "GSTPassword", "ewayBillApplicable", "spacer", "EWBBillUsername", "EWBBillPassword"
+//         ],
+//         3: [
+//             "TANNumber", "TAXDeductionCollectionAcc", "DeductorType",
+//             "TDSLoginUsername", "TDSLoginPassword"
+//         ],
+//     };
+
+//     const currentFields = fieldsByStep[step];
+
+//     return (
+//         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//             {currentFields.map((name, index) => {
+//                 if (name === "spacer") return <div key={`spacer-${index}`} className="md:col-span-1"></div>;
+
+//                 if (name === 'client') {
+//                     return (
+//                         <FormField
+//                             key={name}
+//                             control={form.control}
+//                             name={name}
+//                             render={({ field }) => (
+//                             <FormItem className="md:col-span-2">
+//                                 <FormLabel>Assign to Client</FormLabel>
+//                                 <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+//                                     <FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl>
+//                                     <SelectContent>
+//                                         {clients.map((client) => (<SelectItem key={client._id} value={client._id}>{client.contactName} - ({client.email})</SelectItem>))}
+//                                     </SelectContent>
+//                                 </Select>
+//                                 <FormMessage />
+//                             </FormItem>
+//                             )}
+//                         />
+//                     )
+//                 }
+//                  if (name === 'businessType') {
+//                     return (
+//                         <FormField
+//                             key={name}
+//                             control={form.control}
+//                             name={name}
+//                             render={({ field }) => (
+//                             <FormItem>
+//                                 <FormLabel>Business Type</FormLabel>
+//                                 <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+//                                     <FormControl><SelectTrigger><SelectValue placeholder="Select business type" /></SelectTrigger></FormControl>
+//                                     <SelectContent>
+//                                         {defaultBusinessTypes.map((type) => (<SelectItem key={type} value={type}>{type}</SelectItem>))}
+//                                     </SelectContent>
+//                                 </Select>
+//                                 <FormMessage />
+//                             </FormItem>
+//                             )}
+//                         />
+//                     )
+//                 }
+//                 if (name === 'ewayBillApplicable') {
+//                     return (
+//                         <FormField
+//                             key={name}
+//                             control={form.control}
+//                             name={name}
+//                             render={({ field }) => (
+//                             <FormItem>
+//                                 <FormLabel>E-Way Bill Applicable</FormLabel>
+//                                 <Select onValueChange={(value) => field.onChange(value === 'true')} value={String(field.value)}>
+//                                     <FormControl><SelectTrigger><SelectValue placeholder="Yes / No" /></SelectTrigger></FormControl>
+//                                     <SelectContent>
+//                                         <SelectItem value="true">Yes</SelectItem>
+//                                         <SelectItem value="false">No</SelectItem>
+//                                     </SelectContent>
+//                                 </Select>
+//                                 <FormMessage />
+//                             </FormItem>
+//                             )}
+//                         />
+//                     )
+//                 }
+
+//                 const label = name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+//                 return (
+//                      <FormField
+//                         key={name}
+//                         control={form.control}
+//                         name={name as keyof FormData}
+//                         render={({ field }) => (
+//                         <FormItem>
+//                             <FormLabel>{label}</FormLabel>
+//                             <FormControl><Input {...field} value={typeof field.value === "boolean" ? String(field.value) : field.value ?? ""} /></FormControl>
+//                             <FormMessage />
+//                         </FormItem>
+//                         )}
+//                     />
+//                 )
+//             })}
+//         </div>
+//     )
+//   }
+
+//   return (
+//     <Form {...form}>
+//         <div className="p-6 border-b">
+//             <div className="flex justify-center gap-6">
+//                 {[
+//                     { number: 1, label: "Basic Details" },
+//                     { number: 2, label: "GST Details" },
+//                     { number: 3, label: "TDS Details" },
+//                 ].map(({ number, label }) => (
+//                 <button
+//                     key={number}
+//                     type="button"
+//                     onClick={() => setStep(number)}
+//                     className={`flex flex-col items-center transition-all duration-200`}
+//                 >
+//                     <div
+//                     className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold mb-1 ${
+//                         step === number
+//                         ? "bg-primary text-primary-foreground border-primary"
+//                         : "bg-background text-muted-foreground border-border"
+//                     }`}
+//                     >
+//                     {number}
+//                     </div>
+//                     <span
+//                     className={`text-xs text-center ${
+//                         step === number
+//                         ? "text-primary font-medium"
+//                         : "text-muted-foreground"
+//                     }`}
+//                     >
+//                     {label}
+//                     </span>
+//                 </button>
+//                 ))}
+//             </div>
+//         </div>
+
+//         <ScrollArea className="flex-1">
+//             <form id="admin-company-multi-step-form" onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-4">
+//                 {renderStepContent()}
+//             </form>
+//         </ScrollArea>
+
+//         <div className="flex justify-between p-6 border-t">
+//             <Button
+//                 type="button"
+//                 variant="outline"
+//                 onClick={() => setStep(step - 1)}
+//                 disabled={step === 1}
+//             >
+//                 Back
+//             </Button>
+
+//             {step < 3 ? (
+//             <Button type="button" onClick={() => setStep(step + 1)}>
+//                 Next
+//             </Button>
+//             ) : (
+//             <Button type="submit" form="admin-company-multi-step-form" disabled={isSubmitting}>
+//                 {isSubmitting && (
+//                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+//                 )}
+//                 {company ? "Save Changes" : "Create Company"}
+//             </Button>
+//             )}
+//         </div>
+//     </Form>
+//   );
+// }
+
 // "use client";
 
 // import { zodResolver } from "@hookform/resolvers/zod";
@@ -584,7 +934,13 @@ export function AdminCompanyForm({
       PeriodicityofGSTReturns: company?.PeriodicityofGSTReturns || "",
       GSTUsername: company?.GSTUsername || "",
       GSTPassword: company?.GSTPassword || "",
-      ewayBillApplicable: company?.ewayBillApplicable || "false",
+      ewayBillApplicable:
+        company?.ewayBillApplicable === true
+          ? "true"
+          : company?.ewayBillApplicable === false
+          ? "false"
+          : "false",
+
       EWBBillUsername: company?.EWBBillUsername || "",
       EWBBillPassword: company?.EWBBillPassword || "",
       TANNumber: company?.TANNumber || "",
