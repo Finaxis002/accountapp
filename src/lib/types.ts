@@ -32,7 +32,9 @@ export type Transaction = {
 
   category?: string;
   product?: Product;
-  company?: { _id: string; companyName: string };
+  company?: {
+    businessName: any; _id: string; companyName: string 
+};
   voucher?: string;
   // For Journal Entries
   debitAccount?: string;

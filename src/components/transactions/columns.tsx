@@ -1,7 +1,7 @@
 
 "use client"
 
-import { ColumnDef, FilterFn } from "@tanstack/react-table"
+import { ColumnDef, FilterFn, Row } from "@tanstack/react-table"
 import { ArrowUpDown, MoreHorizontal, Copy, Edit, Trash2, FileDown, Building, Package } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ interface ColumnsProps {
   generateInvoicePDF: (transaction: Transaction) => void;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
+  companyMap: Map<string, string>;
 }
 
 const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
@@ -48,7 +49,7 @@ const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
 };
 
 
-export const columns = ({ generateInvoicePDF, onEdit, onDelete }: ColumnsProps): ColumnDef<Transaction>[] => [
+export const columns = ({ generateInvoicePDF, onEdit, onDelete, companyMap }: ColumnsProps): ColumnDef<Transaction>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -113,9 +114,13 @@ export const columns = ({ generateInvoicePDF, onEdit, onDelete }: ColumnsProps):
   {
     accessorKey: "company",
     header: "Company",
-    cell: ({ row }) => {
+    cell: ({ row }: { row: Row<Transaction> }) => {
       const company = row.original.company;
-      const companyName = typeof company === 'object' && company !== null ? company.companyName : 'N/A';
+      const companyId = typeof company === 'object' && company !== null ? company._id : company;
+        
+      if (!companyId) return 'N/A';
+      
+      const companyName = companyMap?.get(companyId as string) || 'N/A';
       return (
         <div className="flex items-center gap-2">
             <Building className="h-4 w-4 text-muted-foreground" />

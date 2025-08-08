@@ -22,7 +22,7 @@ export function UserNav() {
             <AvatarImage src={currentUser.avatar} alt={`@${currentUser.name}`} />
             <AvatarFallback>{currentUser.initials}</AvatarFallback>
         </Avatar>
-        <div className="text-sm text-left">
+        <div className="text-sm text-left sm:block hidden">
             <p className="font-semibold ">{currentUser.role === 'master' ? 'Master Administrator' : currentUser.name}</p>
             <p className="text-muted-foreground">{currentUser.role === 'master' ? 'Master Admin' : 'Client'}</p>
         </div>

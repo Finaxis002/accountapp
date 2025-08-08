@@ -153,14 +153,14 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="sm:grid gap-6 sm:grid-cols-5 flex flex-col">
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Revenue Trend</CardTitle>
             <CardDescription>Monthly revenue over time</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
-            <RevenueChart />
+            <RevenueChart totalRevenue={totalTransactions}/>
           </CardContent>
         </Card>
         <Card className="lg:col-span-2">

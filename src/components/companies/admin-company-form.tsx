@@ -835,7 +835,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  PlusCircle,
+  Save,
+} from "lucide-react";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Company, Client } from "@/lib/types";
@@ -863,7 +869,12 @@ const formSchema = z.object({
   Country: z.string().optional(),
   Pincode: z.string().optional(),
   Telephone: z.string().optional(),
-  mobileNumber: z.string().optional(),
+  mobileNumber: z
+    .string({ required_error: "Mobile number is required" })
+    .trim()
+    .min(10, "Enter a valid 10-digit mobile number")
+    .max(10, "Enter a valid 10-digit mobile number"),
+
   emailId: z.string().optional(),
   Website: z.string().optional(),
   PANNumber: z.string().optional(),
@@ -894,6 +905,50 @@ const defaultBusinessTypes = [
   "Limited Company",
   "Others",
 ];
+
+// Pretty labels for fields
+const FIELD_LABELS: Partial<Record<keyof FormData | string, string>> = {
+  client: "Assign to Client",
+  businessType: "Business Type",
+  businessName: "Business Name",
+  registrationNumber: "Registration Number",
+  address: "Address",
+  City: "City",
+  addressState: "Address State",
+  Country: "Country",
+  Pincode: "Pincode",
+  Telephone: "Telephone",
+  mobileNumber: "Mobile Number",
+  emailId: "Email ID",
+  Website: "Website",
+  PANNumber: "PAN Number",
+  IncomeTaxLoginPassword: "Income Tax Login Password",
+  gstin: "GSTIN",
+  gstState: "GST State",
+  RegistrationType: "Registration Type",
+  PeriodicityofGSTReturns: "Periodicity of GST Returns",
+  GSTUsername: "GST Username",
+  GSTPassword: "GST Password",
+  ewayBillApplicable: "E-Way Bill Applicable",
+  EWBBillUsername: "EWB Username",
+  EWBBillPassword: "EWB Password",
+  TANNumber: "TAN Number",
+  TAXDeductionCollectionAcc: "Tax Deduction/Collection A/c",
+  DeductorType: "Deductor Type",
+  TDSLoginUsername: "TDS Login Username",
+  TDSLoginPassword: "TDS Login Password",
+};
+
+// fallback: camelCase/PascalCase/underscores → Title Case
+const titleize = (s: string) =>
+  s
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+
+// single helper
+const getLabel = (name: keyof FormData | string) =>
+  FIELD_LABELS[name] ?? titleize(String(name));
 
 export function AdminCompanyForm({
   company,
@@ -993,54 +1048,68 @@ export function AdminCompanyForm({
   return (
     <div className="w-full max-w-5xl mx-auto px-4 md:px-8 overflow-y-auto max-h-[80vh]">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-          {/* <div className="flex justify-center gap-4 pb-6">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 text-sm font-semibold ${
-                step === s ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-500 border-gray-300"
-              }`}
-            >
-              {s}
-            </div>
-          ))}
-        </div> */}
-          <div className="flex justify-center gap-6 pb-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 ">
+         
+          <div className="flex justify-center items-center gap-2 pb-8">
             {[
               { number: 1, label: "Company Basic Details" },
               { number: 2, label: "GST Registration Details" },
               { number: 3, label: "Company TDS Details" },
-            ].map(({ number, label }) => (
-              <button
-                key={number}
-                type="button"
-                onClick={() => setStep(number)}
-                className={`flex flex-col items-center transition-all duration-200`}
-              >
-                <div
-                  className={`w-10 h-10 flex items-center justify-center rounded-full border-2 font-semibold mb-1 ${
-                    step === number
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-500 border-gray-300"
-                  }`}
+            ].map(({ number, label }, index, array) => (
+              <div key={number} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setStep(number)}
+                  className={`flex flex-col items-center group transition-all duration-200`}
                 >
-                  {number}
-                </div>
-                <span
-                  className={`text-xs ${
-                    step === number
-                      ? "text-blue-600 font-medium"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {label}
-                </span>
-              </button>
+                  <div
+                    className={`w-8 h-8 text-sm flex items-center justify-center rounded-full border-2 font-semibold mb-2 transition-all ${
+                      step === number
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                        : "bg-white text-gray-500 border-gray-300 group-hover:border-indigo-400"
+                    }`}
+                  >
+                    {number}
+                  </div>
+                  <span
+                    className={`text-sm ${
+                      step === number
+                        ? "text-indigo-600 font-semibold"
+                        : "text-gray-300 group-hover:text-gray-500"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                  {step === number && (
+                    <div className="w-4 h-1 bg-indigo-600 rounded-full mt-1"></div>
+                  )}
+                </button>
+
+                {/* Add arrow between steps except after the last one */}
+                {index < array.length - 1 && (
+                  <svg
+                    className="mx-2 text-gray-300"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M9 18L15 12L9 6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </div>
             ))}
           </div>
 
-          {step === 1 && (
+         <div className="pb-[15vh]">
+           {step === 1 && (
             <>
               <FormField
                 control={form.control}
@@ -1121,7 +1190,7 @@ export function AdminCompanyForm({
                     name={name as keyof FormData}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{name}</FormLabel>
+                        <FormLabel>{getLabel(name)}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -1153,7 +1222,7 @@ export function AdminCompanyForm({
                     name={name as keyof FormData}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{name}</FormLabel>
+                        <FormLabel>{getLabel(name)}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -1167,19 +1236,19 @@ export function AdminCompanyForm({
                   name="ewayBillApplicable"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>E-Way Bill Applicable</FormLabel>
+                      <FormLabel>{getLabel("ewayBillApplicable")}</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Yes / No" />
+                            <SelectValue placeholder="Select Yes or No" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1206,7 +1275,7 @@ export function AdminCompanyForm({
                     name={name as keyof FormData}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{name}</FormLabel>
+                        <FormLabel>{getLabel(name)}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -1218,29 +1287,59 @@ export function AdminCompanyForm({
               </div>
             </>
           )}
+         </div>
 
-          <div className="flex justify-between pt-4">
-            {step > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep(step - 1)}
-              >
-                Previous
-              </Button>
-            )}
-            {step < 3 ? (
-              <Button type="button" onClick={() => setStep(step + 1)}>
-                Next
-              </Button>
-            ) : (
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {company ? "Save Changes" : "Create Company"}
-              </Button>
-            )}
+          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 z-50">
+            <div className="container flex justify-between items-center">
+              {step > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(step - 1)}
+                  className="gap-1 transition-all hover:gap-2 min-w-[7rem]"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+              )}
+              {step < 3 ? (
+                <Button
+                  type="button"
+                  onClick={() => setStep(step + 1)}
+                  className="gap-1 transition-all hover:gap-2 min-w-[7rem] ml-auto"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-primary hover:bg-primary/90 transition-colors min-w-[10rem]"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {company ? "Saving..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>
+                      {company ? (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Save Changes
+                        </>
+                      ) : (
+                        <>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Create Company
+                        </>
+                      )}
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </Form>

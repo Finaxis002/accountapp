@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, IndianRupee, Building, Loader2, Mail, Phone, User } from 'lucide-react';
+import { Users, IndianRupee, Building, Mail, Phone, User, Loader2 } from 'lucide-react';
 import type { Client, Company } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -13,9 +13,10 @@ const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { styl
 
 interface DashboardTabProps {
     selectedClient: Client;
+    selectedCompanyId: string | null;
 }
 
-export function DashboardTab({ selectedClient }: DashboardTabProps) {
+export function DashboardTab({ selectedClient, selectedCompanyId }: DashboardTabProps) {
     const [stats, setStats] = React.useState({ totalSales: 0, totalPurchases: 0 });
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -31,9 +32,19 @@ export function DashboardTab({ selectedClient }: DashboardTabProps) {
                 
                 const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 
+                let salesUrl, purchasesUrl;
+
+                if (selectedCompanyId) {
+                    salesUrl = `http://localhost:5000/api/sales?companyId=${selectedCompanyId}`;
+                    purchasesUrl = `http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`;
+                } else {
+                    salesUrl = `http://localhost:5000/api/sales/by-client/${selectedClient._id}`;
+                    purchasesUrl = `http://localhost:5000/api/purchase/by-client/${selectedClient._id}`;
+                }
+                
                 const [salesRes, purchasesRes, companiesRes] = await Promise.all([
-                    buildRequest(`http://localhost:5000/api/sales/by-client/${selectedClient._id}`),
-                    buildRequest(`http://localhost:5000/api/purchase/by-client/${selectedClient._id}`),
+                    buildRequest(salesUrl),
+                    buildRequest(purchasesUrl),
                     buildRequest(`http://localhost:5000/api/companies/by-client/${selectedClient._id}`),
                 ]);
 
@@ -41,7 +52,7 @@ export function DashboardTab({ selectedClient }: DashboardTabProps) {
                 const purchasesData = await purchasesRes.json();
                 const companiesData = await companiesRes.json();
 
-                const totalSales = (salesData.entries || []).reduce((acc: number, item: any) => acc + item.amount, 0);
+                const totalSales = (salesData.entries || salesData || []).reduce((acc: number, item: any) => acc + item.amount, 0);
                 const totalPurchases = (purchasesData || []).reduce((acc: number, item: any) => acc + item.amount, 0);
                 
                 setStats({ totalSales, totalPurchases });
@@ -54,7 +65,7 @@ export function DashboardTab({ selectedClient }: DashboardTabProps) {
             }
         }
         fetchStatsAndCompanies();
-    }, [selectedClient, toast]);
+    }, [selectedClient, selectedCompanyId, toast]);
 
     const kpiData = [
         { title: 'Total Sales', value: formatCurrency(stats.totalSales || 0), icon: IndianRupee },
@@ -97,11 +108,13 @@ export function DashboardTab({ selectedClient }: DashboardTabProps) {
                 ))}
             </div>
             
+            
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-1">
+
+                 <Card className="lg:col-span-1">
                     <CardHeader>
                         <CardTitle>Client Details</CardTitle>
-                        <CardDescription>Primary contact information for {selectedClient.contactName}.</CardDescription>
+                        <CardDescription>Primary contact information.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center gap-4">
@@ -119,36 +132,38 @@ export function DashboardTab({ selectedClient }: DashboardTabProps) {
                     </CardContent>
                 </Card>
                 <div className="lg:col-span-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Associated Companies</CardTitle>
-                            <CardDescription>A list of companies managed by this client.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                             {companies.length > 0 ? (
-                                <Carousel opts={{ align: "start", loop: false }}>
-                                    <CarouselContent className="-ml-4">
-                                        {companies.map(company => (
-                                            <CarouselItem key={company._id} className="pl-4 md:basis-1/2 lg:basis-full">
-                                                <div className="p-1">
-                                                     <CompanyCard company={company} onDelete={() => {}} />
-                                                </div>
-                                            </CarouselItem>
-                                        ))}
-                                    </CarouselContent>
-                                    <CarouselPrevious className="-left-4" />
-                                    <CarouselNext className="-right-4" />
-                                </Carousel>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-                                    <Building className="h-12 w-12 text-muted-foreground" />
-                                    <h3 className="mt-4 text-lg font-semibold">No Companies Found</h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">This client has not been assigned any companies.</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                    {companies.length > 0 ? (
+                        <Carousel
+                            opts={{
+                                align: "start",
+                            }}
+                            className="w-full"
+                        >
+                            <CarouselContent>
+                                {companies.map((company) => (
+                                    <CarouselItem key={company._id} className="md:basis-1/1 lg:basis-1/1">
+                                        <div className="p-1">
+                                            <CompanyCard company={company} onDelete={() => {}} />
+                                        </div>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            <CarouselPrevious className='sm:ml-4 ml-[40px]' />
+                            <CarouselNext className='sm:mr-4 mr-[40px]'/>
+                        </Carousel>
+                    ) : (
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>No Companies Found</CardTitle>
+                                <CardDescription>This client does not have any companies assigned yet.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex items-center justify-center p-12">
+                                <Building className="h-16 w-16 text-muted-foreground" />
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
+               
             </div>
         </div>
     )

@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Users, Loader2, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,35 +26,54 @@ import { useToast } from "@/hooks/use-toast";
 import type { User, Company } from "@/lib/types";
 import { UserTable } from "@/components/users/user-table";
 import { UserForm } from "@/components/users/user-form";
+import { UserCard } from "@/components/users/user-card";
 
 export default function UsersPage() {
-  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [users, setUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "card">("list");
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
-    const token = localStorage.getItem("token");
+  const fetchUsersAndCompanies = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch(`${baseURL}/api/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      const data = await res.json();
-      setUsers(data);
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      
+      const [usersRes, companiesRes] = await Promise.all([
+        fetch("http://localhost:5000/api/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch("http://localhost:5000/api/companies/my", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      ]);
+      
+      if (!usersRes.ok || !companiesRes.ok) {
+        throw new Error("Failed to fetch data");
+      }
+      const usersData = await usersRes.json();
+      const companiesData = await companiesRes.json();
+      setUsers(usersData);
+      setCompanies(companiesData);
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: err.message || "Error fetching users",
+        title: "Error fetching data",
+        description: err.message,
       });
+    } finally {
+        setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsersAndCompanies();
   }, []);
 
   const handleOpenForm = (user: User | null = null) => {
@@ -67,41 +87,38 @@ export default function UsersPage() {
   };
 
   const handleSave = async (formData: Partial<User>) => {
-    const token = localStorage.getItem("token");
-
-    const isEditing = !!selectedUser?._id;
-    const url = isEditing
-      ? `${baseURL}/api/users/${selectedUser._id}`
-      : `${baseURL}/api/users`;
-    const method = isEditing ? "PUT" : "POST";
-
     try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const method = selectedUser ? "PUT" : "POST";
+      const url = selectedUser
+        ? `http://localhost:5000/api/users/${selectedUser._id}`
+        : "http://localhost:5000/api/users";
+      
       const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
+          method,
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` 
+          },
+          body: JSON.stringify(formData),
       });
 
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || `Failed to ${selectedUser ? 'update' : 'create'} user.`);
+      }
 
-      if (!res.ok) throw new Error(data.message || "Failed to save user");
-
-      toast({
-        title: isEditing
-          ? "User updated successfully"
-          : "User created successfully",
-      });
-
+      toast({ title: `User ${selectedUser ? "updated" : "created"} successfully` });
+      fetchUsersAndCompanies(); // Refresh data
       handleCloseForm();
-      fetchUsers();
-    } catch (err: any) {
-      toast({
+
+    } catch (error) {
+       toast({
         variant: "destructive",
-        title: "Error",
-        description: err.message,
+        title: "Operation Failed",
+        description: error instanceof Error ? error.message : "Something went wrong.",
       });
     }
   };
@@ -113,33 +130,41 @@ export default function UsersPage() {
 
   const handleDelete = async () => {
     if (!userToDelete) return;
-    const token = localStorage.getItem("token");
-
     try {
-      const res = await fetch(
-        `${baseURL}/api/users/${userToDelete._id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("Authentication token not found.");
+        
+        const res = await fetch(`http://localhost:5000/api/users/${userToDelete._id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || "Failed to delete user.");
         }
-      );
 
-      if (!res.ok) throw new Error("Failed to delete user");
+        toast({ title: "User deleted successfully" });
+        fetchUsersAndCompanies(); // Refresh data
+        setIsAlertOpen(false);
+        setUserToDelete(null);
 
-      toast({ title: "User deleted successfully" });
-      setIsAlertOpen(false);
-      setUserToDelete(null);
-      fetchUsers();
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message,
-      });
+    } catch (error) {
+         toast({
+            variant: "destructive",
+            title: "Deletion Failed",
+            description: error instanceof Error ? error.message : "Something went wrong.",
+        });
     }
   };
+
+  const companyMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    companies.forEach(company => {
+        map.set(company._id, company.businessName);
+    });
+    return map;
+  }, [companies]);
 
   return (
     <div className="space-y-6">
@@ -148,18 +173,56 @@ export default function UsersPage() {
           <h2 className="text-2xl font-bold">Users</h2>
           <p className="text-muted-foreground">Manage your users</p>
         </div>
-        <Button onClick={() => handleOpenForm()}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add User
-        </Button>
+        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-md bg-secondary p-1">
+                <Button variant={viewMode === 'card' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('card')}>
+                    <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button variant={viewMode === 'list' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('list')}>
+                    <List className="h-4 w-4" />
+                </Button>
+            </div>
+            <Button onClick={() => handleOpenForm()}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add User
+            </Button>
+        </div>
       </div>
 
-      <Card>
-        <UserTable
-          users={users}
-          onEdit={handleOpenForm}
-          onDelete={openDeleteDialog}
-        />
-      </Card>
+     <Card>
+        <CardContent className={viewMode === "list" ? "p-0" : "p-6"}>
+            {isLoading ? (
+                <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+            ) : users.length > 0 ? (
+                viewMode === 'list' ? (
+                    <UserTable users={users} onEdit={handleOpenForm} onDelete={openDeleteDialog} companyMap={companyMap} />
+                ) : (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {users.map(user => (
+                            <UserCard 
+                                key={user._id} 
+                                user={user} 
+                                onEdit={() => handleOpenForm(user)} 
+                                onDelete={() => openDeleteDialog(user)} 
+                            />
+                        ))}
+                    </div>
+                )
+            ) : (
+                <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg">
+                    <Users className="h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold">No Users Found</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Get started by adding your first user.</p>
+                    <Button className="mt-6" onClick={() => handleOpenForm()}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add User
+                    </Button>
+                </div>
+            )}
+        </CardContent>
+     </Card>
+
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
@@ -169,8 +232,9 @@ export default function UsersPage() {
             </DialogTitle>
             <DialogDescription>Fill in the form below.</DialogDescription>
           </DialogHeader>
-          <UserForm
+          <UserForm 
             user={selectedUser}
+            allCompanies={companies}
             onSave={handleSave}
             onCancel={handleCloseForm}
           />
@@ -182,7 +246,7 @@ export default function UsersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone.
+              This action cannot be undone. This will permanently delete the user account.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

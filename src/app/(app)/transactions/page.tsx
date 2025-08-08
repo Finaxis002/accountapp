@@ -11,7 +11,7 @@ import { TransactionForm } from '@/components/transactions/transaction-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCompany } from '@/contexts/company-context';
 import { useToast } from '@/hooks/use-toast';
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Company } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -19,7 +19,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 
 export default function TransactionsPage() {
-  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
@@ -30,6 +29,7 @@ export default function TransactionsPage() {
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
   const [journals, setJournals] = React.useState<Transaction[]>([]);
+  const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { selectedCompanyId } = useCompany();
   const { toast } = useToast();
@@ -42,6 +42,7 @@ export default function TransactionsPage() {
         setReceipts([]);
         setPayments([]);
         setJournals([]);
+        setCompanies([]);
         return;
     }
     
@@ -52,12 +53,13 @@ export default function TransactionsPage() {
         
         const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         
-        const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes] = await Promise.all([
-            buildRequest(`${baseURL}/api/sales?companyId=${selectedCompanyId}`),
-            buildRequest(`${baseURL}/api/purchase?companyId=${selectedCompanyId}`),
-            buildRequest(`${baseURL}/api/receipts?companyId=${selectedCompanyId}`),
-            buildRequest(`${baseURL}/api/payments?companyId=${selectedCompanyId}`),
-            buildRequest(`${baseURL}/api/journals?companyId=${selectedCompanyId}`)
+        const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes, companiesRes] = await Promise.all([
+            buildRequest(`http://localhost:5000/api/sales?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/receipts?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/payments?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/journals?companyId=${selectedCompanyId}`),
+            buildRequest(`http://localhost:5000/api/companies/my`)
         ]);
 
         const salesData = await salesRes.json();
@@ -65,12 +67,14 @@ export default function TransactionsPage() {
         const receiptsData = await receiptsRes.json();
         const paymentsData = await paymentsRes.json();
         const journalsData = await journalsRes.json();
+        const companiesData = await companiesRes.json();
 
         setSales(salesData.entries?.map((s: any) => ({ ...s, type: 'sales' })) || []);
         setPurchases(purchasesData?.map((p: any) => ({ ...p, type: 'purchases' })) || []);
         setReceipts(receiptsData?.map((r: any) => ({ ...r, type: 'receipt' })) || []);
         setPayments(paymentsData?.map((p: any) => ({ ...p, type: 'payment' })) || []);
         setJournals(journalsData?.map((j: any) => ({ ...j, description: j.narration, type: 'journal' })) || []);
+        setCompanies(companiesData);
 
     } catch (error) {
         toast({
@@ -115,7 +119,7 @@ export default function TransactionsPage() {
       const endpoint = endpointMap[transactionToDelete.type];
       if (!endpoint) throw new Error(`Invalid transaction type: ${transactionToDelete.type}`);
 
-      const res = await fetch(`${baseURL}${endpoint}`, {
+      const res = await fetch(`http://localhost:5000${endpoint}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -188,6 +192,17 @@ export default function TransactionsPage() {
     doc.save(`invoice-${transaction._id}.pdf`);
   }
 
+  const companyMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    companies.forEach(company => {
+        map.set(company._id, company.businessName);
+    });
+    return map;
+  }, [companies]);
+
+  const tableColumns = React.useMemo(() => columns({ generateInvoicePDF, onEdit: handleOpenForm, onDelete: handleOpenDeleteDialog, companyMap }), [companyMap]);
+
+
   const renderContent = (data: Transaction[]) => {
     if (isLoading) {
         return (
@@ -198,7 +213,7 @@ export default function TransactionsPage() {
             </Card>
         )
     }
-    return <DataTable columns={columns({ generateInvoicePDF, onEdit: handleOpenForm, onDelete: handleOpenDeleteDialog })} data={data} />;
+    return <DataTable columns={tableColumns} data={data} />;
   }
 
   return (

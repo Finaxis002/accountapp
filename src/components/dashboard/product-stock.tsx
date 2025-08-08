@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Search, Edit } from "lucide-react";
+import { Loader2, Package, Search, Edit, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/lib/types";
 import { ScrollArea } from '../ui/scroll-area';
@@ -12,6 +12,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
+import { ProductForm } from '../products/product-form';
 
 function StockEditForm({ 
     product, 
@@ -22,7 +23,7 @@ function StockEditForm({
     onSuccess: (updatedProduct: Product) => void,
     onCancel: () => void,
 }) {
-    const [newStock, setNewStock] = React.useState(product.stock ?? 0);
+    const [newStock, setNewStock] = React.useState(product.stocks ?? 0);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const { toast } = useToast();
 
@@ -35,7 +36,7 @@ function StockEditForm({
             const res = await fetch(`http://localhost:5000/api/products/${product._id}`, {
                 method: 'PUT',
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify({ stock: newStock })
+                body: JSON.stringify({ stocks: newStock })
             });
             if (!res.ok) throw new Error('Failed to update stock.');
             const data = await res.json();
@@ -73,12 +74,12 @@ function StockEditForm({
 }
 
 export function ProductStock() {
-    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [products, setProducts] = React.useState<Product[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
     const { toast } = useToast();
 
     const fetchProducts = React.useCallback(async () => {
@@ -86,7 +87,7 @@ export function ProductStock() {
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`${baseURL}/api/products`, {
+            const res = await fetch(`http://localhost:5000/api/products`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to fetch products.");
@@ -105,14 +106,24 @@ export function ProductStock() {
 
     const handleEditClick = (product: Product) => {
         setSelectedProduct(product);
-        setIsDialogOpen(true);
+        setIsEditDialogOpen(true);
     };
 
     const handleUpdateSuccess = (updatedProduct: Product) => {
         setProducts(prev => prev.map(p => p._id === updatedProduct._id ? updatedProduct : p));
-        setIsDialogOpen(false);
+        setIsEditDialogOpen(false);
         setSelectedProduct(null);
     }
+    
+    const handleAddSuccess = (newProduct: Product) => {
+        setProducts(prev => [...prev, newProduct]);
+        setIsAddDialogOpen(false);
+        toast({
+            title: "Product Created!",
+            description: `${newProduct.name} has been successfully added.`
+        });
+    }
+
 
     const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -125,19 +136,33 @@ export function ProductStock() {
                             <CardTitle>Product Stock</CardTitle>
                             <CardDescription>Current inventory levels.</CardDescription>
                         </div>
-                        <div className="relative w-full max-w-xs">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search products..." 
-                                className="pl-9"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                           <DialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Product
+                              </Button>
+                           </DialogTrigger>
+                           <DialogContent className="sm:max-w-lg">
+                              <DialogHeader>
+                                  <DialogTitle>Create New Product</DialogTitle>
+                                  <DialogDescription>Fill in the form to add a new product or service.</DialogDescription>
+                              </DialogHeader>
+                              <ProductForm onSuccess={handleAddSuccess} />
+                          </DialogContent>
+                        </Dialog>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="h-72">
+                     <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search products..." 
+                            className="pl-9"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <ScrollArea className="h-60">
                         {isLoading ? (
                             <div className="flex justify-center items-center h-full">
                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -167,7 +192,7 @@ export function ProductStock() {
                                 </TableBody>
                             </Table>
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-center">
+                            <div className="flex flex-col items-center justify-center h-full text-center py-8">
                                 <Package className="h-12 w-12 text-muted-foreground" />
                                 <h3 className="mt-4 text-lg font-semibold">No Products Found</h3>
                                 <p className="mt-1 text-sm text-muted-foreground">
@@ -179,7 +204,7 @@ export function ProductStock() {
                 </CardContent>
             </Card>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Edit Stock</DialogTitle>
@@ -189,7 +214,7 @@ export function ProductStock() {
                         <StockEditForm 
                             product={selectedProduct}
                             onSuccess={handleUpdateSuccess}
-                            onCancel={() => setIsDialogOpen(false)}
+                            onCancel={() => setIsEditDialogOpen(false)}
                         />
                     )}
                 </DialogContent>

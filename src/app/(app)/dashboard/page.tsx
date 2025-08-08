@@ -4,25 +4,25 @@
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCompany } from '@/contexts/company-context';
-import { DollarSign, CreditCard, Users, Building, Loader2, PlusCircle } from 'lucide-react';
+import { IndianRupee, CreditCard, Users, Building, Loader2, PlusCircle, Settings, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TransactionForm } from '@/components/transactions/transaction-form';
 import { ProductStock } from '@/components/dashboard/product-stock';
+import Link from 'next/link';
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
 export default function DashboardPage() {
-  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { selectedCompanyId } = useCompany();
   const [companyData, setCompanyData] = React.useState<any>(null);
   const [recentTransactions, setRecentTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isTransactionFormOpen, setIsTransactionFormOpen] = React.useState(false);
 
 
   const fetchCompanyDashboard = React.useCallback(async () => {
@@ -40,12 +40,12 @@ export default function DashboardPage() {
       const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       
       const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes, usersRes] = await Promise.all([
-          buildRequest(`${baseURL}/api/sales?companyId=${selectedCompanyId}`),
-          buildRequest(`${baseURL}/api/purchase?companyId=${selectedCompanyId}`),
-          buildRequest(`${baseURL}/api/receipts?companyId=${selectedCompanyId}`),
-          buildRequest(`${baseURL}/api/payments?companyId=${selectedCompanyId}`),
-          buildRequest(`${baseURL}/api/journals?companyId=${selectedCompanyId}`),
-          buildRequest(`${baseURL}/api/users`), // Assuming this fetches users for the client
+          buildRequest(`http://localhost:5000/api/sales?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/receipts?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/payments?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/journals?companyId=${selectedCompanyId}`),
+          buildRequest(`http://localhost:5000/api/users`), // Assuming this fetches users for the client
       ]);
 
       const salesData = await salesRes.json();
@@ -90,14 +90,13 @@ export default function DashboardPage() {
     fetchCompanyDashboard();
   }, [selectedCompanyId, fetchCompanyDashboard]);
 
-  const handleFormSubmit = () => {
-    setIsFormOpen(false);
+  const handleTransactionFormSubmit = () => {
+    setIsTransactionFormOpen(false);
     fetchCompanyDashboard();
   };
 
-
   const kpiData = [
-    { title: 'Total Sales', value: formatCurrency(companyData?.totalSales || 0), icon: DollarSign },
+    { title: 'Total Sales', value: formatCurrency(companyData?.totalSales || 0), icon: IndianRupee },
     { title: 'Total Purchases', value: formatCurrency(companyData?.totalPurchases || 0), icon: CreditCard },
     { title: 'Active Users', value: (companyData?.users || 0).toString(), icon: Users },
     { title: 'Companies', value: '1', icon: Building }, // Since one is selected
@@ -113,27 +112,34 @@ export default function DashboardPage() {
                 </p>
             </div>
             {selectedCompanyId && (
-              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    New Transaction
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
-                  <DialogHeader className="p-6">
-                    <DialogTitle>Create a New Transaction</DialogTitle>
-                    <DialogDescription>
-                      Fill in the details below to record a new financial event.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <TransactionForm onFormSubmit={handleFormSubmit} />
-                </DialogContent>
-              </Dialog>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" asChild>
+                  <Link href="/profile">
+                    <Settings className="mr-2 h-4 w-4" /> Go to Settings
+                  </Link>
+                </Button>
+                <Dialog open={isTransactionFormOpen} onOpenChange={setIsTransactionFormOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      New Transaction
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+                    <DialogHeader className="p-6">
+                      <DialogTitle>Create a New Transaction</DialogTitle>
+                      <DialogDescription>
+                        Fill in the details below to record a new financial event.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <TransactionForm onFormSubmit={handleTransactionFormSubmit} />
+                  </DialogContent>
+                </Dialog>
+              </div>
             )}
         </div>
        {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
              {Array.from({ length: 4 }).map((_, index) => (
               <Card key={index}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -155,7 +161,7 @@ export default function DashboardPage() {
           </Card>
        ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
             {kpiData.map((kpi) => (
               <Card key={kpi.title}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -169,9 +175,8 @@ export default function DashboardPage() {
             ))}
           </div>
            <div className="grid grid-cols-1 gap-6 lg:grid-cols-1">
-            <ProductStock />
+              <ProductStock />
               <RecentTransactions transactions={recentTransactions} />
-              
            </div>
         </>
       )}

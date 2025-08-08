@@ -1,60 +1,50 @@
-"use client";
 
-import * as React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Users,
-  Building,
-  UserPlus,
-  Settings,
-  FileBarChart2,
-  LayoutGrid,
-  ArrowRightLeft,
-  ChevronDown,
-} from "lucide-react";
-import { Combobox } from "@/components/ui/combobox";
-import type { Client } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import Link from "next/link";
-import { DashboardTab } from "@/components/analytics/dashboard-tab";
-import { TransactionsTab } from "@/components/analytics/transactions-tab";
-import { CompaniesTab } from "@/components/analytics/companies-tab";
-import { UsersTab } from "@/components/analytics/users-tab";
-import { useSearchParams, useRouter } from "next/navigation";
+'use client';
+
+import * as React from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Users, Building, UserPlus, Settings, FileBarChart2, LayoutGrid, ArrowRightLeft, ChevronDown } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
+import type { Client, Company } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import Link from 'next/link';
+import { DashboardTab } from '@/components/analytics/dashboard-tab';
+import { TransactionsTab } from '@/components/analytics/transactions-tab';
+import { CompaniesTab } from '@/components/analytics/companies-tab';
+import { UsersTab } from '@/components/analytics/users-tab';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function AnalyticsDashboardPage() {
-  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = React.useState<string>("");
+  const [selectedClientId, setSelectedClientId] = React.useState<string>('');
   const [isClientsLoading, setIsClientsLoading] = React.useState(true);
+
+  const [companies, setCompanies] = React.useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = React.useState<string>('');
+  const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(false);
+
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const selectedClient = React.useMemo(() => {
-    return clients.find((c) => c._id === selectedClientId);
+    return clients.find(c => c._id === selectedClientId);
   }, [clients, selectedClientId]);
 
   React.useEffect(() => {
-    const clientIdFromUrl = searchParams.get("clientId");
+    const clientIdFromUrl = searchParams.get('clientId');
     if (clientIdFromUrl) {
       setSelectedClientId(clientIdFromUrl);
     }
+    const companyIdFromUrl = searchParams.get('companyId');
+    // We use `null` to signify the "All Companies" state.
+    // An empty string in the URL means "All Companies".
+    setSelectedCompanyId(companyIdFromUrl || '');
+
   }, [searchParams]);
 
   React.useEffect(() => {
@@ -63,19 +53,14 @@ export default function AnalyticsDashboardPage() {
       try {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
-        const res = await fetch(`${baseURL}/api/clients`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await fetch("http://localhost:5000/api/clients", {
+            headers: { "Authorization": `Bearer ${token}` }
         });
         if (!res.ok) throw new Error("Failed to fetch clients");
         const data = await res.json();
         setClients(data);
       } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Failed to load clients",
-          description:
-            error instanceof Error ? error.message : "Something went wrong.",
-        });
+        toast({ variant: "destructive", title: "Failed to load clients", description: error instanceof Error ? error.message : "Something went wrong." });
       } finally {
         setIsClientsLoading(false);
       }
@@ -83,125 +68,175 @@ export default function AnalyticsDashboardPage() {
     fetchClients();
   }, [toast]);
 
-  const clientOptions = clients.map((client) => ({
-    value: client._id,
-    label: client.contactName,
+  React.useEffect(() => {
+    async function fetchCompanies() {
+        if (!selectedClientId) {
+            setCompanies([]);
+            setSelectedCompanyId('');
+            return;
+        };
+        setIsCompaniesLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) throw new Error("Authentication token not found.");
+            const res = await fetch(`http://localhost:5000/api/companies/by-client/${selectedClientId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error("Failed to fetch companies for the selected client.");
+            const data = await res.json();
+            setCompanies(data);
+        } catch (error) {
+            toast({ variant: "destructive", title: "Failed to load companies", description: error instanceof Error ? error.message : "Something went wrong." });
+        } finally {
+            setIsCompaniesLoading(false);
+        }
+    }
+    fetchCompanies();
+  }, [selectedClientId, toast]);
+
+
+  const clientOptions = clients.map(client => ({
+      value: client._id,
+      label: client.contactName,
   }));
 
+  const companyOptions = [
+    { value: '', label: 'All Companies' },
+    ...companies.map(company => ({
+        value: company._id,
+        label: company.businessName,
+    }))
+  ];
+  
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
-    router.push(`/admin/analytics?clientId=${clientId}`, { scroll: false });
+    setSelectedCompanyId(''); // Reset company to "All" when client changes
+    const newParams = new URLSearchParams();
+    newParams.set('clientId', clientId);
+    router.push(`/admin/analytics?${newParams.toString()}`, { scroll: false });
   };
+  
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompanyId(companyId);
+    const newParams = new URLSearchParams(searchParams.toString());
+    if (companyId) {
+        newParams.set('companyId', companyId);
+    } else {
+        newParams.delete('companyId');
+    }
+    router.push(`/admin/analytics?${newParams.toString()}`, { scroll: false });
+  };
+
+  const companyMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    companies.forEach(company => {
+        map.set(company._id, company.businessName);
+    });
+    return map;
+  }, [companies]);
+
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">
-            Client Analytics
-          </h2>
+          <h2 className="text-3xl font-bold tracking-tight">Client Analytics</h2>
           <p className="text-muted-foreground">
-            Select a client to view their detailed dashboard and controls.
+            Select a client and company to view their detailed dashboard.
           </p>
         </div>
-        <div className="w-full max-w-sm">
-          {isClientsLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading clients...</span>
-            </div>
-          ) : (
-            <Combobox
-              options={clientOptions}
-              value={selectedClientId}
-              onChange={handleClientChange}
-              placeholder="Select a client..."
-              searchPlaceholder="Search clients..."
-              noResultsText="No clients found."
-            />
-          )}
+        <div className='flex items-center gap-4'>
+            {isClientsLoading ? (
+                 <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading clients...</span>
+                 </div>
+            ) : (
+                <Combobox
+                    options={clientOptions}
+                    value={selectedClientId}
+                    onChange={handleClientChange}
+                    placeholder="Select a client..."
+                    searchPlaceholder="Search clients..."
+                    noResultsText="No clients found."
+                    className="w-[250px]"
+                />
+            )}
+            {selectedClientId && (
+                isCompaniesLoading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading companies...</span>
+                    </div>
+                ) : (
+                   companies.length > 0 && (
+                     <Combobox
+                        options={companyOptions}
+                        value={selectedCompanyId}
+                        onChange={handleCompanyChange}
+                        placeholder="Select a company..."
+                        searchPlaceholder="Search companies..."
+                        noResultsText="No companies found."
+                        className="w-[250px]"
+                    />
+                   )
+                )
+            )}
         </div>
       </div>
 
       {!selectedClient && !isClientsLoading && (
         <Card className="flex flex-col items-center justify-center p-12 border-dashed">
-          <Users className="h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No Client Selected</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Please select a client from the dropdown to view their data.
-          </p>
+            <Users className="h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No Client Selected</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Please select a client from the dropdown to view their data.</p>
         </Card>
       )}
 
       {selectedClient && (
         <Tabs defaultValue="dashboard">
-          <div className="flex items-center justify-between border-b pb-4">
-            <TabsList>
-              <TabsTrigger value="dashboard">
-                <LayoutGrid className="mr-2 h-4 w-4" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="transactions">
-                <ArrowRightLeft className="mr-2 h-4 w-4" />
-                Transactions
-              </TabsTrigger>
-              <TabsTrigger value="companies">
-                <Building className="mr-2 h-4 w-4" />
-                Companies
-              </TabsTrigger>
-              <TabsTrigger value="users">
-                <Users className="mr-2 h-4 w-4" />
-                Users
-              </TabsTrigger>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2 font-normal text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
-                  >
-                    <FileBarChart2 className="h-4 w-4" />
-                    Reports
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem asChild>
-                    <Link href="/reports/profit-loss">Profit & Loss</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/reports/balance-sheet">Balance Sheet</Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TabsList>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <UserPlus className="mr-2 h-4 w-4" /> Add User
-              </Button>
-              <Button>
-                <Settings className="mr-2 h-4 w-4" /> Client Settings
-              </Button>
+            <div className='flex items-center justify-between border-b pb-4'>
+                <TabsList>
+                    <TabsTrigger value="dashboard"><LayoutGrid className='mr-2 h-4 w-4' />Dashboard</TabsTrigger>
+                    <TabsTrigger value="transactions"><ArrowRightLeft className='mr-2 h-4 w-4' />Transactions</TabsTrigger>
+                    <TabsTrigger value="companies"><Building className='mr-2 h-4 w-4' />Companies</TabsTrigger>
+                    <TabsTrigger value="users"><Users className='mr-2 h-4 w-4' />Users</TabsTrigger>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="flex items-center gap-2 font-normal text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground">
+                                <FileBarChart2 className='h-4 w-4' />
+                                Reports
+                                <ChevronDown className='h-4 w-4' />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem asChild><Link href="/reports/profit-loss">Profit & Loss</Link></DropdownMenuItem>
+                            <DropdownMenuItem asChild><Link href="/reports/balance-sheet">Balance Sheet</Link></DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </TabsList>
+                 <div className="flex items-center gap-2">
+                    <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Add User</Button>
+                    <Button><Settings className="mr-2 h-4 w-4" /> Client Settings</Button>
+                </div>
             </div>
-          </div>
 
-          <TabsContent value="dashboard" className="space-y-6 mt-6">
-            <DashboardTab selectedClient={selectedClient} />
-          </TabsContent>
+            <TabsContent value="dashboard" className="space-y-6 mt-6">
+                <DashboardTab selectedClient={selectedClient} selectedCompanyId={selectedCompanyId} />
+            </TabsContent>
 
-          <TabsContent value="transactions" className="mt-6">
-            <TransactionsTab selectedClient={selectedClient} />
-          </TabsContent>
+            <TabsContent value="transactions" className="mt-6">
+                <TransactionsTab selectedClient={selectedClient} selectedCompanyId={selectedCompanyId} companyMap={companyMap} />
+            </TabsContent>
+            
+            <TabsContent value="companies" className="mt-6">
+                <CompaniesTab selectedClientId={selectedClientId} selectedClient={selectedClient} />
+            </TabsContent>
+            
+            <TabsContent value="users" className="mt-6">
+                <UsersTab selectedClient={selectedClient} />
+            </TabsContent>
 
-          <TabsContent value="companies" className="mt-6">
-            <CompaniesTab
-              selectedClientId={selectedClientId}
-              selectedClient={selectedClient}
-            />
-          </TabsContent>
-
-          <TabsContent value="users" className="mt-6">
-            <UsersTab selectedClient={selectedClient} />
-          </TabsContent>
         </Tabs>
       )}
     </div>
