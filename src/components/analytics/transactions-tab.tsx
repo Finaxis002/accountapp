@@ -26,6 +26,7 @@ export function TransactionsTab({
   selectedCompanyId,
   companyMap,
 }: TransactionsTabProps) {
+     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
   const [sales, setSales] = React.useState<Transaction[]>([]);
   const [purchases, setPurchases] = React.useState<Transaction[]>([]);
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
@@ -50,19 +51,19 @@ export function TransactionsTab({
 
         if (selectedCompanyId) {
           const companyQuery = `?companyId=${selectedCompanyId}`;
-          salesUrl = `http://localhost:5000/api/sales${companyQuery}`;
-          purchasesUrl = `http://localhost:5000/api/purchase${companyQuery}`;
-          receiptsUrl = `http://localhost:5000/api/receipts${companyQuery}`;
-          paymentsUrl = `http://localhost:5000/api/payments${companyQuery}`;
-          journalsUrl = `http://localhost:5000/api/journals${companyQuery}`;
+          salesUrl = `${baseURL}/api/sales${companyQuery}`;
+          purchasesUrl = `${baseURL}/api/purchase${companyQuery}`;
+          receiptsUrl = `${baseURL}/api/receipts${companyQuery}`;
+          paymentsUrl = `${baseURL}/api/payments${companyQuery}`;
+          journalsUrl = `${baseURL}/api/journals${companyQuery}`;
         } else {
           const clientQuery = `/by-client/${selectedClient._id}`;
-          salesUrl = `http://localhost:5000/api/sales${clientQuery}`;
-          purchasesUrl = `http://localhost:5000/api/purchase${clientQuery}`;
+          salesUrl = `${baseURL}/api/sales${clientQuery}`;
+          purchasesUrl = `${baseURL}/api/purchase${clientQuery}`;
           // Assuming similar client-based endpoints exist for these
-          receiptsUrl = `http://localhost:5000/api/receipts/by-client/${selectedClient._id}`;
-          paymentsUrl = `http://localhost:5000/api/payments/by-client/${selectedClient._id}`;
-          journalsUrl = `http://localhost:5000/api/journals/by-client/${selectedClient._id}`;
+          receiptsUrl = `${baseURL}/api/receipts/by-client/${selectedClient._id}`;
+          paymentsUrl = `${baseURL}/api/payments/by-client/${selectedClient._id}`;
+          journalsUrl = `${baseURL}/api/journals/by-client/${selectedClient._id}`;
         }
 
         const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes] =

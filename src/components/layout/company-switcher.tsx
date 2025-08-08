@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { useCompany } from '@/contexts/company-context';
 
 export function CompanySwitcher() {
+     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const { toast } = useToast();
@@ -21,7 +22,7 @@ export function CompanySwitcher() {
                 const token = localStorage.getItem('token');
                 if (!token) throw new Error('Authentication token not found.');
 
-                const res = await fetch('http://localhost:5000/api/companies/my', {
+                const res = await fetch(`${baseURL}/api/companies/my`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 

@@ -40,16 +40,17 @@ export default function UsersPage() {
   const { toast } = useToast();
 
   const fetchUsersAndCompanies = async () => {
+     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
       
       const [usersRes, companiesRes] = await Promise.all([
-        fetch("http://localhost:5000/api/users", {
+        fetch(`${baseURL}/api/users`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch("http://localhost:5000/api/companies/my", {
+        fetch(`${baseURL}/api/companies/my`, {
           headers: { Authorization: `Bearer ${token}` },
         })
       ]);

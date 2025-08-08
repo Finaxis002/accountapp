@@ -19,6 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 
 export default function TransactionsPage() {
+   const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
@@ -54,12 +55,12 @@ export default function TransactionsPage() {
         const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         
         const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes, companiesRes] = await Promise.all([
-            buildRequest(`http://localhost:5000/api/sales?companyId=${selectedCompanyId}`),
-            buildRequest(`http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`),
-            buildRequest(`http://localhost:5000/api/receipts?companyId=${selectedCompanyId}`),
-            buildRequest(`http://localhost:5000/api/payments?companyId=${selectedCompanyId}`),
-            buildRequest(`http://localhost:5000/api/journals?companyId=${selectedCompanyId}`),
-            buildRequest(`http://localhost:5000/api/companies/my`)
+            buildRequest(`${baseURL}/api/sales?companyId=${selectedCompanyId}`),
+            buildRequest(`${baseURL}/api/purchase?companyId=${selectedCompanyId}`),
+            buildRequest(`${baseURL}/api/receipts?companyId=${selectedCompanyId}`),
+            buildRequest(`${baseURL}/api/payments?companyId=${selectedCompanyId}`),
+            buildRequest(`${baseURL}/api/journals?companyId=${selectedCompanyId}`),
+            buildRequest(`${baseURL}/api/companies/my`)
         ]);
 
         const salesData = await salesRes.json();
@@ -119,7 +120,7 @@ export default function TransactionsPage() {
       const endpoint = endpointMap[transactionToDelete.type];
       if (!endpoint) throw new Error(`Invalid transaction type: ${transactionToDelete.type}`);
 
-      const res = await fetch(`http://localhost:5000${endpoint}`, {
+      const res = await fetch(`${baseURL}${endpoint}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
