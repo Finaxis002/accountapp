@@ -19,6 +19,7 @@ import { UserForm } from '@/components/users/user-form';
 interface UsersTabProps {
     selectedClient: Client;
 }
+ const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
 
 const roleBadgeColors: { [key: string]: string } = {
   Manager: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -39,6 +40,7 @@ export function UsersTab({ selectedClient }: UsersTabProps) {
     const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
 
     const fetchUsersAndCompanies = React.useCallback(async () => {
+         const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
         if (!selectedClient._id) return;
         setIsLoading(true);
         try {
@@ -48,8 +50,8 @@ export function UsersTab({ selectedClient }: UsersTabProps) {
             const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
             const [usersRes, companiesRes] = await Promise.all([
-                buildRequest(`http://localhost:5000/api/users/by-client/${selectedClient._id}`),
-                buildRequest(`http://localhost:5000/api/companies/by-client/${selectedClient._id}`)
+                buildRequest(`${baseURL}/api/users/by-client/${selectedClient._id}`),
+                buildRequest(`${baseURL}/api/companies/by-client/${selectedClient._id}`)
             ]);
 
             if (!usersRes.ok || !companiesRes.ok) {
@@ -104,7 +106,7 @@ export function UsersTab({ selectedClient }: UsersTabProps) {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
 
-            const res = await fetch(`http://localhost:5000/api/users/${selectedUser._id}`, {
+            const res = await fetch(`${baseURL}/api/users/${selectedUser._id}`, {
                 method: "PUT",
                 headers: { 
                     "Content-Type": "application/json",
@@ -134,7 +136,7 @@ export function UsersTab({ selectedClient }: UsersTabProps) {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
             
-            const res = await fetch(`http://localhost:5000/api/users/${userToDelete._id}`, {
+            const res = await fetch(`${baseURL}/api/users/${userToDelete._id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });

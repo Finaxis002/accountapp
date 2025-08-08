@@ -19,6 +19,7 @@ interface CompaniesTabProps {
 }
 
 export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabProps) {
+     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [clients, setClients] = React.useState<Client[]>([]);
     const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(false);
@@ -37,10 +38,10 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
             if (!token) throw new Error("Authentication token not found.");
             
             const [companiesRes, clientsRes] = await Promise.all([
-                fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, {
+                fetch(`${baseURL}/api/companies/by-client/${clientId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 }),
-                fetch("http://localhost:5000/api/clients", {
+                fetch(`${baseURL}/api/clients`, {
                     headers: { "Authorization": `Bearer ${token}` },
                 }),
             ]);
@@ -84,7 +85,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/companies/${companyToDelete._id}`, {
+            const res = await fetch(`${baseURL}/api/companies/${companyToDelete._id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });

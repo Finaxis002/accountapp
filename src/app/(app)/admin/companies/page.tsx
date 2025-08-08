@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AdminCompaniesPage() {
+   const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -81,10 +82,10 @@ export default function AdminCompaniesPage() {
       if (!token) throw new Error("Authentication token not found.");
 
       const [companiesRes, clientsRes] = await Promise.all([
-        fetch("http://localhost:5000/api/companies/all", {
+        fetch(`${baseURL}/api/companies/all`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch("http://localhost:5000/api/clients", {
+        fetch(`${baseURL}/api/clients`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -139,7 +140,7 @@ export default function AdminCompaniesPage() {
       if (!token) throw new Error("Authentication token not found.");
 
       const res = await fetch(
-        `http://localhost:5000/api/companies/${companyToDelete._id}`,
+        `${baseURL}/api/companies/${companyToDelete._id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

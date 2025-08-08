@@ -17,6 +17,7 @@ interface DashboardTabProps {
 }
 
 export function DashboardTab({ selectedClient, selectedCompanyId }: DashboardTabProps) {
+     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
     const [stats, setStats] = React.useState({ totalSales: 0, totalPurchases: 0 });
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -35,17 +36,17 @@ export function DashboardTab({ selectedClient, selectedCompanyId }: DashboardTab
                 let salesUrl, purchasesUrl;
 
                 if (selectedCompanyId) {
-                    salesUrl = `http://localhost:5000/api/sales?companyId=${selectedCompanyId}`;
-                    purchasesUrl = `http://localhost:5000/api/purchase?companyId=${selectedCompanyId}`;
+                    salesUrl = `${baseURL}/api/sales?companyId=${selectedCompanyId}`;
+                    purchasesUrl = `${baseURL}/api/purchase?companyId=${selectedCompanyId}`;
                 } else {
-                    salesUrl = `http://localhost:5000/api/sales/by-client/${selectedClient._id}`;
-                    purchasesUrl = `http://localhost:5000/api/purchase/by-client/${selectedClient._id}`;
+                    salesUrl = `${baseURL}/api/sales/by-client/${selectedClient._id}`;
+                    purchasesUrl = `${baseURL}/api/purchase/by-client/${selectedClient._id}`;
                 }
                 
                 const [salesRes, purchasesRes, companiesRes] = await Promise.all([
                     buildRequest(salesUrl),
                     buildRequest(purchasesUrl),
-                    buildRequest(`http://localhost:5000/api/companies/by-client/${selectedClient._id}`),
+                    buildRequest(`${baseURL}/api/companies/by-client/${selectedClient._id}`),
                 ]);
 
                 const salesData = await salesRes.json();

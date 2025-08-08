@@ -110,6 +110,7 @@ export default function ClientManagementPage() {
   const [usernameFilter, setUsernameFilter] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
+  
 
   const fetchClients = React.useCallback(async () => {
     setIsLoading(true);
@@ -205,7 +206,7 @@ export default function ClientManagementPage() {
       if (!token) throw new Error("Authentication token not found.");
 
       const res = await fetch(
-        `http://localhost:5000/api/clients/reset-password/${clientToResetPassword._id}`,
+        `${baseURL}/api/clients/reset-password/${clientToResetPassword._id}`,
         {
           method: "PUT",
           headers: {
