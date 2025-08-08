@@ -205,38 +205,51 @@ export default function AdminCompaniesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Company Management
-          </h2>
-          <p className="text-muted-foreground">
-            Manage all companies across all clients.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md bg-secondary p-1">
-            <Button
-              variant={viewMode === "card" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("card")}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-          <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Company
-          </Button>
-        </div>
-      </div>
+     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+      Company Management
+    </h2>
+    <p className="text-sm sm:text-base text-muted-foreground">
+      Manage all companies across all clients.
+    </p>
+  </div>
+  
+  <div className="flex items-center justify-between gap-2">
+    {/* View mode toggle - hidden on small screens if not needed */}
+    <div className="hidden xs:flex items-center gap-1 rounded-md bg-secondary p-1">
+      <Button
+        variant={viewMode === "card" ? "primary" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("card")}
+        className="h-8 w-8"
+        aria-label="Card view"
+      >
+        <LayoutGrid className="h-4 w-4" />
+      </Button>
+      <Button
+        variant={viewMode === "list" ? "primary" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("list")}
+        className="h-8 w-8"
+        aria-label="List view"
+      >
+        <List className="h-4 w-4" />
+      </Button>
+    </div>
+
+    {/* Create Company button - full width on mobile, auto on desktop */}
+    <Button 
+      onClick={handleAddNew}
+      size="sm"
+      className=" xs:w-auto"
+    >
+      <PlusCircle className="mr-0 xs:mr-2 h-4 w-4" />
+      <span className="hidden xs:inline">Create Company</span>
+      <span className="xs:hidden">Add</span>
+    </Button>
+  </div>
+</div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-4xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">

@@ -29,6 +29,7 @@ interface ComboboxProps {
     noResultsText?: string;
     creatable?: boolean;
     onCreate?: (inputValue: string) => Promise<any>;
+    className?: string;
 }
 
 export function Combobox({ 
@@ -40,6 +41,7 @@ export function Combobox({
     noResultsText = "No results found.",
     creatable = false,
     onCreate,
+    className,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState("");
@@ -67,7 +69,6 @@ export function Combobox({
   const filteredOptions = options.filter(option => 
     typeof option.label === 'string' && option.label.toLowerCase().includes(inputValue.toLowerCase())
   );
-
   const showCreateOption = creatable && inputValue && !filteredOptions.some(opt => opt.label.toLowerCase() === inputValue.toLowerCase());
 
   return (
@@ -77,7 +78,7 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className={cn("w-full justify-between", className)}
         >
           {value
             ? options.find((option) => option.value === value)?.label

@@ -36,6 +36,7 @@ import {
   X,
   Building,
   Users,
+  Filter,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -152,15 +153,12 @@ export default function ClientManagementPage() {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
 
-      const res = await fetch(
-        `${baseURL}/api/clients/${clientToDelete._id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await fetch(`${baseURL}/api/clients/${clientToDelete._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!res.ok) {
         const errorData = await res.json();
@@ -428,76 +426,178 @@ export default function ClientManagementPage() {
       </Dialog>
 
       {/* permissions dialogue */}
-       <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
+      <Dialog
+        open={isPermissionsDialogOpen}
+        onOpenChange={setIsPermissionsDialogOpen}
+      >
         <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-                <DialogTitle>Permissions for {clientForPermissions?.contactName}</DialogTitle>
-                <DialogDescription>
-                    Reviewing usage limits and feature permissions for this client.
-                </DialogDescription>
-            </DialogHeader>
-            {clientForPermissions && (
-              <div className="grid gap-6 py-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
-                      <CardTitle className="text-base">Feature Permissions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-4">
-                       <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Check className={cn("h-5 w-5 p-1 rounded-full", clientForPermissions.canSendInvoiceEmail ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500")} />
-                            <span className="font-medium">Send Invoice via Email</span>
-                          </div>
-                          <Badge variant={clientForPermissions.canSendInvoiceEmail ? "default" : "secondary"} className={cn(clientForPermissions.canSendInvoiceEmail ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300" : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300")}>
-                            {clientForPermissions.canSendInvoiceEmail ? "Enabled" : "Disabled"}
-                          </Badge>
-                       </div>
-                        <Separator />
-                       <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-3">
-                            <Check className={cn("h-5 w-5 p-1 rounded-full", clientForPermissions.canSendInvoiceWhatsapp ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500")} />
-                            <span className="font-medium">Send Invoice via WhatsApp</span>
-                          </div>
-                           <Badge variant={clientForPermissions.canSendInvoiceWhatsapp ? "default" : "secondary"} className={cn(clientForPermissions.canSendInvoiceWhatsapp ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300" : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300")}>
-                            {clientForPermissions.canSendInvoiceWhatsapp ? "Enabled" : "Disabled"}
-                          </Badge>
-                       </div>
-                    </CardContent>
-                  </Card>
-                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
-                      <CardTitle className="text-base">Usage Limits</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-4">
-                       <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Building className="h-5 w-5 text-muted-foreground" />
-                            <span className="font-medium">Max Companies</span>
-                          </div>
-                          <Badge variant="outline" className="font-mono text-lg font-semibold">{clientForPermissions.maxCompanies}</Badge>
-                       </div>
-                        <Separator />
-                       <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Users className="h-5 w-5 text-muted-foreground" />
-                            <span className="font-medium">Max Users</span>
-                          </div>
-                          <Badge variant="outline" className="font-mono text-lg font-semibold">{clientForPermissions.maxUsers}</Badge>
-                       </div>
-                    </CardContent>
-                  </Card>
-              </div>
-            )}
-             <DialogFooter>
-                <Button onClick={() => setIsPermissionsDialogOpen(false)}>Close</Button>
-            </DialogFooter>
+          <DialogHeader>
+            <DialogTitle>
+              Permissions for {clientForPermissions?.contactName}
+            </DialogTitle>
+            <DialogDescription>
+              Reviewing usage limits and feature permissions for this client.
+            </DialogDescription>
+          </DialogHeader>
+          {clientForPermissions && (
+            <div className="grid gap-6 py-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
+                  <CardTitle className="text-base">
+                    Feature Permissions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Check
+                        className={cn(
+                          "h-5 w-5 p-1 rounded-full",
+                          clientForPermissions.canSendInvoiceEmail
+                            ? "bg-green-500/20 text-green-500"
+                            : "bg-red-500/20 text-red-500"
+                        )}
+                      />
+                      <span className="font-medium">
+                        Send Invoice via Email
+                      </span>
+                    </div>
+                    <Badge
+                      variant={
+                        clientForPermissions.canSendInvoiceEmail
+                          ? "default"
+                          : "secondary"
+                      }
+                      className={cn(
+                        clientForPermissions.canSendInvoiceEmail
+                          ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300"
+                          : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300"
+                      )}
+                    >
+                      {clientForPermissions.canSendInvoiceEmail
+                        ? "Enabled"
+                        : "Disabled"}
+                    </Badge>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Check
+                        className={cn(
+                          "h-5 w-5 p-1 rounded-full",
+                          clientForPermissions.canSendInvoiceWhatsapp
+                            ? "bg-green-500/20 text-green-500"
+                            : "bg-red-500/20 text-red-500"
+                        )}
+                      />
+                      <span className="font-medium">
+                        Send Invoice via WhatsApp
+                      </span>
+                    </div>
+                    <Badge
+                      variant={
+                        clientForPermissions.canSendInvoiceWhatsapp
+                          ? "default"
+                          : "secondary"
+                      }
+                      className={cn(
+                        clientForPermissions.canSendInvoiceWhatsapp
+                          ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300"
+                          : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300"
+                      )}
+                    >
+                      {clientForPermissions.canSendInvoiceWhatsapp
+                        ? "Enabled"
+                        : "Disabled"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
+                  <CardTitle className="text-base">Usage Limits</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Building className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">Max Companies</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-lg font-semibold"
+                    >
+                      {clientForPermissions.maxCompanies}
+                    </Badge>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">Max Users</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-lg font-semibold"
+                    >
+                      {clientForPermissions.maxUsers}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setIsPermissionsDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Card className="w-full">
         <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* Mobile filter button */}
+            <div className="sm:hidden w-full">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filters
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[calc(100vw-2rem)] p-4 space-y-4">
+                  <Combobox
+                    options={contactNameOptions}
+                    value={contactNameFilter}
+                    onChange={setContactNameFilter}
+                    placeholder="Filter by name..."
+                    searchPlaceholder="Search by name..."
+                    noResultsText="No clients found."
+                  />
+                  <Combobox
+                    options={usernameOptions}
+                    value={usernameFilter}
+                    onChange={setUsernameFilter}
+                    placeholder="Filter by username..."
+                    searchPlaceholder="Search by username..."
+                    noResultsText="No clients found."
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleClearFilters}
+                    disabled={!contactNameFilter && !usernameFilter}
+                    className="w-full"
+                  >
+                    Clear Filters
+                  </Button>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Desktop filters */}
+            <div className="hidden sm:flex items-center gap-2">
               <Combobox
                 options={contactNameOptions}
                 value={contactNameFilter}
@@ -515,10 +615,12 @@ export default function ClientManagementPage() {
                 noResultsText="No clients found."
               />
             </div>
+
             <Button
               variant="outline"
               onClick={handleClearFilters}
               disabled={!contactNameFilter && !usernameFilter}
+              className="hidden sm:flex"
             >
               Clear Filters
             </Button>
