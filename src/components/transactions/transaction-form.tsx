@@ -135,6 +135,7 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ transactionToEdit, onFormSubmit }: TransactionFormProps) {
+   const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isPartyDialogOpen, setIsPartyDialogOpen] = React.useState(false);
@@ -189,16 +190,16 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
 
       const [companiesRes, partiesRes, productsRes, vendorsRes] =
         await Promise.all([
-          fetch("http://localhost:5000/api/companies/my", {
+          fetch(`${baseURL}/api/companies/my`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://localhost:5000/api/parties", {
+          fetch(`${baseURL}/api/parties`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://localhost:5000/api/products", {
+          fetch(`${baseURL}/api/products`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://localhost:5000/api/vendors", {
+          fetch(`${baseURL}/api/vendors`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
