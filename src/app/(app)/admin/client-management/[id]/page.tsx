@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
 
 export default function ClientDetailPage() {
+   const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
   const [client, setClient] = React.useState<Client | null>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [kpiStats, setKpiStats] = React.useState({ totalSales: 0, userCount: 0, companyCount: 0 });
@@ -37,7 +38,7 @@ export default function ClientDetailPage() {
           throw new Error("Authentication token not found.");
         }
 
-        const res = await fetch(`http://localhost:5000/api/clients/${clientId}`, {
+        const res = await fetch(`${baseURL}/api/clients/${clientId}`, {
           headers: {
             "Authorization": `Bearer ${token}`
           },
@@ -80,7 +81,7 @@ export default function ClientDetailPage() {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
 
-        const res = await fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, {
+        const res = await fetch(`${baseURL}/api/companies/by-client/${clientId}`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
 
@@ -113,9 +114,9 @@ export default function ClientDetailPage() {
             const headers = { "Authorization": `Bearer ${token}` };
 
             const [salesRes, usersRes, companiesRes] = await Promise.all([
-                fetch(`http://localhost:5000/api/sales/by-client/${clientId}`, { headers }),
-                fetch(`http://localhost:5000/api/users/by-client/${clientId}`, { headers }),
-                fetch(`http://localhost:5000/api/companies/by-client/${clientId}`, { headers }),
+                fetch(`${baseURL}/api/sales/by-client/${clientId}`, { headers }),
+                fetch(`${baseURL}/api/users/by-client/${clientId}`, { headers }),
+                fetch(`${baseURL}/api/companies/by-client/${clientId}`, { headers }),
             ]);
 
             const salesData = await salesRes.json();
