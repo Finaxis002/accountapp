@@ -1,4 +1,4 @@
-import type { Transaction, Company, Party } from "@/lib/types";
+import type { Transaction, Company, Party, Item } from "@/lib/types";
 import jsPDF from "jspdf";
 import autoTable, { RowInput } from "jspdf-autotable";
 
@@ -179,169 +179,89 @@ export const generatePdfForTemplate1 = (
   return doc;
 };
 
+
 const getItemsBodyTemplate2 = (transaction: Transaction) => {
-  if (!transaction.items || transaction.items.length === 0) {
-    const amount = transaction.amount || 0;
-    const quantity = transaction.quantity || 1;
-    const price = transaction.pricePerUnit || amount;
-    return [
-      [
-        "1",
-        transaction.description || "Item",
-        quantity,
-        formatCurrency(price),
-        formatCurrency(amount),
-      ],
-    ];
-  }
-  return transaction.items.map((item, index) => {
-    const quantity = item.quantity || 0;
-    const pricePerUnit = item.pricePerUnit || 0;
-    const amount = quantity * pricePerUnit;
-    return [
-      (index + 1).toString(),
-      item.product?.name || "Item",
-      quantity,
-      formatCurrency(pricePerUnit),
-      formatCurrency(amount),
-    ];
-  });
-};
+    if (!transaction.items || transaction.items.length === 0) {
+        const amount = transaction.amount || 0;
+        const quantity = transaction.quantity || 1;
+        const price = transaction.pricePerUnit || amount;
+        return [[
+            '1',
+            transaction.description || 'Item',
+            quantity,
+            formatCurrency(price),
+            formatCurrency(amount)
+        ]];
+    }
+    return transaction.items.map((item, index) => {
+        const quantity = item.quantity || 0;
+        const pricePerUnit = item.pricePerUnit || 0;
+        const amount = item.amount;
+        return [
+            (index + 1).toString(),
+            item.product?.name || 'Item',
+            quantity,
+            formatCurrency(pricePerUnit),
+            formatCurrency(amount)
+        ]
+    });
+}
 
-export const generatePdfForTemplate2 = (
-  transaction: Transaction,
-  company: Company | null | undefined,
-  party: Party | null | undefined
-): jsPDF => {
-  const doc = new jsPDF();
-  const subtotal =
-    transaction.items?.reduce(
-      (sum, item) => sum + item.quantity * item.pricePerUnit,
-      0
-    ) ||
-    transaction.amount ||
-    0;
-  const tax = subtotal * 0.13; // 13% tax
-  const totalAmount = subtotal + tax;
-  const partyAddress = party
-    ? [party.address, party.city, party.state].filter(Boolean).join(", ")
-    : "Address not available";
 
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.text(company?.businessName || "Your Company", 20, 30);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(company?.emailId || "", 20, 37);
-  doc.text(company?.mobileNumber || "", 20, 44);
+export const generatePdfForTemplate2 = (transaction: Transaction, company: Company | null | undefined, party: Party | null | undefined): jsPDF => {
+    const doc = new jsPDF();
+    const subtotal = transaction.items?.reduce((sum, item) => sum + (item.amount), 0) || transaction.amount || 0;
+    const tax = subtotal * 0.13; // 13% tax
+    const totalAmount = subtotal + tax;
+    const partyAddress = party ? [party.address, party.city, party.state].filter(Boolean).join(', ') : 'Address not available';
 
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text(
-    `Invoice #${transaction._id.slice(-6).toUpperCase()}`,
-    doc.internal.pageSize.getWidth() - 20,
-    30,
-    { align: "right" }
-  );
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(
-    `Issued: ${new Intl.DateTimeFormat("en-US").format(
-      new Date(transaction.date)
-    )}`,
-    doc.internal.pageSize.getWidth() - 20,
-    37,
-    { align: "right" }
-  );
-  doc.text(
-    `Payment Due: ${new Intl.DateTimeFormat("en-US").format(
-      new Date(
-        new Date(transaction.date).setDate(
-          new Date(transaction.date).getDate() + 30
-        )
-      )
-    )}`,
-    doc.internal.pageSize.getWidth() - 20,
-    44,
-    { align: "right" }
-  );
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(company?.businessName || 'Your Company', 20, 30);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(company?.emailId || '', 20, 37);
+    doc.text(company?.mobileNumber || '', 20, 44);
 
-  doc.line(15, 60, doc.internal.pageSize.getWidth() - 15, 60);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Invoice #${transaction._id.slice(-6).toUpperCase()}`, doc.internal.pageSize.getWidth() - 20, 30, { align: 'right'});
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Issued: ${new Intl.DateTimeFormat('en-US').format(new Date(transaction.date))}`, doc.internal.pageSize.getWidth() - 20, 37, { align: 'right' });
+    doc.text(`Payment Due: ${new Intl.DateTimeFormat('en-US').format(new Date(new Date(transaction.date).setDate(new Date(transaction.date).getDate() + 30)))}`, doc.internal.pageSize.getWidth() - 20, 44, { align: 'right' });
 
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text(party?.name || "Client Name", 20, 75);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(party?.email || "", 20, 82);
-  doc.text(partyAddress, 20, 89);
+    doc.line(15, 60, doc.internal.pageSize.getWidth() - 15, 60);
 
-  const body = getItemsBodyTemplate2(transaction);
-  body.push(["", "", "", "HST", "13%", formatCurrency(tax)]);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(party?.name || 'Client Name', 20, 75);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(party?.email || '', 20, 82);
+    doc.text(partyAddress, 20, 89);
 
-  autoTable(doc, {
-    startY: 100,
-    head: [["S.No.", "Item Description", "Qty", "Rate", "Sub-total"]],
-    body: body,
-    foot: [["", "", "", "", "Total", formatCurrency(totalAmount)]],
-    theme: "grid",
-    headStyles: { fillColor: [238, 238, 238], textColor: [0, 0, 0] },
-    footStyles: {
-      fillColor: [238, 238, 238],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-    },
-  });
+    const body = getItemsBodyTemplate2(transaction);
+    body.push(['', '', '', 'HST', formatCurrency(tax)]);
 
-  const finalY = (doc as any).lastAutoTable.finalY + 20;
-  doc.setFontSize(8);
-  doc.text(
-    "Thank you for your business! Payment is expected within 31 days.",
-    20,
-    finalY
-  );
+    autoTable(doc, {
+        startY: 100,
+        head: [['S.No.', 'Item Description', 'Qty', 'Rate', 'Sub-total']],
+        body: body,
+        foot: [
+            ['', '', '', 'Total', formatCurrency(totalAmount)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [238, 238, 238], textColor: [0,0,0] },
+        footStyles: { fillColor: [238, 238, 238], textColor: [0,0,0], fontStyle: 'bold' }
+    });
 
-  return doc;
-};
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(8);
+    doc.text('Thank you for your business! Payment is expected within 31 days.', 20, finalY);
 
-const getItemsBodyTemplate3 = (transaction: Transaction) => {
-  if (!transaction.items || transaction.items.length === 0) {
-    const amount = transaction.amount || 0;
-    const quantity = transaction.quantity || 1;
-    const price = transaction.pricePerUnit || amount;
-    return [
-      [
-        "1",
-        {
-          content: `${transaction.product?.name || "Item"}\n${
-            transaction.description || ""
-          }`,
-          styles: { cellWidth: "auto" },
-        },
-        quantity,
-        formatCurrency(price),
-        formatCurrency(amount),
-      ],
-    ];
-  }
-  return transaction.items.map((item, index) => {
-    const quantity = item.quantity || 0;
-    const pricePerUnit = item.pricePerUnit || 0;
-    const amount = quantity * pricePerUnit;
-    return [
-      (index + 1).toString(),
-      {
-        content: `${item.product?.name || "Item"}\n${
-          transaction.description || ""
-        }`,
-        styles: { cellWidth: "auto" },
-      },
-      quantity,
-      formatCurrency(pricePerUnit),
-      formatCurrency(amount),
-    ];
-  });
-};
+    return doc;
+}
 
 export const generatePdfForTemplate3 = (
   transaction: Transaction,
@@ -349,91 +269,250 @@ export const generatePdfForTemplate3 = (
   party: Party | null | undefined
 ): jsPDF => {
   const doc = new jsPDF();
-  const subtotal =
-    transaction.items?.reduce(
-      (sum, item) => sum + item.quantity * item.pricePerUnit,
-      0
-    ) ||
-    transaction.amount ||
-    0;
-  const tax = subtotal * 0.1;
-  const discount = subtotal * 0.1;
-  const total = subtotal + tax - discount;
-  const partyAddress = party
-    ? [party.address, party.city, party.state].filter(Boolean).join(", ")
-    : "Address not available";
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const m = 20; // margin
 
-  // Header
-  doc.setFontSize(14);
+  // --- Palette (approx. from mock) ---
+  const NAVY: [number, number, number] = [29, 44, 74]; // header/footer & headings
+  const GOLD: [number, number, number] = [204, 181, 122]; // accents and row rules
+  const TEXT: [number, number, number] = [41, 48, 66]; // body text (dark gray/blue)
+  const MUTED: [number, number, number] = [110, 119, 137]; // secondary text
+
+  const money = (n: number) => `Rs. ${Number(n || 0).toLocaleString("en-IN")}`;
+
+  // Data
+  const invoiceData = {
+    companyWebsite: "WWW.COMPANYWEBSITE.COM",
+    invoiceTo: {
+      name: party?.name || "ANDREAS DAVID",
+      address:
+        party?.address && party?.city
+          ? `${party.address}, ${party.city}, ${party.state}`
+          : "123 STREET, CANADA",
+    },
+    invoiceNumber: transaction._id
+      ? transaction._id.slice(-6).toUpperCase()
+      : "000111",
+    date: transaction.date
+      ? new Intl.DateTimeFormat("en-GB").format(new Date(transaction.date))
+      : "01 / 10 / 2024",
+    items: transaction.items?.length
+      ? transaction.items.map((item) => ({
+          description: item.product?.name || "Lorem ipsum dolor",
+          price: item.pricePerUnit || 0,
+          quantity: item.quantity || 1,
+          total: item.amount || 0,
+        }))
+      : [],
+    terms: [
+      "Lorem ipsum dolor sit asu sud",
+      "amet, consectetur adipiscing elit,",
+      "sed do eiusmod tempor incidid-",
+      "ua  wu weurn awnt.",
+    ],
+    footer: {
+      address: company?.address || "your address here",
+      email: company?.emailId || "yourbusinessaccount@mail.com",
+      phone: company?.mobileNumber || "123 456 789",
+    },
+  };
+
+  // Base font
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...TEXT);
+
+  // ===== Top Header Strip =====
+  const stripH = 16;
+  // const stripW = 150;                   // not full width (matches mock)
+  const stripX = 0;
+  const stripW = pw;
+  const stripY = 10;
+
+  // thin top hairline over page content (subtle)
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.2);
+  doc.line(0, stripY - 6, pw, stripY - 6);
+
+  // navy strip
+  doc.setFillColor(...NAVY);
+  doc.rect(stripX, stripY, stripW, stripH, "F");
+
+  // “INVOICE” in gold, spaced
   doc.setFont("helvetica", "bold");
-  doc.text(company?.businessName || "Your Company", 20, 20);
+  doc.setFontSize(16);
+  doc.setTextColor(...GOLD);
+  doc.text("I N V O I C E", pw / 2, stripY + stripH - 5, { align: "center" });
+
+  // website centered under strip
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.8);
+  doc.setTextColor(...TEXT);
+  // doc.text(invoiceData.companyWebsite, pw / 2, stripY + stripH + 7, {
+  //   align: "center",
+  // });
+
+  // ===== Header Right: Logo Text Placeholder =====
+  // (text-only placeholder to match layout)
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(company?.emailId || "", 20, 27);
-  doc.text(company?.mobileNumber || "", 20, 34);
-
-  doc.text(
-    `Invoice number: INV-${transaction._id.slice(-6).toUpperCase()}`,
-    doc.internal.pageSize.getWidth() - 20,
-    20,
-    { align: "right" }
-  );
-  doc.text(
-    `Invoice date: ${new Intl.DateTimeFormat("en-GB").format(
-      new Date(transaction.date)
-    )}`,
-    doc.internal.pageSize.getWidth() - 20,
-    27,
-    { align: "right" }
-  );
-
-  // Bill To
-  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Bill to:", 20, 50);
+  doc.setTextColor(...NAVY);
+  doc.text("LOGO TEXT", pw - m, stripY + 6, { align: "right" });
   doc.setFont("helvetica", "normal");
-  doc.text(party?.name || "N/A", 20, 57);
-  doc.text(partyAddress, 20, 64);
-  doc.text(party?.email || "", 20, 71);
+  doc.setFontSize(7.8);
+  doc.setTextColor(...MUTED);
+  doc.text("BUSINESS TAGLINE", pw - m, stripY + 12, { align: "right" });
 
-  // Table
- const bodyRows = getItemsBody(transaction) as RowInput[];
+  // ===== Invoice To (left) & Invoice No/Date (right) =====
+  const headY = stripY + stripH + 22;
 
-  // one empty row matching your 5 columns
-  const blankRow: RowInput = ["", "", "", "", ""];
+  // left block
+  doc.setTextColor(...TEXT);
+  doc.setFontSize(9.8);
+  doc.setFont("helvetica", "bold");
+  doc.text("INVOICE TO:", m, headY);
 
-  autoTable(doc, {
-    startY: 65,
-    head: [["S.No.", "QTY", "DESCRIPTION", "PRICE", "TOTAL"]],
-    body: [blankRow, ...bodyRows],
-    theme: "striped",
-    headStyles: {
-      fillColor: [241, 245, 249] as [number, number, number],
-      textColor: [0, 0, 0] as [number, number, number],
-    },
-    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
-    didParseCell: (h) => {
-      // make the first body row truly blank
-      if (h.section === "body" && h.row.index === 0) {
-        h.cell.text = [];
-        h.cell.styles.minCellHeight = 8; // height of the gap
-        h.cell.styles.lineWidth = 0; // no borders
-        h.cell.styles.fillColor = [255, 255, 255] as [number, number, number];
-      }
-    },
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.2);
+  doc.text(invoiceData.invoiceTo.name, m, headY + 7);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.2);
+  doc.setTextColor(...MUTED);
+  doc.text(invoiceData.invoiceTo.address, m, headY + 13.5);
+
+  // right block
+  doc.setTextColor(...TEXT);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.8);
+  doc.text(`INVOICE NO. ${invoiceData.invoiceNumber}`, pw - m, headY, {
+    align: "right",
+  });
+  doc.setFont("helvetica", "normal");
+  doc.text(`DATE  ${invoiceData.date}`, pw - m, headY + 7, { align: "right" });
+
+  // ===== Table Head =====
+  let y = headY + 28;
+  doc.setDrawColor(225, 225, 225);
+  doc.line(m, y - 10, pw - m, y - 10); // subtle divider above table
+
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...NAVY);
+  doc.setFontSize(13.5);
+  doc.text("DESCRIPTION", m, y);
+
+  doc.text("PRICE", 140, y, { align: "right" });
+  doc.text("QTY.", 160, y, { align: "right" });
+  doc.text("TOTAL", pw - m, y, { align: "right" });
+
+  // ===== Rows =====
+  y += 9;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...TEXT);
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(...GOLD);
+
+  invoiceData.items.forEach((it) => {
+    // description (left)
+    doc.setFontSize(10);
+    doc.text(it.description, m, y);
+
+    // numbers (right columns)
+    doc.setFontSize(10);
+    doc.text(money(it.price), 140, y, { align: "right" });
+    doc.text(String(it.quantity), 160, y, { align: "right" });
+    doc.text(money(it.total), pw - m, y, { align: "right" });
+
+    // gold hairline under each row
+    doc.line(m, y + 3.2, pw - m, y + 3.2);
+
+    y += 14; // row height
   });
 
+  // ===== Terms (left) & Totals (right) =====
+  y += 6;
 
+  // Terms block
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...TEXT);
+  doc.setFontSize(10.5);
+  // doc.text("Terms and conditions", m, y);
 
-  // Footer
-  const finalY = doc.internal.pageSize.getHeight() - 20;
-  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  // invoiceData.terms.forEach((line, i) => {
+  //   doc.text(line, m, y + 6 + i * 5.8);
+  // });
+
+  // Totals block (right aligned)
+  const subtotal = transaction.items?.reduce((s, it) => s + (it.amount), 0) || 0;
+  const tax = subtotal * 0.1;
+  const grandTotal = subtotal + tax;
+  const totalsTop = y;
+  doc.setTextColor(...TEXT);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.text("SUBTOTAL", 140, totalsTop, { align: "right" });
   doc.text(
-    "Please pay the invoice before the due date.",
-    doc.internal.pageSize.getWidth() / 2,
-    finalY,
-    { align: "center" }
+    money(subtotal),
+    pw - m,
+    totalsTop,
+    { align: "right" }
   );
+
+  doc.text("TAX", 140, totalsTop + 10, { align: "right" });
+  doc.text(money(tax), pw - m, totalsTop + 10, { align: "right" });
+
+  doc.setFontSize(12.5); // a bit bigger for emphasis
+  doc.text("GRAND TOTAL", 140, totalsTop + 24, { align: "right" });
+  doc.text(money(grandTotal), pw - m, totalsTop + 24, { align: "right" });
+
+  // subtle divider above footer
+  const afterTotals = Math.max(totalsTop + 30, y + 30);
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.2);
+  doc.line(m, afterTotals + 6, pw - m, afterTotals + 6);
+
+  // ===== Bottom Navy Footer Bar (fixed) =====
+  const fbH = 18;
+  const fbY = ph - m - fbH;
+  doc.setFillColor(...NAVY);
+  doc.rect(0, fbY, pw, fbH, "F"); // ⟵ full width
+
+  // layout helpers
+  const innerW = pw; // ⟵ use full width
+  const sectionW = innerW / 3;
+  const padX = 10;
+  const r = 2.2;
+  const gap = 4;
+  const baseline = fbY + fbH / 2 + 3;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+
+  const footerVals = [
+    String(invoiceData.footer.address || ""),
+    String(invoiceData.footer.email || ""),
+    String(invoiceData.footer.phone || ""),
+  ];
+
+  const maxTextW = sectionW - (padX + r * 2 + gap + 2);
+  const fit = (s: string) => {
+    let t = s;
+    while (doc.getTextWidth(t) > maxTextW && t.length > 1) t = t.slice(0, -1);
+    return t.length < s.length ? t.trimEnd() + "…" : t;
+  };
+
+  footerVals.forEach((val, i) => {
+    const left = i * sectionW; // ⟵ no margin
+
+    doc.setFillColor(...GOLD);
+
+    const textX = left + padX + r * 2 + gap;
+    doc.text(fit(val), textX, baseline, { align: "left" });
+  });
 
   return doc;
 };

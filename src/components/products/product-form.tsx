@@ -104,7 +104,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
           name="stocks"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Opening Stock (Optional)</FormLabel>
+              <FormLabel>Opening Stock</FormLabel>
               <FormControl>
                 <Input type="number" placeholder="0" {...field} />
               </FormControl>

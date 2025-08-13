@@ -8,6 +8,7 @@ export type Product = {
   createdAt?: string;
   updatedAt?: string;
   stock?: string;
+   maxInventories?: number;
 };
 
 export type Item = {

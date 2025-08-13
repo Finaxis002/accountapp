@@ -68,6 +68,9 @@ const unitTypes = [
   "Other",
 ] as const;
 
+type StockItemInput = { product: string; quantity: number };
+
+
 const itemSchema = z.object({
   product: z.string().min(1, "Product is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
@@ -356,6 +359,33 @@ export function TransactionForm({
     }
   }, [transactionToEdit, type, form, selectedCompanyId, replace]);
 
+
+
+  // async function updateStock(token: string, items: Item[]) {
+    async function updateStock(token: string, items: StockItemInput[]) {
+    try {
+      const res = await fetch(`${baseURL}/api/products/update-stock`, {
+          method: 'POST',
+          headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ items }),
+      });
+      if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to update stock levels.');
+      }
+    } catch(error) {
+       console.error("Stock update failed:", error);
+       toast({
+        variant: "destructive",
+        title: "Stock Update Failed",
+        description: "Transaction was saved, but failed to update inventory stock levels."
+       })
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
@@ -419,6 +449,13 @@ export function TransactionForm({
             } entry.`
         );
       }
+
+
+      // If it's a sale and was successful, update the stock
+      if (values.type === 'sales' && values.items) {
+          await updateStock(token, values?.items);
+      }
+
 
       //send invoice on whatsapp directly
 

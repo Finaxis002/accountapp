@@ -1,10 +1,19 @@
+"use client";
 
-"use client"
-
-import { ColumnDef, FilterFn, Row } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Copy, Edit, Trash2, Building, Package, Eye, List } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
+import { ColumnDef, FilterFn, Row } from "@tanstack/react-table";
+import {
+  ArrowUpDown,
+  Download,
+  MoreHorizontal,
+  Copy,
+  Edit,
+  Trash2,
+  Building,
+  Package,
+  Eye,
+  List,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,10 +21,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import type { Transaction, Item } from "@/lib/types"
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import type { Transaction, Item, Company, Party } from "@/lib/types";
+import { generatePdfForTemplate1 } from "@/lib/pdf-templates";
 
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
@@ -26,37 +36,44 @@ interface ColumnsProps {
 }
 
 const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
-    if (!filterValue) return true;
+  if (!filterValue) return true;
 
-    const transaction = row.original;
-    const searchTerm = String(filterValue).toLowerCase();
+  const transaction = row.original;
+  const searchTerm = String(filterValue).toLowerCase();
 
-    let partyName = '';
-    const partyOrVendor = transaction.party || transaction.vendor;
-    if (partyOrVendor && typeof partyOrVendor === 'object') {
-        if ('name' in partyOrVendor && partyOrVendor.name) {
-            partyName = partyOrVendor.name;
-        } else if ('vendorName' in partyOrVendor && partyOrVendor.vendorName) {
-            partyName = partyOrVendor.vendorName;
-        }
+  let partyName = "";
+  const partyOrVendor = transaction.party || transaction.vendor;
+  if (partyOrVendor && typeof partyOrVendor === "object") {
+    if ("name" in partyOrVendor && partyOrVendor.name) {
+      partyName = partyOrVendor.name;
+    } else if ("vendorName" in partyOrVendor && partyOrVendor.vendorName) {
+      partyName = partyOrVendor.vendorName;
     }
+  }
 
-    const description = transaction.description || '';
-    
-    // Check root product and items array products
-    const hasMatchingProduct =
-        (transaction.product?.name?.toLowerCase().includes(searchTerm)) ||
-        (transaction.items?.some(item => item.product?.name?.toLowerCase().includes(searchTerm)));
+  const description = transaction.description || "";
 
-    return (
-        partyName.toLowerCase().includes(searchTerm) ||
-        description.toLowerCase().includes(searchTerm) ||
-        !!hasMatchingProduct
+  // Check root product and items array products
+  const hasMatchingProduct =
+    transaction.product?.name?.toLowerCase().includes(searchTerm) ||
+    transaction.items?.some((item) =>
+      item.product?.name?.toLowerCase().includes(searchTerm)
     );
+
+  return (
+    partyName.toLowerCase().includes(searchTerm) ||
+    description.toLowerCase().includes(searchTerm) ||
+    !!hasMatchingProduct
+  );
 };
 
-
-export const columns = ({ onPreview, onViewItems, onEdit, onDelete, companyMap }: ColumnsProps): ColumnDef<Transaction>[] => [
+export const columns = ({
+  onPreview,
+  onViewItems,
+  onEdit,
+  onDelete,
+  companyMap,
+}: ColumnsProps): ColumnDef<Transaction>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -84,61 +101,64 @@ export const columns = ({ onPreview, onViewItems, onEdit, onDelete, companyMap }
     header: "Party / Details",
     filterFn: customFilterFn,
     cell: ({ row }) => {
-        const transaction = row.original;
-        
-        if (transaction.type === 'journal') {
-            return (
-                 <div>
-                    <div className="font-medium">Journal Entry</div>
-                    <div className="text-sm text-muted-foreground">
-                        {transaction.debitAccount} / {transaction.creditAccount}
-                    </div>
-                </div>
-            )
-        }
+      const transaction = row.original;
 
-        const partyOrVendor = transaction.party || transaction.vendor;
-        let partyName = '';
-        if (partyOrVendor && typeof partyOrVendor === 'object') {
-          if ('name' in partyOrVendor) {
-            partyName = partyOrVendor.name;
-          } else if ('vendorName' in partyOrVendor) {
-            partyName = partyOrVendor.vendorName;
-          }
-        }
-        
+      if (transaction.type === "journal") {
         return (
-            <div>
-                <div className="font-medium">{partyName || 'N/A'}</div>
-                <div className="text-sm text-muted-foreground hidden sm:block">{transaction.description || transaction.narration || ''}</div>
+          <div>
+            <div className="font-medium">Journal Entry</div>
+            <div className="text-sm text-muted-foreground">
+              {transaction.debitAccount} / {transaction.creditAccount}
             </div>
-        )
-    }
+          </div>
+        );
+      }
+
+      const partyOrVendor = transaction.party || transaction.vendor;
+      let partyName = "";
+      if (partyOrVendor && typeof partyOrVendor === "object") {
+        if ("name" in partyOrVendor) {
+          partyName = partyOrVendor.name;
+        } else if ("vendorName" in partyOrVendor) {
+          partyName = partyOrVendor.vendorName;
+        }
+      }
+
+      return (
+        <div>
+          <div className="font-medium">{partyName || "N/A"}</div>
+          <div className="text-sm text-muted-foreground hidden sm:block">
+            {transaction.description || transaction.narration || ""}
+          </div>
+        </div>
+      );
+    },
   },
   {
     accessorKey: "company",
     header: "Company",
     cell: ({ row }: { row: Row<Transaction> }) => {
       const company = row.original.company;
-      const companyId = typeof company === 'object' && company !== null ? company._id : company;
-        
-      if (!companyId) return 'N/A';
-      
-      const companyName = companyMap?.get(companyId as string) || 'N/A';
+      const companyId =
+        typeof company === "object" && company !== null ? company._id : company;
+
+      if (!companyId) return "N/A";
+
+      const companyName = companyMap?.get(companyId as string) || "N/A";
       return (
         <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden lg:inline">{companyName}</span>
+          <Building className="h-4 w-4 text-muted-foreground" />
+          <span className="hidden lg:inline">{companyName}</span>
         </div>
       );
-    }
+    },
   },
   {
     accessorKey: "items",
     header: "Product(s)",
     cell: ({ row }) => {
       const { items } = row.original;
-      if (!items || items.length === 0) return 'N/A';
+      if (!items || items.length === 0) return "N/A";
 
       if (items.length === 1 && items[0].product) {
         return (
@@ -152,9 +172,13 @@ export const columns = ({ onPreview, onViewItems, onEdit, onDelete, companyMap }
       }
 
       return (
-        <Button variant="link" className="p-0 h-auto" onClick={() => onViewItems(items)}>
-            <List className="h-4 w-4 text-muted-foreground mr-2" />
-            Multiple Items ({items.length})
+        <Button
+          variant="link"
+          className="p-0 h-auto"
+          onClick={() => onViewItems(items)}
+        >
+          <List className="h-4 w-4 text-muted-foreground mr-2" />
+          Multiple Items ({items.length})
         </Button>
       );
     },
@@ -171,46 +195,85 @@ export const columns = ({ onPreview, onViewItems, onEdit, onDelete, companyMap }
           Amount
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
-      )
+      );
     },
     cell: ({ row }) => {
-      const amount = parseFloat(String(row.original.totalAmount || row.original.amount || 0))
+      const amount = parseFloat(
+        String(row.original.totalAmount || row.original.amount || 0)
+      );
       const formatted = new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
-      }).format(amount)
- 
-      return <div className="text-right font-medium">{formatted}</div>
+      }).format(amount);
+
+      return <div className="text-right font-medium">{formatted}</div>;
     },
   },
   {
     accessorKey: "date",
     header: "Date",
-    cell: ({ row }) => new Intl.DateTimeFormat('en-US').format(new Date(row.getValue("date")))
+    cell: ({ row }) =>
+      new Intl.DateTimeFormat("en-US").format(new Date(row.getValue("date"))),
   },
   {
     accessorKey: "type",
     header: "Type",
     cell: ({ row }) => {
-        const type = row.getValue("type") as string;
-        
-        const typeStyles: { [key: string]: string } = {
-          sales: 'bg-green-500/20 text-green-700 dark:text-green-300',
-          purchases: 'bg-orange-500/20 text-orange-700 dark:text-orange-300',
-          receipt: 'bg-blue-500/20 text-blue-700 dark:text-blue-300',
-          payment: 'bg-red-500/20 text-red-700 dark:text-red-300',
-          journal: 'bg-purple-500/20 text-purple-700 dark:text-purple-300',
-        };
+      const type = row.getValue("type") as string;
 
-        const variant = type === 'sales' ? 'default' : 'secondary';
-        return <Badge variant={variant} className={typeStyles[type]}>{type}</Badge>
-    }
+      const typeStyles: { [key: string]: string } = {
+        sales: "bg-green-500/20 text-green-700 dark:text-green-300",
+        purchases: "bg-orange-500/20 text-orange-700 dark:text-orange-300",
+        receipt: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
+        payment: "bg-red-500/20 text-red-700 dark:text-red-300",
+        journal: "bg-purple-500/20 text-purple-700 dark:text-purple-300",
+      };
+
+      const variant = type === "sales" ? "default" : "secondary";
+      return (
+        <Badge variant={variant} className={typeStyles[type]}>
+          {type}
+        </Badge>
+      );
+    },
   },
   {
     id: "actions",
     cell: ({ row }) => {
-      const transaction = row.original
-      const isSales = transaction.type === 'sales' || (transaction.items && transaction.items.length > 0);
+      const transaction = row.original;
+      const isSales =
+        transaction.type === "sales" ||
+        (transaction.items && transaction.items.length > 0);
+
+      // helper to build minimal company/party objects for the PDF
+      const buildCompany = (): Company | undefined => {
+        const c = transaction.company;
+        const companyId = typeof c === "object" && c ? c._id : c;
+        const companyName = companyId
+          ? companyMap.get(companyId as string)
+          : undefined;
+        return companyName
+          ? ({ businessName: companyName } as unknown as Company)
+          : undefined;
+      };
+
+      const buildParty = (): Party | undefined => {
+        const pv = transaction.party || transaction.vendor;
+        return pv && typeof pv === "object" ? (pv as Party) : undefined;
+      };
+
+      const handleDownload = () => {
+        const doc = generatePdfForTemplate1(
+          transaction,
+          buildCompany(),
+          buildParty()
+        );
+        const fname = `Invoice-${(transaction._id ?? "INV")
+          .toString()
+          .slice(-6)
+          .toUpperCase()}.pdf`;
+        doc.save(fname);
+      };
 
       return (
         <DropdownMenu>
@@ -228,22 +291,33 @@ export const columns = ({ onPreview, onViewItems, onEdit, onDelete, companyMap }
               <Copy className="mr-2 h-4 w-4" />
               <span>Copy transaction ID</span>
             </DropdownMenuItem>
-             <DropdownMenuItem onClick={() => onPreview(transaction)} disabled={!isSales}>
-                <Eye className="mr-2 h-4 w-4" />
-                <span>Preview Invoice</span>
+            <DropdownMenuItem
+              onClick={() => onPreview(transaction)}
+              disabled={!isSales}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              <span>Preview Invoice</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleDownload} disabled={!isSales}>
+              <Download className="mr-2 h-4 w-4" />
+              <span>Download Invoice</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onEdit(transaction)}>
-                <Edit className="mr-2 h-4 w-4" />
-                <span>Edit transaction</span>
+              <Edit className="mr-2 h-4 w-4" />
+              <span>Edit transaction</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(transaction)} className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span>Delete transaction</span>
+            <DropdownMenuItem
+              onClick={() => onDelete(transaction)}
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>Delete transaction</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      )
+      );
     },
   },
-]
+];
