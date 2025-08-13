@@ -28,7 +28,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { getCurrentUser, logout } from "@/lib/auth";
-import type { User} from "@/lib/types";
+import type { User } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import {
@@ -206,19 +206,20 @@ export function AppSidebar() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem> */}
-
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/inventory")}
-          tooltip="Inventory"
-        >
-          <Link href="/inventory">
-            <Package />
-            <span>Inventory</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+      {permissions?.canCreateProducts && (
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            isActive={isActive("/inventory")}
+            tooltip="Inventory"
+          >
+            <Link href="/inventory">
+              <Package />
+              <span>Inventory</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
 
       {permissionsLoading ? (
         <div className="flex items-center gap-2 p-2">
