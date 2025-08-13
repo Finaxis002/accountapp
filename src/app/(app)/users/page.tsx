@@ -28,6 +28,7 @@ import { UserTable } from "@/components/users/user-table";
 import { UserForm } from "@/components/users/user-form";
 import { UserCard } from "@/components/users/user-card";
 
+const baseURL = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000").replace(/\/+$/, "");
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -40,7 +41,7 @@ export default function UsersPage() {
   const { toast } = useToast();
 
   const fetchUsersAndCompanies = async () => {
-     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
+     
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -94,8 +95,8 @@ export default function UsersPage() {
 
       const method = selectedUser ? "PUT" : "POST";
       const url = selectedUser
-        ? `http://localhost:5000/api/users/${selectedUser._id}`
-        : "http://localhost:5000/api/users";
+        ? `${baseURL}/api/users/${selectedUser._id}`
+        : `${baseURL}/api/users`;
       
       const res = await fetch(url, {
           method,
@@ -135,7 +136,7 @@ export default function UsersPage() {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Authentication token not found.");
         
-        const res = await fetch(`http://localhost:5000/api/users/${userToDelete._id}`, {
+        const res = await fetch(`${baseURL}/api/users/${userToDelete._id}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
         });
