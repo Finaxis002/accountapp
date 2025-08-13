@@ -37,6 +37,12 @@ import {
   Building,
   Users,
   Filter,
+  Save,
+  Package,
+  MessageSquare,
+  Send,
+  Contact,
+  Store,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -79,6 +85,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 export default function ClientManagementPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -102,6 +109,11 @@ export default function ClientManagementPage() {
 
   const [clientForPermissions, setClientForPermissions] =
     React.useState<Client | null>(null);
+  const [currentPermissions, setCurrentPermissions] = React.useState<
+    Partial<Client>
+  >({});
+  const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
+
   const [newPassword, setNewPassword] = React.useState("");
   const [isSubmittingPassword, setIsSubmittingPassword] = React.useState(false);
   const [eyeOpen, setEyeOpen] = React.useState(false);
@@ -110,7 +122,6 @@ export default function ClientManagementPage() {
   const [usernameFilter, setUsernameFilter] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
-  
 
   const fetchClients = React.useCallback(async () => {
     setIsLoading(true);
@@ -241,9 +252,106 @@ export default function ClientManagementPage() {
     }
   };
 
-  const handleViewPermissions = (client: Client) => {
+  const handleManagePermissions = async (client: Client) => {
     setClientForPermissions(client);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      const res = await fetch(
+        `${baseURL}/api/clients/${client._id}/permissions`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Fetch PErmissions :", data);
+        setCurrentPermissions({
+          maxCompanies: data.maxCompanies,
+          maxUsers: data.maxUsers,
+          maxInventories: data.maxInventories,
+          canSendInvoiceEmail: data.canSendInvoiceEmail,
+          canSendInvoiceWhatsapp: data.canSendInvoiceWhatsapp,
+          canCreateUsers: data.canCreateUsers,
+          canCreateCustomers: data.canCreateCustomers,
+          canCreateVendors: data.canCreateVendors,
+          canCreateProducts: data.canCreateProducts,
+        });
+      } else {
+        // Fallback to client data if permissions are not explicitly set
+        setCurrentPermissions({
+           maxCompanies: client.maxCompanies || 5,
+            maxUsers: client.maxUsers || 10,
+            maxInventories: client.maxInventories || 50,
+            canSendInvoiceEmail: client.canSendInvoiceEmail || true,
+            canSendInvoiceWhatsapp: client.canSendInvoiceWhatsapp || false,
+            canCreateUsers: client.canCreateUsers || true,
+            canCreateCustomers: client.canCreateCustomers || true,
+            canCreateVendors: client.canCreateVendors || true,
+            canCreateProducts: client.canCreateProducts || true,
+        });
+      }
+    } catch (error) {
+      // Fallback in case of network error etc.
+      setCurrentPermissions({
+        maxCompanies: client.maxCompanies || 5,
+        maxUsers: client.maxUsers || 10,
+        maxInventories: client.maxInventories || 50,
+        canSendInvoiceEmail: client.canSendInvoiceEmail || true,
+        canSendInvoiceWhatsapp: client.canSendInvoiceWhatsapp || false,
+        canCreateUsers: client.canCreateUsers || true,
+        canCreateCustomers: client.canCreateCustomers || true,
+        canCreateVendors: client.canCreateVendors || true,
+        canCreateProducts: client.canCreateProducts || true,
+      });
+    }
     setIsPermissionsDialogOpen(true);
+  };
+
+  const handlePermissionChange = (field: keyof Client, value: any) => {
+    setCurrentPermissions((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSavePermissions = async () => {
+    if (!clientForPermissions) return;
+    setIsSavingPermissions(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      const res = await fetch(
+        `${baseURL}/api/clients/${clientForPermissions._id}/permissions`,
+
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(currentPermissions),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update permissions.");
+      }
+
+      await fetchClients(); // Refresh client list
+      toast({
+        title: "Permissions Updated",
+        description: `Permissions for ${clientForPermissions.contactName} have been saved.`,
+      });
+      setIsPermissionsDialogOpen(false);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsSavingPermissions(false);
+    }
   };
 
   React.useEffect(() => {
@@ -431,13 +539,13 @@ export default function ClientManagementPage() {
         open={isPermissionsDialogOpen}
         onOpenChange={setIsPermissionsDialogOpen}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Permissions for {clientForPermissions?.contactName}
+              Manage Permissions for {clientForPermissions?.contactName}
             </DialogTitle>
             <DialogDescription>
-              Reviewing usage limits and feature permissions for this client.
+              Modify usage limits and feature access for this client.
             </DialogDescription>
           </DialogHeader>
           {clientForPermissions && (
@@ -448,69 +556,108 @@ export default function ClientManagementPage() {
                     Feature Permissions
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 space-y-4">
-                  <div className="flex items-center justify-between">
+                <CardContent className="p-4 grid md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
-                      <Check
-                        className={cn(
-                          "h-5 w-5 p-1 rounded-full",
-                          clientForPermissions.canSendInvoiceEmail
-                            ? "bg-green-500/20 text-green-500"
-                            : "bg-red-500/20 text-red-500"
-                        )}
-                      />
-                      <span className="font-medium">
-                        Send Invoice via Email
-                      </span>
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <Label htmlFor="canCreateUsers" className="font-medium">
+                        Create Users
+                      </Label>
                     </div>
-                    <Badge
-                      variant={
-                        clientForPermissions.canSendInvoiceEmail
-                          ? "default"
-                          : "secondary"
+                    <Switch
+                      id="canCreateUsers"
+                      checked={currentPermissions.canCreateUsers}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canCreateUsers", val)
                       }
-                      className={cn(
-                        clientForPermissions.canSendInvoiceEmail
-                          ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300"
-                          : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300"
-                      )}
-                    >
-                      {clientForPermissions.canSendInvoiceEmail
-                        ? "Enabled"
-                        : "Disabled"}
-                    </Badge>
+                    />
                   </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
-                      <Check
-                        className={cn(
-                          "h-5 w-5 p-1 rounded-full",
-                          clientForPermissions.canSendInvoiceWhatsapp
-                            ? "bg-green-500/20 text-green-500"
-                            : "bg-red-500/20 text-red-500"
-                        )}
-                      />
-                      <span className="font-medium">
-                        Send Invoice via WhatsApp
-                      </span>
+                      <Contact className="h-5 w-5 text-muted-foreground" />
+                      <Label
+                        htmlFor="canCreateCustomers"
+                        className="font-medium"
+                      >
+                        Create Customers
+                      </Label>
                     </div>
-                    <Badge
-                      variant={
-                        clientForPermissions.canSendInvoiceWhatsapp
-                          ? "default"
-                          : "secondary"
+                    <Switch
+                      id="canCreateCustomers"
+                      checked={currentPermissions.canCreateCustomers}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canCreateCustomers", val)
                       }
-                      className={cn(
-                        clientForPermissions.canSendInvoiceWhatsapp
-                          ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300"
-                          : "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300"
-                      )}
-                    >
-                      {clientForPermissions.canSendInvoiceWhatsapp
-                        ? "Enabled"
-                        : "Disabled"}
-                    </Badge>
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <Store className="h-5 w-5 text-muted-foreground" />
+                      <Label htmlFor="canCreateVendors" className="font-medium">
+                        Create Vendors
+                      </Label>
+                    </div>
+                    <Switch
+                      id="canCreateVendors"
+                      checked={currentPermissions.canCreateVendors}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canCreateVendors", val)
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <Label
+                        htmlFor="canCreateProducts"
+                        className="font-medium"
+                      >
+                        Create Products
+                      </Label>
+                    </div>
+                    <Switch
+                      id="canCreateProducts"
+                      checked={currentPermissions.canCreateProducts}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canCreateProducts", val)
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <Send className="h-5 w-5 text-muted-foreground" />
+                      <Label
+                        htmlFor="canSendInvoiceEmail"
+                        className="font-medium"
+                      >
+                        Send Invoice via Email
+                      </Label>
+                    </div>
+                    <Switch
+                      id="canSendInvoiceEmail"
+                      checked={currentPermissions.canSendInvoiceEmail}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canSendInvoiceEmail", val)
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                      <Label
+                        htmlFor="canSendInvoiceWhatsapp"
+                        className="font-medium"
+                      >
+                        Send Invoice via WhatsApp
+                      </Label>
+                    </div>
+                    <Switch
+                      id="canSendInvoiceWhatsapp"
+                      checked={currentPermissions.canSendInvoiceWhatsapp}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canSendInvoiceWhatsapp", val)
+                      }
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -518,44 +665,90 @@ export default function ClientManagementPage() {
                 <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
                   <CardTitle className="text-base">Usage Limits</CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                <CardContent className="p-4 grid md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="maxCompanies"
+                      className="flex items-center gap-3"
+                    >
                       <Building className="h-5 w-5 text-muted-foreground" />
                       <span className="font-medium">Max Companies</span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="font-mono text-lg font-semibold"
-                    >
-                      {clientForPermissions.maxCompanies}
-                    </Badge>
+                    </Label>
+                    <Input
+                      id="maxCompanies"
+                      type="number"
+                      value={currentPermissions.maxCompanies || ""}
+                      onChange={(e) =>
+                        handlePermissionChange(
+                          "maxCompanies",
+                          Number(e.target.value)
+                        )
+                      }
+                    />
                   </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="maxUsers"
+                      className="flex items-center gap-3"
+                    >
                       <Users className="h-5 w-5 text-muted-foreground" />
                       <span className="font-medium">Max Users</span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="font-mono text-lg font-semibold"
+                    </Label>
+                    <Input
+                      id="maxUsers"
+                      type="number"
+                      value={currentPermissions.maxUsers || ""}
+                      onChange={(e) =>
+                        handlePermissionChange(
+                          "maxUsers",
+                          Number(e.target.value)
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="maxInventories"
+                      className="flex items-center gap-3"
                     >
-                      {clientForPermissions.maxUsers}
-                    </Badge>
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">Max Inventories</span>
+                    </Label>
+                    <Input
+                      id="maxInventories"
+                      type="number"
+                      value={currentPermissions.maxInventories || ""}
+                      onChange={(e) =>
+                        handlePermissionChange(
+                          "maxInventories",
+                          Number(e.target.value)
+                        )
+                      }
+                    />
                   </div>
                 </CardContent>
               </Card>
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setIsPermissionsDialogOpen(false)}>
-              Close
+            <Button
+              variant="outline"
+              onClick={() => setIsPermissionsDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePermissions}
+              disabled={isSavingPermissions}
+            >
+              {isSavingPermissions && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       <Card className="w-full">
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -702,10 +895,10 @@ export default function ClientManagementPage() {
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleViewPermissions(client)}
+                              onClick={() => handleManagePermissions(client)}
                             >
-                              <ShieldCheck className="mr-2 h-4 w-4" /> View
-                              Permissions
+                              <ShieldCheck className="mr-2 h-4 w-4" />
+                              Manage Permissions
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleEdit(client)}
@@ -742,7 +935,7 @@ export default function ClientManagementPage() {
                   onEdit={() => handleEdit(client)}
                   onDelete={() => handleDelete(client)}
                   onResetPassword={() => handleResetPassword(client)}
-                  onViewPermissions={() => handleViewPermissions(client)}
+                  onManagePermissions={() => handleManagePermissions(client)}
                 />
               ))}
             </div>

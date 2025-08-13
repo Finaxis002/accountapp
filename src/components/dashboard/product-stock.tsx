@@ -13,6 +13,8 @@ import { Button } from '../ui/button';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { ProductForm } from '../products/product-form';
+import { usePermissions } from '@/contexts/permission-context';
+
 
 function StockEditForm({ 
     product, 
@@ -81,6 +83,7 @@ export function ProductStock() {
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
     const { toast } = useToast();
+       const { permissions } = usePermissions();
 
     const fetchProducts = React.useCallback(async () => {
         setIsLoading(true);
@@ -136,20 +139,22 @@ export function ProductStock() {
                             <CardTitle>Product Stock</CardTitle>
                             <CardDescription>Current inventory levels.</CardDescription>
                         </div>
-                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                           <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add Product
-                              </Button>
-                           </DialogTrigger>
-                           <DialogContent className="sm:max-w-lg">
-                              <DialogHeader>
-                                  <DialogTitle>Create New Product</DialogTitle>
-                                  <DialogDescription>Fill in the form to add a new product or service.</DialogDescription>
-                              </DialogHeader>
-                              <ProductForm onSuccess={handleAddSuccess} />
-                          </DialogContent>
-                        </Dialog>
+                          {permissions?.canCreateProducts && (
+                            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                            <DialogTrigger asChild>
+                               <Button variant="outline" size="sm">
+                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Product
+                               </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-lg">
+                               <DialogHeader>
+                                   <DialogTitle>Create New Product</DialogTitle>
+                                   <DialogDescription>Fill in the form to add a new product or service.</DialogDescription>
+                               </DialogHeader>
+                               <ProductForm onSuccess={handleAddSuccess} />
+                           </DialogContent>
+                         </Dialog>
+                         )}
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -182,10 +187,12 @@ export function ProductStock() {
                                             <TableCell className="font-medium">{product.name}</TableCell>
                                             <TableCell className="font-bold text-lg">{product.stocks ?? 0}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="sm" onClick={() => handleEditClick(product)}>
-                                                    <Edit className="h-4 w-4 mr-2" />
-                                                    Edit Stock
-                                                </Button>
+                                                {permissions?.canCreateProducts && (
+                                                    <Button variant="ghost" size="sm" onClick={() => handleEditClick(product)}>
+                                                        <Edit className="h-4 w-4 mr-2" />
+                                                        Edit Stock
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}

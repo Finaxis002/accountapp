@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,13 +29,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "../ui/scroll-area";
-import type { Company, Party, Product, Vendor, Transaction } from "@/lib/types";
+import type { Company, Party, Product, Vendor, Transaction, Item } from "@/lib/types";
 import { Combobox } from "../ui/combobox";
 import {
   Dialog,
@@ -48,8 +48,18 @@ import { VendorForm } from "../vendors/vendor-form";
 import { CustomerForm } from "../customers/customer-form";
 import { useCompany } from "@/contexts/company-context";
 import { ProductForm } from "../products/product-form";
+import { Card, CardContent } from "../ui/card";
+import { Separator } from "../ui/separator";
 
 const unitTypes = ["Kg", "Litre", "Piece", "Box", "Meter", "Dozen", "Pack", "Other"] as const;
+
+const itemSchema = z.object({
+  product: z.string().min(1, "Product is required."),
+  quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
+  unitType: z.enum(unitTypes).default("Piece"),
+  pricePerUnit: z.coerce.number().min(0, "Price cannot be negative."),
+  amount: z.coerce.number(),
+});
 
 const formSchema = z
   .object({
@@ -57,15 +67,9 @@ const formSchema = z
     company: z.string().min(1, "Please select a company."),
     party: z.string().optional(),
     date: z.date({ required_error: "A date is required." }),
-    amount: z.coerce.number().positive("Amount must be a positive number."),
-    quantity: z.coerce.number().optional(),
-    unitType: z.enum(unitTypes).default("Piece").optional(),
-    pricePerUnit: z.coerce.number().optional(),
-    description: z
-      .string()
-      .min(1, "Description is required.")
-      .optional(),
-    product: z.string().optional(),
+    items: z.array(itemSchema).optional(),
+    totalAmount: z.coerce.number().positive("Amount must be a positive number.").optional(), // Main amount for non-item transactions
+    description: z.string().optional(),
     referenceNumber: z.string().optional(),
     fromAccount: z.string().optional(), // For Journal Debit
     toAccount: z.string().optional(),   // For Journal Credit
@@ -85,14 +89,14 @@ const formSchema = z
   )
   .refine(
     (data) => {
-      if (data.type === "sales" || data.type === "purchases") {
-        return !!data.product;
+      if ((data.type === "sales" || data.type === "purchases")) {
+        return data.items && data.items.length > 0;
       }
       return true;
     },
     {
-      message: "Product is required for sales or purchases.",
-      path: ["product"],
+      message: "At least one item is required for a sale or purchase.",
+      path: ["items"],
     }
   ).refine(
     (data) => {
@@ -105,28 +109,6 @@ const formSchema = z
         message: "Debit and Credit accounts are required for a journal entry.",
         path: ["fromAccount"] // Report error on one of the fields
     }
-  ).refine(
-    (data) => {
-      if (data.type === "sales" || data.type === "purchases") {
-        return data.quantity !== undefined && data.quantity > 0;
-      }
-      return true;
-    },
-    {
-      message: "Quantity is required and must be positive.",
-      path: ["quantity"],
-    }
-  ).refine(
-    (data) => {
-      if (data.type === "sales" || data.type === "purchases") {
-        return data.pricePerUnit !== undefined && data.pricePerUnit > 0;
-      }
-      return true;
-    },
-    {
-      message: "Price is required and must be positive.",
-      path: ["pricePerUnit"],
-    }
   );
 
 interface TransactionFormProps {
@@ -135,7 +117,6 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ transactionToEdit, onFormSubmit }: TransactionFormProps) {
-   const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isPartyDialogOpen, setIsPartyDialogOpen] = React.useState(false);
@@ -155,12 +136,9 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
     defaultValues: {
       party: "",
       description: "",
-      amount: 0,
-      quantity: 1,
-      pricePerUnit: 0,
-      unitType: "Piece",
+      totalAmount: 0,
+      items: [{ product: "", quantity: 1, pricePerUnit: 0, unitType: "Piece", amount: 0 }],
       type: "sales",
-      product: "",
       referenceNumber: "",
       fromAccount: "",
       toAccount: "",
@@ -169,17 +147,37 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
       date: new Date(),
     },
   });
+
+  const { fields, append, remove, replace } = useFieldArray({
+    control: form.control,
+    name: "items"
+  });
   
+  const watchedItems = form.watch("items");
   const type = form.watch("type");
-  const quantity = form.watch("quantity");
-  const pricePerUnit = form.watch("pricePerUnit");
 
   React.useEffect(() => {
-    if (type === 'sales' || type === 'purchases') {
-      const totalAmount = (quantity || 0) * (pricePerUnit || 0);
-      form.setValue('amount', totalAmount, { shouldValidate: true });
+    if (!watchedItems) return;
+
+    let grandTotal = 0;
+    const updatedItems = watchedItems.map((item) => {
+      const quantity = item.quantity || 0;
+      const pricePerUnit = item.pricePerUnit || 0;
+      const amount = quantity * pricePerUnit;
+      grandTotal += amount;
+      return { ...item, amount };
+    });
+
+    if (JSON.stringify(updatedItems) !== JSON.stringify(form.getValues('items'))) {
+      updatedItems.forEach((item, index) => {
+        form.setValue(`items.${index}.amount`, item.amount, { shouldValidate: false });
+      });
     }
-  }, [quantity, pricePerUnit, type, form]);
+
+    if (form.getValues('totalAmount') !== grandTotal) {
+      form.setValue('totalAmount', grandTotal, { shouldValidate: true });
+    }
+  }, [watchedItems, form]);
 
 
   const fetchInitialData = React.useCallback(async () => {
@@ -190,16 +188,16 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
 
       const [companiesRes, partiesRes, productsRes, vendorsRes] =
         await Promise.all([
-          fetch(`${baseURL}/api/companies/my`, {
+          fetch("http://localhost:5000/api/companies/my", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${baseURL}/api/parties`, {
+          fetch("http://localhost:5000/api/parties", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${baseURL}/api/products`, {
+          fetch("http://localhost:5000/api/products", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${baseURL}/api/vendors`, {
+          fetch("http://localhost:5000/api/vendors", {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -257,20 +255,31 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
         partyId = typeof transactionToEdit.vendor === 'object' ? transactionToEdit.vendor._id : transactionToEdit.vendor;
       }
 
-      const price = transactionToEdit.pricePerUnit || (transactionToEdit.amount / (transactionToEdit.quantity || 1));
+      const itemsToSet = (transactionToEdit.items && transactionToEdit.items.length > 0)
+        ? transactionToEdit.items.map((item: Item) => ({
+            product: typeof item.product === 'object' ? item.product._id : (item.product || ""),
+            quantity: item.quantity,
+            unitType: item.unitType,
+            pricePerUnit: item.pricePerUnit,
+            amount: item.amount,
+          }))
+        : [];
+        
+      if (itemsToSet.length > 0) {
+        replace(itemsToSet);
+      } else {
+        replace([]); // Clear items if none exist
+      }
 
       form.reset({
         type: transactionToEdit.type,
         company: typeof transactionToEdit.company === 'object' ? transactionToEdit.company._id : transactionToEdit.company,
         date: new Date(transactionToEdit.date),
-        amount: transactionToEdit.amount,
-        quantity: transactionToEdit.quantity,
-        pricePerUnit: price,
-        unitType: transactionToEdit.unitType || "Piece",
+        totalAmount: transactionToEdit.totalAmount || transactionToEdit.amount,
+        items: itemsToSet,
         description: transactionToEdit.description || '',
         narration: transactionToEdit.narration || '',
         party: partyId,
-        product: typeof transactionToEdit.product === 'object' ? transactionToEdit.product?._id : transactionToEdit.product,
         referenceNumber: transactionToEdit.referenceNumber,
         fromAccount: transactionToEdit.debitAccount,
         toAccount: transactionToEdit.creditAccount,
@@ -279,12 +288,9 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
       form.reset({
         party: "",
         description: "",
-        amount: 0,
-        quantity: 1,
-        pricePerUnit: 0,
-        unitType: "Piece",
+        totalAmount: 0,
+        items: [{ product: "", quantity: 1, pricePerUnit: 0, unitType: "Piece", amount: 0 }],
         type: type,
-        product: "",
         referenceNumber: "",
         fromAccount: "",
         toAccount: "",
@@ -293,7 +299,7 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
         date: new Date(),
       });
     }
-  }, [transactionToEdit, type, form, selectedCompanyId]);
+  }, [transactionToEdit, type, form, selectedCompanyId, replace]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -317,7 +323,7 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
         endpoint = `${transactionTypeEndpoint}/${transactionToEdit._id}`;
       }
       
-      const payload: any = { ...values };
+      const payload: any = { ...values, amount: values.totalAmount };
       if(values.description) payload.description = values.description;
       if(values.narration) payload.narration = values.narration;
 
@@ -329,10 +335,11 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
         payload.debitAccount = values.fromAccount;
         payload.creditAccount = values.toAccount;
         if(values.description) payload.narration = values.description;
+        payload.amount = values.totalAmount;
         delete payload.fromAccount;
         delete payload.toAccount;
         delete payload.party;
-        delete payload.product;
+        delete payload.items;
         delete payload.referenceNumber;
       }
 
@@ -408,7 +415,8 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
 
   const handleProductCreated = (newProduct: Product) => {
     setProducts((prev) => [...prev, newProduct]);
-    form.setValue("product", newProduct._id, { shouldValidate: true });
+    // Since we don't know which item triggered this, we can't set the value directly.
+    // The user will have to select it from the dropdown.
     toast({
       title: "Product Created",
       description: `${newProduct.name} has been added.`,
@@ -448,155 +456,164 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
     );
   }
 
-  const renderSharedFields = (includeParty: boolean, includeProduct?: boolean, includeReference?: boolean, includeQuantityAndPrice?: boolean) => (
-    <div className="space-y-6">
-        <div className="space-y-2">
-            <h3 className="text-base font-medium pb-2 border-b">
-            Core Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <FormField control={form.control} name="company" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Company</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select a company" /></SelectTrigger></FormControl>
-                        <SelectContent>{companies.map((c) => (<SelectItem key={c._id} value={c._id}>{c.businessName}</SelectItem>))}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
+  const renderSalesPurchasesFields = () => (
+    <div className="space-y-4">
+        {/* Core Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="company" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Company</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select a company" /></SelectTrigger></FormControl>
+                    <SelectContent>{companies.map((c) => (<SelectItem key={c._id} value={c._id}>{c.businessName}</SelectItem>))}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+            )} />
+            <FormField control={form.control} name="date" render={({ field }) => (
+                <FormItem className="flex flex-col">
+                    <FormLabel>Transaction Date</FormLabel>
+                    <Popover><PopoverTrigger asChild><FormControl>
+                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>
+                            {field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                    </FormControl></PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus/>
+                    </PopoverContent></Popover>
+                    <FormMessage />
+                </FormItem>
+            )} />
+        </div>
+         <FormField control={form.control} name="party" render={({ field }) => (
+            <FormItem>
+                <FormLabel>{partyLabel}</FormLabel>
+                <Combobox
+                    options={partyOptions}
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    placeholder={`Select or create...`}
+                    searchPlaceholder={`Search...`}
+                    noResultsText={`No results found.`}
+                    creatable
+                    onCreate={async (name) => {
+                    handleTriggerCreateParty(name);
+                    return Promise.resolve();
+                    }}
                 />
-                <FormField control={form.control} name="date" render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Transaction Date</FormLabel>
-                        <Popover><PopoverTrigger asChild><FormControl>
-                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>
-                                {field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                        </FormControl></PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus/>
-                        </PopoverContent></Popover>
-                        <FormMessage />
-                    </FormItem>
-                )}
-                />
-                {includeParty && (
-                    <FormField control={form.control} name="party" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>{partyLabel}</FormLabel>
-                            <Combobox
-                                options={partyOptions}
-                                value={field.value || ""}
-                                onChange={field.onChange}
-                                placeholder={`Select or create...`}
-                                searchPlaceholder={`Search...`}
-                                noResultsText={`No results found.`}
-                                creatable
-                                onCreate={async (name) => {
-                                handleTriggerCreateParty(name);
-                                return Promise.resolve();
-                                }}
-                            />
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                )}
-                
-                {includeQuantityAndPrice && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="quantity" render={({ field }) => (
+                <FormMessage />
+            </FormItem>
+        )} />
+
+        <Separator />
+        
+        {/* Items Array */}
+        <div className="space-y-4">
+            <h3 className="text-base font-medium">Items</h3>
+            {fields.map((item, index) => (
+                <Card key={item.id} className="relative">
+                    <CardContent className="p-4 space-y-4">
+                         <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+
+                         <FormField control={form.control} name={`items.${index}.product`} render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Quantity</FormLabel>
-                                <FormControl><Input type="number" placeholder="1" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                                <FormLabel>Product / Service</FormLabel>
+                                <Combobox
+                                    options={products.map((p) => ({ value: p._id, label: p.name }))}
+                                    value={field.value || ""}
+                                    onChange={(value) => field.onChange(value)}
+                                    placeholder="Select or create a product..."
+                                    searchPlaceholder="Search products..."
+                                    noResultsText="No product found."
+                                    creatable
+                                    onCreate={async () => {
+                                        handleTriggerCreateProduct();
+                                        return Promise.resolve();
+                                    }}
+                                />
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="unitType" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Unit</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                                    <SelectContent>{unitTypes.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
-                     <FormField control={form.control} name="pricePerUnit" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Price per Unit</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                  </>
-                )}
-                 <FormField control={form.control} name="amount" render={({ field }) => (
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Quantity</FormLabel>
+                                    <FormControl><Input type="number" placeholder="1" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                             <FormField control={form.control} name={`items.${index}.unitType`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Unit</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                        <SelectContent>{unitTypes.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                             <FormField control={form.control} name={`items.${index}.pricePerUnit`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Price/Unit</FormLabel>
+                                    <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Amount</FormLabel>
+                                    <FormControl><Input type="number" {...field} readOnly className="bg-muted" /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+             <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => append({ product: "", quantity: 1, pricePerUnit: 0, unitType: "Piece", amount: 0 })}
+            >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Item
+            </Button>
+        </div>
+        
+        <Separator />
+        
+        {/* Total Amount */}
+        <div className="flex justify-end">
+            <div className="w-full max-w-xs space-y-2">
+                 <FormField control={form.control} name="totalAmount" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Amount</FormLabel>
-                        <FormControl><Input type="number" placeholder="0.00" {...field} disabled={includeQuantityAndPrice} /></FormControl>
+                        <FormLabel className="text-lg font-bold">Total Amount</FormLabel>
+                        <FormControl><Input type="number" className="text-lg font-bold h-12 text-right bg-muted" {...field} readOnly /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
-
-                {includeReference && (
-                     <FormField control={form.control} name="referenceNumber" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Reference Number (Optional)</FormLabel>
-                            <FormControl><Input placeholder="e.g. Cheque No, Ref #" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                )}
-            </div>
-        </div>
-        
-        {(includeProduct) && (
-            <div className="space-y-2">
-                <h3 className="text-base font-medium pb-2 border-b">Item Details</h3>
-                <div className="pt-2 space-y-4">
-                    <FormField control={form.control} name="product" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Product / Service</FormLabel>
-                            <Combobox
-                                options={products.map((p) => ({ value: p._id, label: p.name }))}
-                                value={field.value || ""}
-                                onChange={(value) => { field.onChange(value); }}
-                                placeholder="Select or create a product..."
-                                searchPlaceholder="Search products..."
-                                noResultsText="No product found."
-                                creatable
-                                onCreate={async () => {
-                                    handleTriggerCreateProduct();
-                                    return Promise.resolve();
-                                }}
-                            />
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </div>
-            </div>
-        )}
-
-        <div className="space-y-2">
-            <h3 className="text-base font-medium pb-2 border-b">Additional Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <FormField control={form.control} name="description" render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                        <FormLabel>Description / Narration</FormLabel>
-                        <FormControl><Textarea placeholder="Describe the transaction..." {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-                />
             </div>
         </div>
     </div>
   );
+
+  const renderReceiptPaymentFields = () => (
+    <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <FormField control={form.control} name="company" render={({ field }) => (<FormItem><FormLabel>Company</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a company" /></SelectTrigger></FormControl><SelectContent>{companies.map((c) => (<SelectItem key={c._id} value={c._id}>{c.businessName}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Transaction Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus/></PopoverContent></Popover><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="party" render={({ field }) => (<FormItem><FormLabel>{partyLabel}</FormLabel><Combobox options={partyOptions} value={field.value || ""} onChange={field.onChange} placeholder={`Select or create...`} searchPlaceholder={`Search...`} noResultsText={`No results found.`} creatable onCreate={async (name) => { handleTriggerCreateParty(name); return Promise.resolve(); }} /><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="totalAmount" render={({ field }) => (<FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        </div>
+        <FormField control={form.control} name="referenceNumber" render={({ field }) => (<FormItem><FormLabel>Reference Number (Optional)</FormLabel><FormControl><Input placeholder="e.g. Cheque No, Ref #" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description / Narration</FormLabel><FormControl><Textarea placeholder="Describe the transaction..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+    </div>
+  )
 
   return (
     <>
@@ -618,16 +635,16 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
                 </TabsList>
                 
                 <TabsContent value="sales" className="pt-6">
-                    {renderSharedFields(true, true, false, true)}
+                    {renderSalesPurchasesFields()}
                 </TabsContent>
                 <TabsContent value="purchases" className="pt-6">
-                    {renderSharedFields(true, true, false, true)}
+                    {renderSalesPurchasesFields()}
                 </TabsContent>
                 <TabsContent value="receipt" className="pt-6">
-                    {renderSharedFields(true, false, true, false)}
+                    {renderReceiptPaymentFields()}
                 </TabsContent>
                 <TabsContent value="payment" className="pt-6">
-                    {renderSharedFields(true, false, true, false)}
+                    {renderReceiptPaymentFields()}
                 </TabsContent>
                 <TabsContent value="journal" className="pt-6">
                      <div className="space-y-6">
@@ -643,7 +660,7 @@ export function TransactionForm({ transactionToEdit, onFormSubmit }: Transaction
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                                 <FormField control={form.control} name="fromAccount" render={({ field }) => (<FormItem><FormLabel>Debit Account</FormLabel><FormControl><Input placeholder="e.g., Rent Expense" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="toAccount" render={({ field }) => (<FormItem><FormLabel>Credit Account</FormLabel><FormControl><Input placeholder="e.g., Cash" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="amount" render={({ field }) => (<FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="totalAmount" render={({ field }) => (<FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                         </div>
                         <div className="space-y-2">

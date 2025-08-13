@@ -153,7 +153,7 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="sm:grid gap-6 sm:grid-cols-5 flex flex-col">
+      {/* <div className="sm:grid gap-6 sm:grid-cols-5 flex flex-col">
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Revenue Trend</CardTitle>
@@ -172,7 +172,7 @@ export default function AdminDashboardPage() {
             <ClientStatusChart active={activeClients} inactive={totalClients - activeClients} />
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   );
 }

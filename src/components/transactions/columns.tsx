@@ -2,7 +2,7 @@
 "use client"
 
 import { ColumnDef, FilterFn, Row } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Copy, Edit, Trash2, FileDown, Building, Package } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Copy, Edit, Trash2, Building, Package, Eye, List } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -15,41 +15,48 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import type { Transaction } from "@/lib/types"
+import type { Transaction, Item } from "@/lib/types"
 
 interface ColumnsProps {
-  generateInvoicePDF: (transaction: Transaction) => void;
+  onPreview: (transaction: Transaction) => void;
+  onViewItems: (items: Item[]) => void;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
   companyMap: Map<string, string>;
 }
 
 const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
+    if (!filterValue) return true;
+
     const transaction = row.original;
     const searchTerm = String(filterValue).toLowerCase();
 
     let partyName = '';
     const partyOrVendor = transaction.party || transaction.vendor;
     if (partyOrVendor && typeof partyOrVendor === 'object') {
-        if ('name' in partyOrVendor) {
-            partyName = partyOrVendor.name || '';
-        } else if ('vendorName' in partyOrVendor) {
-            partyName = partyOrVendor.vendorName || '';
+        if ('name' in partyOrVendor && partyOrVendor.name) {
+            partyName = partyOrVendor.name;
+        } else if ('vendorName' in partyOrVendor && partyOrVendor.vendorName) {
+            partyName = partyOrVendor.vendorName;
         }
     }
 
     const description = transaction.description || '';
-    const productName = transaction.product?.name || '';
     
+    // Check root product and items array products
+    const hasMatchingProduct =
+        (transaction.product?.name?.toLowerCase().includes(searchTerm)) ||
+        (transaction.items?.some(item => item.product?.name?.toLowerCase().includes(searchTerm)));
+
     return (
         partyName.toLowerCase().includes(searchTerm) ||
         description.toLowerCase().includes(searchTerm) ||
-        productName.toLowerCase().includes(searchTerm)
+        !!hasMatchingProduct
     );
 };
 
 
-export const columns = ({ generateInvoicePDF, onEdit, onDelete, companyMap }: ColumnsProps): ColumnDef<Transaction>[] => [
+export const columns = ({ onPreview, onViewItems, onEdit, onDelete, companyMap }: ColumnsProps): ColumnDef<Transaction>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -98,15 +105,12 @@ export const columns = ({ generateInvoicePDF, onEdit, onDelete, companyMap }: Co
           } else if ('vendorName' in partyOrVendor) {
             partyName = partyOrVendor.vendorName;
           }
-        } else if (typeof partyOrVendor === 'string') {
-          // This case might need to fetch the name, but for now, it's a fallback.
-          partyName = 'Loading...';
         }
         
         return (
             <div>
-                <div className="font-medium">{partyName}</div>
-                <div className="text-sm text-muted-foreground">{transaction.description}</div>
+                <div className="font-medium">{partyName || 'N/A'}</div>
+                <div className="text-sm text-muted-foreground hidden sm:block">{transaction.description || transaction.narration || ''}</div>
             </div>
         )
     }
@@ -124,39 +128,45 @@ export const columns = ({ generateInvoicePDF, onEdit, onDelete, companyMap }: Co
       return (
         <div className="flex items-center gap-2">
             <Building className="h-4 w-4 text-muted-foreground" />
-            <span>{companyName}</span>
+            <span className="hidden lg:inline">{companyName}</span>
         </div>
       );
     }
   },
   {
-    accessorKey: "product",
-    header: "Product",
+    accessorKey: "items",
+    header: "Product(s)",
     cell: ({ row }) => {
-        const product = row.original.product;
-        if (!product) return 'N/A';
-        
-        const stockInfo = product.stock !== undefined ? `(Stock: ${product.stock})` : '';
+      const { items } = row.original;
+      if (!items || items.length === 0) return 'N/A';
 
+      if (items.length === 1 && items[0].product) {
         return (
-            <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground" />
-                <div>
-                    <div>{product.name}</div>
-                    {stockInfo && <div className="text-xs text-muted-foreground">{stockInfo}</div>}
-                </div>
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div>{items[0].product.name}</div>
             </div>
-        )
-    }
+          </div>
+        );
+      }
+
+      return (
+        <Button variant="link" className="p-0 h-auto" onClick={() => onViewItems(items)}>
+            <List className="h-4 w-4 text-muted-foreground mr-2" />
+            Multiple Items ({items.length})
+        </Button>
+      );
+    },
   },
   {
-    accessorKey: "amount",
+    accessorKey: "totalAmount",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-right w-full justify-end"
+          className="text-right w-full justify-end px-0"
         >
           Amount
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -164,7 +174,7 @@ export const columns = ({ generateInvoicePDF, onEdit, onDelete, companyMap }: Co
       )
     },
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"))
+      const amount = parseFloat(String(row.original.totalAmount || row.original.amount || 0))
       const formatted = new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
@@ -200,6 +210,8 @@ export const columns = ({ generateInvoicePDF, onEdit, onDelete, companyMap }: Co
     id: "actions",
     cell: ({ row }) => {
       const transaction = row.original
+      const isSales = transaction.type === 'sales' || (transaction.items && transaction.items.length > 0);
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -216,9 +228,9 @@ export const columns = ({ generateInvoicePDF, onEdit, onDelete, companyMap }: Co
               <Copy className="mr-2 h-4 w-4" />
               <span>Copy transaction ID</span>
             </DropdownMenuItem>
-             <DropdownMenuItem onClick={() => generateInvoicePDF(transaction)} disabled={transaction.type !== 'sales'}>
-                <FileDown className="mr-2 h-4 w-4" />
-                <span>Generate Invoice</span>
+             <DropdownMenuItem onClick={() => onPreview(transaction)} disabled={!isSales}>
+                <Eye className="mr-2 h-4 w-4" />
+                <span>Preview Invoice</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onEdit(transaction)}>
