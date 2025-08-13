@@ -179,89 +179,127 @@ export const generatePdfForTemplate1 = (
   return doc;
 };
 
-
 const getItemsBodyTemplate2 = (transaction: Transaction) => {
-    if (!transaction.items || transaction.items.length === 0) {
-        const amount = transaction.amount || 0;
-        const quantity = transaction.quantity || 1;
-        const price = transaction.pricePerUnit || amount;
-        return [[
-            '1',
-            transaction.description || 'Item',
-            quantity,
-            formatCurrency(price),
-            formatCurrency(amount)
-        ]];
-    }
-    return transaction.items.map((item, index) => {
-        const quantity = item.quantity || 0;
-        const pricePerUnit = item.pricePerUnit || 0;
-        const amount = item.amount;
-        return [
-            (index + 1).toString(),
-            item.product?.name || 'Item',
-            quantity,
-            formatCurrency(pricePerUnit),
-            formatCurrency(amount)
-        ]
-    });
-}
+  if (!transaction.items || transaction.items.length === 0) {
+    const amount = transaction.amount || 0;
+    const quantity = transaction.quantity || 1;
+    const price = transaction.pricePerUnit || amount;
+    return [
+      [
+        "1",
+        transaction.description || "Item",
+        quantity,
+        formatCurrency(price),
+        formatCurrency(amount),
+      ],
+    ];
+  }
+  return transaction.items.map((item, index) => {
+    const quantity = item.quantity || 0;
+    const pricePerUnit = item.pricePerUnit || 0;
+    const amount = item.amount;
+    return [
+      (index + 1).toString(),
+      item.product?.name || "Item",
+      quantity,
+      formatCurrency(pricePerUnit),
+      formatCurrency(amount),
+    ];
+  });
+};
 
+export const generatePdfForTemplate2 = (
+  transaction: Transaction,
+  company: Company | null | undefined,
+  party: Party | null | undefined
+): jsPDF => {
+  const doc = new jsPDF();
+  const subtotal =
+    transaction.items?.reduce((sum, item) => sum + item.amount, 0) ||
+    transaction.amount ||
+    0;
+  const tax = subtotal * 0.13; // 13% tax
+  const totalAmount = subtotal + tax;
+  const partyAddress = party
+    ? [party.address, party.city, party.state].filter(Boolean).join(", ")
+    : "Address not available";
 
-export const generatePdfForTemplate2 = (transaction: Transaction, company: Company | null | undefined, party: Party | null | undefined): jsPDF => {
-    const doc = new jsPDF();
-    const subtotal = transaction.items?.reduce((sum, item) => sum + (item.amount), 0) || transaction.amount || 0;
-    const tax = subtotal * 0.13; // 13% tax
-    const totalAmount = subtotal + tax;
-    const partyAddress = party ? [party.address, party.city, party.state].filter(Boolean).join(', ') : 'Address not available';
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text(company?.businessName || "Your Company", 20, 30);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(company?.emailId || "", 20, 37);
+  doc.text(company?.mobileNumber || "", 20, 44);
 
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text(company?.businessName || 'Your Company', 20, 30);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(company?.emailId || '', 20, 37);
-    doc.text(company?.mobileNumber || '', 20, 44);
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text(
+    `Invoice #${transaction._id.slice(-6).toUpperCase()}`,
+    doc.internal.pageSize.getWidth() - 20,
+    30,
+    { align: "right" }
+  );
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    `Issued: ${new Intl.DateTimeFormat("en-US").format(
+      new Date(transaction.date)
+    )}`,
+    doc.internal.pageSize.getWidth() - 20,
+    37,
+    { align: "right" }
+  );
+  doc.text(
+    `Payment Due: ${new Intl.DateTimeFormat("en-US").format(
+      new Date(
+        new Date(transaction.date).setDate(
+          new Date(transaction.date).getDate() + 30
+        )
+      )
+    )}`,
+    doc.internal.pageSize.getWidth() - 20,
+    44,
+    { align: "right" }
+  );
 
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Invoice #${transaction._id.slice(-6).toUpperCase()}`, doc.internal.pageSize.getWidth() - 20, 30, { align: 'right'});
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Issued: ${new Intl.DateTimeFormat('en-US').format(new Date(transaction.date))}`, doc.internal.pageSize.getWidth() - 20, 37, { align: 'right' });
-    doc.text(`Payment Due: ${new Intl.DateTimeFormat('en-US').format(new Date(new Date(transaction.date).setDate(new Date(transaction.date).getDate() + 30)))}`, doc.internal.pageSize.getWidth() - 20, 44, { align: 'right' });
+  doc.line(15, 60, doc.internal.pageSize.getWidth() - 15, 60);
 
-    doc.line(15, 60, doc.internal.pageSize.getWidth() - 15, 60);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(party?.name || "Client Name", 20, 75);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(party?.email || "", 20, 82);
+  doc.text(partyAddress, 20, 89);
 
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(party?.name || 'Client Name', 20, 75);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(party?.email || '', 20, 82);
-    doc.text(partyAddress, 20, 89);
+  const body = getItemsBodyTemplate2(transaction);
+  body.push(["", "", "", "HST", formatCurrency(tax)]);
 
-    const body = getItemsBodyTemplate2(transaction);
-    body.push(['', '', '', 'HST', formatCurrency(tax)]);
+  autoTable(doc, {
+    startY: 100,
+    head: [["S.No.", "Item Description", "Qty", "Rate", "Sub-total"]],
+    body: body,
+    foot: [["", "", "", "Total", formatCurrency(totalAmount)]],
+    theme: "grid",
+    headStyles: { fillColor: [238, 238, 238], textColor: [0, 0, 0] },
+    footStyles: {
+      fillColor: [238, 238, 238],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+    },
+  });
 
-    autoTable(doc, {
-        startY: 100,
-        head: [['S.No.', 'Item Description', 'Qty', 'Rate', 'Sub-total']],
-        body: body,
-        foot: [
-            ['', '', '', 'Total', formatCurrency(totalAmount)],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [238, 238, 238], textColor: [0,0,0] },
-        footStyles: { fillColor: [238, 238, 238], textColor: [0,0,0], fontStyle: 'bold' }
-    });
+  const finalY = (doc as any).lastAutoTable.finalY + 20;
+  doc.setFontSize(8);
+  doc.text(
+    "Thank you for your business! Payment is expected within 31 days.",
+    20,
+    finalY
+  );
 
-    const finalY = (doc as any).lastAutoTable.finalY + 20;
-    doc.setFontSize(8);
-    doc.text('Thank you for your business! Payment is expected within 31 days.', 20, finalY);
-
-    return doc;
-}
+  return doc;
+};
 
 export const generatePdfForTemplate3 = (
   transaction: Transaction,
@@ -318,16 +356,28 @@ export const generatePdfForTemplate3 = (
     },
   };
 
+  const fetchAsDataURL = async (url: string) => {
+    const res = await fetch(url, { mode: "cors" });
+    const blob = await res.blob();
+    return await new Promise<string>((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.readAsDataURL(blob);
+    });
+  };
+
   // Base font
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...TEXT);
 
-  // ===== Top Header Strip =====
-  const stripH = 16;
-  // const stripW = 150;                   // not full width (matches mock)
-  const stripX = 0;
-  const stripW = pw;
-  const stripY = 10;
+  // --- replace your existing "Top Header Strip" block with THIS ---
+  const stripY = 5;
+  const stripH = 15;
+  const rightLogoBlockW = 62; // reserved white area for logo & text (matches mock)
+  // const gap = 8;                  // gap between navy strip and logo block
+
+  const stripX = 5;
+  const stripW = pw - m - rightLogoBlockW - stripX; // not full width (stops before logo)
 
   // thin top hairline over page content (subtle)
   doc.setDrawColor(200, 200, 200);
@@ -351,6 +401,8 @@ export const generatePdfForTemplate3 = (
   // doc.text(invoiceData.companyWebsite, pw / 2, stripY + stripH + 7, {
   //   align: "center",
   // });
+
+  
 
   // ===== Header Right: Logo Text Placeholder =====
   // (text-only placeholder to match layout)
@@ -446,7 +498,7 @@ export const generatePdfForTemplate3 = (
   // });
 
   // Totals block (right aligned)
-  const subtotal = transaction.items?.reduce((s, it) => s + (it.amount), 0) || 0;
+  const subtotal = transaction.items?.reduce((s, it) => s + it.amount, 0) || 0;
   const tax = subtotal * 0.1;
   const grandTotal = subtotal + tax;
   const totalsTop = y;
@@ -454,12 +506,7 @@ export const generatePdfForTemplate3 = (
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.text("SUBTOTAL", 140, totalsTop, { align: "right" });
-  doc.text(
-    money(subtotal),
-    pw - m,
-    totalsTop,
-    { align: "right" }
-  );
+  doc.text(money(subtotal), pw - m, totalsTop, { align: "right" });
 
   doc.text("TAX", 140, totalsTop + 10, { align: "right" });
   doc.text(money(tax), pw - m, totalsTop + 10, { align: "right" });
