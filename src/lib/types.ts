@@ -74,7 +74,7 @@ export type User = {
   email?: string;
   avatar?: string;
   initials?: string;
-  role?: "master" | "customer" | "Manager" | "Accountant" | "Viewer";
+  role?: "master" | "customer" | "Manager" | "Accountant" | "Viewer" |  "admin" | "manager" | "user";
   token?: string;
   status?: "Active" | "Inactive";
   companies?: string[];
