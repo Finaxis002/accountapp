@@ -57,11 +57,11 @@ export function CustomerSettings() {
         setIsAlertOpen(true);
     };
 
-    const handleFormSuccess = () => {
+    const handleFormSuccess = (customer: Party) => {
         setIsFormOpen(false);
         fetchCustomers();
         const action = selectedCustomer ? 'updated' : 'created';
-        toast({ title: `Customer ${action} successfully`, description: `The customer details have been ${action}.` });
+        toast({ title: `Customer ${action} successfully`, description: `${customer.name}'s details have been ${action}.` });
     }
 
     const handleDeleteCustomer = async () => {
@@ -142,7 +142,7 @@ export function CustomerSettings() {
                                                 </div>
                                                 {customer.isTDSApplicable && (
                                                     <div className="text-xs">
-                                                        {/* <div>{customer.tdsRate}%</div> */}
+                                                        <div>{customer.tdsRate}%</div>
                                                         <div className="text-muted-foreground">{customer.tdsSection}</div>
                                                     </div>
                                                 )}
