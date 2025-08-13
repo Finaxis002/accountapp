@@ -21,7 +21,7 @@ interface ClientCardProps {
   onEdit: () => void;
   onDelete: (id: string) => void;
   onResetPassword: (id: string) => void;
-  onViewPermissions: (id: string) => void;
+  onManagePermissions: () => void;
 }
 
 const formatDate = (dateString?: string) => {
@@ -33,13 +33,7 @@ const formatDate = (dateString?: string) => {
   }).format(new Date(dateString));
 };
 
-export function ClientCard({
-  client,
-  onEdit,
-  onDelete,
-  onResetPassword,
-  onViewPermissions,
-}: ClientCardProps) {
+export function ClientCard({ client, onEdit, onDelete, onResetPassword, onManagePermissions }: ClientCardProps) {
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex-grow">
@@ -108,8 +102,8 @@ export function ClientCard({
               Reset Password
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={() => onViewPermissions(client._id)}>
-              View Permissions
+            <DropdownMenuItem onClick={onManagePermissions}>
+              Manage Permissions
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(client._id)}

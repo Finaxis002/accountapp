@@ -5,15 +5,18 @@ import * as React from "react"
 import {
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table"
+import { Cell } from "@tanstack/react-table"
 
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -22,8 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Card } from "../ui/card"
 
 interface DataTableProps<TData, TValue> {
@@ -63,16 +64,16 @@ export function DataTable<TData, TValue>({
 
   return (
     <Card className="w-full">
-      {/* <div className="flex items-center p-4">
+      <div className="flex items-center p-4">
         <Input
-          placeholder="Filter by party or description..."
+          placeholder="Filter by party, product, or description..."
           value={(table.getColumn("party")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("party")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
-      </div> */}
+      </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -100,9 +101,9 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                 >
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getVisibleCells().map((cell: Cell<TData, TValue>) => (
                     <TableCell key={cell.id}>
-                      {renderCell(cell)}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -117,46 +118,30 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 p-4 border-t">
-        <div className="flex-1 text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+        <div className="text-sm text-muted-foreground flex-1">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}
             {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
+        <div className="flex items-center space-x-2">
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            >
+            Previous
+            </Button>
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            >
+            Next
+            </Button>
+        </div>
       </div>
     </Card>
   )
-}
-
-// A new helper function to handle potentially problematic cell rendering
-function renderCell(cell: any) {
-    try {
-        return flexRender(cell.column.columnDef.cell, cell.getContext());
-    } catch (error) {
-        console.error("Error rendering cell:", error);
-        // Fallback for the 'party' column if it fails
-        if (cell.column.id === 'party') {
-            const partyData = cell.row.original.party;
-            if (typeof partyData === 'object' && partyData !== null) {
-                return partyData.name || 'Invalid Party';
-            }
-            return partyData || 'Invalid Party';
-        }
-        return 'Error';
-    }
 }

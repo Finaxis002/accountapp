@@ -21,6 +21,7 @@ import {
   Shield,
   Building,
   Users2,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -39,11 +40,14 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from "../ui/sidebar";
+import { usePermissions } from '@/contexts/permission-context';
+
 
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { permissions, isLoading: permissionsLoading } = usePermissions();
 
   useEffect(() => {
     setCurrentUser(getCurrentUser());
@@ -203,18 +207,22 @@ export function AppSidebar() {
         </SidebarMenuButton>
       </SidebarMenuItem> */}
 
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/users")}
-          tooltip="Users"
-        >
-          <Link href="/users">
-            <Users2 />
-            <span>Users</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+       {permissionsLoading ? (
+            <div className="flex items-center gap-2 p-2"><Loader2 className="h-4 w-4 animate-spin" /> <span>Loading...</span></div>
+        ) : (
+          <>
+            {permissions?.canCreateUsers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive('/users')} tooltip="Users">
+                  <Link href="/users">
+                    <Users />
+                    <span>Users</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+          </>
+        )}
 
       <Collapsible defaultOpen={isReportsActive}>
         <SidebarMenuItem>

@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -16,7 +17,14 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+       {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+      }
     ],
+  },
+  experimental: {
+    serverComponentsExternalPackages: ['jspdf', 'jspdf-autotable', 'html2canvas'],
   },
 };
 

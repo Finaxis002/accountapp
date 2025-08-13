@@ -10,13 +10,23 @@ export type Product = {
   stock?: string;
 };
 
+export type Item = {
+  product: Product;
+  quantity: number;
+  unitType: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
+  pricePerUnit: number;
+  amount: number;
+}
+
 export type Transaction = {
   _id: string;
   date: Date;
   party?: { _id: string; name: string } | string;
   vendor?: { _id: string; vendorName: string } | string;
   description?: string;
-  amount: number;
+   amount: number; // Fallback for old transactions, new ones use totalAmount
+  totalAmount?: number;
+  items?: Item[];
   quantity?: number;
   pricePerUnit?: number;
   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
@@ -87,8 +97,13 @@ export type Client = {
   totalPurchases?: number;
   maxCompanies?: number;
   maxUsers?: number;
+    maxInventories?: number;
   canSendInvoiceEmail?: boolean;
   canSendInvoiceWhatsapp?: boolean;
+  canCreateUsers?: boolean;
+  canCreateProducts?: boolean;
+   canCreateCustomers?: boolean;
+  canCreateVendors?: boolean;
 };
 
 export type Invoice = {
