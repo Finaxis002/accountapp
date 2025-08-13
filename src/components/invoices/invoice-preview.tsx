@@ -35,37 +35,44 @@ export function InvoicePreview({
 
   React.useEffect(() => {
     let objectUrl: string | null = null;
-    const generatePdf = async () => {
-      if (!transaction) return;
 
-      setIsLoading(true);
-      let doc;
-      switch (selectedTemplate) {
-        case "template1":
-          doc = generatePdfForTemplate1(transaction, company, party);
-          break;
-        case "template2":
-          doc = generatePdfForTemplate2(transaction, company, party);
-          break;
-        case "template3":
-          doc = generatePdfForTemplate3(transaction, company, party);
-          break;
-        default:
-          doc = generatePdfForTemplate1(transaction, company, party);
+    const generatePdf = async () => {
+      if (!transaction) {
+        setIsLoading(false);
+        return;
       }
 
-      const pdfBlob = doc.output("blob");
-      objectUrl = URL.createObjectURL(pdfBlob);
-      setPdfUrl(objectUrl);
-      setIsLoading(false);
+      setIsLoading(true);
+      try {
+        // 👉 Always produce a Promise, then await it
+        const docPromise =
+          selectedTemplate === "template1"
+            ? Promise.resolve(
+                generatePdfForTemplate1(transaction, company, party)
+              )
+            : selectedTemplate === "template2"
+            ? Promise.resolve(
+                generatePdfForTemplate2(transaction, company, party)
+              )
+            : generatePdfForTemplate3(transaction, company, party); // <-- async
+
+        const doc = await docPromise; // <-- IMPORTANT
+
+        const pdfBlob = doc.output("blob");
+        objectUrl = URL.createObjectURL(pdfBlob);
+        setPdfUrl(objectUrl);
+      } catch (err) {
+        console.error(err);
+        setPdfUrl(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     generatePdf();
 
     return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [selectedTemplate, transaction, company, party]);
 

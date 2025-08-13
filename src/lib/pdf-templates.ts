@@ -40,6 +40,21 @@ const getItemsBody = (transaction: Transaction) => {
   });
 };
 
+const fetchImageAsDataURL = async (url: string) => {
+  const res = await fetch(url, { mode: "cors" });
+  if (!res.ok) throw new Error("fetch failed");
+  const blob = await res.blob();
+  const mime = blob.type || "image/jpeg";
+  const fmt = mime.includes("png") ? "PNG" : "JPEG";
+  const dataURL: string = await new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.readAsDataURL(blob);
+  });
+  return { dataURL, fmt: fmt as "PNG" | "JPEG" };
+};
+
+
 export const generatePdfForTemplate1 = (
   transaction: Transaction,
   company: Company | null | undefined,
@@ -301,11 +316,12 @@ export const generatePdfForTemplate2 = (
   return doc;
 };
 
-export const generatePdfForTemplate3 = (
+export const generatePdfForTemplate3 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined
-): jsPDF => {
+): Promise<jsPDF> => {
+
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
@@ -373,7 +389,7 @@ export const generatePdfForTemplate3 = (
   // --- replace your existing "Top Header Strip" block with THIS ---
   const stripY = 5;
   const stripH = 15;
-  const rightLogoBlockW = 62; // reserved white area for logo & text (matches mock)
+  const rightLogoBlockW = 10; // reserved white area for logo & text (matches mock)
   // const gap = 8;                  // gap between navy strip and logo block
 
   const stripX = 5;
@@ -401,6 +417,35 @@ export const generatePdfForTemplate3 = (
   // doc.text(invoiceData.companyWebsite, pw / 2, stripY + stripH + 7, {
   //   align: "center",
   // });
+// --- right logo area ---
+const logoBoxX = pw - m - rightLogoBlockW; // reserved white area
+const maxLogoW = 24;
+const maxLogoH = 24;
+const logoTopY = stripY - 3;
+
+// try to load your URL; fallback to vector if blocked
+try {
+  const logoUrl = "https://i.pinimg.com/736x/71/b3/e4/71b3e4159892bb319292ab3b76900930.jpg";
+  const dataURL = await fetchAsDataURL(logoUrl);
+  const props = doc.getImageProperties(dataURL);
+  const scale = Math.min(maxLogoW / props.width, maxLogoH / props.height);
+  const w = props.width * scale;
+  const h = props.height * scale;
+  const x = logoBoxX + 6;                          // left inside the block
+  const y = logoTopY;                               // top align
+   doc.addImage(dataURL, "JPEG", x, y, w, h);
+} catch {
+  // vector fallback (simple shield + check)
+  const x = logoBoxX + 5, y = logoTopY, s = 20;
+  doc.setFillColor(...NAVY);
+  doc.roundedRect(x, y, s, s, 3, 3, "F");
+  doc.setFillColor(...GOLD);
+  doc.circle(x + s - 6, y + 6, 3, "F");
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(2);
+  doc.line(x + 6, y + 10, x + 10, y + 14);
+  doc.line(x + 10, y + 14, x + 16, y + 8);
+}
 
   
 
@@ -409,11 +454,11 @@ export const generatePdfForTemplate3 = (
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...NAVY);
-  doc.text("LOGO TEXT", pw - m, stripY + 6, { align: "right" });
+  // doc.text("LOGO TEXT", pw - m, stripY + 6, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.8);
   doc.setTextColor(...MUTED);
-  doc.text("BUSINESS TAGLINE", pw - m, stripY + 12, { align: "right" });
+  // doc.text("BUSINESS TAGLINE", pw - m, stripY + 12, { align: "right" });
 
   // ===== Invoice To (left) & Invoice No/Date (right) =====
   const headY = stripY + stripH + 22;
