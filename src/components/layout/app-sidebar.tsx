@@ -22,12 +22,13 @@ import {
   Building,
   Users2,
   Loader2,
+  Package,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { getCurrentUser, logout } from "@/lib/auth";
-import type { User } from "@/lib/types";
+import type { User} from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import {
@@ -40,8 +41,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from "../ui/sidebar";
-import { usePermissions } from '@/contexts/permission-context';
-
+import { usePermissions } from "@/contexts/permission-context";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -207,22 +207,41 @@ export function AppSidebar() {
         </SidebarMenuButton>
       </SidebarMenuItem> */}
 
-       {permissionsLoading ? (
-            <div className="flex items-center gap-2 p-2"><Loader2 className="h-4 w-4 animate-spin" /> <span>Loading...</span></div>
-        ) : (
-          <>
-            {permissions?.canCreateUsers && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive('/users')} tooltip="Users">
-                  <Link href="/users">
-                    <Users />
-                    <span>Users</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-          </>
-        )}
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive("/inventory")}
+          tooltip="Inventory"
+        >
+          <Link href="/inventory">
+            <Package />
+            <span>Inventory</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+
+      {permissionsLoading ? (
+        <div className="flex items-center gap-2 p-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> <span>Loading...</span>
+        </div>
+      ) : (
+        <>
+          {permissions?.canCreateUsers && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/users")}
+                tooltip="Users"
+              >
+                <Link href="/users">
+                  <Users />
+                  <span>Users</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+        </>
+      )}
 
       <Collapsible defaultOpen={isReportsActive}>
         <SidebarMenuItem>
