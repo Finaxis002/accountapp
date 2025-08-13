@@ -148,14 +148,7 @@ export default function LoginPage() {
               )}
               Sign In
             </Button>
-             <div className="text-center text-xs text-muted-foreground/80 pt-4">
-                <p>
-                  {loginType === 'admin' 
-                    ? <>Admin: <code className="bg-muted p-1 rounded-sm">masteradmin</code> / <code className="bg-muted p-1 rounded-sm">admin123</code></>
-                    : <>Client: <code className="bg-muted p-1 rounded-sm">techcorpclient</code> / <code className="bg-muted p-1 rounded-sm">client123</code></>
-                  }
-                </p>
-             </div>
+            
           </CardContent>
         </form>
       </Card>
