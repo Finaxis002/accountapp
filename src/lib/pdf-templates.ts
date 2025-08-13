@@ -578,7 +578,7 @@ try {
   const padX = 10;
   const r = 2.2;
   const gap = 4;
-  const baseline = fbY + fbH / 2 + 3;
+  const baseline = fbY + fbH / 2 + 1;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -594,7 +594,7 @@ try {
   const fit = (s: string) => {
     let t = s;
     while (doc.getTextWidth(t) > maxTextW && t.length > 1) t = t.slice(0, -1);
-    return t.length < s.length ? t.trimEnd() + "…" : t;
+    return t.length < s.length ? t.trimEnd() + "" : t;
   };
 
   footerVals.forEach((val, i) => {
