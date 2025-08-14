@@ -99,7 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <CompanyProvider>
       <PermissionProvider>
         <SidebarProvider>
-          <div className="flex min-h-screen bg-background text-foreground">
+          <div className="flex min-h-screen bg-background text-foreground ">
             <AppSidebar />
             <div className="flex-1 flex flex-col w-full">
               <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 z-20">
@@ -222,7 +222,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenu>
                 </div>
               </header>
-              <main className="flex-1  p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
+              <main className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
                 {children}
               </main>
             </div>

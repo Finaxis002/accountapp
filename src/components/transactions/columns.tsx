@@ -11,7 +11,7 @@ import {
   Building,
   Package,
   Eye,
-  List,
+  Server,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,45 +26,49 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import type { Transaction, Item, Company, Party } from "@/lib/types";
 import { generatePdfForTemplate1 } from "@/lib/pdf-templates";
+import { getUnifiedLines } from "@/lib/utils";
+import {
+  ReactElement,
+  JSXElementConstructor,
+  ReactNode,
+  ReactPortal,
+  AwaitedReactNode,
+  Key,
+} from "react";
+import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+
 
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
-  onViewItems: (items: Item[]) => void;
+  onViewItems: (tx: Transaction) => void;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
   companyMap: Map<string, string>;
+  serviceNameById: Map<string, string>;
 }
 
 const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
   if (!filterValue) return true;
+  const tx = row.original;
+  const q = String(filterValue).toLowerCase();
 
-  const transaction = row.original;
-  const searchTerm = String(filterValue).toLowerCase();
-
+  // party / vendor
   let partyName = "";
-  const partyOrVendor = transaction.party || transaction.vendor;
-  if (partyOrVendor && typeof partyOrVendor === "object") {
-    if ("name" in partyOrVendor && partyOrVendor.name) {
-      partyName = partyOrVendor.name;
-    } else if ("vendorName" in partyOrVendor && partyOrVendor.vendorName) {
-      partyName = partyOrVendor.vendorName;
-    }
+  const pv = tx.party || tx.vendor;
+  if (pv && typeof pv === "object") {
+    partyName = (pv as any).name || (pv as any).vendorName || "";
   }
 
-  const description = transaction.description || "";
+  const desc = (tx.description || tx.narration || "").toLowerCase();
 
-  // Check root product and items array products
-  const hasMatchingProduct =
-    transaction.product?.name?.toLowerCase().includes(searchTerm) ||
-    transaction.items?.some((item) =>
-      item.product?.name?.toLowerCase().includes(searchTerm)
-    );
-
-  return (
-    partyName.toLowerCase().includes(searchTerm) ||
-    description.toLowerCase().includes(searchTerm) ||
-    !!hasMatchingProduct
+  // products and services (new + legacy)
+  const lines = getUnifiedLines(tx, serviceNameById);
+  const matchLine = lines.some((l: { name: any }) =>
+    (l.name || "").toLowerCase().includes(q)
   );
+
+  return partyName.toLowerCase().includes(q) || desc.includes(q) || matchLine;
 };
 
 export const columns = ({
@@ -73,6 +77,7 @@ export const columns = ({
   onEdit,
   onDelete,
   companyMap,
+  serviceNameById
 }: ColumnsProps): ColumnDef<Transaction>[] => [
   {
     id: "select",
@@ -105,17 +110,22 @@ export const columns = ({
 
       if (transaction.type === "journal") {
         return (
-          <div>
-            <div className="font-medium">Journal Entry</div>
-            <div className="text-sm text-muted-foreground">
-              {transaction.debitAccount} / {transaction.creditAccount}
+          <div className="flex items-center gap-3">
+            <Avatar>
+              <AvatarFallback>JE</AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="font-medium">Journal Entry</div>
+              <div className="text-sm text-muted-foreground">
+                {transaction.debitAccount} / {transaction.creditAccount}
+              </div>
             </div>
           </div>
         );
       }
 
       const partyOrVendor = transaction.party || transaction.vendor;
-      let partyName = "";
+      let partyName = "N/A";
       if (partyOrVendor && typeof partyOrVendor === "object") {
         if ("name" in partyOrVendor) {
           partyName = partyOrVendor.name;
@@ -125,10 +135,17 @@ export const columns = ({
       }
 
       return (
-        <div>
-          <div className="font-medium">{partyName || "N/A"}</div>
-          <div className="text-sm text-muted-foreground hidden sm:block">
-            {transaction.description || transaction.narration || ""}
+        <div className="flex items-center gap-3">
+          <Avatar>
+            <AvatarFallback>
+              {partyName.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{partyName || "N/A"}</div>
+            <div className="text-sm text-muted-foreground hidden sm:block truncate max-w-xs">
+              {transaction.description || transaction.narration || ""}
+            </div>
           </div>
         </div>
       );
@@ -153,36 +170,72 @@ export const columns = ({
       );
     },
   },
-  {
-    accessorKey: "items",
-    header: "Product(s)",
+   {
+    id: "lines",
+    header: "Items / Services",
     cell: ({ row }) => {
-      const { items } = row.original;
-      if (!items || items.length === 0) return "N/A";
+      const tx = row.original as any;
+      const lines = getUnifiedLines(tx, serviceNameById)
+      if (!lines.length) return <span className="text-muted-foreground">-</span>;
+      
+      const MAX_DISPLAY = 2;
+      const displayLines = lines.slice(0, MAX_DISPLAY);
+      const remainingCount = lines.length - MAX_DISPLAY;
 
-      if (items.length === 1 && items[0].product) {
-        return (
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <div>{items[0].product.name}</div>
-            </div>
-          </div>
-        );
-      }
+      const fullList = (
+        <div className="space-y-2">
+          {lines.map((l: any, idx: number) => (
+             <div key={idx} className="flex items-center gap-2 text-sm">
+                {l.type === "product" ? (
+                  <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <Server className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{l.name}</div>
+                  {l.type === "product" && (
+                    <div className="text-xs text-muted-foreground">
+                      {l.quantity}{l.unitType ? ` ${l.unitType}` : ""}
+                      {l.pricePerUnit ? ` @ ${new Intl.NumberFormat("en-IN").format(Number(l.pricePerUnit))}`: ""}
+                    </div>
+                  )}
+                  {l.type === "service" && l.description && (
+                    <div className="text-xs text-muted-foreground truncate">{l.description}</div>
+                  )}
+                </div>
+              </div>
+          ))}
+        </div>
+      );
 
       return (
-        <Button
-          variant="link"
-          className="p-0 h-auto"
-          onClick={() => onViewItems(items)}
-        >
-          <List className="h-4 w-4 text-muted-foreground mr-2" />
-          Multiple Items ({items.length})
-        </Button>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="flex items-center -space-x-2" onClick={() => onViewItems(tx)}>
+                        {displayLines.map((l: any, idx: number) => (
+                            <Avatar key={idx} className="h-7 w-7 border-2 border-background">
+                                <AvatarFallback className="text-xs">
+                                    {l.type === 'product' ? <Package className="h-4 w-4"/> : <Server className="h-4 w-4"/>}
+                                </AvatarFallback>
+                            </Avatar>
+                        ))}
+                        {remainingCount > 0 && (
+                             <Avatar className="h-7 w-7 border-2 border-background">
+                                <AvatarFallback className="text-xs font-semibold">+{remainingCount}</AvatarFallback>
+                            </Avatar>
+                        )}
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent className="p-4" side="bottom" align="start">
+                    {fullList}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
       );
     },
-  },
+  }
+  ,
   {
     accessorKey: "totalAmount",
     header: ({ column }) => {
@@ -213,7 +266,11 @@ export const columns = ({
     accessorKey: "date",
     header: "Date",
     cell: ({ row }) =>
-      new Intl.DateTimeFormat("en-US").format(new Date(row.getValue("date"))),
+      new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(row.getValue("date"))),
   },
   {
     accessorKey: "type",
@@ -242,8 +299,7 @@ export const columns = ({
     cell: ({ row }) => {
       const transaction = row.original;
       const isSales =
-        transaction.type === "sales" ||
-        (transaction.items && transaction.items.length > 0);
+        transaction.type === "sales" || getUnifiedLines(transaction).length > 0;
 
       // helper to build minimal company/party objects for the PDF
       const buildCompany = (): Company | undefined => {
@@ -298,7 +354,6 @@ export const columns = ({
               <Eye className="mr-2 h-4 w-4" />
               <span>Preview Invoice</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleDownload} disabled={!isSales}>
               <Download className="mr-2 h-4 w-4" />
               <span>Download Invoice</span>

@@ -4,7 +4,14 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/transactions/data-table";
 import { columns } from "@/components/transactions/columns";
-import { PlusCircle, Loader2, Download, FileText, Package } from "lucide-react";
+import {
+  PlusCircle,
+  Loader2,
+  Download,
+  FileText,
+  Package,
+  Server,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +24,7 @@ import { TransactionForm } from "@/components/transactions/transaction-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCompany } from "@/contexts/company-context";
 import { useToast } from "@/hooks/use-toast";
-import type { Transaction, Company, Party, Item, Vendor } from "@/lib/types";
-
+import type { Transaction, Company, Party, Vendor } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -34,18 +40,7 @@ import "@/app/invoice.css";
 import "@/app/invoice-template-2.css";
 import "@/app/invoice-template-3.css";
 import { InvoicePreview } from "@/components/invoices/invoice-preview";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  generatePdfForTemplate1,
-  generatePdfForTemplate2,
-  generatePdfForTemplate3,
-} from "@/lib/pdf-templates";
+import { Item } from "@/lib/types";
 import {
   Table,
   TableHeader,
@@ -54,6 +49,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
+import { getUnifiedLines } from "@/lib/utils";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -75,13 +71,17 @@ export default function TransactionsPage() {
   const [transactionToPreview, setTransactionToPreview] =
     React.useState<Transaction | null>(null);
   const [itemsToView, setItemsToView] = React.useState<Item[]>([]);
-const [vendors, setVendors] = React.useState<Vendor[]>([]);
+  const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [sales, setSales] = React.useState<Transaction[]>([]);
   const [purchases, setPurchases] = React.useState<Transaction[]>([]);
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
   const [journals, setJournals] = React.useState<Transaction[]>([]);
   const [companies, setCompanies] = React.useState<Company[]>([]);
+  // top of component state
+  const [productsList, setProductsList] = React.useState<any[]>([]);
+  const [servicesList, setServicesList] = React.useState<any[]>([]);
+
   const [parties, setParties] = React.useState<Party[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { selectedCompanyId } = useCompany();
@@ -117,7 +117,9 @@ const [vendors, setVendors] = React.useState<Vendor[]>([]);
         journalsRes,
         companiesRes,
         partiesRes,
-        vendorsRes
+        vendorsRes,
+        productsRes, // NEW
+        servicesRes, // NEW
       ] = await Promise.all([
         buildRequest(`${baseURL}/api/sales?companyId=${selectedCompanyId}`),
         buildRequest(`${baseURL}/api/purchase?companyId=${selectedCompanyId}`),
@@ -127,6 +129,8 @@ const [vendors, setVendors] = React.useState<Vendor[]>([]);
         buildRequest(`${baseURL}/api/companies/my`),
         buildRequest(`${baseURL}/api/parties`),
         buildRequest(`${baseURL}/api/vendors`),
+        buildRequest(`${baseURL}/api/products`), // NEW
+        buildRequest(`${baseURL}/api/services`), // NEW
       ]);
 
       const salesData = await salesRes.json();
@@ -137,6 +141,16 @@ const [vendors, setVendors] = React.useState<Vendor[]>([]);
       const companiesData = await companiesRes.json();
       const partiesData = await partiesRes.json();
       const vendorsData = await vendorsRes.json();
+      // after parsing json:
+      const productsJson = await productsRes.json();
+      const servicesJson = await servicesRes.json();
+
+      setProductsList(
+        Array.isArray(productsJson) ? productsJson : productsJson.products || []
+      );
+      setServicesList(
+        Array.isArray(servicesJson) ? servicesJson : servicesJson.services || []
+      );
 
       setSales(
         salesData.entries?.map((s: any) => ({ ...s, type: "sales" })) || []
@@ -176,6 +190,18 @@ const [vendors, setVendors] = React.useState<Vendor[]>([]);
     }
   }, [selectedCompanyId, toast]);
 
+  const productNameById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of productsList) m.set(p._id, p.name);
+    return m;
+  }, [productsList]);
+
+  const serviceNameById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of servicesList) m.set(s._id, s.serviceName);
+    return m;
+  }, [servicesList]);
+
   React.useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
@@ -195,8 +221,37 @@ const [vendors, setVendors] = React.useState<Vendor[]>([]);
     setIsPreviewOpen(true);
   };
 
-  const handleViewItems = (items: Item[]) => {
-    setItemsToView(items);
+  // change signature:
+  const handleViewItems = (tx: any) => {
+    // tx.products: [{ product, quantity, unitType, pricePerUnit, amount }]
+    // tx.service OR tx.services: [{ serviceName, amount, description }]  (your DB uses `serviceName`)
+
+    const prods = (tx.products || []).map((p: any) => ({
+      itemType: "product" as const,
+      name: productNameById.get(p.product) || "(product)",
+      quantity: p.quantity ?? "",
+      unitType: p.unitType ?? "",
+      pricePerUnit: p.pricePerUnit ?? "",
+      description: "",
+      amount: Number(p.amount) || 0,
+    }));
+
+    const svcArr = tx.service ?? tx.services ?? []; // support either key
+    const svcs = svcArr.map((s: any) => ({
+      itemType: "service" as const,
+      name:
+        serviceNameById.get(
+          // s.serviceName is an ObjectId (per your DB snapshot)
+          typeof s.serviceName === "object" ? s.serviceName._id : s.serviceName
+        ) || "(service)",
+      quantity: "",
+      unitType: "",
+      pricePerUnit: "",
+      description: s.description || "",
+      amount: Number(s.amount) || 0,
+    }));
+
+    setItemsToView([...prods, ...svcs] as any);
     setIsItemsDialogOpen(true);
   };
 
@@ -268,18 +323,19 @@ const [vendors, setVendors] = React.useState<Vendor[]>([]);
 
   const tableColumns = React.useMemo(() => {
     const baseCols = columns({
-      onViewItems: handleViewItems,
+      onViewItems: (tx) => handleViewItems(tx),
       onPreview: handleOpenPreviewDialog,
       onEdit: handleOpenForm,
       onDelete: handleOpenDeleteDialog,
       companyMap,
+      serviceNameById, // Add this line
     });
-    // Hide company column if only one company exists for the client
+
     if (companies.length <= 1) {
       return baseCols.filter((col) => col.id !== "company");
     }
     return baseCols;
-  }, [companyMap, companies.length]);
+  }, [companyMap, companies.length, serviceNameById]); // Add serviceNameById to dependencies
 
   const renderContent = (data: Transaction[]) => {
     if (isLoading) {
@@ -414,7 +470,7 @@ const [vendors, setVendors] = React.useState<Vendor[]>([]);
                       {item.quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(item.pricePerUnit)}
+                      {formatCurrency(item?.pricePerUnit || 0)}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatCurrency(item.amount)}

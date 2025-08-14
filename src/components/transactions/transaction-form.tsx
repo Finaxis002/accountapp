@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +41,9 @@ import type {
   Vendor,
   Transaction,
   Item,
+  Service,
 } from "@/lib/types";
+
 import { Combobox } from "../ui/combobox";
 import {
   Dialog,
@@ -54,6 +56,7 @@ import { VendorForm } from "../vendors/vendor-form";
 import { CustomerForm } from "../customers/customer-form";
 import { useCompany } from "@/contexts/company-context";
 import { ProductForm } from "../products/product-form";
+import { ServiceForm } from "../services/service-form";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 
@@ -70,14 +73,67 @@ const unitTypes = [
 
 type StockItemInput = { product: string; quantity: number };
 
+const PRODUCT_DEFAULT = {
+  itemType: "product" as const,
+  product: "",
+  quantity: 1,
+  pricePerUnit: 0,
+  unitType: "Piece" as const,
+  amount: 0,
+};
 
-const itemSchema = z.object({
-  product: z.string().min(1, "Product is required."),
-  quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
-  unitType: z.enum(unitTypes).default("Piece"),
-  pricePerUnit: z.coerce.number().min(0, "Price cannot be negative."),
-  amount: z.coerce.number(),
-});
+// REPLACE the whole itemSchema with this:
+const itemSchema = z
+  .object({
+    itemType: z.enum(["product", "service"]),
+    product: z.string().optional(),
+    service: z.string().optional(),
+    quantity: z.coerce.number().optional(),
+    unitType: z.enum(unitTypes).optional(),
+    pricePerUnit: z.coerce.number().optional(),
+    description: z.string().optional(),
+    amount: z.coerce.number(), // product: auto; service: user-entered
+  })
+  .superRefine((data, ctx) => {
+    if (data.itemType === "product") {
+      if (!data.product) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["product"],
+          message: "Select a product",
+        });
+      }
+      if (!data.quantity || data.quantity <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["quantity"],
+          message: "Quantity must be > 0",
+        });
+      }
+      if (data.pricePerUnit == null || data.pricePerUnit < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pricePerUnit"],
+          message: "Price/Unit must be ≥ 0",
+        });
+      }
+    } else if (data.itemType === "service") {
+      if (!data.service) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["service"],
+          message: "Select a service",
+        });
+      }
+      if (!data.amount || data.amount <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["amount"],
+          message: "Enter a positive amount",
+        });
+      }
+    }
+  });
 
 const formSchema = z
   .object({
@@ -148,29 +204,26 @@ export function TransactionForm({
   const [isPartyDialogOpen, setIsPartyDialogOpen] = React.useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = React.useState(false);
   const [newEntityName, setNewEntityName] = React.useState("");
-
+  const [isServiceDialogOpen, setIsServiceDialogOpen] = React.useState(false);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [parties, setParties] = React.useState<Party[]>([]);
   const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
+  const [services, setServices] = React.useState<Service[]>([]);
+
   const [isLoading, setIsLoading] = React.useState(true);
+
   const { selectedCompanyId } = useCompany();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: "onChange", // <— add this
+    reValidateMode: "onChange", // <— and this
     defaultValues: {
       party: "",
       description: "",
       totalAmount: 0,
-      items: [
-        {
-          product: "",
-          quantity: 1,
-          pricePerUnit: 0,
-          unitType: "Piece",
-          amount: 0,
-        },
-      ],
+      items: [PRODUCT_DEFAULT],
       type: "sales",
       referenceNumber: "",
       fromAccount: "",
@@ -186,35 +239,54 @@ export function TransactionForm({
     name: "items",
   });
 
-  const watchedItems = form.watch("items");
+  const watchedItems = useWatch({ control: form.control, name: "items" });
   const type = form.watch("type");
 
+  // ADD THIS useEffect (keeps items only where they belong)
   React.useEffect(() => {
-    if (!watchedItems) return;
+    if (type === "sales" || type === "purchases") {
+      if (!form.getValues("items")?.length) {
+        replace([PRODUCT_DEFAULT]);
+      }
+    } else {
+      // receipt/payment/journal don't use items
+      if (form.getValues("items")?.length) {
+        replace([]);
+      }
+    }
+  }, [type, replace, form]);
+
+  // REPLACE the whole calc effect with this:
+  React.useEffect(() => {
+    // Only auto-calc in sales/purchases
+    if (!watchedItems || !["sales", "purchases"].includes(type)) return;
 
     let grandTotal = 0;
-    const updatedItems = watchedItems.map((item) => {
-      const quantity = item.quantity || 0;
-      const pricePerUnit = item.pricePerUnit || 0;
-      const amount = quantity * pricePerUnit;
-      grandTotal += amount;
-      return { ...item, amount };
+
+    watchedItems.forEach((it, idx) => {
+      if (it?.itemType === "product") {
+        const q = Number(it.quantity) || 0;
+        const p = Number(it.pricePerUnit) || 0;
+        const amt = +(q * p).toFixed(2);
+        grandTotal += amt;
+
+        // write back only if changed to avoid loops
+        const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
+        if (current !== amt) {
+          form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
+        }
+      } else if (it?.itemType === "service") {
+        // DO NOT overwrite service amounts; just read them
+        const amt = Number(it.amount) || 0;
+        grandTotal += amt;
+      }
     });
 
-    if (
-      JSON.stringify(updatedItems) !== JSON.stringify(form.getValues("items"))
-    ) {
-      updatedItems.forEach((item, index) => {
-        form.setValue(`items.${index}.amount`, item.amount, {
-          shouldValidate: false,
-        });
-      });
-    }
-
-    if (form.getValues("totalAmount") !== grandTotal) {
+    const curTotal = Number(form.getValues("totalAmount")) || 0;
+    if (curTotal !== grandTotal) {
       form.setValue("totalAmount", grandTotal, { shouldValidate: true });
     }
-  }, [watchedItems, form]);
+  }, [watchedItems, type, form]);
 
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
@@ -222,7 +294,7 @@ export function TransactionForm({
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
 
-      const [companiesRes, partiesRes, productsRes, vendorsRes] =
+      const [companiesRes, partiesRes, productsRes, vendorsRes, servicesRes] =
         await Promise.all([
           fetch(`${baseURL}/api/companies/my`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -236,13 +308,17 @@ export function TransactionForm({
           fetch(`${baseURL}/api/vendors`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
+          fetch(`${baseURL}/api/services`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
       if (
         !companiesRes.ok ||
         !partiesRes.ok ||
         !productsRes.ok ||
-        !vendorsRes.ok
+        !vendorsRes.ok ||
+        !servicesRes.ok
       ) {
         throw new Error("Failed to fetch initial form data.");
       }
@@ -251,6 +327,7 @@ export function TransactionForm({
       const partiesData = await partiesRes.json();
       const productsData = await productsRes.json();
       const vendorsData = await vendorsRes.json();
+      const servicesData = await servicesRes.json();
 
       setCompanies(companiesData);
       setParties(
@@ -258,6 +335,9 @@ export function TransactionForm({
       );
       setProducts(
         Array.isArray(productsData) ? productsData : productsData.products || []
+      );
+      setServices(
+        Array.isArray(servicesData) ? servicesData : servicesData.services || []
       );
       setVendors(
         Array.isArray(vendorsData) ? vendorsData : vendorsData.vendors || []
@@ -301,13 +381,19 @@ export function TransactionForm({
       const itemsToSet =
         transactionToEdit.items && transactionToEdit.items.length > 0
           ? transactionToEdit.items.map((item: Item) => ({
+              itemType: item.itemType,
               product:
                 typeof item.product === "object"
                   ? item.product._id
                   : item.product || "",
+              service:
+                typeof item.service === "object"
+                  ? item.service._id
+                  : item.service || "",
               quantity: item.quantity,
               unitType: item.unitType,
               pricePerUnit: item.pricePerUnit,
+              description: item.description,
               amount: item.amount,
             }))
           : [];
@@ -339,15 +425,8 @@ export function TransactionForm({
         party: "",
         description: "",
         totalAmount: 0,
-        items: [
-          {
-            product: "",
-            quantity: 1,
-            pricePerUnit: 0,
-            unitType: "Piece",
-            amount: 0,
-          },
-        ],
+        items:
+          type === "sales" || type === "purchases" ? [PRODUCT_DEFAULT] : [], // <— use proper default
         type: type,
         referenceNumber: "",
         fromAccount: "",
@@ -359,30 +438,29 @@ export function TransactionForm({
     }
   }, [transactionToEdit, type, form, selectedCompanyId, replace]);
 
-
-
   // async function updateStock(token: string, items: Item[]) {
-    async function updateStock(token: string, items: StockItemInput[]) {
+  async function updateStock(token: string, items: StockItemInput[]) {
     try {
       const res = await fetch(`${baseURL}/api/products/update-stock`, {
-          method: 'POST',
-          headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ items }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ items }),
       });
       if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || 'Failed to update stock levels.');
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update stock levels.");
       }
-    } catch(error) {
-       console.error("Stock update failed:", error);
-       toast({
+    } catch (error) {
+      console.error("Stock update failed:", error);
+      toast({
         variant: "destructive",
         title: "Stock Update Failed",
-        description: "Transaction was saved, but failed to update inventory stock levels."
-       })
+        description:
+          "Transaction was saved, but failed to update inventory stock levels.",
+      });
     }
   }
 
@@ -410,7 +488,32 @@ export function TransactionForm({
         endpoint = `${transactionTypeEndpoint}/${transactionToEdit._id}`;
       }
 
-      const payload: any = { ...values, amount: values.totalAmount };
+      const productLines =
+        values.items
+          ?.filter((i) => i.itemType === "product")
+          .map((i) => ({
+            product: i.product, // ObjectId
+            quantity: i.quantity,
+            unitType: i.unitType,
+            pricePerUnit: i.pricePerUnit,
+            amount: i.amount, // optional if backend recomputes
+            description: i.description ?? "",
+          })) ?? [];
+
+      const serviceLines =
+        values.items
+          ?.filter((i) => i.itemType === "service")
+          .map((i) => ({
+            service: i.service, // ObjectId of Service
+            amount: i.amount,
+            description: i.description ?? "",
+          })) ?? [];
+
+      const payload: any = { ...values };
+      payload.products = productLines;
+      payload.service = serviceLines;
+      payload.amount = values.totalAmount; // if your model also stores amount
+      payload.totalAmount = values.totalAmount;
       if (values.description) payload.description = values.description;
       if (values.narration) payload.narration = values.narration;
 
@@ -450,12 +553,22 @@ export function TransactionForm({
         );
       }
 
-
       // If it's a sale and was successful, update the stock
-      if (values.type === 'sales' && values.items) {
-          await updateStock(token, values?.items);
-      }
+      if (values.type === "sales" && values.items) {
+        const stockItems = values.items
+          .filter(
+            (i) =>
+              i.itemType === "product" && i.product && (i.quantity ?? 0) > 0
+          )
+          .map((i) => ({
+            product: i.product!,
+            quantity: Number(i.quantity) || 0,
+          }));
 
+        if (stockItems.length) {
+          await updateStock(token, stockItems);
+        }
+      }
 
       //send invoice on whatsapp directly
 
@@ -509,19 +622,60 @@ export function TransactionForm({
     setIsPartyDialogOpen(false);
   };
 
-  const handleTriggerCreateProduct = () => {
+  const handleTriggerCreateProduct = (name: string) => {
+    setNewEntityName(name); // Store the name in state
     setIsProductDialogOpen(true);
+  };
+  const handleTriggerCreateService = async (name: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(`${baseURL}/api/services`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ serviceName: name }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to create service.");
+      }
+
+      handleServiceCreated(data.service || data);
+      return data.service?._id || data._id; // Return the new service ID
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Service Creation Failed",
+        description:
+          error instanceof Error ? error.message : "An unknown error occurred.",
+      });
+      return null;
+    }
   };
 
   const handleProductCreated = (newProduct: Product) => {
     setProducts((prev) => [...prev, newProduct]);
-    // Since we don't know which item triggered this, we can't set the value directly.
-    // The user will have to select it from the dropdown.
     toast({
       title: "Product Created",
       description: `${newProduct.name} has been added.`,
     });
     setIsProductDialogOpen(false);
+  };
+
+  const handleServiceCreated = (newService: Service) => {
+    setServices((prev) => [...prev, newService]);
+    toast({
+      title: "Service Created",
+      description: `${
+        newService.serviceName || (newService as any).serviceName
+      } has been added.`,
+    });
+    setIsServiceDialogOpen(false);
   };
 
   const getPartyOptions = () => {
@@ -557,6 +711,13 @@ export function TransactionForm({
 
   const partyOptions = getPartyOptions();
   const partyLabel = getPartyLabel();
+
+  const productOptions = products.map((p) => ({ value: p._id, label: p.name }));
+  // CONFIRM this code exists:
+  const serviceOptions = services.map((s) => ({
+    value: s._id,
+    label: s.serviceName,
+  }));
 
   if (isLoading) {
     return (
@@ -637,35 +798,36 @@ export function TransactionForm({
           )}
         />
       </div>
-      <FormField
-        control={form.control}
-        name="party"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{partyLabel}</FormLabel>
-            <Combobox
-              options={partyOptions}
-              value={field.value || ""}
-              onChange={field.onChange}
-              placeholder={`Select or create...`}
-              searchPlaceholder={`Search...`}
-              noResultsText={`No results found.`}
-              creatable
-              onCreate={async (name) => {
-                handleTriggerCreateParty(name);
-                return Promise.resolve();
-              }}
-            />
-            <FormMessage />
-          </FormItem>
-        )}
+     <FormField
+  control={form.control}
+  name="party"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>{partyLabel}</FormLabel>
+      <Combobox
+        options={partyOptions}              // ✅ use parties OR vendors (based on type)
+        value={field.value || ""}
+        onChange={field.onChange}
+        placeholder={`Select or create...`} // ✅ generic
+        searchPlaceholder={`Search...`}
+        noResultsText={`No results found.`}
+        creatable
+        onCreate={async (name) => {         // ✅ open the right dialog (Customer or Vendor)
+          handleTriggerCreateParty(name);
+          return Promise.resolve("");       // selection will be set in handlePartyCreated
+        }}
       />
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
 
       <Separator />
 
       {/* Items Array */}
       <div className="space-y-4">
-        <h3 className="text-base font-medium">Items</h3>
+        <h3 className="text-base font-medium">Items & Services</h3>
         {fields.map((item, index) => (
           <Card key={item.id} className="relative">
             <CardContent className="p-4 space-y-4">
@@ -680,127 +842,231 @@ export function TransactionForm({
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
 
-              <FormField
-                control={form.control}
-                name={`items.${index}.product`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Product / Service</FormLabel>
-                    <Combobox
-                      options={products.map((p) => ({
-                        value: p._id,
-                        label: p.name,
-                      }))}
-                      value={field.value || ""}
-                      onChange={(value) => field.onChange(value)}
-                      placeholder="Select or create a product..."
-                      searchPlaceholder="Search products..."
-                      noResultsText="No product found."
-                      creatable
-                      onCreate={async () => {
-                        handleTriggerCreateProduct();
-                        return Promise.resolve();
-                      }}
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.quantity`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantity</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.unitType`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unit</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {unitTypes.map((u) => (
-                            <SelectItem key={u} value={u}>
-                              {u}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.pricePerUnit`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price/Unit</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.amount`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...field}
-                          readOnly
-                          className="bg-muted"
+              {item.itemType === "product" ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.product`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product</FormLabel>
+                        <Combobox
+                          options={productOptions}
+                          value={field.value || ""}
+                          onChange={(value) => field.onChange(value)}
+                          placeholder="Select or create a product..."
+                          searchPlaceholder="Search products..."
+                          noResultsText="No product found."
+                          creatable
+                          // Change the onCreate prop in the Combobox component:
+                          onCreate={async (name) => {
+                            handleTriggerCreateProduct(name);
+                            return Promise.resolve();
+                          }}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.quantity`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="1"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : e.target.valueAsNumber
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.unitType`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {unitTypes.map((u) => (
+                                <SelectItem key={u} value={u}>
+                                  {u}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.pricePerUnit`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price/Unit</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : e.target.valueAsNumber
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              readOnly
+                              className="bg-muted"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.service`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Service</FormLabel>
+                        <Combobox
+                          options={serviceOptions}
+                          value={field.value || ""}
+                          onChange={(value) => field.onChange(value)}
+                          placeholder="Select or create a service..."
+                          searchPlaceholder="Search services..."
+                          noResultsText="No service found."
+                          creatable
+                          onCreate={async (name) => {
+                            // Get the name parameter here
+                            const newServiceId =
+                              await handleTriggerCreateService(name); // Pass it to the handler
+                            return newServiceId || "";
+                          }}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : e.target.valueAsNumber
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.description`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Brief service description"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={() =>
-            append({
-              product: "",
-              quantity: 1,
-              pricePerUnit: 0,
-              unitType: "Piece",
-              amount: 0,
-            })
-          }
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Item
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() => append({ ...PRODUCT_DEFAULT })}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() =>
+              append({
+                itemType: "service",
+                service: "",
+                amount: 0,
+                description: "",
+              })
+            }
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Service
+          </Button>
+        </div>
       </div>
 
       <Separator />
@@ -901,29 +1167,25 @@ export function TransactionForm({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="party"
-          render={({ field }) => (
+         <FormField control={form.control} name="party" render={({ field }) => (
             <FormItem>
-              <FormLabel>{partyLabel}</FormLabel>
-              <Combobox
-                options={partyOptions}
-                value={field.value || ""}
-                onChange={field.onChange}
-                placeholder={`Select or create...`}
-                searchPlaceholder={`Search...`}
-                noResultsText={`No results found.`}
-                creatable
-                onCreate={async (name) => {
-                  handleTriggerCreateParty(name);
-                  return Promise.resolve();
-                }}
-              />
-              <FormMessage />
+                <FormLabel>{partyLabel}</FormLabel>
+                <Combobox
+                    options={partyOptions}
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    placeholder={`Select or create...`}
+                    searchPlaceholder={`Search...`}
+                    noResultsText={`No results found.`}
+                    creatable
+                    onCreate={async (name) => {
+                    handleTriggerCreateParty(name);
+                    return Promise.resolve();
+                    }}
+                />
+                <FormMessage />
             </FormItem>
-          )}
-        />
+        )} />
         <FormField
           control={form.control}
           name="totalAmount"
@@ -1207,12 +1469,27 @@ export function TransactionForm({
           <DialogHeader>
             <DialogTitle>Create New Product</DialogTitle>
             <DialogDescription>
-              Fill in the form to add a new product or service.
+              Fill in the form to add a new product.
             </DialogDescription>
           </DialogHeader>
-          <ProductForm onSuccess={handleProductCreated} />
+          <ProductForm
+            productType={"product"}
+            onSuccess={handleProductCreated}
+            initialName={newEntityName} // Add this
+          />
         </DialogContent>
       </Dialog>
+      {/* <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create New Service</DialogTitle>
+            <DialogDescription>
+              Fill in the form to add a new service.
+            </DialogDescription>
+          </DialogHeader>
+          <ServiceForm onSuccess={handleServiceCreated} />
+        </DialogContent>
+      </Dialog> */}
     </>
   );
 }
