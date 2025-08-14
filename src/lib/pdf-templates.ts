@@ -54,7 +54,6 @@ const fetchImageAsDataURL = async (url: string) => {
   return { dataURL, fmt: fmt as "PNG" | "JPEG" };
 };
 
-
 export const generatePdfForTemplate1 = (
   transaction: Transaction,
   company: Company | null | undefined,
@@ -321,7 +320,6 @@ export const generatePdfForTemplate3 = async (
   company: Company | null | undefined,
   party: Party | null | undefined
 ): Promise<jsPDF> => {
-
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
@@ -408,7 +406,12 @@ export const generatePdfForTemplate3 = async (
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(...GOLD);
-  doc.text("I N V O I C E", pw / 2, stripY + stripH - 5, { align: "center" });
+  const spacedText = (company?.businessName || "Your Company")
+    .toUpperCase()
+    .split("")
+    .join("  "); // adds 1 space between letters
+
+  doc.text(spacedText, pw / 2, stripY + stripH - 5, { align: "center" });
 
   // website centered under strip
   doc.setFont("helvetica", "normal");
@@ -417,37 +420,38 @@ export const generatePdfForTemplate3 = async (
   // doc.text(invoiceData.companyWebsite, pw / 2, stripY + stripH + 7, {
   //   align: "center",
   // });
-// --- right logo area ---
-const logoBoxX = pw - m - rightLogoBlockW; // reserved white area
-const maxLogoW = 24;
-const maxLogoH = 24;
-const logoTopY = stripY - 3;
+  // --- right logo area ---
+  const logoBoxX = pw - m - rightLogoBlockW; // reserved white area
+  const maxLogoW = 24;
+  const maxLogoH = 24;
+  const logoTopY = stripY - 3;
 
-// try to load your URL; fallback to vector if blocked
-try {
-  const logoUrl = "https://i.pinimg.com/736x/71/b3/e4/71b3e4159892bb319292ab3b76900930.jpg";
-  const dataURL = await fetchAsDataURL(logoUrl);
-  const props = doc.getImageProperties(dataURL);
-  const scale = Math.min(maxLogoW / props.width, maxLogoH / props.height);
-  const w = props.width * scale;
-  const h = props.height * scale;
-  const x = logoBoxX + 6;                          // left inside the block
-  const y = logoTopY;                               // top align
-   doc.addImage(dataURL, "JPEG", x, y, w, h);
-} catch {
-  // vector fallback (simple shield + check)
-  const x = logoBoxX + 5, y = logoTopY, s = 20;
-  doc.setFillColor(...NAVY);
-  doc.roundedRect(x, y, s, s, 3, 3, "F");
-  doc.setFillColor(...GOLD);
-  doc.circle(x + s - 6, y + 6, 3, "F");
-  doc.setDrawColor(255, 255, 255);
-  doc.setLineWidth(2);
-  doc.line(x + 6, y + 10, x + 10, y + 14);
-  doc.line(x + 10, y + 14, x + 16, y + 8);
-}
-
-  
+  // try to load your URL; fallback to vector if blocked
+  try {
+    const logoUrl =
+      "https://i.pinimg.com/736x/71/b3/e4/71b3e4159892bb319292ab3b76900930.jpg";
+    const dataURL = await fetchAsDataURL(logoUrl);
+    const props = doc.getImageProperties(dataURL);
+    const scale = Math.min(maxLogoW / props.width, maxLogoH / props.height);
+    const w = props.width * scale;
+    const h = props.height * scale;
+    const x = logoBoxX + 6; // left inside the block
+    const y = logoTopY; // top align
+    doc.addImage(dataURL, "JPEG", x, y, w, h);
+  } catch {
+    // vector fallback (simple shield + check)
+    const x = logoBoxX + 5,
+      y = logoTopY,
+      s = 20;
+    doc.setFillColor(...NAVY);
+    doc.roundedRect(x, y, s, s, 3, 3, "F");
+    doc.setFillColor(...GOLD);
+    doc.circle(x + s - 6, y + 6, 3, "F");
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(2);
+    doc.line(x + 6, y + 10, x + 10, y + 14);
+    doc.line(x + 10, y + 14, x + 16, y + 8);
+  }
 
   // ===== Header Right: Logo Text Placeholder =====
   // (text-only placeholder to match layout)
