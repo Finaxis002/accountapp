@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { UserCircle, Bell, Save, Building, Users, Package, Loader2, Shield, Check, X, Send, MessageSquare, Contact, Store } from "lucide-react";
+import { UserCircle, Bell, Save, Building, Users, Package, Loader2, Shield, Check, X, Send, MessageSquare, Contact, Store, Server } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VendorSettings } from '@/components/settings/vendor-settings';
 import { CustomerSettings } from '@/components/settings/customer-settings';
@@ -16,6 +16,9 @@ import { ProductSettings } from '@/components/settings/product-settings';
 import { usePermissions } from '@/contexts/permission-context';
 import { cn } from '@/lib/utils';
 import { getCurrentUser } from '@/lib/auth';
+import { ProfileTab } from '@/components/settings/profile-tab';
+import { NotificationsTab } from '@/components/settings/notifications-tab';
+import { ServiceSettings } from '@/components/settings/service-settings';
 
 export default function ProfilePage() {
   const { permissions, isLoading } = usePermissions();
@@ -37,15 +40,16 @@ export default function ProfilePage() {
 
   const customerTabs = [
     { value: 'permissions', label: 'Permissions', component: <PermissionsTab /> },
-    permissions?.canCreateVendors && { value: 'vendors', label: 'Vendors', component: <VendorSettings /> },
-    permissions?.canCreateCustomers && { value: 'customers', label: 'Customers', component: <CustomerSettings /> },
-    permissions?.canCreateProducts && { value: 'products', label: 'Products', component: <ProductSettings /> },
+    isCustomer && permissions?.canCreateVendors && { value: 'vendors', label: 'Vendors', component: <VendorSettings /> },
+    isCustomer && permissions?.canCreateCustomers && { value: 'customers', label: 'Customers', component: <CustomerSettings /> },
+    isCustomer && permissions?.canCreateProducts && { value: 'products', label: 'Products', component: <ProductSettings /> },
+    isCustomer && permissions?.canCreateProducts && { value: 'services', label: 'Services', component: <ServiceSettings /> }, // Assuming same permission for now
     { value: 'notifications', label: 'Notifications', component: <NotificationsTab /> },
   ].filter(Boolean) as { value: string, label: string, component: React.ReactNode }[];
 
   const availableTabs = isCustomer ? customerTabs : adminTabs;
   const defaultTab = isCustomer ? 'permissions' : 'profile';
-
+  
   const gridColsClass = `grid-cols-${availableTabs.length}`;
 
   return (
@@ -74,45 +78,6 @@ export default function ProfilePage() {
   );
 }
 
-function ProfileTab() {
-  return (
-    <Card>
-        <CardHeader>
-        <div className="flex items-center gap-3">
-            <UserCircle className="h-6 w-6" />
-            <div className="flex flex-col">
-            <CardTitle className="text-lg">Profile Settings</CardTitle>
-            <CardDescription>Update your personal information</CardDescription>
-            </div>
-        </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input id="fullName" defaultValue="Master Admin" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" defaultValue="admin@accountech.com" disabled/>
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" defaultValue="+1 (555) 123-4567" />
-                </div>
-            </div>
-        </CardContent>
-        <CardFooter className="border-t pt-6 justify-end">
-            <Button>
-                <Save className="mr-2 h-4 w-4" />
-                Save Profile
-            </Button>
-        </CardFooter>
-    </Card>
-  )
-}
-
-
 function PermissionsTab() {
   const { permissions } = usePermissions();
   const currentUser = getCurrentUser();
@@ -137,7 +102,7 @@ function PermissionsTab() {
     <div>
        
         {isCustomer && (
-            <div className="md:col-span-1">
+             <div className="grid md:grid-cols-1 gap-6">
                 <Card>
                     <CardHeader>
                         <div className="flex items-center gap-3">
@@ -189,46 +154,5 @@ function PermissionsTab() {
             </div>
         )}
     </div>
-  )
-}
-
-function NotificationsTab() {
-  return (
-    <Card>
-        <CardHeader>
-        <div className="flex items-center gap-3">
-                <Bell className="h-6 w-6" />
-                <div>
-                    <CardTitle className="text-lg">Notification Settings</CardTitle>
-                    <CardDescription>Configure how you receive notifications</CardDescription>
-                </div>
-            </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-            <div className="flex items-center justify-between space-x-2">
-                <div className="space-y-1">
-                    <Label htmlFor="invoice-emails" className="font-medium">Invoice Emails</Label>
-                    <p className="text-sm text-muted-foreground">Receive email notifications for new invoices and payments.</p>
-                </div>
-                <Switch id="invoice-emails" defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between space-x-2">
-                <div className="space-y-1">
-                    <Label htmlFor="report-emails" className="font-medium">Monthly Reports</Label>
-                    <p className="text-sm text-muted-foreground">Receive monthly financial summary reports via email.</p>
-                </div>
-                <Switch id="report-emails" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between space-x-2">
-                <div className="space-y-1">
-                    <Label htmlFor="security-alerts" className="font-medium">Security Alerts</Label>
-                    <p className="text-sm text-muted-foreground">Receive email notifications for security-related events.</p>
-                </div>
-                <Switch id="security-alerts" defaultChecked />
-            </div>
-        </CardContent>
-    </Card>
   )
 }

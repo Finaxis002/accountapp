@@ -1,319 +1,190 @@
-import type { Transaction, Company, Party, Item } from "@/lib/types";
-import jsPDF from "jspdf";
-import autoTable, { RowInput } from "jspdf-autotable";
+
+import type { Company, Party, Transaction } from "@/lib/types";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { getUnifiedLines } from "./utils";
 
 const formatCurrency = (amount: number) => {
-  // Manually format currency to avoid weird characters that break jspdf
-  const formatted = new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-  return `Rs. ${formatted}`;
+    // Manually format currency to avoid weird characters that break jspdf
+    const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+    return `Rs ${formatted}`;
 };
 
 const getItemsBody = (transaction: Transaction) => {
-  if (!transaction.items || transaction.items.length === 0) {
-    const amount = transaction.amount || 0;
-    const quantity = transaction.quantity || 1;
-    const price = transaction.pricePerUnit || amount;
-    return [
-      [
-        "1",
-        quantity,
-        transaction.description || "Item",
-        formatCurrency(price),
-        formatCurrency(amount),
-      ],
-    ];
-  }
-  return transaction.items.map((item, index) => {
-    const quantity = item.quantity || 0;
-    const pricePerUnit = item.pricePerUnit || 0;
-    const amount = quantity * pricePerUnit;
-    return [
-      (index + 1).toString(),
-      quantity,
-      `${item.product?.name || "Item"}\n${transaction.description || ""}`,
-      formatCurrency(pricePerUnit),
-      formatCurrency(amount),
-    ];
-  });
+    const lines = getUnifiedLines(transaction);
+    
+    if (lines.length === 0) {
+       return [['1', 1, transaction.description || 'Item', formatCurrency(transaction.amount), formatCurrency(transaction.amount)]];
+    }
+
+    return lines.map((item: { quantity: any; name: any; description: any; pricePerUnit: any; amount: number; }, index: number) => {
+        return [
+            (index + 1).toString(),
+            item.quantity || 1,
+            `${item.name}\n${item.description || ''}`,
+            formatCurrency(Number(item.pricePerUnit || item.amount)),
+            formatCurrency(item.amount)
+        ]
+    });
 };
 
-const fetchImageAsDataURL = async (url: string) => {
-  const res = await fetch(url, { mode: "cors" });
-  if (!res.ok) throw new Error("fetch failed");
-  const blob = await res.blob();
-  const mime = blob.type || "image/jpeg";
-  const fmt = mime.includes("png") ? "PNG" : "JPEG";
-  const dataURL: string = await new Promise((resolve) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.readAsDataURL(blob);
-  });
-  return { dataURL, fmt: fmt as "PNG" | "JPEG" };
-};
+export const generatePdfForTemplate1 = (transaction: Transaction, company: Company | null | undefined, party: Party | null | undefined): jsPDF => {
+    const doc = new jsPDF();
+    const lines = getUnifiedLines(transaction);
+    const subtotal = lines.reduce((sum: any, item: { amount: any; }) => sum + item.amount, 0) || transaction.amount || 0;
+    const tax = subtotal * 0.10; // 10% tax
+    const totalAmount = subtotal + tax;
+    const invoiceNumber = `#${transaction._id.slice(-6).toUpperCase()}`;
+    const invoiceDate = new Intl.DateTimeFormat('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(transaction.date));
+    const partyAddress = party ? [party.address, party.city, party.state].filter(Boolean).join(', ') : 'Address not available';
 
-export const generatePdfForTemplate1 = (
-  transaction: Transaction,
-  company: Company | null | undefined,
-  party: Party | null | undefined
-): jsPDF => {
-  const doc = new jsPDF();
-  const subtotal =
-    transaction.items?.reduce(
-      (sum, item) => sum + item.quantity * item.pricePerUnit,
-      0
-    ) ||
-    transaction.amount ||
-    0;
-  const tax = subtotal * 0.1; // 10% tax
-  const totalAmount = subtotal + tax;
-  const invoiceNumber = `#${transaction._id.slice(-6).toUpperCase()}`;
-  const invoiceDate = new Intl.DateTimeFormat("en-IN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date(transaction.date));
-  const partyAddress = party
-    ? [party.address, party.city, party.state].filter(Boolean).join(", ")
-    : "Address not available";
+    // Decorative Lines
+    doc.setFillColor(82, 101, 167);
+    doc.rect(0, 0, 8, 40, 'F');
+    doc.rect(doc.internal.pageSize.getWidth() - 8, doc.internal.pageSize.getHeight() - 40, 8, 40, 'F');
 
-  // Decorative Lines
-  doc.setFillColor(82, 101, 167);
-  doc.rect(0, 0, 8, 40, "F");
-  doc.rect(
-    doc.internal.pageSize.getWidth() - 8,
-    doc.internal.pageSize.getHeight() - 40,
-    8,
-    40,
-    "F"
-  );
+    // Header
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(company?.businessName || 'Your Company', 15, 20);
+    
+    doc.setFontSize(18);
+    doc.text('INVOICE', doc.internal.pageSize.getWidth() - 15, 20, { align: 'right' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(invoiceDate, doc.internal.pageSize.getWidth() - 15, 26, { align: 'right' });
 
-  // Header
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.text(company?.businessName || "Your Company", 15, 20);
+    // Invoice Info
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`INVOICE NO: ${invoiceNumber}`, 15, 40);
+    
+    doc.setFontSize(10);
+    doc.text('TO:', doc.internal.pageSize.getWidth() - 15, 40, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(party?.name || 'N/A', doc.internal.pageSize.getWidth() - 15, 45, { align: 'right' });
+    doc.text(partyAddress, doc.internal.pageSize.getWidth() - 15, 50, { align: 'right' });
+    
+    // Table
+    autoTable(doc, {
+        startY: 65,
+        head: [['S.No.', 'QTY', 'DESCRIPTION', 'PRICE', 'TOTAL']],
+        body: getItemsBody(transaction),
+        theme: 'striped',
+        headStyles: { fillColor: [241, 245, 249], textColor: [0,0,0] },
+        bodyStyles: { fillColor: [255, 255, 255] }, // This forces the striped theme to apply correctly
+        didDrawPage: (data) => {
+            // Add a gap after the header by adjusting cursor
+            if (data.pageNumber === 1 && data.cursor) { 
+                 data.cursor.y += 5;
+            }
+        }
+    });
 
-  doc.setFontSize(18);
-  doc.text("INVOICE", doc.internal.pageSize.getWidth() - 15, 20, {
-    align: "right",
-  });
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(invoiceDate, doc.internal.pageSize.getWidth() - 15, 26, {
-    align: "right",
-  });
+    const finalY = (doc as any).lastAutoTable.finalY;
 
-  // Invoice Info
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text(`INVOICE NO: ${invoiceNumber}`, 15, 40);
+    // Totals
+    let currentY = finalY + 10;
+    doc.setFontSize(10);
+    doc.text('Sub Total', 140, currentY, { align: 'right' });
+    doc.text(formatCurrency(subtotal), 200, currentY, { align: 'right' });
+    currentY += 7;
+    doc.text('Tax 10%', 140, currentY, { align: 'right' });
+    doc.text(formatCurrency(tax), 200, currentY, { align: 'right' });
+    currentY += 5;
+    doc.setDrawColor(0);
+    doc.line(120, currentY, 200, currentY);
+    currentY += 7;
+    doc.setFont('helvetica', 'bold');
+    doc.text('GRAND TOTAL', 150, currentY, { align: 'right' });
+    doc.text(formatCurrency(totalAmount), 200, currentY, { align: 'right' });
 
-  doc.setFontSize(10);
-  doc.text("TO:", doc.internal.pageSize.getWidth() - 15, 40, {
-    align: "right",
-  });
-  doc.setFont("helvetica", "normal");
-  doc.text(party?.name || "N/A", doc.internal.pageSize.getWidth() - 15, 45, {
-    align: "right",
-  });
-  doc.text(partyAddress, doc.internal.pageSize.getWidth() - 15, 50, {
-    align: "right",
-  });
+    // Footer
+    currentY = doc.internal.pageSize.getHeight() - 40;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Payment Method', 15, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Please make payments to the provided account.', 15, currentY + 5);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Terms and Conditions', doc.internal.pageSize.getWidth() - 15, currentY, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.text('Payment is due within 30 days.', doc.internal.pageSize.getWidth() - 15, currentY + 5, { align: 'right' });
 
-  // Table
-  const bodyRows = getItemsBody(transaction) as RowInput[];
-
-  // one empty row matching your 5 columns
-  const blankRow: RowInput = ["", "", "", "", ""];
-
-  autoTable(doc, {
-    startY: 65,
-    head: [["S.No.", "QTY", "DESCRIPTION", "PRICE", "TOTAL"]],
-    body: [blankRow, ...bodyRows],
-    theme: "striped",
-    headStyles: {
-      fillColor: [241, 245, 249] as [number, number, number],
-      textColor: [0, 0, 0] as [number, number, number],
-    },
-    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
-    didParseCell: (h) => {
-      // make the first body row truly blank
-      if (h.section === "body" && h.row.index === 0) {
-        h.cell.text = [];
-        h.cell.styles.minCellHeight = 8; // height of the gap
-        h.cell.styles.lineWidth = 0; // no borders
-        h.cell.styles.fillColor = [255, 255, 255] as [number, number, number];
-      }
-    },
-  });
-
-  const finalY = (doc as any).lastAutoTable.finalY;
-
-  // Totals
-  let currentY = finalY + 10;
-  doc.setFontSize(10);
-  doc.text("Sub Total", 140, currentY, { align: "right" });
-  doc.text(formatCurrency(subtotal), 200, currentY, { align: "right" });
-  currentY += 7;
-  doc.text("Tax 10%", 140, currentY, { align: "right" });
-  doc.text(formatCurrency(tax), 200, currentY, { align: "right" });
-  currentY += 5;
-  doc.setDrawColor(0);
-  doc.line(120, currentY, 200, currentY);
-  currentY += 7;
-  doc.setFont("helvetica", "bold");
-  doc.text("GRAND TOTAL", 150, currentY, { align: "right" });
-  doc.text(formatCurrency(totalAmount), 200, currentY, { align: "right" });
-
-  // Footer
-  currentY = doc.internal.pageSize.getHeight() - 40;
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Payment Method", 15, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.text("Please make payments to the provided account.", 15, currentY + 5);
-
-  doc.setFont("helvetica", "bold");
-  doc.text(
-    "Terms and Conditions",
-    doc.internal.pageSize.getWidth() - 15,
-    currentY,
-    { align: "right" }
-  );
-  doc.setFont("helvetica", "normal");
-  doc.text(
-    "Payment is due within 30 days.",
-    doc.internal.pageSize.getWidth() - 15,
-    currentY + 5,
-    { align: "right" }
-  );
-
-  return doc;
-};
+    return doc;
+}
 
 const getItemsBodyTemplate2 = (transaction: Transaction) => {
-  if (!transaction.items || transaction.items.length === 0) {
-    const amount = transaction.amount || 0;
-    const quantity = transaction.quantity || 1;
-    const price = transaction.pricePerUnit || amount;
-    return [
-      [
-        "1",
-        transaction.description || "Item",
-        quantity,
-        formatCurrency(price),
-        formatCurrency(amount),
-      ],
-    ];
-  }
-  return transaction.items.map((item, index) => {
-    const quantity = item.quantity || 0;
-    const pricePerUnit = item.pricePerUnit || 0;
-    const amount = item.amount;
-    return [
-      (index + 1).toString(),
-      item.product?.name || "Item",
-      quantity,
-      formatCurrency(pricePerUnit),
-      formatCurrency(amount),
-    ];
-  });
-};
+    const lines = getUnifiedLines(transaction);
+     if (lines.length === 0) {
+       return [['1', transaction.description || 'Item', 1, formatCurrency(transaction.amount), formatCurrency(transaction.amount)]];
+    }
+    return lines.map((item: { name: any; quantity: any; pricePerUnit: any; amount: number; }, index: number) => [
+        (index + 1).toString(),
+        item.name,
+        item.quantity || 1,
+        formatCurrency(Number(item.pricePerUnit || item.amount)),
+        formatCurrency(item.amount)
+    ]);
+}
 
-export const generatePdfForTemplate2 = (
-  transaction: Transaction,
-  company: Company | null | undefined,
-  party: Party | null | undefined
-): jsPDF => {
-  const doc = new jsPDF();
-  const subtotal =
-    transaction.items?.reduce((sum, item) => sum + item.amount, 0) ||
-    transaction.amount ||
-    0;
-  const tax = subtotal * 0.13; // 13% tax
-  const totalAmount = subtotal + tax;
-  const partyAddress = party
-    ? [party.address, party.city, party.state].filter(Boolean).join(", ")
-    : "Address not available";
 
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.text(company?.businessName || "Your Company", 20, 30);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(company?.emailId || "", 20, 37);
-  doc.text(company?.mobileNumber || "", 20, 44);
+export const generatePdfForTemplate2 = (transaction: Transaction, company: Company | null | undefined, party: Party | null | undefined): jsPDF => {
+    const doc = new jsPDF();
+    const lines = getUnifiedLines(transaction);
+    const subtotal = lines.reduce((sum: any, item: { amount: any; }) => sum + item.amount, 0) || transaction.amount || 0;
+    const tax = subtotal * 0.13; // 13% tax
+    const totalAmount = subtotal + tax;
+    const partyAddress = party ? [party.address, party.city, party.state].filter(Boolean).join(', ') : 'Address not available';
 
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text(
-    `Invoice #${transaction._id.slice(-6).toUpperCase()}`,
-    doc.internal.pageSize.getWidth() - 20,
-    30,
-    { align: "right" }
-  );
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(
-    `Issued: ${new Intl.DateTimeFormat("en-US").format(
-      new Date(transaction.date)
-    )}`,
-    doc.internal.pageSize.getWidth() - 20,
-    37,
-    { align: "right" }
-  );
-  doc.text(
-    `Payment Due: ${new Intl.DateTimeFormat("en-US").format(
-      new Date(
-        new Date(transaction.date).setDate(
-          new Date(transaction.date).getDate() + 30
-        )
-      )
-    )}`,
-    doc.internal.pageSize.getWidth() - 20,
-    44,
-    { align: "right" }
-  );
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(company?.businessName || 'Your Company', 20, 30);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(company?.emailId || '', 20, 37);
+    doc.text(company?.mobileNumber || '', 20, 44);
 
-  doc.line(15, 60, doc.internal.pageSize.getWidth() - 15, 60);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Invoice #${transaction._id.slice(-6).toUpperCase()}`, doc.internal.pageSize.getWidth() - 20, 30, { align: 'right'});
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Issued: ${new Intl.DateTimeFormat('en-US').format(new Date(transaction.date))}`, doc.internal.pageSize.getWidth() - 20, 37, { align: 'right' });
+    doc.text(`Payment Due: ${new Intl.DateTimeFormat('en-US').format(new Date(new Date(transaction.date).setDate(new Date(transaction.date).getDate() + 30)))}`, doc.internal.pageSize.getWidth() - 20, 44, { align: 'right' });
 
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text(party?.name || "Client Name", 20, 75);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(party?.email || "", 20, 82);
-  doc.text(partyAddress, 20, 89);
+    doc.line(15, 60, doc.internal.pageSize.getWidth() - 15, 60);
 
-  const body = getItemsBodyTemplate2(transaction);
-  body.push(["", "", "", "HST", formatCurrency(tax)]);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(party?.name || 'Client Name', 20, 75);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(party?.email || '', 20, 82);
+    doc.text(partyAddress, 20, 89);
 
-  autoTable(doc, {
-    startY: 100,
-    head: [["S.No.", "Item Description", "Qty", "Rate", "Sub-total"]],
-    body: body,
-    foot: [["", "", "", "Total", formatCurrency(totalAmount)]],
-    theme: "grid",
-    headStyles: { fillColor: [238, 238, 238], textColor: [0, 0, 0] },
-    footStyles: {
-      fillColor: [238, 238, 238],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-    },
-  });
+    const body = getItemsBodyTemplate2(transaction);
+    body.push(['', '', '', 'HST', formatCurrency(tax)]);
 
-  const finalY = (doc as any).lastAutoTable.finalY + 20;
-  doc.setFontSize(8);
-  doc.text(
-    "Thank you for your business! Payment is expected within 31 days.",
-    20,
-    finalY
-  );
+    autoTable(doc, {
+        startY: 100,
+        head: [['S.No.', 'Item Description', 'Qty', 'Rate', 'Sub-total']],
+        body: body,
+        foot: [
+            ['', '', '', 'Total', formatCurrency(totalAmount)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [238, 238, 238], textColor: [0,0,0] },
+        footStyles: { fillColor: [238, 238, 238], textColor: [0,0,0], fontStyle: 'bold' }
+    });
 
-  return doc;
-};
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(8);
+    doc.text('Thank you for your business! Payment is expected within 31 days.', 20, finalY);
+
+    return doc;
+}
 
 export const generatePdfForTemplate3 = async (
   transaction: Transaction,
@@ -332,6 +203,7 @@ export const generatePdfForTemplate3 = async (
   const MUTED: [number, number, number] = [110, 119, 137]; // secondary text
 
   const money = (n: number) => `Rs. ${Number(n || 0).toLocaleString("en-IN")}`;
+  
 
   // Data
   const invoiceData = {
@@ -409,7 +281,7 @@ export const generatePdfForTemplate3 = async (
   const spacedText = (company?.businessName || "Your Company")
     .toUpperCase()
     .split("")
-    .join("  "); // adds 1 space between letters
+    .join(" "); // adds 1 space between letters
 
   doc.text(spacedText, pw / 2, stripY + stripH - 5, { align: "center" });
 
@@ -612,3 +484,4 @@ export const generatePdfForTemplate3 = async (
 
   return doc;
 };
+
