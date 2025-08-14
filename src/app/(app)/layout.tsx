@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -6,7 +5,15 @@ import { UserNav } from "@/components/layout/user-nav";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Moon, Bell, FileText, DollarSign, Clock , Loader2} from "lucide-react";
+import {
+  Search,
+  Moon,
+  Bell,
+  FileText,
+  DollarSign,
+  Clock,
+  Loader2,
+} from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import type { User } from "@/lib/types";
@@ -29,7 +36,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import {CompanySwitcher} from "@/components/layout/company-switcher";
+import { CompanySwitcher } from "@/components/layout/company-switcher";
 import { CompanyProvider } from "@/contexts/company-context";
 import { PermissionProvider } from "@/contexts/permission-context";
 
@@ -67,11 +74,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading, please wait...</p>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Loading, please wait...
+          </p>
+        </div>
       </div>
-    </div>
     );
   }
 
@@ -96,24 +105,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 z-20">
                 <div className="flex items-center gap-2 md:gap-4">
                   <SidebarTrigger className="md:hidden" />
-                  <div className='hidden md:block'>
+                  <div className="hidden md:block">
                     <h1 className="text-lg font-semibold">
                       Welcome back,{" "}
                       {currentUser?.role === "master"
                         ? "Master!"
                         : currentUser?.name?.split(" ")[0]}
                     </h1>
-                    <p className="text-sm text-muted-foreground">{dateString}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {dateString}
+                    </p>
                   </div>
-                   {currentUser?.role === 'customer' && <div className="hidden md:block"><CompanySwitcher /></div>}
+                  {currentUser?.role === "customer" && (
+                    <div className="hidden md:block">
+                      <CompanySwitcher />
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
                   <div className="relative w-full max-w-md hidden md:block">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search..." className="pl-9 bg-background" />
+                    <Input
+                      placeholder="Search..."
+                      className="pl-9 bg-background"
+                    />
                   </div>
-                   <Button variant="ghost" size="icon" className='md:hidden'>
-                      <Search className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="md:hidden">
+                    <Search className="h-5 w-5" />
                   </Button>
                   <ThemeToggle />
                   <Sheet>
@@ -204,9 +222,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenu>
                 </div>
               </header>
-               <main className="flex-1  p-4 md:p-6 lg:p-8 w-[42vh] sm:w-[165vh]">
-            {children}
-          </main>
+              <main className="flex-1  p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
+                {children}
+              </main>
             </div>
           </div>
         </SidebarProvider>
