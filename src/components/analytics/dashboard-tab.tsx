@@ -17,11 +17,28 @@ interface DashboardTabProps {
 }
 
 export function DashboardTab({ selectedClient, selectedCompanyId }: DashboardTabProps) {
-     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
+     const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [stats, setStats] = React.useState({ totalSales: 0, totalPurchases: 0 });
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const { toast } = useToast();
+    const [exportOpen, setExportOpen] = React.useState(false);
+const [exportCompanyId, setExportCompanyId] = React.useState<string | "ALL">("ALL");
+const [exportTypes, setExportTypes] = React.useState<Record<string, boolean>>({
+  sales: true,
+  purchases: true,
+  receipts: true,
+  payments: true,
+  journals: true,
+});
+const allTypes = ["sales", "purchases", "receipts", "payments", "journals"] as const;
+
+React.useEffect(() => {
+  // Preselect currently viewed company when opening dialog
+  if (selectedCompanyId) setExportCompanyId(selectedCompanyId);
+  else setExportCompanyId("ALL");
+}, [selectedCompanyId]);
+
 
     React.useEffect(() => {
         async function fetchStatsAndCompanies() {

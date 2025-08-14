@@ -96,3 +96,4 @@ export function UserTable({ users, onEdit, onDelete, companyMap }: UserTableProp
         </Table>
     );
 }
+
