@@ -49,94 +49,143 @@ export async function loginMasterAdmin(
 }
 
 export async function loginCustomer(
-  clientUsername?: string,
-  password?: string
-): Promise<User | null> {
-  console.log("baseURL", baseURL);
-  if (!clientUsername || !password)
+  clientUsername: string,
+  password: string
+): Promise<User> {
+  if (!clientUsername || !password) {
     throw new Error("Username and password are required.");
-
-  try {
-    const res = await fetch(`${baseURL}/api/clients/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientUsername, password }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || "Login failed");
-    }
-
-    const user: User = {
-      name: data.client.contactName,
-      username: data.client.clientUsername,
-      email: data.client.email,
-      avatar: "/avatars/02.png",
-      initials: data.client.contactName.substring(0, 2).toUpperCase(),
-      role: "customer",
-      token: data.token,
-    };
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("token", user.token!);
-       localStorage.setItem("role", user.role ?? "");
-      localStorage.setItem("username", user.username!);
-      localStorage.setItem("name", user.name!);
-      localStorage.setItem("email", user.email!);
-    }
-
-    return user;
-  } catch (error) {
-    console.error("Client API login failed:", error);
-    throw error;
   }
-}
 
-export function logout() {
+  const res = await fetch(`${baseURL}/api/clients/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientUsername, password }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Login failed");
+  }
+
+  // expect your API to return: { token, client: { clientUsername, slug, contactName, email, ... } }
+  const { token, client } = data;
+
+  const user: User = {
+    name: client.contactName,
+    username: client.clientUsername, // display username
+    email: client.email,
+    avatar: "/avatars/02.png",
+    initials: (client.contactName || "").substring(0, 2).toUpperCase(),
+    role: "customer",
+    token,
+  };
+
   if (typeof window !== "undefined") {
-    localStorage.removeItem(USER_STORAGE_KEY);
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("username");
-    localStorage.removeItem("name");
-    localStorage.removeItem("email");
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", "customer");
+    localStorage.setItem("username", client.clientUsername);          // display
+    localStorage.setItem("clientUsername", client.clientUsername);    // for logout redirect
+    localStorage.setItem("slug", client.slug ?? client.clientUsername); // for /client-login/[slug]
+    localStorage.setItem("name", client.contactName || "");
+    localStorage.setItem("email", client.email || "");
   }
+
+  return user;
 }
 
-export function getCurrentUser(): User | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
+export function getCurrentUser(): User & {
+  clientUsername?: string;
+  slug?: string;
+} | null {
+  if (typeof window === "undefined") return null;
 
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role") as User["role"];
+  const role = localStorage.getItem("role") as User["role"] | null;
   const username = localStorage.getItem("username");
 
-  if (token && role && username) {
-    if (role === "master") {
-      return {
-        name: username,
-        username: username,
-        email: `${username}@accountech.com`,
-        avatar: "/avatars/01.png",
-        initials: username.substring(0, 2).toUpperCase(),
-        role: "master",
-      };
-    }
-    if (role === "customer") {
-      return {
-        name: localStorage.getItem("name") || "",
-        username: username,
-        email: localStorage.getItem("email") || "",
-        avatar: "/avatars/02.png",
-        initials: (localStorage.getItem("name") || "")
-          .substring(0, 2)
-          .toUpperCase(),
-        role: "customer",
-      };
-    }
+  if (!token || !role || !username) return null;
+
+  if (role === "master") {
+    return {
+      name: username,
+      username,
+      email: `${username}@accountech.com`,
+      avatar: "/avatars/01.png",
+      initials: username.substring(0, 2).toUpperCase(),
+      role: "master",
+    };
+  }
+
+  if (role === "customer") {
+    const clientUsername = localStorage.getItem("clientUsername") || username;
+    const slug = localStorage.getItem("slug") || clientUsername;
+
+    return {
+      name: localStorage.getItem("name") || "",
+      username,
+      email: localStorage.getItem("email") || "",
+      avatar: "/avatars/02.png",
+      initials: (localStorage.getItem("name") || "").substring(0, 2).toUpperCase(),
+      role: "customer",
+      clientUsername, // 👈 add this
+      slug,           // 👈 add this
+    };
   }
 
   return null;
+}
+
+
+
+export async function loginClientBySlug(
+  slug: string,
+  clientUsername: string,
+  password: string
+) {
+  const res = await fetch(`${baseURL}/api/clients/${slug}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientUsername, password }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Login failed");
+
+  const user: User = {
+    name: data.client.contactName,
+    username: data.client.clientUsername,
+    email: data.client.email,
+    avatar: "/avatars/02.png",
+    initials: data.client.contactName.substring(0, 2).toUpperCase(),
+    role: "customer",
+    token: data.token,
+  };
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("token", user.token!);
+    localStorage.setItem("role", user.role!);
+    localStorage.setItem("username", user.username!);
+    localStorage.setItem("name", user.name!);
+    localStorage.setItem("email", user.email!);
+    localStorage.setItem("tenantSlug", slug);
+  }
+
+  return user;
+}
+
+
+
+export function logout(): string {
+  // read BEFORE clearing
+  const role = localStorage.getItem("role");
+  const slug =
+    localStorage.getItem("tenantSlug") ||
+    localStorage.getItem("slug") ||
+    localStorage.getItem("clientUsername");
+
+  // clear everything
+  localStorage.clear();
+
+  // return the correct target
+  return role === "customer" && slug ? `/client-login/${slug}` : "/login";
 }

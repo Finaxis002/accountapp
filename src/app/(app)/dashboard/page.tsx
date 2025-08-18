@@ -41,15 +41,61 @@ const formatCurrency = (amount: number) =>
     amount
   );
 
+const toArray = (data: any) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.entries)) return data.entries;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+};
+
+const num = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+// type-aware amount extractor
+const getAmount = (
+  type: "sales" | "purchases" | "receipt" | "payment" | "journal",
+  row: any
+) => {
+  switch (type) {
+    case "sales":
+      // your sales rows usually have amount or totalAmount
+      return num(row?.amount ?? row?.totalAmount);
+    case "purchases":
+      // purchases sample shows totalAmount
+      return num(row?.totalAmount ?? row?.amount);
+    case "receipt":
+    case "payment":
+      return num(row?.amount ?? row?.totalAmount);
+    case "journal":
+      // journals typically don't contribute to sales/purchases KPIs
+      return 0;
+    default:
+      return 0;
+  }
+};
+
 export default function DashboardPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { selectedCompanyId } = useCompany();
   const [companyData, setCompanyData] = React.useState<any>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
 
+  const selectedCompany = React.useMemo(
+    () =>
+      selectedCompanyId
+        ? companies.find((c) => c._id === selectedCompanyId) || null
+        : null,
+    [companies, selectedCompanyId]
+  );
+
   const [recentTransactions, setRecentTransactions] = React.useState<
     Transaction[]
   >([]);
+  const [serviceNameById, setServiceNameById] = React.useState<
+    Map<string, string>
+  >(new Map());
   const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
   const [isTransactionFormOpen, setIsTransactionFormOpen] =
@@ -64,10 +110,10 @@ export default function DashboardPage() {
       const buildRequest = (url: string) =>
         fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
-      // Remove companyId parameter when "All" is selected
+      // when "All" is selected, omit companyId
       const queryParam = selectedCompanyId
         ? `?companyId=${selectedCompanyId}`
-        : ""; // ✅ Dynamic query
+        : "";
 
       const [
         salesRes,
@@ -77,55 +123,79 @@ export default function DashboardPage() {
         journalsRes,
         usersRes,
         companiesRes,
+        servicesRes,
       ] = await Promise.all([
-        buildRequest(`${baseURL}/api/sales${queryParam}`), // ✅ Add queryParam
+        buildRequest(`${baseURL}/api/sales${queryParam}`),
         buildRequest(`${baseURL}/api/purchase${queryParam}`),
         buildRequest(`${baseURL}/api/receipts${queryParam}`),
         buildRequest(`${baseURL}/api/payments${queryParam}`),
         buildRequest(`${baseURL}/api/journals${queryParam}`),
         buildRequest(`${baseURL}/api/users`),
         buildRequest(`${baseURL}/api/companies/my`),
+        buildRequest(`${baseURL}/api/services`),
       ]);
-      const salesData = await salesRes.json();
-      const purchasesData = await purchasesRes.json();
-      const receiptsData = await receiptsRes.json();
-      const paymentsData = await paymentsRes.json();
-      const journalsData = await journalsRes.json();
+
+      const rawSales = await salesRes.json();
+      const rawPurchases = await purchasesRes.json();
+      const rawReceipts = await receiptsRes.json();
+      const rawPayments = await paymentsRes.json();
+      const rawJournals = await journalsRes.json();
       const usersData = await usersRes.json();
       const companiesData = await companiesRes.json();
 
+      const servicesJson = await servicesRes.json();
+
+      const servicesArr = Array.isArray(servicesJson)
+        ? servicesJson
+        : servicesJson.services || [];
+      const sMap = new Map<string, string>();
+      for (const s of servicesArr) {
+        if (s?._id)
+          sMap.set(String(s._id), s.serviceName || s.name || "Service");
+      }
+      setServiceNameById(sMap);
+
       setCompanies(Array.isArray(companiesData) ? companiesData : []);
 
+      // normalize to arrays regardless of shape
+      const salesArr = toArray(rawSales);
+      const purchasesArr = toArray(rawPurchases);
+      const receiptsArr = toArray(rawReceipts);
+      const paymentsArr = toArray(rawPayments);
+      const journalsArr = toArray(rawJournals);
+
+      // recent transactions (combined)
       const allTransactions = [
-        ...(salesData.entries?.map((s: any) => ({ ...s, type: "sales" })) ||
-          []),
-        ...(purchasesData?.map((p: any) => ({ ...p, type: "purchases" })) ||
-          []),
-        ...(receiptsData?.map((r: any) => ({ ...r, type: "receipt" })) || []),
-        ...(paymentsData?.map((p: any) => ({ ...p, type: "payment" })) || []),
-        ...(journalsData?.map((j: any) => ({
+        ...salesArr.map((s: any) => ({ ...s, type: "sales" })),
+        ...purchasesArr.map((p: any) => ({ ...p, type: "purchases" })),
+        ...receiptsArr.map((r: any) => ({ ...r, type: "receipt" })),
+        ...paymentsArr.map((p: any) => ({ ...p, type: "payment" })),
+        ...journalsArr.map((j: any) => ({
           ...j,
-          description: j.narration,
+          description: j?.narration ?? j?.description ?? "",
           type: "journal",
-        })) || []),
+        })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setRecentTransactions(allTransactions.slice(0, 5));
 
-      const totalSales = (salesData.entries || []).reduce(
-        (acc: number, curr: any) => acc + curr.amount,
+      // KPI totals from normalized arrays
+      const totalSales = salesArr.reduce(
+        (acc: number, row: any) => acc + getAmount("sales", row),
         0
       );
-      const totalPurchases = (purchasesData || []).reduce(
-        (acc: number, curr: any) => acc + curr.amount,
+      const totalPurchases = purchasesArr.reduce(
+        (acc: number, row: any) => acc + getAmount("purchases", row),
         0
       );
+
+      const companiesCount = selectedCompanyId ? 1 : companiesData?.length || 0;
 
       setCompanyData({
         totalSales,
         totalPurchases,
-        users: usersData.length || 0,
-        companies: companiesData.length || 0,
+        users: usersData?.length || 0,
+        companies: companiesCount,
       });
     } catch (error) {
       toast({
@@ -181,7 +251,9 @@ export default function DashboardPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
-            An overview of your selected company's performance.
+            {selectedCompany
+              ? `An overview of ${selectedCompany.businessName}.`
+              : "An overview across all companies."}
           </p>
         </div>
         {companies.length > 0 && (
@@ -260,7 +332,10 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-1">
             <ProductStock />
-            <RecentTransactions transactions={recentTransactions} />
+            <RecentTransactions
+              transactions={recentTransactions}
+              serviceNameById={serviceNameById}
+            />
           </div>
         </>
       )}

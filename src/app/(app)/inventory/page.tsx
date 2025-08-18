@@ -1,13 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -49,29 +43,59 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/lib/types";
 import { ProductForm } from "@/components/products/product-form";
+// ⬇️ import your real ServiceForm
+import { ServiceForm } from "@/components/services/service-form";
 import { usePermissions } from "@/contexts/permission-context";
 import { Badge } from "@/components/ui/badge";
 
+type Service = {
+  _id: string;
+  serviceName: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // add more fields if you have them (price, description, etc.)
+};
+
 export default function InventoryPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
+
+  // Lists
   const [products, setProducts] = React.useState<Product[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
-  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(
+  const [services, setServices] = React.useState<Service[]>([]);
+
+  // Loading states
+  const [isLoadingProducts, setIsLoadingProducts] = React.useState(true);
+  const [isLoadingServices, setIsLoadingServices] = React.useState(true);
+
+  // Dialog states: product
+  const [isProductFormOpen, setIsProductFormOpen] = React.useState(false);
+  const [productToEdit, setProductToEdit] = React.useState<Product | null>(
     null
   );
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(
     null
   );
+
+  // Dialog states: service
+  const [isServiceFormOpen, setIsServiceFormOpen] = React.useState(false);
+  const [serviceToEdit, setServiceToEdit] = React.useState<Service | null>(
+    null
+  );
+  const [serviceToDelete, setServiceToDelete] = React.useState<Service | null>(
+    null
+  );
+
+  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const { toast } = useToast();
   const { permissions } = usePermissions();
 
+  // Fetchers
   const fetchProducts = React.useCallback(async () => {
-    setIsLoading(true);
+    setIsLoadingProducts(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
@@ -89,70 +113,301 @@ export default function InventoryPage() {
           error instanceof Error ? error.message : "Something went wrong.",
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingProducts(false);
     }
-  }, [toast]);
+  }, [toast, baseURL]);
 
-  React.useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  const handleOpenForm = (product: Product | null = null) => {
-    setSelectedProduct(product);
-    setIsFormOpen(true);
-  };
-
-  const handleOpenDeleteDialog = (product: Product) => {
-    setProductToDelete(product);
-    setIsAlertOpen(true);
-  };
-
-  const handleFormSuccess = (updatedProduct: Product) => {
-    setIsFormOpen(false);
-    if (selectedProduct) {
-      setProducts((prev) =>
-        prev.map((p) => (p._id === updatedProduct._id ? updatedProduct : p))
-      );
-    } else {
-      setProducts((prev) => [...prev, updatedProduct]);
-    }
-    const action = selectedProduct ? "updated" : "created";
-    toast({
-      title: `Item ${action} successfully`,
-      description: `The item details have been ${action}.`,
-    });
-    setSelectedProduct(null);
-  };
-
-  const handleDeleteProduct = async () => {
-    if (!productToDelete) return;
+  const fetchServices = React.useCallback(async () => {
+    setIsLoadingServices(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
-      const res = await fetch(
-        `${baseURL}/api/products/${productToDelete._id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) throw new Error("Failed to delete product.");
-      toast({
-        title: "Item Deleted",
-        description: "The item has been successfully removed.",
+      const res = await fetch(`${baseURL}/api/services`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      fetchProducts();
+      if (!res.ok) throw new Error("Failed to fetch services.");
+      const data = await res.json();
+      setServices(Array.isArray(data) ? data : data.services || []);
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Deletion Failed",
+        title: "Failed to load services",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsLoadingServices(false);
+    }
+  }, [toast, baseURL]);
+
+  React.useEffect(() => {
+    fetchProducts();
+    fetchServices();
+  }, [fetchProducts, fetchServices]);
+
+  // Open forms
+  const openCreateProduct = () => {
+    setProductToEdit(null);
+    setIsProductFormOpen(true);
+  };
+  const openCreateService = () => {
+    setServiceToEdit(null);
+    setIsServiceFormOpen(true);
+  };
+  const openEditProduct = (p: Product) => {
+    setProductToEdit(p);
+    setIsProductFormOpen(true);
+  };
+  const openEditService = (s: Service) => {
+    setServiceToEdit(s);
+    setIsServiceFormOpen(true);
+  };
+
+  // Success callbacks
+  const onProductSaved = (saved: Product) => {
+    setIsProductFormOpen(false);
+    setProductToEdit(null);
+    setProducts((prev) =>
+      prev.some((p) => p._id === saved._id)
+        ? prev.map((p) => (p._id === saved._id ? saved : p))
+        : [...prev, saved]
+    );
+    toast({
+      title: "Product saved",
+      description: "Product has been saved successfully.",
+    });
+  };
+
+  const onServiceSaved = (saved: Service) => {
+    setIsServiceFormOpen(false);
+    setServiceToEdit(null);
+    setServices((prev) =>
+      prev.some((s) => s._id === saved._id)
+        ? prev.map((s) => (s._id === saved._id ? saved : s))
+        : [...prev, saved]
+    );
+    toast({
+      title: "Service saved",
+      description: "Service has been saved successfully.",
+    });
+  };
+
+  // Delete handlers
+  const confirmDeleteProduct = (p: Product) => {
+    setProductToDelete(p);
+    setServiceToDelete(null);
+    setIsAlertOpen(true);
+  };
+  const confirmDeleteService = (s: Service) => {
+    setServiceToDelete(s);
+    setProductToDelete(null);
+    setIsAlertOpen(true);
+  };
+
+  const handleDelete = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      if (productToDelete) {
+        const res = await fetch(
+          `${baseURL}/api/products/${productToDelete._id}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!res.ok) throw new Error("Failed to delete product.");
+        setProducts((prev) =>
+          prev.filter((p) => p._id !== productToDelete._id)
+        );
+        toast({ title: "Product deleted" });
+      } else if (serviceToDelete) {
+        const res = await fetch(
+          `${baseURL}/api/services/${serviceToDelete._id}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!res.ok) throw new Error("Failed to delete service.");
+        setServices((prev) =>
+          prev.filter((s) => s._id !== serviceToDelete._id)
+        );
+        toast({ title: "Service deleted" });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Deletion failed",
         description:
           error instanceof Error ? error.message : "Something went wrong.",
       });
     } finally {
       setIsAlertOpen(false);
       setProductToDelete(null);
+      setServiceToDelete(null);
     }
+  };
+
+  // Render helpers
+  const renderProductsTable = () => {
+    if (isLoadingProducts) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      );
+    }
+    if (products.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Package className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Products Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create your first product to get started.
+          </p>
+          {permissions?.canCreateProducts && (
+            <Button className="mt-6" onClick={openCreateProduct}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Product
+            </Button>
+          )}
+        </div>
+      );
+    }
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Product</TableHead>
+            <TableHead>Stock</TableHead>
+            <TableHead>Created At</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {products.map((p) => (
+            <TableRow key={p._id}>
+              <TableCell>
+                <div className="font-medium flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  {p.name}
+                </div>
+              </TableCell>
+              <TableCell>
+                <span className="font-bold text-lg">{p.stocks ?? 0}</span>
+              </TableCell>
+              <TableCell>
+                {p.createdAt
+                  ? new Intl.DateTimeFormat("en-US").format(
+                      new Date(p.createdAt)
+                    )
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => openEditProduct(p)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => confirmDeleteProduct(p)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
+  const renderServicesTable = () => {
+    if (isLoadingServices) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      );
+    }
+    if (services.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Server className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Services Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create your first service to get started.
+          </p>
+          {permissions?.canCreateProducts && (
+            <Button className="mt-6" onClick={openCreateService}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Service
+            </Button>
+          )}
+        </div>
+      );
+    }
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Service</TableHead>
+            <TableHead>Created At</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {services.map((s) => (
+            <TableRow key={s._id}>
+              <TableCell>
+                <div className="font-medium flex items-center gap-2">
+                  <Server className="h-4 w-4 text-muted-foreground" />
+                  {s.serviceName}
+                  <Badge variant="outline">Service</Badge>
+                </div>
+              </TableCell>
+              <TableCell>
+                {s.createdAt
+                  ? new Intl.DateTimeFormat("en-US").format(
+                      new Date(s.createdAt)
+                    )
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => openEditService(s)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => confirmDeleteService(s)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
   };
 
   return (
@@ -166,142 +421,111 @@ export default function InventoryPage() {
             Track and manage your products and services.
           </p>
         </div>
-        {permissions?.canCreateProducts && (
-          <Button onClick={() => handleOpenForm()}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-          </Button>
-        )}
       </div>
 
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          ) : products.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item Name</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <TableRow key={product._id}>
-                    <TableCell>
-                      <div className="font-medium flex items-center gap-2">
-                        {product.type === "service" ? (
-                          <Server className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        {product.name}
-                        {product.type === "service" && (
-                          <Badge variant="outline">Service</Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {product.type === "service" ? (
-                        <span className="text-xs text-muted-foreground">
-                          N/A
-                        </span>
-                      ) : (
-                        <span className="font-bold text-lg">
-                          {product.stocks ?? 0}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Intl.DateTimeFormat("en-US").format(
-                        new Date(product.createdAt!)
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenForm(product)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenDeleteDialog(product)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-              <Package className="h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Get started by adding your first product or service.
-              </p>
+          <Tabs defaultValue="products" className="w-full">
+            <div className="px-4 pt-4 flex items-center justify-between">
+              <TabsList>
+                <TabsTrigger value="products">
+                  Products ({products.length})
+                </TabsTrigger>
+                <TabsTrigger value="services">
+                  Services ({services.length})
+                </TabsTrigger>
+              </TabsList>
+
               {permissions?.canCreateProducts && (
-                <Button className="mt-6" onClick={() => handleOpenForm()}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Item
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={openCreateProduct}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Product
+                  </Button>
+                  <Button onClick={openCreateService}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Service
+                  </Button>
+                </div>
               )}
             </div>
-          )}
+
+            <TabsContent value="products" className="p-4 pt-2">
+              {renderProductsTable()}
+            </TabsContent>
+
+            <TabsContent value="services" className="p-4 pt-2">
+              {renderServicesTable()}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
+      {/* Product Form */}
       <Dialog
-        open={isFormOpen}
+        open={isProductFormOpen}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setSelectedProduct(null);
-          setIsFormOpen(isOpen);
+          if (!isOpen) setProductToEdit(null);
+          setIsProductFormOpen(isOpen);
         }}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {selectedProduct ? "Edit Item" : "Create New Item"}
+              {productToEdit ? "Edit Product" : "Create New Product"}
             </DialogTitle>
             <DialogDescription>
-              {selectedProduct
-                ? "Update the details for this item."
-                : "Fill in the form to add a new product or service."}
+              {productToEdit
+                ? "Update the product details."
+                : "Fill in the form to add a new product."}
             </DialogDescription>
           </DialogHeader>
           <ProductForm
-            product={selectedProduct || undefined}
-            onSuccess={handleFormSuccess}
+            product={productToEdit || undefined}
+            onSuccess={onProductSaved}
           />
         </DialogContent>
       </Dialog>
 
+      {/* Service Form */}
+      <Dialog
+        open={isServiceFormOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setServiceToEdit(null);
+          setIsServiceFormOpen(isOpen);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {serviceToEdit ? "Edit Service" : "Create New Service"}
+            </DialogTitle>
+            <DialogDescription>
+              {serviceToEdit
+                ? "Update the service details."
+                : "Fill in the form to add a new service."}
+            </DialogDescription>
+          </DialogHeader>
+          <ServiceForm
+            service={serviceToEdit || undefined}
+            onSuccess={onServiceSaved}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Shared delete confirm (knows which one is set) */}
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              item.
+              This action cannot be undone. This will permanently delete the{" "}
+              {productToDelete ? "product" : "service"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteProduct}>
+            <AlertDialogAction onClick={handleDelete}>
               Continue
             </AlertDialogAction>
           </AlertDialogFooter>

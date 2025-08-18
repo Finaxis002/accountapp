@@ -312,20 +312,6 @@ export function CustomerForm({
                   )}
                 />
               )}
-
-              <FormField
-                control={form.control}
-                name="pan"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>PAN</FormLabel>
-                    <FormControl>
-                      <Input placeholder="10-digit PAN" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
             <FormField
               control={form.control}

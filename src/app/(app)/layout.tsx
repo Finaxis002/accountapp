@@ -25,7 +25,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import {
   Sheet,
@@ -45,8 +45,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // ✅ treat these as public routes: do NOT wrap, do NOT redirect
+  const isAuthRoute =
+    pathname === "/login" || pathname.startsWith("/client-login/");
 
   useEffect(() => {
+    if (isAuthRoute) {
+      // skip auth checks completely on auth pages
+      setIsLoading(false);
+      return;
+    }
+
     const today = new Date();
     setDateString(
       today.toLocaleDateString("en-US", {
@@ -57,19 +68,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       })
     );
 
-    try {
-      const user = getCurrentUser();
-      if (!user) {
-        router.push("/login");
-      } else {
-        setCurrentUser(user);
-      }
-    } catch (e) {
-      router.push("/login");
-    } finally {
+    const user = getCurrentUser();
+    if (!user) {
+      // protected app page → go to generic login
+      router.replace("/login");
       setIsLoading(false);
+      return;
     }
-  }, [router]);
+
+    setCurrentUser(user);
+    setIsLoading(false);
+  }, [router, pathname, isAuthRoute]);
+
+  // ⛔️ On auth routes, render ONLY the auth page (no sidebar/header/guard)
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
@@ -94,6 +108,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const role = localStorage.getItem("role");
   console.log("User role:", role);
+
+  const handleLogout = () => {
+    // read BEFORE clearing
+    const role = localStorage.getItem("role");
+    const slug =
+      localStorage.getItem("tenantSlug") ||
+      localStorage.getItem("slug") ||
+      localStorage.getItem("clientUsername");
+
+    // clear everything
+    localStorage.clear();
+    console.debug("Logout redirect →", role, slug);
+
+    // hard navigation to avoid any lingering layout state
+    if (role === "customer" && slug) {
+      window.location.assign(`/client-login/${slug}`);
+    } else {
+      window.location.assign(`/login`);
+    }
+  };
 
   return (
     <CompanyProvider>
@@ -215,7 +249,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         Settings
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => router.push("/login")}>
+                      <DropdownMenuItem onClick={handleLogout}>
                         Logout
                       </DropdownMenuItem>
                     </DropdownMenuContent>

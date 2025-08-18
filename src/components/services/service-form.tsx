@@ -17,11 +17,14 @@ import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 import React from "react"
 import { useToast } from "@/hooks/use-toast"
-import type { Service } from "@/lib/types"
+import type { Service as ApiService } from "@/lib/types"
+
+type ServiceInput = Partial<Pick<ApiService, "_id" | "serviceName">>;
 
 interface ServiceFormProps {
-    service?: Service;
-    onSuccess: (service: Service) => void;
+  service?: ServiceInput;
+  // When saved, we return the full API Service object
+  onSuccess: (service: ApiService) => void;
 }
 
 const formSchema = z.object({
