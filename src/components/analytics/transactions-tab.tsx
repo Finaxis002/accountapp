@@ -38,14 +38,18 @@ export function TransactionsTab({
   const { toast } = useToast();
 
   // put these above useEffect
-const idOf = (v: any) =>
-  typeof v === "string" ? v : v?._id || v?.$oid || v?.id || "";
+  const idOf = (v: any) =>
+    typeof v === "string" ? v : v?._id || v?.$oid || v?.id || "";
 
-const filterByCompany = <T extends { company?: any }>(arr: T[], companyId?: string | null) => {
-  if (!companyId) return arr;
-  return arr.filter((doc: any) => idOf(doc.company?._id ?? doc.company) === companyId);
-};
-
+  const filterByCompany = <T extends { company?: any }>(
+    arr: T[],
+    companyId?: string | null
+  ) => {
+    if (!companyId) return arr;
+    return arr.filter(
+      (doc: any) => idOf(doc.company?._id ?? doc.company) === companyId
+    );
+  };
 
   React.useEffect(() => {
     async function fetchTransactions() {
@@ -115,19 +119,33 @@ const filterByCompany = <T extends { company?: any }>(arr: T[], companyId?: stri
         //     type: "journal",
         //   }))
         // );
-      const salesArr     = (salesData.entries || salesData || []).map((s: any) => ({ ...s, type: "sales" }));
-const purchasesArr = (purchasesData || []).map((p: any) => ({ ...p, type: "purchases" }));
-const receiptsArr  = (receiptsData || []).map((r: any) => ({ ...r, type: "receipt" }));
-const paymentsArr  = (paymentsData || []).map((p: any) => ({ ...p, type: "payment" }));
-const journalsArr  = (journalsData || []).map((j: any) => ({ ...j, description: j.narration, type: "journal" }));
+        const salesArr = (salesData.entries || salesData || []).map(
+          (s: any) => ({ ...s, type: "sales" })
+        );
+        const purchasesArr = (purchasesData || []).map((p: any) => ({
+          ...p,
+          type: "purchases",
+        }));
+        const receiptsArr = (receiptsData || []).map((r: any) => ({
+          ...r,
+          type: "receipt",
+        }));
+        const paymentsArr = (paymentsData || []).map((p: any) => ({
+          ...p,
+          type: "payment",
+        }));
+        const journalsArr = (journalsData || []).map((j: any) => ({
+          ...j,
+          description: j.narration,
+          type: "journal",
+        }));
 
-setSales(     filterByCompany(salesArr,     selectedCompanyId));
-setPurchases( filterByCompany(purchasesArr, selectedCompanyId));
-setReceipts(  filterByCompany(receiptsArr,  selectedCompanyId));
-setPayments(  filterByCompany(paymentsArr,  selectedCompanyId));
-setJournals(  filterByCompany(journalsArr,  selectedCompanyId));
-    
-    } catch (error) {
+        setSales(filterByCompany(salesArr, selectedCompanyId));
+        setPurchases(filterByCompany(purchasesArr, selectedCompanyId));
+        setReceipts(filterByCompany(receiptsArr, selectedCompanyId));
+        setPayments(filterByCompany(paymentsArr, selectedCompanyId));
+        setJournals(filterByCompany(journalsArr, selectedCompanyId));
+      } catch (error) {
         toast({
           variant: "destructive",
           title: "Failed to load transactions",
@@ -222,7 +240,3 @@ setJournals(  filterByCompany(journalsArr,  selectedCompanyId));
     </Tabs>
   );
 }
-
-
-
-
