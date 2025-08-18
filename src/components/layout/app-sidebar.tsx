@@ -54,9 +54,9 @@ export function AppSidebar() {
   }, []);
 
   const handleLogout = () => {
-    logout();
-    router.push("/login");
-  };
+  const to = logout();          // ← get the right destination
+  window.location.assign(to);   // hard navigate so layout state doesn’t interfere
+};
 
   const isActive = (path: string) => {
     // Avoids matching /admin/dashboard when on /dashboard

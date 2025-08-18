@@ -25,6 +25,7 @@ export type Item = {
   itemType: 'product' | 'service';
   // Product fields
   product?: Product;
+  name?:string;
   quantity?: number;
   unitType?: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
   pricePerUnit?: number;
@@ -96,6 +97,7 @@ export type User = {
   token?: string;
   status?: "Active" | "Inactive";
   companies?: string[];
+  clientUsername?: string;
 };
 export type Client = {
   _id: string;
@@ -122,6 +124,7 @@ export type Client = {
   canCreateProducts?: boolean;
    canCreateCustomers?: boolean;
   canCreateVendors?: boolean;
+  slug?:string;
 };
 
 export type Invoice = {
@@ -201,6 +204,7 @@ export type Company = {
   companyType?: string;
   companyOwner?: string;
   contactNumber?: string;
+  logo?:string;
 };
 
 export type Party = {

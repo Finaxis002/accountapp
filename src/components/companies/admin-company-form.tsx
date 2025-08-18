@@ -137,6 +137,14 @@ export function AdminCompanyForm({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [step, setStep] = React.useState(1);
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(
+    company?.logo
+      ? company.logo.startsWith("/uploads")
+        ? `${baseURL}${company.logo}` // served by your API (static /uploads)
+        : company.logo // absolute URL already
+      : null
+  );
 
   const getClientId = (client: string | Client | undefined) => {
     if (!client) return "";
@@ -190,22 +198,37 @@ export function AdminCompanyForm({
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
+
       const url = company
         ? `${baseURL}/api/companies/${company._id}`
         : `${baseURL}/api/companies`;
       const method = company ? "PUT" : "POST";
+
+      // Build multipart form data
+      const fd = new FormData();
+
+      // Map form values → body fields expected by backend
+      // NOTE: backend expects selectedClient; don't send "client" directly.
       const { client, ...rest } = values;
-      const submissionBody = { ...rest, selectedClient: client };
+      Object.entries(rest).forEach(([k, v]) => {
+        // everything is string in your schema here, so append directly
+        if (v !== undefined && v !== null) fd.append(k, String(v));
+      });
+      if (client) fd.append("selectedClient", client);
+
+      // Add file only if user picked one (keeps old logo if not)
+      if (logoFile) fd.append("logo", logoFile);
+
+      // IMPORTANT: do NOT set Content-Type header; the browser will add the boundary.
       const res = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(submissionBody),
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Operation failed.");
+
       toast({
         title: company ? "Company Updated!" : "Company Created!",
         description: `${values.businessName} has been successfully saved.`,
@@ -223,11 +246,43 @@ export function AdminCompanyForm({
     }
   }
 
+  async function handleRemoveLogo() {
+    if (!company?._id) return;
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(`${baseURL}/api/companies/${company._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ logo: null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to remove logo");
+
+      setLogoFile(null);
+      setLogoPreview(null);
+      toast({ title: "Logo removed" });
+      onFormSubmit();
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Failed",
+        description: e instanceof Error ? e.message : "An error occurred.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-5xl mx-auto px-4 md:px-8 overflow-y-auto max-h-[80vh]">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 ">
-         
           <div className="flex justify-center items-center gap-2 pb-8">
             {[
               { number: 1, label: "Company Basic Details" },
@@ -286,44 +341,15 @@ export function AdminCompanyForm({
             ))}
           </div>
 
-         <div className="pb-[15vh]">
-           {step === 1 && (
-            <>
-              <FormField
-                control={form.control}
-                name="client"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assign to Client</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a client" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client._id} value={client._id}>
-                            {client.contactName} - ({client.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="pb-[15vh]">
+            {step === 1 && (
+              <>
                 <FormField
                   control={form.control}
-                  name="businessType"
+                  name="client"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Business Type</FormLabel>
+                      <FormLabel>Assign to Client</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
@@ -331,13 +357,13 @@ export function AdminCompanyForm({
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select business type" />
+                            <SelectValue placeholder="Select a client" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {defaultBusinessTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
+                          {clients.map((client) => (
+                            <SelectItem key={client._id} value={client._id}>
+                              {client.contactName} - ({client.email})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -346,126 +372,188 @@ export function AdminCompanyForm({
                     </FormItem>
                   )}
                 />
-
-                {[
-                  "businessName",
-                  "registrationNumber",
-                  "address",
-                  "City",
-                  "addressState",
-                  "Country",
-                  "Pincode",
-                  "Telephone",
-                  "mobileNumber",
-                  "emailId",
-                  "Website",
-                  "PANNumber",
-                  "IncomeTaxLoginPassword",
-                ].map((name) => (
-                  <FormField
-                    key={name}
-                    control={form.control}
-                    name={name as keyof FormData}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{getLabel(name)}</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <div className="space-y-2">
+                  <FormLabel>Company Logo</FormLabel>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setLogoFile(f);
+                      setLogoPreview(f ? URL.createObjectURL(f) : logoPreview);
+                    }}
                   />
-                ))}
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  "gstin",
-                  "gstState",
-                  "RegistrationType",
-                  "PeriodicityofGSTReturns",
-                  "GSTUsername",
-                  "GSTPassword",
-                  "EWBBillUsername",
-                  "EWBBillPassword",
-                ].map((name) => (
-                  <FormField
-                    key={name}
-                    control={form.control}
-                    name={name as keyof FormData}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{getLabel(name)}</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
-                <FormField
-                  control={form.control}
-                  name="ewayBillApplicable"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{getLabel("ewayBillApplicable")}</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Yes or No" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="true">Yes</SelectItem>
-                          <SelectItem value="false">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                  {logoPreview && (
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="mt-2 h-20 w-auto rounded border"
+                    />
                   )}
-                />
-              </div>
-            </>
-          )}
 
-          {step === 3 && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  "TANNumber",
-                  "TAXDeductionCollectionAcc",
-                  "DeductorType",
-                  "TDSLoginUsername",
-                  "TDSLoginPassword",
-                ].map((name) => (
+                  {/* Optional: show a remove button when editing and a logo already exists */}
+                  {company?.logo && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveLogo}
+                      className="mt-2"
+                    >
+                      Remove current logo
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    key={name}
                     control={form.control}
-                    name={name as keyof FormData}
+                    name="businessType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{getLabel(name)}</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
+                        <FormLabel>Business Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select business type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {defaultBusinessTypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                ))}
-              </div>
-            </>
-          )}
-         </div>
+
+                  {[
+                    "businessName",
+                    "registrationNumber",
+                    "address",
+                    "City",
+                    "addressState",
+                    "Country",
+                    "Pincode",
+                    "Telephone",
+                    "mobileNumber",
+                    "emailId",
+                    "Website",
+                    "PANNumber",
+                    "IncomeTaxLoginPassword",
+                  ].map((name) => (
+                    <FormField
+                      key={name}
+                      control={form.control}
+                      name={name as keyof FormData}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{getLabel(name)}</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    "gstin",
+                    "gstState",
+                    "RegistrationType",
+                    "PeriodicityofGSTReturns",
+                    "GSTUsername",
+                    "GSTPassword",
+                    "EWBBillUsername",
+                    "EWBBillPassword",
+                  ].map((name) => (
+                    <FormField
+                      key={name}
+                      control={form.control}
+                      name={name as keyof FormData}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{getLabel(name)}</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                  <FormField
+                    control={form.control}
+                    name="ewayBillApplicable"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{getLabel("ewayBillApplicable")}</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Yes or No" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    "TANNumber",
+                    "TAXDeductionCollectionAcc",
+                    "DeductorType",
+                    "TDSLoginUsername",
+                    "TDSLoginPassword",
+                  ].map((name) => (
+                    <FormField
+                      key={name}
+                      control={form.control}
+                      name={name as keyof FormData}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{getLabel(name)}</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 z-50">
             <div className="container flex justify-between items-center">

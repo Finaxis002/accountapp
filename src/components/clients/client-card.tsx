@@ -6,7 +6,16 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Client } from "@/lib/types";
-import { Eye, Edit, User, Phone, Calendar, MoreVertical } from "lucide-react";
+import {
+  Eye,
+  Edit,
+  User,
+  Phone,
+  Calendar,
+  MoreVertical,
+  Globe,
+  Copy,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import {
@@ -15,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClientCardProps {
   client: Client;
@@ -33,7 +43,22 @@ const formatDate = (dateString?: string) => {
   }).format(new Date(dateString));
 };
 
-export function ClientCard({ client, onEdit, onDelete, onResetPassword, onManagePermissions }: ClientCardProps) {
+const getAppOrigin = () =>
+  process.env.NEXT_PUBLIC_APP_ORIGIN ||
+  (typeof window !== "undefined" ? window.location.origin : "");
+
+const getAppLoginUrl = (slug?: string) =>
+  slug ? `${getAppOrigin()}/client-login/${slug}` : "";
+
+export function ClientCard({
+  client,
+  onEdit,
+  onDelete,
+  onResetPassword,
+  onManagePermissions,
+}: ClientCardProps) {
+  const { toast } = useToast();
+  const appUrl = getAppLoginUrl(client.slug);
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex-grow">
@@ -78,6 +103,39 @@ export function ClientCard({ client, onEdit, onDelete, onResetPassword, onManage
               </span>
             </div>
           </div>
+
+           {/* URL / Slug row */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50">
+              <Globe className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+            </div>
+
+            <div className="flex items-center justify-between flex-1">
+              <span className="text-muted-foreground">URL</span>
+
+              {client.slug ? (
+                <div className="flex items-center gap-2">
+                  <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              navigator.clipboard.writeText(appUrl).then(() =>
+                toast({
+                  title: "Copied",
+                  description: "Login URL copied to clipboard.",
+                })
+              )
+            }
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+                </div>
+              ) : (
+                <span className="font-medium text-muted-foreground/70">Not set</span>
+              )}
+            </div>
+          </div>
+         
         </div>
       </CardContent>
       <CardFooter className="mt-auto border-t p-4 flex justify-end gap-2">

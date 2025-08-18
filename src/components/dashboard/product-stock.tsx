@@ -95,7 +95,7 @@ export function ProductStock() {
             
             const url = selectedCompanyId
               ? `http://localhost:5000/api/products?companyId=${selectedCompanyId}`
-              : `http://localhost:5000/api/products/by-client`;
+              : `http://localhost:5000/api/products?companyId=${selectedCompanyId}`;
             
             const res = await fetch(url, {
                 headers: { "Authorization": `Bearer ${token}` }

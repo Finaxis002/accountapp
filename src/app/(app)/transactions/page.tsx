@@ -88,19 +88,6 @@ export default function TransactionsPage() {
   const { toast } = useToast();
 
   const fetchTransactions = React.useCallback(async () => {
-    if (!selectedCompanyId) {
-      setIsLoading(false);
-      setSales([]);
-      setPurchases([]);
-      setReceipts([]);
-      setPayments([]);
-      setJournals([]);
-      setCompanies([]);
-      setParties([]);
-      setVendors([]);
-      return;
-    }
-
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -109,6 +96,9 @@ export default function TransactionsPage() {
       const buildRequest = (url: string) =>
         fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
+      const queryParam = selectedCompanyId
+        ? `?companyId=${selectedCompanyId}`
+        : "";
       const [
         salesRes,
         purchasesRes,
@@ -121,11 +111,11 @@ export default function TransactionsPage() {
         productsRes, // NEW
         servicesRes, // NEW
       ] = await Promise.all([
-        buildRequest(`${baseURL}/api/sales?companyId=${selectedCompanyId}`),
-        buildRequest(`${baseURL}/api/purchase?companyId=${selectedCompanyId}`),
-        buildRequest(`${baseURL}/api/receipts?companyId=${selectedCompanyId}`),
-        buildRequest(`${baseURL}/api/payments?companyId=${selectedCompanyId}`),
-        buildRequest(`${baseURL}/api/journals?companyId=${selectedCompanyId}`),
+        buildRequest(`${baseURL}/api/sales${queryParam}`),
+        buildRequest(`${baseURL}/api/purchase${queryParam}`),
+        buildRequest(`${baseURL}/api/receipts${queryParam}`),
+        buildRequest(`${baseURL}/api/payments${queryParam}`),
+        buildRequest(`${baseURL}/api/journals${queryParam}`),
         buildRequest(`${baseURL}/api/companies/my`),
         buildRequest(`${baseURL}/api/parties`),
         buildRequest(`${baseURL}/api/vendors`),
@@ -144,6 +134,9 @@ export default function TransactionsPage() {
       // after parsing json:
       const productsJson = await productsRes.json();
       const servicesJson = await servicesRes.json();
+
+      console.log("productsJson :", productsJson);
+      console.log("servicesJson :", servicesJson);
 
       setProductsList(
         Array.isArray(productsJson) ? productsJson : productsJson.products || []
@@ -192,13 +185,16 @@ export default function TransactionsPage() {
 
   const productNameById = React.useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of productsList) m.set(p._id, p.name);
+    for (const p of productsList) {
+      // Ensure we're using the correct ID and name fields
+      m.set(String(p._id), p.name || "(unnamed product)");
+    }
     return m;
   }, [productsList]);
 
   const serviceNameById = React.useMemo(() => {
     const m = new Map<string, string>();
-    for (const s of servicesList) m.set(s._id, s.serviceName);
+    for (const s of servicesList) m.set(String(s._id), s.serviceName);
     return m;
   }, [servicesList]);
 
@@ -223,25 +219,32 @@ export default function TransactionsPage() {
 
   // change signature:
   const handleViewItems = (tx: any) => {
-    // tx.products: [{ product, quantity, unitType, pricePerUnit, amount }]
-    // tx.service OR tx.services: [{ serviceName, amount, description }]  (your DB uses `serviceName`)
+    const prods = (tx.products || []).map((p: any) => {
+      // Debug: Log the product ID and name lookup
+      const productName =
+        productNameById.get(p.product) || p.product?.name || "(product)";
+      console.log("Product lookup:", {
+        id: p.product,
+        foundName: productNameById.get(p.product),
+        productObj: p.product,
+      });
 
-    const prods = (tx.products || []).map((p: any) => ({
-      itemType: "product" as const,
-      name: productNameById.get(p.product) || "(product)",
-      quantity: p.quantity ?? "",
-      unitType: p.unitType ?? "",
-      pricePerUnit: p.pricePerUnit ?? "",
-      description: "",
-      amount: Number(p.amount) || 0,
-    }));
+      return {
+        itemType: "product" as const,
+        name: productName,
+        quantity: p.quantity ?? "",
+        unitType: p.unitType ?? "",
+        pricePerUnit: p.pricePerUnit ?? "",
+        description: "",
+        amount: Number(p.amount) || 0,
+      };
+    });
 
-    const svcArr = tx.service ?? tx.services ?? []; // support either key
+    const svcArr = tx.service ?? tx.services ?? [];
     const svcs = svcArr.map((s: any) => ({
       itemType: "service" as const,
       name:
         serviceNameById.get(
-          // s.serviceName is an ObjectId (per your DB snapshot)
           typeof s.serviceName === "object" ? s.serviceName._id : s.serviceName
         ) || "(service)",
       quantity: "",
@@ -251,9 +254,14 @@ export default function TransactionsPage() {
       amount: Number(s.amount) || 0,
     }));
 
-    setItemsToView([...prods, ...svcs] as any);
+    setItemsToView([...prods, ...svcs]);
     setIsItemsDialogOpen(true);
   };
+
+  React.useEffect(() => {
+    console.log("Products List:", productsList);
+    console.log("Product Name Map:", productNameById);
+  }, [productsList, productNameById]);
 
   const handleDeleteTransaction = async () => {
     if (!transactionToDelete) return;
@@ -449,34 +457,66 @@ export default function TransactionsPage() {
               A detailed list of all items in this transaction.
             </DialogDescription>
           </DialogHeader>
+
           <div className="mt-4">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
                   <TableHead className="text-center">Qty</TableHead>
                   <TableHead className="text-right">Price/Unit</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itemsToView.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      {item.product?.name}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.quantity}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(item?.pricePerUnit || 0)}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {formatCurrency(item.amount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {itemsToView.map((item, idx) => {
+                  const isService = item.itemType === "service";
+                  const qty =
+                    !isService &&
+                    item.quantity !== undefined &&
+                    item.quantity !== null && // Add null check
+                    !isNaN(Number(item.quantity)) // Ensure it's a valid number
+                      ? item.quantity
+                      : "—";
+                  const rate = !isService
+                    ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+                    : "—";
+                  const total = formatCurrency(Number(item?.amount ?? 0));
+                  return (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {isService ? (
+                            <Server className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <div className="flex flex-col">
+                            <span>{item?.name ?? "—"}</span>
+                            {isService && item?.description ? (
+                              <span className="text-xs text-muted-foreground line-clamp-1">
+                                {item.description}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="hidden sm:table-cell capitalize">
+                        {item.itemType ?? "—"}
+                      </TableCell>
+
+                      <TableCell className="text-center">{qty}</TableCell>
+
+                      <TableCell className="text-right">{rate}</TableCell>
+
+                      <TableCell className="text-right font-semibold">
+                        {total}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
