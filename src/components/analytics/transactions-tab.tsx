@@ -33,6 +33,8 @@ export function TransactionsTab({
   const [purchases, setPurchases] = React.useState<Transaction[]>([]);
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
+
+  
   const [journals, setJournals] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();

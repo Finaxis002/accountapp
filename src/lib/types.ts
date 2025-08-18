@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 export type Product = {
   _id: string;
   name: string;
+  type?: 'product' | 'service';
   stocks?: number;
   createdByClient: string;
   createdAt?: string;
@@ -11,11 +12,28 @@ export type Product = {
    maxInventories?: number;
 };
 
+export type Service = {
+    _id: string;
+    serviceName:string;
+    createdByClient: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+
 export type Item = {
-  product: Product;
-  quantity: number;
-  unitType: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
-  pricePerUnit: number;
+  itemType: 'product' | 'service';
+  // Product fields
+  product?: Product;
+  name?:string;
+  quantity?: number;
+  unitType?: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
+  pricePerUnit?: number;
+  // Service fields
+  service?: Service;
+  serviceName?: Service;
+  description?: string;
+  // Common field
   amount: number;
 }
 
@@ -79,6 +97,7 @@ export type User = {
   token?: string;
   status?: "Active" | "Inactive";
   companies?: string[];
+  clientUsername?: string;
 };
 export type Client = {
   _id: string;
@@ -105,6 +124,7 @@ export type Client = {
   canCreateProducts?: boolean;
    canCreateCustomers?: boolean;
   canCreateVendors?: boolean;
+  slug?:string;
 };
 
 export type Invoice = {
@@ -184,6 +204,7 @@ export type Company = {
   companyType?: string;
   companyOwner?: string;
   contactNumber?: string;
+  logo?:string;
 };
 
 export type Party = {

@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Search, Edit, PlusCircle } from "lucide-react";
+import { Loader2, Package, Search, Edit, PlusCircle, Server } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/lib/types";
 import { ScrollArea } from '../ui/scroll-area';
@@ -14,7 +14,8 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Label } from '../ui/label';
 import { ProductForm } from '../products/product-form';
 import { usePermissions } from '@/contexts/permission-context';
-
+import { useCompany } from '@/contexts/company-context';
+import { Badge } from '../ui/badge';
 
 function StockEditForm({ 
     product, 
@@ -83,14 +84,20 @@ export function ProductStock() {
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
     const { toast } = useToast();
-       const { permissions } = usePermissions();
+    const { permissions } = usePermissions();
+    const { selectedCompanyId } = useCompany();
 
     const fetchProducts = React.useCallback(async () => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            const res = await fetch(`http://localhost:5000/api/products`, {
+            
+            const url = selectedCompanyId
+              ? `http://localhost:5000/api/products?companyId=${selectedCompanyId}`
+              : `http://localhost:5000/api/products?companyId=${selectedCompanyId}`;
+            
+            const res = await fetch(url, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to fetch products.");
@@ -101,7 +108,7 @@ export function ProductStock() {
         } finally {
             setIsLoading(false);
         }
-    }, [toast]);
+    }, [toast, selectedCompanyId]);
 
     React.useEffect(() => {
         fetchProducts();
@@ -122,7 +129,7 @@ export function ProductStock() {
         setProducts(prev => [...prev, newProduct]);
         setIsAddDialogOpen(false);
         toast({
-            title: "Product Created!",
+            title: "Item Created!",
             description: `${newProduct.name} has been successfully added.`
         });
     }
@@ -130,25 +137,29 @@ export function ProductStock() {
 
     const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
+    if (!permissions?.canCreateProducts && (permissions?.maxInventories ?? 0) === 0) {
+        return null;
+    }
+
     return (
         <>
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>Product Stock</CardTitle>
+                            <CardTitle>Product & Service Stock</CardTitle>
                             <CardDescription>Current inventory levels.</CardDescription>
                         </div>
-                          {permissions?.canCreateProducts && (
+                         {permissions?.canCreateProducts && (
                             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                             <DialogTrigger asChild>
                                <Button variant="outline" size="sm">
-                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Product
+                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                                </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-lg">
                                <DialogHeader>
-                                   <DialogTitle>Create New Product</DialogTitle>
+                                   <DialogTitle>Create New Item</DialogTitle>
                                    <DialogDescription>Fill in the form to add a new product or service.</DialogDescription>
                                </DialogHeader>
                                <ProductForm onSuccess={handleAddSuccess} />
@@ -161,7 +172,7 @@ export function ProductStock() {
                      <div className="relative mb-4">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Search products..." 
+                            placeholder="Search items..." 
                             className="pl-9"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -176,18 +187,30 @@ export function ProductStock() {
                             <Table>
                                 <TableHeader className="sticky top-0 bg-card">
                                     <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>Available Stock</TableHead>
+                                        <TableHead>Item</TableHead>
+                                        <TableHead>Stock</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredProducts.map(product => (
                                         <TableRow key={product._id}>
-                                            <TableCell className="font-medium">{product.name}</TableCell>
-                                            <TableCell className="font-bold text-lg">{product.stocks ?? 0}</TableCell>
+                                            <TableCell className="font-medium flex items-center gap-2">
+                                                {product.type === 'service' 
+                                                    ? <Server className="h-4 w-4 text-muted-foreground" /> 
+                                                    : <Package className="h-4 w-4 text-muted-foreground" />}
+                                                {product.name}
+                                                {product.type === 'service' && <Badge variant="outline">Service</Badge>}
+                                            </TableCell>
+                                            <TableCell>
+                                                {product.type === 'service' ? (
+                                                    <span className="text-muted-foreground text-xs">N/A</span>
+                                                ) : (
+                                                    <span className="font-bold text-lg">{product.stocks ?? 0}</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-right">
-                                                {permissions?.canCreateProducts && (
+                                                {permissions?.canCreateProducts && product.type !== 'service' && (
                                                     <Button variant="ghost" size="sm" onClick={() => handleEditClick(product)}>
                                                         <Edit className="h-4 w-4 mr-2" />
                                                         Edit Stock
@@ -201,9 +224,9 @@ export function ProductStock() {
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full text-center py-8">
                                 <Package className="h-12 w-12 text-muted-foreground" />
-                                <h3 className="mt-4 text-lg font-semibold">No Products Found</h3>
+                                <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    {searchTerm ? `No products match "${searchTerm}".` : "You haven't added any products yet."}
+                                    {searchTerm ? `No items match "${searchTerm}".` : "You haven't added any products or services yet."}
                                 </p>
                             </div>
                         )}

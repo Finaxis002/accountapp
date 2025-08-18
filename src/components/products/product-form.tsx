@@ -19,8 +19,10 @@ import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/lib/types";
 
 interface ProductFormProps {
+  productType?: string;
   product?: Product;
   onSuccess: (product: Product) => void;
+  initialName?: string; // Add this
 }
 
 const formSchema = z.object({
@@ -30,18 +32,18 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function ProductForm({ product, onSuccess }: ProductFormProps) {
+export function ProductForm({ product, onSuccess , initialName, productType}: ProductFormProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: product?.name || "",
-      stocks: product?.stocks ?? 0,
-    },
-  });
+const form = useForm<FormData>({
+  resolver: zodResolver(formSchema),
+  defaultValues: {
+    name: product?.name || initialName || "", // Use initialName here
+    stocks: product?.stocks ?? 0,
+  },
+});
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
     try {
