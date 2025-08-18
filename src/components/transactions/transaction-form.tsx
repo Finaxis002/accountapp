@@ -364,79 +364,103 @@ export function TransactionForm({
   }, [fetchInitialData]);
 
   React.useEffect(() => {
-    if (transactionToEdit) {
-      let partyId: string | undefined;
-      if (transactionToEdit.party) {
-        partyId =
-          typeof transactionToEdit.party === "object"
-            ? transactionToEdit.party._id
-            : transactionToEdit.party;
-      } else if (transactionToEdit.vendor) {
-        partyId =
-          typeof transactionToEdit.vendor === "object"
-            ? transactionToEdit.vendor._id
-            : transactionToEdit.vendor;
-      }
+    if (!transactionToEdit) return;
 
-      const itemsToSet =
-        transactionToEdit.items && transactionToEdit.items.length > 0
-          ? transactionToEdit.items.map((item: Item) => ({
-              itemType: item.itemType,
+    // Prefer new unified shape if it exists
+    let itemsToSet =
+      Array.isArray((transactionToEdit as any).items) &&
+      (transactionToEdit as any).items.length
+        ? (transactionToEdit as any).items.map((i: any) => ({
+            itemType: i.itemType ?? (i.product ? "product" : "service"),
+            product:
+              typeof i.product === "object" ? i.product._id : i.product || "",
+            service:
+              typeof i.service === "object"
+                ? i.service._id
+                : i.service ||
+                  (typeof i.serviceName === "object"
+                    ? i.serviceName._id
+                    : i.serviceName) ||
+                  "",
+            quantity: i.quantity ?? 1,
+            unitType: i.unitType ?? "Piece",
+            pricePerUnit: i.pricePerUnit ?? 0,
+            description: i.description ?? "",
+            amount:
+              typeof i.amount === "number"
+                ? i.amount
+                : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
+          }))
+        : [
+            // legacy: products[]
+            ...((transactionToEdit as any).products || []).map((p: any) => ({
+              itemType: "product" as const,
               product:
-                typeof item.product === "object"
-                  ? item.product._id
-                  : item.product || "",
+                typeof p.product === "object" ? p.product._id : p.product || "",
+              quantity: p.quantity ?? 1,
+              unitType: p.unitType ?? "Piece",
+              pricePerUnit: p.pricePerUnit ?? 0,
+              description: p.description ?? "",
+              amount:
+                typeof p.amount === "number"
+                  ? p.amount
+                  : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
+            })),
+            // legacy: service[] with serviceName
+            ...((transactionToEdit as any).service || []).map((s: any) => ({
+              itemType: "service" as const,
               service:
-                typeof item.service === "object"
-                  ? item.service._id
-                  : item.service || "",
-              quantity: item.quantity,
-              unitType: item.unitType,
-              pricePerUnit: item.pricePerUnit,
-              description: item.description,
-              amount: item.amount,
-            }))
-          : [];
+                typeof s.serviceName === "object"
+                  ? s.serviceName._id
+                  : s.serviceName || "",
+              description: s.description ?? "",
+              amount: Number(s.amount || 0),
+            })),
+          ];
 
-      if (itemsToSet.length > 0) {
-        replace(itemsToSet);
-      } else {
-        replace([]); // Clear items if none exist
-      }
-
-      form.reset({
-        type: transactionToEdit.type,
-        company:
-          typeof transactionToEdit.company === "object"
-            ? transactionToEdit.company._id
-            : transactionToEdit.company,
-        date: new Date(transactionToEdit.date),
-        totalAmount: transactionToEdit.totalAmount || transactionToEdit.amount,
-        items: itemsToSet,
-        description: transactionToEdit.description || "",
-        narration: transactionToEdit.narration || "",
-        party: partyId,
-        referenceNumber: transactionToEdit.referenceNumber,
-        fromAccount: transactionToEdit.debitAccount,
-        toAccount: transactionToEdit.creditAccount,
-      });
-    } else {
-      form.reset({
-        party: "",
-        description: "",
-        totalAmount: 0,
-        items:
-          type === "sales" || type === "purchases" ? [PRODUCT_DEFAULT] : [], // <— use proper default
-        type: type,
-        referenceNumber: "",
-        fromAccount: "",
-        toAccount: "",
-        narration: "",
-        company: selectedCompanyId || form.getValues("company"),
-        date: new Date(),
-      });
+    // fallbacks for sales/purchases
+    if (
+      (!itemsToSet || itemsToSet.length === 0) &&
+      (transactionToEdit.type === "sales" ||
+        transactionToEdit.type === "purchases")
+    ) {
+      itemsToSet = [PRODUCT_DEFAULT];
     }
-  }, [transactionToEdit, type, form, selectedCompanyId, replace]);
+
+    // party/vendor id
+    let partyId: string | undefined;
+    if ((transactionToEdit as any).party) {
+      partyId =
+        typeof (transactionToEdit as any).party === "object"
+          ? (transactionToEdit as any).party._id
+          : (transactionToEdit as any).party;
+    } else if ((transactionToEdit as any).vendor) {
+      partyId =
+        typeof (transactionToEdit as any).vendor === "object"
+          ? (transactionToEdit as any).vendor._id
+          : (transactionToEdit as any).vendor;
+    }
+
+    form.reset({
+      type: transactionToEdit.type,
+      company:
+        typeof transactionToEdit.company === "object"
+          ? transactionToEdit.company._id
+          : (transactionToEdit.company as any),
+      date: new Date(transactionToEdit.date),
+      totalAmount:
+        transactionToEdit.totalAmount || (transactionToEdit as any).amount,
+      items: itemsToSet,
+      description: transactionToEdit.description || "",
+      narration: (transactionToEdit as any).narration || "",
+      party: partyId,
+      referenceNumber: (transactionToEdit as any).referenceNumber,
+      fromAccount: (transactionToEdit as any).debitAccount,
+      toAccount: (transactionToEdit as any).creditAccount,
+    });
+
+    replace(itemsToSet);
+  }, [transactionToEdit, form, replace]);
 
   // async function updateStock(token: string, items: Item[]) {
   async function updateStock(token: string, items: StockItemInput[]) {
@@ -798,30 +822,30 @@ export function TransactionForm({
           )}
         />
       </div>
-     <FormField
-  control={form.control}
-  name="party"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>{partyLabel}</FormLabel>
-      <Combobox
-        options={partyOptions}              // ✅ use parties OR vendors (based on type)
-        value={field.value || ""}
-        onChange={field.onChange}
-        placeholder={`Select or create...`} // ✅ generic
-        searchPlaceholder={`Search...`}
-        noResultsText={`No results found.`}
-        creatable
-        onCreate={async (name) => {         // ✅ open the right dialog (Customer or Vendor)
-          handleTriggerCreateParty(name);
-          return Promise.resolve("");       // selection will be set in handlePartyCreated
-        }}
+      <FormField
+        control={form.control}
+        name="party"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{partyLabel}</FormLabel>
+            <Combobox
+              options={partyOptions} // ✅ use parties OR vendors (based on type)
+              value={field.value || ""}
+              onChange={field.onChange}
+              placeholder={`Select or create...`} // ✅ generic
+              searchPlaceholder={`Search...`}
+              noResultsText={`No results found.`}
+              creatable
+              onCreate={async (name) => {
+                // ✅ open the right dialog (Customer or Vendor)
+                handleTriggerCreateParty(name);
+                return Promise.resolve(""); // selection will be set in handlePartyCreated
+              }}
+            />
+            <FormMessage />
+          </FormItem>
+        )}
       />
-      <FormMessage />
-    </FormItem>
-  )}
-/>
-
 
       <Separator />
 
@@ -1167,25 +1191,29 @@ export function TransactionForm({
             </FormItem>
           )}
         />
-         <FormField control={form.control} name="party" render={({ field }) => (
+        <FormField
+          control={form.control}
+          name="party"
+          render={({ field }) => (
             <FormItem>
-                <FormLabel>{partyLabel}</FormLabel>
-                <Combobox
-                    options={partyOptions}
-                    value={field.value || ""}
-                    onChange={field.onChange}
-                    placeholder={`Select or create...`}
-                    searchPlaceholder={`Search...`}
-                    noResultsText={`No results found.`}
-                    creatable
-                    onCreate={async (name) => {
-                    handleTriggerCreateParty(name);
-                    return Promise.resolve();
-                    }}
-                />
-                <FormMessage />
+              <FormLabel>{partyLabel}</FormLabel>
+              <Combobox
+                options={partyOptions}
+                value={field.value || ""}
+                onChange={field.onChange}
+                placeholder={`Select or create...`}
+                searchPlaceholder={`Search...`}
+                noResultsText={`No results found.`}
+                creatable
+                onCreate={async (name) => {
+                  handleTriggerCreateParty(name);
+                  return Promise.resolve();
+                }}
+              />
+              <FormMessage />
             </FormItem>
-        )} />
+          )}
+        />
         <FormField
           control={form.control}
           name="totalAmount"
