@@ -290,6 +290,8 @@ export default function ClientManagementPage() {
           canCreateCustomers: data.canCreateCustomers,
           canCreateVendors: data.canCreateVendors,
           canCreateProducts: data.canCreateProducts,
+          canCreateCompanies: data.canCreateCompanies,
+          canUpdateCompanies: data.canUpdateCompanies,
         });
       } else {
         // Fallback to client data if permissions are not explicitly set
@@ -303,6 +305,8 @@ export default function ClientManagementPage() {
           canCreateCustomers: client.canCreateCustomers || true,
           canCreateVendors: client.canCreateVendors || true,
           canCreateProducts: client.canCreateProducts || true,
+          canCreateCompanies: client.canCreateCompanies || false,
+          canUpdateCompanies: client.canUpdateCompanies || false,
         });
       }
     } catch (error) {
@@ -317,6 +321,8 @@ export default function ClientManagementPage() {
         canCreateCustomers: client.canCreateCustomers || true,
         canCreateVendors: client.canCreateVendors || true,
         canCreateProducts: client.canCreateProducts || true,
+        canCreateCompanies: client.canCreateCompanies || false,
+        canUpdateCompanies: client.canUpdateCompanies || false,
       });
     }
     setIsPermissionsDialogOpen(true);
@@ -673,8 +679,46 @@ export default function ClientManagementPage() {
                       }
                     />
                   </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <Building className="h-5 w-5 text-muted-foreground" />
+                      <Label
+                        htmlFor="canCreateCompanies"
+                        className="font-medium"
+                      >
+                        Create Companies
+                      </Label>
+                    </div>
+                    <Switch
+                      id="canCreateCompanies"
+                      checked={currentPermissions.canCreateCompanies}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canCreateCompanies", val)
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <Label
+                        htmlFor="canUpdateCompanies"
+                        className="font-medium"
+                      >
+                        Update Companies
+                      </Label>
+                    </div>
+                    <Switch
+                      id="canUpdateCompanies"
+                      checked={currentPermissions.canUpdateCompanies}
+                      onCheckedChange={(val) =>
+                        handlePermissionChange("canUpdateCompanies", val)
+                      }
+                    />
+                  </div>
                 </CardContent>
               </Card>
+
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-secondary/50">
                   <CardTitle className="text-base">Usage Limits</CardTitle>
@@ -1045,7 +1089,6 @@ export default function ClientManagementPage() {
                   onDelete={() => handleDelete(client)}
                   onResetPassword={() => handleResetPassword(client)}
                   onManagePermissions={() => handleManagePermissions(client)}
-                  
                 />
               ))}
             </div>
