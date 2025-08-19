@@ -5,12 +5,13 @@ export type Product = {
   name: string;
   type?: 'product' | 'service';
   stocks?: number;
-  createdByClient: string;
+  createdByClient: string;   // <-- required
   createdAt?: string;
   updatedAt?: string;
   stock?: string;
-   maxInventories?: number;
+  maxInventories?: number;
 };
+
 
 export type Service = {
     _id: string;
@@ -124,7 +125,21 @@ export type Client = {
   canCreateProducts?: boolean;
    canCreateCustomers?: boolean;
   canCreateVendors?: boolean;
+   canCreateCompanies?: boolean;  // Added
+  canUpdateCompanies?: boolean;    // Added
   slug?:string;
+};
+
+
+export type ClientPermissions = {
+  canCreateUsers?: boolean;
+  canCreateProducts?: boolean;
+  canCreateCustomers?: boolean;
+  canCreateVendors?: boolean;
+  canCreateCompanies?: boolean;
+  canUpdateCompanies?: boolean;
+  canSendInvoiceEmail?: boolean;
+  canSendInvoiceWhatsapp?: boolean;
 };
 
 export type Invoice = {
