@@ -360,199 +360,295 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
-          <p className="text-muted-foreground">
-            A list of all financial activities for the selected company.
-          </p>
+      {isLoading ? (
+        // Full-page loader while first fetch is in-flight
+        <div className="h-[80vh] w-full flex items-center justify-center">
+          <Card className="w-full max-w-md mx-auto">
+            <CardContent className="p-8 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
         </div>
-        <div className="flex items-center gap-2">
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => handleOpenForm(null)}
-                className="w-full md:w-auto"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                New Transaction
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
-              <DialogHeader className="p-6">
-                <DialogTitle>
-                  {transactionToEdit
-                    ? "Edit Transaction"
-                    : "Create a New Transaction"}
-                </DialogTitle>
+      ) : companies.length === 0 ? (
+        <div className="h-[80vh] w-full flex align-middle items-center justify-center">
+          <Card className="w-full max-w-md mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-lg overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center text-center">
+                {/* Icon Section */}
+                <div className="mb-5 w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+                  <svg
+                    className="w-8 h-8 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-4 0H9m4 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v12m4 0V9m0 12h4m0 0V9m0 12h2"
+                    ></path>
+                  </svg>
+                </div>
+
+                {/* Text Content */}
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  Company Setup Required
+                </h3>
+                <p className="text-gray-600 mb-5">
+                  Contact us to enable your company account and access all
+                  features.
+                </p>
+
+                {/* Call-to-Action Button */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                   <a className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                      ></path>
+                    </svg>
+                    +91-8989773689
+                  </a>
+
+                  <a
+                    href="mailto:support@company.com"
+                    className="flex-1 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      ></path>
+                    </svg>
+                    Email Us
+                  </a>
+                </div>
+
+                {/* Support Hours */}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">
+                Transactions
+              </h2>
+              <p className="text-muted-foreground">
+                A list of all financial activities for the selected company.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    onClick={() => handleOpenForm(null)}
+                    className="w-full md:w-auto"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Transaction
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+                  <DialogHeader className="p-6">
+                    <DialogTitle>
+                      {transactionToEdit
+                        ? "Edit Transaction"
+                        : "Create a New Transaction"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {transactionToEdit
+                        ? "Update the details of the financial event."
+                        : "Fill in the details below to record a new financial event."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <TransactionForm
+                    transactionToEdit={transactionToEdit}
+                    onFormSubmit={() => {
+                      setIsFormOpen(false);
+                      setTransactionToEdit(null);
+                      fetchTransactions();
+                    }}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  transaction.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteTransaction}>
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+            <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col">
+              <DialogHeader className="p-6 pb-0">
+                <DialogTitle>Invoice Preview</DialogTitle>
                 <DialogDescription>
-                  {transactionToEdit
-                    ? "Update the details of the financial event."
-                    : "Fill in the details below to record a new financial event."}
+                  This is a preview of the invoice. You can change the template
+                  and download it as a PDF.
                 </DialogDescription>
               </DialogHeader>
-              <TransactionForm
-                transactionToEdit={transactionToEdit}
-                onFormSubmit={() => {
-                  setIsFormOpen(false);
-                  setTransactionToEdit(null);
-                  fetchTransactions();
-                }}
+              <InvoicePreview
+                transaction={transactionToPreview}
+                company={
+                  companies.find(
+                    (c) => c._id === transactionToPreview?.company?._id
+                  ) || null
+                }
+                party={
+                  parties.find(
+                    (p) =>
+                      p._id === (transactionToPreview?.party as any)?._id ||
+                      transactionToPreview?.party === p._id
+                  ) || null
+                }
               />
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
 
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              transaction.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTransaction}>
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
+            <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Item Details</DialogTitle>
+                <DialogDescription>
+                  A detailed list of all items in this transaction.
+                </DialogDescription>
+              </DialogHeader>
 
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col">
-          <DialogHeader className="p-6 pb-0">
-            <DialogTitle>Invoice Preview</DialogTitle>
-            <DialogDescription>
-              This is a preview of the invoice. You can change the template and
-              download it as a PDF.
-            </DialogDescription>
-          </DialogHeader>
-          <InvoicePreview
-            transaction={transactionToPreview}
-            company={
-              companies.find(
-                (c) => c._id === transactionToPreview?.company?._id
-              ) || null
-            }
-            party={
-              parties.find(
-                (p) =>
-                  p._id === (transactionToPreview?.party as any)?._id ||
-                  transactionToPreview?.party === p._id
-              ) || null
-            }
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Item Details</DialogTitle>
-            <DialogDescription>
-              A detailed list of all items in this transaction.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="text-center">Qty</TableHead>
-                  <TableHead className="text-right">Price/Unit</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itemsToView.map((item, idx) => {
-                  const isService = item.itemType === "service";
-                  const qty =
-                    !isService &&
-                    item.quantity !== undefined &&
-                    item.quantity !== null && // Add null check
-                    !isNaN(Number(item.quantity)) // Ensure it's a valid number
-                      ? item.quantity
-                      : "—";
-                  const rate = !isService
-                    ? formatCurrency(Number(item?.pricePerUnit ?? 0))
-                    : "—";
-                  const total = formatCurrency(Number(item?.amount ?? 0));
-                  return (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {isService ? (
-                            <Server className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          <div className="flex flex-col">
-                            <span>{item?.name ?? "—"}</span>
-                            {isService && item?.description ? (
-                              <span className="text-xs text-muted-foreground line-clamp-1">
-                                {item.description}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="hidden sm:table-cell capitalize">
-                        {item.itemType ?? "—"}
-                      </TableCell>
-
-                      <TableCell className="text-center">{qty}</TableCell>
-
-                      <TableCell className="text-right">{rate}</TableCell>
-
-                      <TableCell className="text-right font-semibold">
-                        {total}
-                      </TableCell>
+              <div className="mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="hidden sm:table-cell">
+                        Type
+                      </TableHead>
+                      <TableHead className="text-center">Qty</TableHead>
+                      <TableHead className="text-right">Price/Unit</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </DialogContent>
-      </Dialog>
+                  </TableHeader>
+                  <TableBody>
+                    {itemsToView.map((item, idx) => {
+                      const isService = item.itemType === "service";
+                      const qty =
+                        !isService &&
+                        item.quantity !== undefined &&
+                        item.quantity !== null && // Add null check
+                        !isNaN(Number(item.quantity)) // Ensure it's a valid number
+                          ? item.quantity
+                          : "—";
+                      const rate = !isService
+                        ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+                        : "—";
+                      const total = formatCurrency(Number(item?.amount ?? 0));
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {isService ? (
+                                <Server className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <div className="flex flex-col">
+                                <span>{item?.name ?? "—"}</span>
+                                {isService && item?.description ? (
+                                  <span className="text-xs text-muted-foreground line-clamp-1">
+                                    {item.description}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </TableCell>
 
-      <Tabs defaultValue="all">
-        <div className="overflow-x-auto pb-2">
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="sales">Sales</TabsTrigger>
-            <TabsTrigger value="purchases">Purchases</TabsTrigger>
-            <TabsTrigger value="receipts">Receipts</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="journals">Journals</TabsTrigger>
-          </TabsList>
-        </div>
-        <TabsContent value="all" className="mt-4">
-          {renderContent(allTransactions)}
-        </TabsContent>
-        <TabsContent value="sales" className="mt-4">
-          {renderContent(sales)}
-        </TabsContent>
-        <TabsContent value="purchases" className="mt-4">
-          {renderContent(purchases)}
-        </TabsContent>
-        <TabsContent value="receipts" className="mt-4">
-          {renderContent(receipts)}
-        </TabsContent>
-        <TabsContent value="payments" className="mt-4">
-          {renderContent(payments)}
-        </TabsContent>
-        <TabsContent value="journals" className="mt-4">
-          {renderContent(journals)}
-        </TabsContent>
-      </Tabs>
+                          <TableCell className="hidden sm:table-cell capitalize">
+                            {item.itemType ?? "—"}
+                          </TableCell>
+
+                          <TableCell className="text-center">{qty}</TableCell>
+
+                          <TableCell className="text-right">{rate}</TableCell>
+
+                          <TableCell className="text-right font-semibold">
+                            {total}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Tabs defaultValue="all">
+            <div className="overflow-x-auto pb-2">
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="sales">Sales</TabsTrigger>
+                <TabsTrigger value="purchases">Purchases</TabsTrigger>
+                <TabsTrigger value="receipts">Receipts</TabsTrigger>
+                <TabsTrigger value="payments">Payments</TabsTrigger>
+                <TabsTrigger value="journals">Journals</TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="all" className="mt-4">
+              {renderContent(allTransactions)}
+            </TabsContent>
+            <TabsContent value="sales" className="mt-4">
+              {renderContent(sales)}
+            </TabsContent>
+            <TabsContent value="purchases" className="mt-4">
+              {renderContent(purchases)}
+            </TabsContent>
+            <TabsContent value="receipts" className="mt-4">
+              {renderContent(receipts)}
+            </TabsContent>
+            <TabsContent value="payments" className="mt-4">
+              {renderContent(payments)}
+            </TabsContent>
+            <TabsContent value="journals" className="mt-4">
+              {renderContent(journals)}
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
     </div>
   );
 }

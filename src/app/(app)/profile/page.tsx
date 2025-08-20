@@ -42,6 +42,20 @@ import { ProfileTab } from "@/components/settings/profile-tab";
 import { NotificationsTab } from "@/components/settings/notifications-tab";
 import { ServiceSettings } from "@/components/settings/service-settings";
 import { EmailSendingConsent } from "@/components/settings/email-sending-consent";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { AlertTriangle, CheckCircle2, Link2, Mail } from "lucide-react";
 
 export default function ProfilePage() {
   const { permissions, isLoading } = usePermissions();
@@ -144,6 +158,10 @@ function PermissionsTab() {
   const currentUser = getCurrentUser();
   const isCustomer = currentUser?.role === "customer";
 
+  const [gmailOpen, setGmailOpen] = React.useState(false);
+  const [gmailLinked, setGmailLinked] = React.useState(false);
+  const [gmailEmail, setGmailEmail] = React.useState<string | null>(null);
+
   const permissionItems = [
     {
       label: "Create Users",
@@ -176,6 +194,38 @@ function PermissionsTab() {
       icon: MessageSquare,
     },
   ];
+  // load current link state
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/integrations/gmail/status", {
+          cache: "no-store",
+        });
+        if (!r.ok) return;
+        const data = await r.json();
+        setGmailLinked(!!data?.linked);
+        setGmailEmail(data?.email ?? null);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  // connect / disconnect (wire these to your real endpoints)
+  const connectGmail = () => {
+    window.location.href =
+      "/api/integrations/gmail/oauth/start?returnTo=/settings";
+  };
+  const disconnectGmail = async () => {
+    try {
+      await fetch("/api/integrations/gmail/disconnect", { method: "POST" });
+      setGmailLinked(false);
+      setGmailEmail(null);
+      setGmailOpen(false);
+    } catch {
+      /* show toast if you like */
+    }
+  };
 
   const limitItems = [
     {
@@ -232,27 +282,72 @@ function PermissionsTab() {
                 <h4 className="font-medium mb-4 text-sm text-muted-foreground">
                   Feature Access
                 </h4>
+
                 <div className="grid grid-cols-2 gap-3">
-                  {permissionItems.map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex items-center justify-between text-sm p-3 rounded-lg border"
-                    >
-                      <div className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{item.label}</span>
+                  {permissionItems.map((item) => {
+                    const isEmailRow = item.label === "Send Invoice via Email";
+                    const statusIcon = gmailLinked ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    );
+
+                    return (
+                      <div
+                        key={item.label}
+                        className="flex items-center justify-between text-sm p-3 rounded-lg border"
+                      >
+                        <div className="flex items-center gap-2">
+                          <item.icon className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{item.label}</span>
+
+                          {/* extra indicator ONLY for the email permission row */}
+                          {isEmailRow && (
+                            <Tooltip delayDuration={150}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => setGmailOpen(true)}
+                                  className="ml-1 inline-flex items-center"
+                                  aria-label="Email sending status"
+                                >
+                                  {statusIcon}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="max-w-[260px]"
+                              >
+                                {gmailLinked ? (
+                                  <span>
+                                    Linked to <b>{gmailEmail}</b>. Click to
+                                    manage Gmail link.
+                                  </span>
+                                ) : (
+                                  <span>
+                                    Master admin granted this permission. Click
+                                    to connect Gmail so invoices can be emailed
+                                    to your customers.
+                                  </span>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+
+                        {/* keep the green check / red X badge you already had */}
+                        {item.granted ? (
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-500/20">
+                            <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                          </div>
+                        ) : (
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                            <X className="h-3 w-3 text-red-600 dark:text-red-400" />
+                          </div>
+                        )}
                       </div>
-                      {item.granted ? (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-500/20">
-                          <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                        </div>
-                      ) : (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
-                          <X className="h-3 w-3 text-red-600 dark:text-red-400" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>
