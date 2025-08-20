@@ -124,7 +124,7 @@ export default function ClientManagementPage() {
   const [clientForPermissions, setClientForPermissions] =
     React.useState<Client | null>(null);
   const [currentPermissions, setCurrentPermissions] = React.useState<
-    Partial<Client>
+    Partial<AllowedPermissions>
   >({});
   const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
 
@@ -299,7 +299,7 @@ export default function ClientManagementPage() {
           maxCompanies: client.maxCompanies || 5,
           maxUsers: client.maxUsers || 10,
           maxInventories: client.maxInventories || 50,
-          canSendInvoiceEmail: client.canSendInvoiceEmail || true,
+          canSendInvoiceEmail: client.canSendInvoiceEmail || false,
           canSendInvoiceWhatsapp: client.canSendInvoiceWhatsapp || false,
           canCreateUsers: client.canCreateUsers || true,
           canCreateCustomers: client.canCreateCustomers || true,
@@ -315,7 +315,7 @@ export default function ClientManagementPage() {
         maxCompanies: client.maxCompanies || 5,
         maxUsers: client.maxUsers || 10,
         maxInventories: client.maxInventories || 50,
-        canSendInvoiceEmail: client.canSendInvoiceEmail || true,
+        canSendInvoiceEmail: client.canSendInvoiceEmail || false,
         canSendInvoiceWhatsapp: client.canSendInvoiceWhatsapp || false,
         canCreateUsers: client.canCreateUsers || true,
         canCreateCustomers: client.canCreateCustomers || true,
@@ -328,8 +328,56 @@ export default function ClientManagementPage() {
     setIsPermissionsDialogOpen(true);
   };
 
-  const handlePermissionChange = (field: keyof Client, value: any) => {
+  const handlePermissionChange = (
+    field: keyof AllowedPermissions,
+    value: any
+  ) => {
     setCurrentPermissions((prev) => ({ ...prev, [field]: value }));
+  };
+
+  type AllowedPermissions = {
+    maxCompanies?: number;
+    maxUsers?: number;
+    maxInventories?: number;
+    canSendInvoiceEmail?: boolean;
+    canSendInvoiceWhatsapp?: boolean;
+    canCreateUsers?: boolean;
+    canCreateCustomers?: boolean;
+    canCreateVendors?: boolean;
+    canCreateProducts?: boolean;
+    // ⬇️ add these
+    canCreateCompanies?: boolean;
+    canUpdateCompanies?: boolean;
+  };
+
+  const {
+    maxCompanies,
+    maxUsers,
+    maxInventories,
+    canSendInvoiceEmail,
+    canSendInvoiceWhatsapp,
+    canCreateUsers,
+    canCreateCustomers,
+    canCreateVendors,
+    canCreateProducts,
+    // ⬇️ add these
+    canCreateCompanies,
+    canUpdateCompanies,
+  } = currentPermissions as AllowedPermissions;
+
+  const payload: AllowedPermissions = {
+    maxCompanies,
+    maxUsers,
+    maxInventories,
+    canSendInvoiceEmail,
+    canSendInvoiceWhatsapp,
+    canCreateUsers,
+    canCreateCustomers,
+    canCreateVendors,
+    canCreateProducts,
+    // ⬇️ add these
+    canCreateCompanies,
+    canUpdateCompanies,
   };
 
   const handleSavePermissions = async () => {
@@ -347,7 +395,7 @@ export default function ClientManagementPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(currentPermissions),
+          body: JSON.stringify(payload),
         }
       );
 

@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { UserCircle, Bell, Save } from "lucide-react";
+import { UserCircle, Bell, Save, Users } from "lucide-react";
+import { ClientsValidityManager } from "@/components/admin/settings/ClientsValidityManager";
 
 export default function SettingsPage() {
   return (
@@ -66,6 +67,9 @@ export default function SettingsPage() {
         </CardFooter>
       </Card>
 
+      {/* Add the Client Validity Manager Card here */}
+      <ClientsValidityManager />
+
        <Card>
         <CardHeader>
            <div className="flex items-center gap-3">
@@ -103,5 +107,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+    
+
+
   );
 }
