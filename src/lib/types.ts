@@ -39,7 +39,9 @@ export type Item = {
 }
 
 export type Transaction = {
-  _id: string;
+   _id: string;
+  invoiceNumber?: string | null;
+  invoiceYearYY?: number | null;
   date: Date;
   party?: { _id: string; name: string } | string;
   vendor?: { _id: string; vendorName: string } | string;

@@ -150,7 +150,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       {dateString}
                     </p>
                   </div>
-                  {currentUser?.role === "customer" && (
+                  {(currentUser?.role === "customer" ||
+                    currentUser?.role === "user" ||
+                    currentUser?.role === "admin" ||
+                    currentUser?.role === "master") && (
                     <div className="hidden md:block">
                       <CompanySwitcher />
                     </div>

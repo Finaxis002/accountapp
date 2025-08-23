@@ -53,13 +53,14 @@ interface ColumnsProps {
   serviceNameById: Map<string, string>;
 }
 
-// console.log("[columns] received:", {
-//   onPreview: typeof onPreview,
-//   onDownloadInvoice: typeof onDownloadInvoice,
-//   onViewItems: typeof onViewItems,
-// });
+
+const makeCustomFilterFn = (
+  serviceNameById: Map<string, string>
+): FilterFn<Transaction> => (row, columnId, filterValue) => {
+
 
 const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
+
   if (!filterValue) return true;
   const tx = row.original;
   const q = String(filterValue).toLowerCase();
@@ -164,6 +165,28 @@ export const columns = ({
             partyName = partyOrVendor.vendorName;
           }
         }
+
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "party",
+    header: "Party / Details",
+   filterFn: makeCustomFilterFn(serviceNameById),
+    cell: ({ row }) => {
+      const transaction = row.original;
+
 
         return (
           <div className="flex items-center gap-3">
@@ -346,15 +369,15 @@ export const columns = ({
         );
       },
     },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const transaction = row.original;
-        // const isSales =
-        //   transaction.type === "sales" || getUnifiedLines(transaction).length > 0;
-        const isSales =
-          transaction.type === "sales" ||
-          getUnifiedLines(transaction, serviceNameById).length > 0;
+
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      const transaction = row.original;
+       const isSales =
+   transaction.type === "sales" || getUnifiedLines(transaction, serviceNameById).length > 0;
+
 
         // helper to build minimal company/party objects for the PDF
         const buildCompany = (): Company | undefined => {

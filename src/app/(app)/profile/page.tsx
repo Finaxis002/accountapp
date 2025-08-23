@@ -195,6 +195,7 @@ function PermissionsTab() {
     },
   ];
   // load current link state
+  // load current link state
   React.useEffect(() => {
     (async () => {
       try {
@@ -203,29 +204,14 @@ function PermissionsTab() {
         });
         if (!r.ok) return;
         const data = await r.json();
-        setGmailLinked(!!data?.linked);
+        // ✅ use 'connected' from backend, not 'linked'
+        setGmailLinked(!!data?.connected);
         setGmailEmail(data?.email ?? null);
       } catch {
         /* ignore */
       }
     })();
   }, []);
-
-  // connect / disconnect (wire these to your real endpoints)
-  const connectGmail = () => {
-    window.location.href =
-      "/api/integrations/gmail/oauth/start?returnTo=/settings";
-  };
-  const disconnectGmail = async () => {
-    try {
-      await fetch("/api/integrations/gmail/disconnect", { method: "POST" });
-      setGmailLinked(false);
-      setGmailEmail(null);
-      setGmailOpen(false);
-    } catch {
-      /* show toast if you like */
-    }
-  };
 
   const limitItems = [
     {
@@ -241,10 +227,13 @@ function PermissionsTab() {
     },
   ];
 
+  const emailPerm = permissions?.canSendInvoiceEmail === true;
+
   return (
     <div>
       {isCustomer && (
         <div className="grid md:grid-cols-1 gap-6">
+          
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -286,7 +275,9 @@ function PermissionsTab() {
                 <div className="grid grid-cols-2 gap-3">
                   {permissionItems.map((item) => {
                     const isEmailRow = item.label === "Send Invoice via Email";
-                    const statusIcon = gmailLinked ? (
+                    const statusIcon = !emailPerm ? (
+                      <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                    ) : gmailLinked ? (
                       <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     ) : (
                       <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -307,7 +298,9 @@ function PermissionsTab() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  onClick={() => setGmailOpen(true)}
+                                  onClick={() =>
+                                    emailPerm && setGmailOpen(true)
+                                  }
                                   className="ml-1 inline-flex items-center"
                                   aria-label="Email sending status"
                                 >
@@ -318,7 +311,12 @@ function PermissionsTab() {
                                 side="top"
                                 className="max-w-[260px]"
                               >
-                                {gmailLinked ? (
+                                {!emailPerm ? (
+                                  <span>
+                                    Permission not granted by Master admin. You
+                                    can’t email invoices yet.
+                                  </span>
+                                ) : gmailLinked ? (
                                   <span>
                                     Linked to <b>{gmailEmail}</b>. Click to
                                     manage Gmail link.

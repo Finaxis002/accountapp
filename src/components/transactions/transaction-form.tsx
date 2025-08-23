@@ -462,6 +462,23 @@ export function TransactionForm({
     replace(itemsToSet);
   }, [transactionToEdit, form, replace]);
 
+async function fetchInvoiceNumber(baseURL: string, token: string, companyId: string, date: Date, series: string = "sales") {
+  const res = await fetch(`${baseURL}/api/invoices/issue-number`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ companyId, date, series }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data?.invoiceNumber) {
+    throw new Error(data?.message || "Failed to issue invoice number");
+  }
+  return data.invoiceNumber as string;
+}
+
   // async function updateStock(token: string, items: Item[]) {
   async function updateStock(token: string, items: StockItemInput[]) {
     try {
@@ -557,6 +574,23 @@ export function TransactionForm({
         delete payload.referenceNumber;
       }
 
+      // 🔑 NEW: issue invoice number only when creating a NEW sales transaction
+      // Replace the invoice number issuance logic:
+      if (
+        !transactionToEdit &&
+        (values.type === "sales" || values.type === "purchases")
+      ) {
+        const series = values.type === "sales" ? "sales" : "purchase";
+        const invoiceNumber = await fetchInvoiceNumber(
+          baseURL!,
+          token,
+          values.company,
+          values.date,
+          series
+        );
+        payload.invoiceNumber = invoiceNumber;
+      }
+
       const res = await fetch(`${baseURL}${endpoint}`, {
         method,
         headers: {
@@ -593,6 +627,12 @@ export function TransactionForm({
           await updateStock(token, stockItems);
         }
       }
+
+      // UI feedback
+      const suffix =
+        !transactionToEdit && values.type === "sales" && payload.invoiceNumber
+          ? ` (Invoice #${payload.invoiceNumber})`
+          : "";
 
       //send invoice on whatsapp directly
 
