@@ -86,6 +86,7 @@ export default function TransactionsPage() {
   const [parties, setParties] = React.useState<Party[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { selectedCompanyId } = useCompany();
+   const getCompanyId = (c: any) => (typeof c === "object" ? c?._id : c) || null;
   const { toast } = useToast();
 
   // ---- PERMISSION GATING ----
@@ -496,29 +497,49 @@ export default function TransactionsPage() {
     }
   };
 
+  // const allTransactions = React.useMemo(
+  //   () =>
+  //     [...sales, ...purchases, ...receipts, ...payments, ...journals].sort(
+  //       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  //     ),
+  //   [sales, purchases, receipts, payments, journals]
+  // );
+
+  
+  // --- Client-side company filters (defensive) ---
+  const filteredSales = React.useMemo(
+    () => (selectedCompanyId ? sales.filter(s => getCompanyId(s.company) === selectedCompanyId) : sales),
+    [sales, selectedCompanyId]
+  );
+
+  const filteredPurchases = React.useMemo(
+    () => (selectedCompanyId ? purchases.filter(p => getCompanyId(p.company) === selectedCompanyId) : purchases),
+    [purchases, selectedCompanyId]
+  );
+
+  const filteredReceipts = React.useMemo(
+    () => (selectedCompanyId ? receipts.filter(r => getCompanyId(r.company) === selectedCompanyId) : receipts),
+    [receipts, selectedCompanyId]
+  );
+
+  const filteredPayments = React.useMemo(
+    () => (selectedCompanyId ? payments.filter(p => getCompanyId(p.company) === selectedCompanyId) : payments),
+    [payments, selectedCompanyId]
+  );
+
+  const filteredJournals = React.useMemo(
+    () => (selectedCompanyId ? journals.filter(j => getCompanyId(j.company) === selectedCompanyId) : journals),
+    [journals, selectedCompanyId]
+  );
+
+  // Build "All" from the filtered arrays
   const allTransactions = React.useMemo(
     () =>
-      [...sales, ...purchases, ...receipts, ...payments, ...journals].sort(
+      [...filteredSales, ...filteredPurchases, ...filteredReceipts, ...filteredPayments, ...filteredJournals].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       ),
     [sales, purchases, receipts, payments, journals]
   );
-
-
-  // Only show lists the user is allowed to see
-const visibleSales     = canSales     ? sales     : [];
-const visiblePurchases = canPurchases ? purchases : [];
-const visibleReceipts  = canReceipt   ? receipts  : [];
-const visiblePayments  = canPayment   ? payments  : [];
-const visibleJournals  = canJournal   ? journals  : [];
-
-const allVisibleTransactions = React.useMemo(
-  () =>
-    [...visibleSales, ...visiblePurchases, ...visibleReceipts, ...visiblePayments, ...visibleJournals]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-  [visibleSales, visiblePurchases, visibleReceipts, visiblePayments, visibleJournals]
-);
-
 
   const companyMap = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -829,64 +850,36 @@ const allVisibleTransactions = React.useMemo(
             </DialogContent>
           </Dialog>
 
-          {allowedTypes.length === 0 ? (
-  <Card>
-    <CardContent className="p-6">
-      <h3 className="text-lg font-semibold">No transaction access</h3>
-      <p className="text-sm text-muted-foreground">
-        You don’t have permission to view transaction entries. Please contact your administrator.
-      </p>
-    </CardContent>
-  </Card>
-) : (
-  <Tabs defaultValue="all">
-    <div className="overflow-x-auto pb-2">
-      <TabsList>
-        <TabsTrigger value="all">All</TabsTrigger>
-        {canSales     && <TabsTrigger value="sales">Sales</TabsTrigger>}
-        {canPurchases && <TabsTrigger value="purchases">Purchases</TabsTrigger>}
-        {canReceipt   && <TabsTrigger value="receipts">Receipts</TabsTrigger>}
-        {canPayment   && <TabsTrigger value="payments">Payments</TabsTrigger>}
-        {canJournal   && <TabsTrigger value="journals">Journals</TabsTrigger>}
-      </TabsList>
-    </div>
-
-    <TabsContent value="all" className="mt-4">
-      {renderContent(allVisibleTransactions)}
-    </TabsContent>
-
-    {canSales && (
-      <TabsContent value="sales" className="mt-4">
-        {renderContent(sales)}
-      </TabsContent>
-    )}
-
-    {canPurchases && (
-      <TabsContent value="purchases" className="mt-4">
-        {renderContent(purchases)}
-      </TabsContent>
-    )}
-
-    {canReceipt && (
-      <TabsContent value="receipts" className="mt-4">
-        {renderContent(receipts)}
-      </TabsContent>
-    )}
-
-    {canPayment && (
-      <TabsContent value="payments" className="mt-4">
-        {renderContent(payments)}
-      </TabsContent>
-    )}
-
-    {canJournal && (
-      <TabsContent value="journals" className="mt-4">
-        {renderContent(journals)}
-      </TabsContent>
-    )}
-  </Tabs>
-)}
-
+          <Tabs defaultValue="all">
+            <div className="overflow-x-auto pb-2">
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="sales">Sales</TabsTrigger>
+                <TabsTrigger value="purchases">Purchases</TabsTrigger>
+                <TabsTrigger value="receipts">Receipts</TabsTrigger>
+                <TabsTrigger value="payments">Payments</TabsTrigger>
+                <TabsTrigger value="journals">Journals</TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="all" className="mt-4">
+              {renderContent(allTransactions)}
+            </TabsContent>
+            <TabsContent value="sales" className="mt-4">
+              {renderContent(filteredSales)}
+            </TabsContent>
+            <TabsContent value="purchases" className="mt-4">
+              {renderContent(filteredPurchases)}
+            </TabsContent>
+            <TabsContent value="receipts" className="mt-4">
+              {renderContent(filteredReceipts)}
+            </TabsContent>
+            <TabsContent value="payments" className="mt-4">
+              {renderContent(filteredPayments)}
+            </TabsContent>
+            <TabsContent value="journals" className="mt-4">
+              {renderContent(filteredJournals)}
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>
