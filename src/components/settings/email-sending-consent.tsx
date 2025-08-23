@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Mail, ShieldCheck } from "lucide-react";
+import { Loader2, Mail, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -32,6 +32,7 @@ export function EmailSendingConsent() {
   const [agreeChecked, setAgreeChecked] = React.useState(false);
   const [savingAgree, setSavingAgree] = React.useState(false);
   const [connecting, setConnecting] = React.useState(false);
+  const [reconnectNotice, setReconnectNotice] = React.useState(false);
 
   // add near top (below other state):
   const refreshStatus = React.useCallback(async () => {
@@ -45,100 +46,70 @@ export function EmailSendingConsent() {
   }, []);
 
   // effect #1: on mount, if callback added ?gmail=connected, handle it
+  // effect #1: on mount, handle callback flags added to URL by the backend
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
-    const gmailFlag = sp.get("gmail");
+    const gmailFlag = sp.get("gmail"); // connected | reconnect | revoked | disconnected
     const connectedEmail = sp.get("email");
-    if (gmailFlag === "connected") {
-      refreshStatus()
-        .then(() => {
-          toast({
-            title: "Gmail connected",
-            description: connectedEmail
-              ? `Connected as ${connectedEmail}`
-              : "Connection successful.",
-          });
-        })
-        .catch(() => {
-          /* ignore */
+
+    async function handle() {
+      if (!gmailFlag) return;
+
+      // Always refresh status first so UI reflects the latest
+      try {
+        await refreshStatus();
+      } catch {
+        /* ignore */
+      }
+
+      if (gmailFlag === "connected") {
+        toast({
+          title: "Gmail connected",
+          description: connectedEmail
+            ? `Connected as ${connectedEmail}`
+            : "Connection successful.",
         });
-      // remove params from the URL
+      } else if (
+        gmailFlag === "reconnect" ||
+        gmailFlag === "revoked" ||
+        gmailFlag === "disconnected"
+      ) {
+        setReconnectNotice(true);
+        toast({
+          variant: "destructive",
+          title: "Gmail disconnected",
+          description:
+            "Please reconnect your Gmail account to keep emailing invoices.",
+        });
+      }
+
+      // Clean URL
       const url = new URL(window.location.href);
       url.searchParams.delete("gmail");
       url.searchParams.delete("email");
       window.history.replaceState({}, "", url.toString());
     }
+
+    handle();
   }, [refreshStatus, toast]);
 
-  // optional: Disconnect + Send test handlers & buttons
-  const [busyAction, setBusyAction] = React.useState<
-    null | "test" | "disconnect"
-  >(null);
+  // effect #2: listen for a global event to force the reconnect dialog/banner
+  React.useEffect(() => {
+    const onNeedsReconnect = () => setReconnectNotice(true);
+    window.addEventListener("gmail:reconnect-required", onNeedsReconnect);
+    return () =>
+      window.removeEventListener("gmail:reconnect-required", onNeedsReconnect);
+  }, []);
 
-  async function handleSendTest() {
-    setBusyAction("test");
-    try {
-      const token = localStorage.getItem("token");
-      // Send the test to the connected email (or let user type one)
-      const to = status.email || "";
-      const res = await fetch(`${baseURL}/api/integrations/gmail/send-test`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token || ""}`,
-        },
-        body: JSON.stringify({ to }),
-      });
-      if (!res.ok) throw new Error((await res.json()).message || "Send failed");
-      toast({ title: "Test sent", description: `Check inbox: ${to}` });
-    } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Test failed",
-        description: e instanceof Error ? e.message : "",
-      });
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
-  async function handleDisconnect() {
-    setBusyAction("disconnect");
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${baseURL}/api/integrations/gmail/disconnect`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token || ""}` },
-      });
-      if (!res.ok)
-        throw new Error((await res.json()).message || "Disconnect failed");
-      await refreshStatus();
-      toast({ title: "Disconnected", description: "Gmail account removed." });
-    } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Could not disconnect",
-        description: e instanceof Error ? e.message : "",
-      });
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
+  // 🔎 Fetch current status (terms + gmail connection)
   // 🔎 Fetch current status (terms + gmail connection)
   React.useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${baseURL}/api/integrations/gmail/status`, {
-          headers: { Authorization: `Bearer ${token || ""}` },
-        });
-        if (!res.ok) throw new Error("Failed to load email status");
-        const data = (await res.json()) as EmailStatus;
-        if (mounted) setStatus(data);
-      } catch (e) {
-        // silent; stays defaults
+        await refreshStatus();
+      } catch {
+        /* ignore */
       } finally {
         if (mounted) setLoading(false);
       }
@@ -146,7 +117,7 @@ export function EmailSendingConsent() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [refreshStatus]);
 
   const handleAgree = async () => {
     if (!agreeChecked) return;
@@ -202,6 +173,10 @@ export function EmailSendingConsent() {
     }
   };
 
+  const hasAccepted = Boolean(status.termsAcceptedAt);
+  const needsReconnect =
+    reconnectNotice || (hasAccepted && !!status.email && !status.connected);
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -210,8 +185,6 @@ export function EmailSendingConsent() {
       </div>
     );
   }
-
-  const hasAccepted = Boolean(status.termsAcceptedAt);
 
   return (
     <div className="space-y-4">
@@ -231,6 +204,23 @@ export function EmailSendingConsent() {
         </Alert>
       )}
 
+      {needsReconnect && (
+        <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-500/10">
+          <AlertTitle className="font-medium">
+            Gmail disconnected — action required
+          </AlertTitle>
+          <AlertDescription className="mt-1">
+            To email invoices, please reconnect your Gmail account.
+            <div className="mt-3">
+              <Button size="sm" onClick={handleConnect}>
+                <Mail className="h-4 w-4 mr-2" />
+                Reconnect Gmail
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardContent className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -238,9 +228,7 @@ export function EmailSendingConsent() {
             <div className="text-sm">
               <div className="font-medium">Email account</div>
               {status.connected && status.email ? (
-                <div className="text-muted-foreground">
-                  Connected: {status.email}
-                </div>
+                <></>
               ) : (
                 <div className="text-muted-foreground">
                   {hasAccepted
@@ -251,7 +239,14 @@ export function EmailSendingConsent() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {!status.connected && (
+            {status.connected ? (
+              // Show a simple "Connected" pill (no button)
+              <div className="px-3 py-2 rounded-md bg-emerald-50 text-emerald-700 text-sm flex items-center gap-2 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Connected{status.email ? `: ${status.email}` : ""}</span>
+              </div>
+            ) : (
+              // If previously had an email on file -> "Reconnect", else "Connect"
               <Button
                 onClick={handleConnect}
                 disabled={!hasAccepted || connecting}
@@ -259,12 +254,7 @@ export function EmailSendingConsent() {
                 {connecting ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
-                Connect Gmail
-              </Button>
-            )}
-            {status.connected && (
-              <Button variant="outline" onClick={handleConnect}>
-                Change account
+                {status.email ? "Reconnect Gmail" : "Connect Gmail"}
               </Button>
             )}
           </div>

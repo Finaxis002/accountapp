@@ -48,7 +48,9 @@ interface ColumnsProps {
   serviceNameById: Map<string, string>;
 }
 
-const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
+const makeCustomFilterFn = (
+  serviceNameById: Map<string, string>
+): FilterFn<Transaction> => (row, columnId, filterValue) => {
   if (!filterValue) return true;
   const tx = row.original;
   const q = String(filterValue).toLowerCase();
@@ -104,7 +106,7 @@ export const columns = ({
   {
     accessorKey: "party",
     header: "Party / Details",
-    filterFn: customFilterFn,
+   filterFn: makeCustomFilterFn(serviceNameById),
     cell: ({ row }) => {
       const transaction = row.original;
 
@@ -298,8 +300,8 @@ export const columns = ({
     id: "actions",
     cell: ({ row }) => {
       const transaction = row.original;
-      const isSales =
-        transaction.type === "sales" || getUnifiedLines(transaction).length > 0;
+       const isSales =
+   transaction.type === "sales" || getUnifiedLines(transaction, serviceNameById).length > 0;
 
       // helper to build minimal company/party objects for the PDF
       const buildCompany = (): Company | undefined => {
