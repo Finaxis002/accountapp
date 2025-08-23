@@ -36,47 +36,45 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ALL_PERMISSIONS, type Permission } from "@/lib/permissions";
 import { Switch } from "@/components/ui/switch";
 
-// Friendly questions mapped to your existing permission codes
-const PERM_QUESTIONS: {
-  perm: Permission;
-  label: string;
-  autoIncludeRead?: Permission;
-}[] = [
-  // we auto-include the corresponding :read when :write is enabled
-  {
-    perm: "product:write" as Permission,
-    label: "Can add products?",
-    autoIncludeRead: "product:read" as Permission,
-  },
-  // If your app treats services as products(type=service), this can reuse product:write
-  {
-    perm: "product:write" as Permission,
-    label: "Can add services?",
-    autoIncludeRead: "product:read" as Permission,
-  },
-  {
-    perm: "sales:write" as Permission,
-    label: "Can add sales entries?",
-    autoIncludeRead: "sales:read" as Permission,
-  },
-  {
-    perm: "purchase:write" as Permission,
-    label: "Can add purchase entries?",
-    autoIncludeRead: "purchase:read" as Permission,
-  },
-  {
-    perm: "company:write" as Permission,
-    label: "Can manage company profile?",
-    autoIncludeRead: "company:read" as Permission,
-  },
-];
-
 type RoleDoc = {
   _id: string;
   name: string;
-  label: string;
-  rank: number;
-  permissions: string[];
+  defaultPermissions: string[]; // or ["*"]
+};
+
+// Mirror backend CAP_KEYS here
+const ALL_CAPS = [
+  "canCreateInventory",
+  "canCreateProducts",
+  "canCreateCustomers",
+  "canCreateVendors",
+  "canCreateCompanies",
+  "canUpdateCompanies",
+  "canSendInvoiceEmail",
+  "canSendInvoiceWhatsapp",
+  "canCreateSaleEntries",
+  "canCreatePurchaseEntries",
+  "canCreateJournalEntries",
+  "canCreateReceiptEntries",
+  "canCreatePaymentEntries",
+] as const;
+
+type CapKey = (typeof ALL_CAPS)[number];
+
+const CAP_LABELS: Record<CapKey, string> = {
+  canCreateInventory: "Create Inventory",
+  canCreateProducts: "Create Products/Services",
+  canCreateCustomers: "Create Customers",
+  canCreateVendors: "Create Vendors",
+  canCreateCompanies: "Create Companies",
+  canUpdateCompanies: "Update Companies",
+  canSendInvoiceEmail: "Send Invoice via Email",
+  canSendInvoiceWhatsapp: "Send Invoice via WhatsApp",
+  canCreateSaleEntries: "Create Sales Entries",
+  canCreatePurchaseEntries: "Create Purchase Entries",
+  canCreateJournalEntries: "Create Journal Entries",
+  canCreateReceiptEntries: "Create Receipt Entries",
+  canCreatePaymentEntries: "Create Payment Entries",
 };
 
 interface UserFormProps {
@@ -112,30 +110,32 @@ export function UserForm({
 
   // Create Role dialog state
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
-  const [newRole, setNewRole] = useState({
+
+  const [newRole, setNewRole] = useState<{
+    name: string;
+    defaultPermissions: CapKey[] | ["*"];
+    grantAll: boolean;
+  }>({
     name: "",
-    label: "",
-    rank: 10,
-    permissions: [] as Permission[],
+    defaultPermissions: [],
+    grantAll: false,
   });
 
-  const toggleNewRolePermission = (
-    perm: Permission,
-    autoIncludeRead?: Permission
-  ) => {
+  const toggleCap = (cap: CapKey) => {
     setNewRole((prev) => {
-      const set = new Set(prev.permissions);
-
-      if (set.has(perm)) {
-        // turning OFF write: leave read as-is
-        set.delete(perm);
-      } else {
-        // turning ON write
-        set.add(perm);
-        if (autoIncludeRead) set.add(autoIncludeRead);
-      }
-      return { ...prev, permissions: Array.from(set) as Permission[] };
+      if (prev.grantAll) return prev; // when Grant all is ON, per-cap toggles disabled
+      const set = new Set(prev.defaultPermissions as CapKey[]);
+      set.has(cap) ? set.delete(cap) : set.add(cap);
+      return { ...prev, defaultPermissions: Array.from(set) as CapKey[] };
     });
+  };
+
+  const toggleGrantAll = (val: boolean) => {
+    setNewRole((prev) => ({
+      ...prev,
+      grantAll: val,
+      defaultPermissions: val ? ["*"] : ([] as CapKey[]),
+    }));
   };
 
   useEffect(() => {
@@ -230,37 +230,37 @@ export function UserForm({
   const selectedCompanies = allCompanies.filter((c) =>
     formData.companies.includes(c._id)
   );
-
   const createRole = async () => {
     try {
-      if (!newRole.name || !newRole.label) {
-        toast({
-          variant: "destructive",
-          title: "Role name and label are required",
-        });
+      if (!newRole.name) {
+        toast({ variant: "destructive", title: "Role name is required" });
         return;
       }
       const token = localStorage.getItem("token");
+      const payload = {
+        name: newRole.name,
+        defaultPermissions: newRole.defaultPermissions,
+      };
+
       const res = await fetch(`${baseURL}/api/roles`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(newRole),
+        body: JSON.stringify(payload),
       });
+
       const role: RoleDoc = await res.json();
       if (!res.ok)
         throw new Error((role as any)?.message || "Failed to create role");
 
-      // update local list and select it
       setRoles((prev) => [role, ...prev]);
       setFormData((prev) => ({ ...prev, roleId: role._id }));
 
-      // reset dialog
-      setNewRole({ name: "", label: "", rank: 10, permissions: [] });
+      setNewRole({ name: "", defaultPermissions: [], grantAll: false });
       setIsCreateRoleOpen(false);
-      toast({ title: "Role created", description: `${role.label} added` });
+      toast({ title: "Role created", description: `${role.name} added` });
     } catch (e) {
       toast({
         variant: "destructive",
@@ -356,46 +356,82 @@ export function UserForm({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                 
+                  {/* Role Name */}
                   <div>
                     <Label>Role Name</Label>
                     <Input
-                      placeholder="e.g. Auditor"
-                      value={newRole.label}
+                      placeholder="e.g. auditor"
+                      value={newRole.name}
                       onChange={(e) =>
-                        setNewRole({ ...newRole, label: e.target.value })
+                        setNewRole({
+                          ...newRole,
+                          name: e.target.value,
+                        })
                       }
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Lowercase, no spaces. Used internally (e.g., “admin”,
+                      “client”, “user”, “auditor”).
+                    </p>
                   </div>
-                
 
+                  {/* Grant all */}
+                  <div className="flex items-center justify-between rounded-xl border p-3">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="grant-all">Grant all permissions</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Instantly selects all capabilities for this role.
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="grant-all"
+                      checked={newRole.grantAll}
+                      onCheckedChange={(v) => toggleGrantAll(!!v)}
+                      className="rounded-full data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                    />
+                  </div>
+
+                  {/* Permissions grid */}
                   <div>
                     <Label>Default Permissions</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                      {PERM_QUESTIONS.map(
-                        ({ perm, label, autoIncludeRead }) => {
-                          const checked = newRole.permissions.includes(perm);
-                          return (
-                            <div
-                              key={label}
-                              className="flex items-center justify-between rounded-lg border p-3"
-                            >
-                              <span className="text-sm">{label}</span>
-                              <Switch
-                                checked={checked}
-                                onCheckedChange={() =>
-                                  toggleNewRolePermission(perm, autoIncludeRead)
-                                }
-                              />
+
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {ALL_CAPS.map((cap) => {
+                        const checked =
+                          newRole.grantAll ||
+                          (Array.isArray(newRole.defaultPermissions) &&
+                            (newRole.defaultPermissions as CapKey[]).includes(
+                              cap
+                            ));
+
+                        return (
+                          <label
+                            key={cap}
+                            className={cn(
+                              "flex items-center justify-between rounded-xl border p-3 transition-colors",
+                              "hover:bg-accent/40"
+                            )}
+                          >
+                            <div className="pr-3">
+                              <div className="text-sm font-medium leading-none">
+                                {CAP_LABELS[cap]}
+                              </div>
                             </div>
-                          );
-                        }
-                      )}
+
+                            <Checkbox
+                              checked={checked}
+                              disabled={newRole.grantAll}
+                              onCheckedChange={(v) => toggleCap(cap, !!v)}
+                              className="rounded-full data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                            />
+                          </label>
+                        );
+                      })}
                     </div>
-                    {/* Optional hint */}
+
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Enabling “add” automatically grants the related “view”
-                      permission.
+                      These are the role’s default capabilities. Tenant caps and
+                      per-user overrides still apply.
                     </p>
                   </div>
                 </div>
@@ -434,12 +470,7 @@ export function UserForm({
               roles.map((r) => (
                 <div key={r._id} className="flex items-center space-x-2">
                   <RadioGroupItem id={`role-${r._id}`} value={r._id} />
-                  <Label htmlFor={`role-${r._id}`}>
-                    {r.label}{" "}
-                    <span className="text-xs text-muted-foreground">
-                      ({r.name})
-                    </span>
-                  </Label>
+                  <Label htmlFor={`role-${r._id}`}>{r.name}</Label>
                 </div>
               ))
             )}
