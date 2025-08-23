@@ -84,6 +84,7 @@ export default function TransactionsPage() {
   const [parties, setParties] = React.useState<Party[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { selectedCompanyId } = useCompany();
+   const getCompanyId = (c: any) => (typeof c === "object" ? c?._id : c) || null;
   const { toast } = useToast();
 
   const lastFetchRef = React.useRef<{
@@ -387,12 +388,48 @@ const fetchTransactions = React.useCallback(async () => {
     }
   };
 
+  // const allTransactions = React.useMemo(
+  //   () =>
+  //     [...sales, ...purchases, ...receipts, ...payments, ...journals].sort(
+  //       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  //     ),
+  //   [sales, purchases, receipts, payments, journals]
+  // );
+
+  
+  // --- Client-side company filters (defensive) ---
+  const filteredSales = React.useMemo(
+    () => (selectedCompanyId ? sales.filter(s => getCompanyId(s.company) === selectedCompanyId) : sales),
+    [sales, selectedCompanyId]
+  );
+
+  const filteredPurchases = React.useMemo(
+    () => (selectedCompanyId ? purchases.filter(p => getCompanyId(p.company) === selectedCompanyId) : purchases),
+    [purchases, selectedCompanyId]
+  );
+
+  const filteredReceipts = React.useMemo(
+    () => (selectedCompanyId ? receipts.filter(r => getCompanyId(r.company) === selectedCompanyId) : receipts),
+    [receipts, selectedCompanyId]
+  );
+
+  const filteredPayments = React.useMemo(
+    () => (selectedCompanyId ? payments.filter(p => getCompanyId(p.company) === selectedCompanyId) : payments),
+    [payments, selectedCompanyId]
+  );
+
+  const filteredJournals = React.useMemo(
+    () => (selectedCompanyId ? journals.filter(j => getCompanyId(j.company) === selectedCompanyId) : journals),
+    [journals, selectedCompanyId]
+  );
+
+  // Build "All" from the filtered arrays
   const allTransactions = React.useMemo(
     () =>
-      [...sales, ...purchases, ...receipts, ...payments, ...journals].sort(
+      [...filteredSales, ...filteredPurchases, ...filteredReceipts, ...filteredPayments, ...filteredJournals].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       ),
-    [sales, purchases, receipts, payments, journals]
+    [filteredSales, filteredPurchases, filteredReceipts, filteredPayments, filteredJournals]
   );
 
   const companyMap = React.useMemo(() => {
@@ -716,19 +753,19 @@ const fetchTransactions = React.useCallback(async () => {
               {renderContent(allTransactions)}
             </TabsContent>
             <TabsContent value="sales" className="mt-4">
-              {renderContent(sales)}
+              {renderContent(filteredSales)}
             </TabsContent>
             <TabsContent value="purchases" className="mt-4">
-              {renderContent(purchases)}
+              {renderContent(filteredPurchases)}
             </TabsContent>
             <TabsContent value="receipts" className="mt-4">
-              {renderContent(receipts)}
+              {renderContent(filteredReceipts)}
             </TabsContent>
             <TabsContent value="payments" className="mt-4">
-              {renderContent(payments)}
+              {renderContent(filteredPayments)}
             </TabsContent>
             <TabsContent value="journals" className="mt-4">
-              {renderContent(journals)}
+              {renderContent(filteredJournals)}
             </TabsContent>
           </Tabs>
         </>
