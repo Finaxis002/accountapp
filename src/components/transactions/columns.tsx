@@ -36,11 +36,16 @@ import {
   Key,
 } from "react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
+  onDownloadInvoice: (transaction: Transaction) => void;
   onViewItems: (tx: Transaction) => void;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
@@ -48,9 +53,14 @@ interface ColumnsProps {
   serviceNameById: Map<string, string>;
 }
 
+
 const makeCustomFilterFn = (
   serviceNameById: Map<string, string>
 ): FilterFn<Transaction> => (row, columnId, filterValue) => {
+
+
+const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
+
   if (!filterValue) return true;
   const tx = row.original;
   const q = String(filterValue).toLowerCase();
@@ -75,20 +85,87 @@ const makeCustomFilterFn = (
 
 export const columns = ({
   onPreview,
+  onDownloadInvoice,
   onViewItems,
   onEdit,
   onDelete,
   companyMap,
-  serviceNameById
-}: ColumnsProps): ColumnDef<Transaction>[] => [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+  serviceNameById,
+}: ColumnsProps): ColumnDef<Transaction>[] => {
+  console.log("[columns factory] handler types", {
+    onPreview: typeof onPreview,
+    onDownloadInvoice: typeof onDownloadInvoice,
+    onViewItems: typeof onViewItems,
+  });
+
+  const callDownload = (tx: Transaction) => {
+    if (typeof onDownloadInvoice !== "function") {
+      console.error(
+        "[columns] onDownloadInvoice is NOT a function. Value:",
+        onDownloadInvoice
+      );
+      // Optional: UX fallback to avoid hard crash
+      return;
+    }
+    onDownloadInvoice(tx);
+  };
+
+  return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "party",
+      header: "Party / Details",
+      filterFn: customFilterFn,
+      cell: ({ row }) => {
+        const transaction = row.original;
+
+        if (transaction.type === "journal") {
+          return (
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarFallback>JE</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="font-medium">Journal Entry</div>
+                <div className="text-sm text-muted-foreground">
+                  {transaction.debitAccount} / {transaction.creditAccount}
+                </div>
+              </div>
+            </div>
+          );
         }
+
+        const partyOrVendor = transaction.party || transaction.vendor;
+        let partyName = "N/A";
+        if (partyOrVendor && typeof partyOrVendor === "object") {
+          if ("name" in partyOrVendor) {
+            partyName = partyOrVendor.name;
+          } else if ("vendorName" in partyOrVendor) {
+            partyName = partyOrVendor.vendorName;
+          }
+        }
+
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
@@ -110,84 +187,62 @@ export const columns = ({
     cell: ({ row }) => {
       const transaction = row.original;
 
-      if (transaction.type === "journal") {
+
         return (
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarFallback>JE</AvatarFallback>
+              <AvatarFallback>
+                {partyName.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-medium">Journal Entry</div>
-              <div className="text-sm text-muted-foreground">
-                {transaction.debitAccount} / {transaction.creditAccount}
+              <div className="font-medium">{partyName || "N/A"}</div>
+              <div className="text-sm text-muted-foreground hidden sm:block truncate max-w-xs">
+                {transaction.description || transaction.narration || ""}
               </div>
             </div>
           </div>
         );
-      }
+      },
+    },
+    {
+      accessorKey: "company",
+      header: "Company",
+      cell: ({ row }: { row: Row<Transaction> }) => {
+        const company = row.original.company;
+        const companyId =
+          typeof company === "object" && company !== null
+            ? company._id
+            : company;
 
-      const partyOrVendor = transaction.party || transaction.vendor;
-      let partyName = "N/A";
-      if (partyOrVendor && typeof partyOrVendor === "object") {
-        if ("name" in partyOrVendor) {
-          partyName = partyOrVendor.name;
-        } else if ("vendorName" in partyOrVendor) {
-          partyName = partyOrVendor.vendorName;
-        }
-      }
+        if (!companyId) return "N/A";
 
-      return (
-        <div className="flex items-center gap-3">
-          <Avatar>
-            <AvatarFallback>
-              {partyName.substring(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="font-medium">{partyName || "N/A"}</div>
-            <div className="text-sm text-muted-foreground hidden sm:block truncate max-w-xs">
-              {transaction.description || transaction.narration || ""}
-            </div>
+        const companyName = companyMap?.get(companyId as string) || "N/A";
+        return (
+          <div className="flex items-center gap-2">
+            <Building className="h-4 w-4 text-muted-foreground" />
+            <span className="hidden lg:inline">{companyName}</span>
           </div>
-        </div>
-      );
+        );
+      },
     },
-  },
-  {
-    accessorKey: "company",
-    header: "Company",
-    cell: ({ row }: { row: Row<Transaction> }) => {
-      const company = row.original.company;
-      const companyId =
-        typeof company === "object" && company !== null ? company._id : company;
+    {
+      id: "lines",
+      header: "Items / Services",
+      cell: ({ row }) => {
+        const tx = row.original as any;
+        const lines = getUnifiedLines(tx, serviceNameById);
+        if (!lines.length)
+          return <span className="text-muted-foreground">-</span>;
 
-      if (!companyId) return "N/A";
+        const MAX_DISPLAY = 2;
+        const displayLines = lines.slice(0, MAX_DISPLAY);
+        const remainingCount = lines.length - MAX_DISPLAY;
 
-      const companyName = companyMap?.get(companyId as string) || "N/A";
-      return (
-        <div className="flex items-center gap-2">
-          <Building className="h-4 w-4 text-muted-foreground" />
-          <span className="hidden lg:inline">{companyName}</span>
-        </div>
-      );
-    },
-  },
-   {
-    id: "lines",
-    header: "Items / Services",
-    cell: ({ row }) => {
-      const tx = row.original as any;
-      const lines = getUnifiedLines(tx, serviceNameById)
-      if (!lines.length) return <span className="text-muted-foreground">-</span>;
-      
-      const MAX_DISPLAY = 2;
-      const displayLines = lines.slice(0, MAX_DISPLAY);
-      const remainingCount = lines.length - MAX_DISPLAY;
-
-      const fullList = (
-        <div className="space-y-2">
-          {lines.map((l: any, idx: number) => (
-             <div key={idx} className="flex items-center gap-2 text-sm">
+        const fullList = (
+          <div className="space-y-2">
+            {lines.map((l: any, idx: number) => (
+              <div key={idx} className="flex items-center gap-2 text-sm">
                 {l.type === "product" ? (
                   <Package className="h-4 w-4 text-muted-foreground shrink-0" />
                 ) : (
@@ -197,104 +252,124 @@ export const columns = ({
                   <div className="truncate font-medium">{l.name}</div>
                   {l.type === "product" && (
                     <div className="text-xs text-muted-foreground">
-                      {l.quantity}{l.unitType ? ` ${l.unitType}` : ""}
-                      {l.pricePerUnit ? ` @ ${new Intl.NumberFormat("en-IN").format(Number(l.pricePerUnit))}`: ""}
+                      {l.quantity}
+                      {l.unitType ? ` ${l.unitType}` : ""}
+                      {l.pricePerUnit
+                        ? ` @ ${new Intl.NumberFormat("en-IN").format(
+                            Number(l.pricePerUnit)
+                          )}`
+                        : ""}
                     </div>
                   )}
                   {l.type === "service" && l.description && (
-                    <div className="text-xs text-muted-foreground truncate">{l.description}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {l.description}
+                    </div>
                   )}
                 </div>
               </div>
-          ))}
-        </div>
-      );
+            ))}
+          </div>
+        );
 
-      return (
-        <TooltipProvider>
+        return (
+          <TooltipProvider>
             <Tooltip>
-                <TooltipTrigger asChild>
-                    <div className="flex items-center -space-x-2" onClick={() => onViewItems(tx)}>
-                        {displayLines.map((l: any, idx: number) => (
-                            <Avatar key={idx} className="h-7 w-7 border-2 border-background">
-                                <AvatarFallback className="text-xs">
-                                    {l.type === 'product' ? <Package className="h-4 w-4"/> : <Server className="h-4 w-4"/>}
-                                </AvatarFallback>
-                            </Avatar>
-                        ))}
-                        {remainingCount > 0 && (
-                             <Avatar className="h-7 w-7 border-2 border-background">
-                                <AvatarFallback className="text-xs font-semibold">+{remainingCount}</AvatarFallback>
-                            </Avatar>
+              <TooltipTrigger asChild>
+                <div
+                  className="flex items-center -space-x-2"
+                  onClick={() => onViewItems(tx)}
+                >
+                  {displayLines.map((l: any, idx: number) => (
+                    <Avatar
+                      key={idx}
+                      className="h-7 w-7 border-2 border-background"
+                    >
+                      <AvatarFallback className="text-xs">
+                        {l.type === "product" ? (
+                          <Package className="h-4 w-4" />
+                        ) : (
+                          <Server className="h-4 w-4" />
                         )}
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent className="p-4" side="bottom" align="start">
-                    {fullList}
-                </TooltipContent>
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {remainingCount > 0 && (
+                    <Avatar className="h-7 w-7 border-2 border-background">
+                      <AvatarFallback className="text-xs font-semibold">
+                        +{remainingCount}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="p-4" side="bottom" align="start">
+                {fullList}
+              </TooltipContent>
             </Tooltip>
-        </TooltipProvider>
-      );
+          </TooltipProvider>
+        );
+      },
     },
-  }
-  ,
-  {
-    accessorKey: "totalAmount",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-right w-full justify-end px-0"
-        >
-          Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const amount = parseFloat(
-        String(row.original.totalAmount || row.original.amount || 0)
-      );
-      const formatted = new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-      }).format(amount);
+    {
+      accessorKey: "totalAmount",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="text-right w-full justify-end px-0"
+          >
+            Amount
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const amount = parseFloat(
+          String(row.original.totalAmount || row.original.amount || 0)
+        );
+        const formatted = new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+        }).format(amount);
 
-      return <div className="text-right font-medium">{formatted}</div>;
+        return <div className="text-right font-medium">{formatted}</div>;
+      },
     },
-  },
-  {
-    accessorKey: "date",
-    header: "Date",
-    cell: ({ row }) =>
-      new Intl.DateTimeFormat("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(new Date(row.getValue("date"))),
-  },
-  {
-    accessorKey: "type",
-    header: "Type",
-    cell: ({ row }) => {
-      const type = row.getValue("type") as string;
-
-      const typeStyles: { [key: string]: string } = {
-        sales: "bg-green-500/20 text-green-700 dark:text-green-300",
-        purchases: "bg-orange-500/20 text-orange-700 dark:text-orange-300",
-        receipt: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
-        payment: "bg-red-500/20 text-red-700 dark:text-red-300",
-        journal: "bg-purple-500/20 text-purple-700 dark:text-purple-300",
-      };
-
-      const variant = type === "sales" ? "default" : "secondary";
-      return (
-        <Badge variant={variant} className={typeStyles[type]}>
-          {type}
-        </Badge>
-      );
+    {
+      accessorKey: "date",
+      header: "Date",
+      cell: ({ row }) =>
+        new Intl.DateTimeFormat("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }).format(new Date(row.getValue("date"))),
     },
+    {
+      accessorKey: "type",
+      header: "Type",
+      cell: ({ row }) => {
+        const type = row.getValue("type") as string;
+
+        const typeStyles: { [key: string]: string } = {
+          sales: "bg-green-500/20 text-green-700 dark:text-green-300",
+          purchases: "bg-orange-500/20 text-orange-700 dark:text-orange-300",
+          receipt: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
+          payment: "bg-red-500/20 text-red-700 dark:text-red-300",
+          journal: "bg-purple-500/20 text-purple-700 dark:text-purple-300",
+        };
+
+        const variant = type === "sales" ? "default" : "secondary";
+        return (
+          <Badge variant={variant} className={typeStyles[type]}>
+            {type}
+          </Badge>
+        );
+      },
+    },
+
   },
   {
     id: "actions",
@@ -303,78 +378,97 @@ export const columns = ({
        const isSales =
    transaction.type === "sales" || getUnifiedLines(transaction, serviceNameById).length > 0;
 
-      // helper to build minimal company/party objects for the PDF
-      const buildCompany = (): Company | undefined => {
-        const c = transaction.company;
-        const companyId = typeof c === "object" && c ? c._id : c;
-        const companyName = companyId
-          ? companyMap.get(companyId as string)
-          : undefined;
-        return companyName
-          ? ({ businessName: companyName } as unknown as Company)
-          : undefined;
-      };
 
-      const buildParty = (): Party | undefined => {
-        const pv = transaction.party || transaction.vendor;
-        return pv && typeof pv === "object" ? (pv as Party) : undefined;
-      };
+        // helper to build minimal company/party objects for the PDF
+        const buildCompany = (): Company | undefined => {
+          const c = transaction.company;
+          const companyId = typeof c === "object" && c ? c._id : c;
+          const companyName = companyId
+            ? companyMap.get(companyId as string)
+            : undefined;
+          return companyName
+            ? ({ businessName: companyName } as unknown as Company)
+            : undefined;
+        };
 
-      const handleDownload = () => {
-        const doc = generatePdfForTemplate1(
-          transaction,
-          buildCompany(),
-          buildParty()
-        );
-        const fname = `Invoice-${(transaction._id ?? "INV")
-          .toString()
-          .slice(-6)
-          .toUpperCase()}.pdf`;
-        doc.save(fname);
-      };
+        const buildParty = (): Party | undefined => {
+          const pv = transaction.party || transaction.vendor;
+          return pv && typeof pv === "object" ? (pv as Party) : undefined;
+        };
 
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(transaction._id)}
-            >
-              <Copy className="mr-2 h-4 w-4" />
-              <span>Copy transaction ID</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onPreview(transaction)}
-              disabled={!isSales}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              <span>Preview Invoice</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownload} disabled={!isSales}>
+        const handleDownload = () => {
+          const doc = generatePdfForTemplate1(
+            transaction,
+            buildCompany(),
+            buildParty()
+          );
+          const fname = `Invoice-${(transaction._id ?? "INV")
+            .toString()
+            .slice(-6)
+            .toUpperCase()}.pdf`;
+          doc.save(fname);
+        };
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(transaction._id)}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                <span>Copy transaction ID</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onPreview(transaction)}
+                disabled={!isSales}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                <span>Preview Invoice</span>
+              </DropdownMenuItem>
+              {/* <DropdownMenuItem  onClick={() => onDownloadInvoice(transaction)} disabled={!isSales}>
               <Download className="mr-2 h-4 w-4" />
               <span>Download Invoice</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onEdit(transaction)}>
-              <Edit className="mr-2 h-4 w-4" />
-              <span>Edit transaction</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(transaction)}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              <span>Delete transaction</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+            </DropdownMenuItem> */}
+              <DropdownMenuItem
+                onClick={() => {
+                  if (typeof onDownloadInvoice !== "function") {
+                    console.error(
+                      "[columns] onDownloadInvoice is NOT a function. Value:",
+                      onDownloadInvoice
+                    );
+                    return;
+                  }
+                  onDownloadInvoice(transaction);
+                }}
+                disabled={!isSales}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                <span>Download Invoice</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onEdit(transaction)}>
+                <Edit className="mr-2 h-4 w-4" />
+                <span>Edit transaction</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onDelete(transaction)}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Delete transaction</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
     },
-  },
-];
+  ];
+};
