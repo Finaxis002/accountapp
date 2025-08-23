@@ -24,17 +24,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import type { Transaction, Item, Company, Party } from "@/lib/types";
+import type { Transaction, Company, Party } from "@/lib/types";
 import { generatePdfForTemplate1 } from "@/lib/pdf-templates";
 import { getUnifiedLines } from "@/lib/utils";
-import {
-  ReactElement,
-  JSXElementConstructor,
-  ReactNode,
-  ReactPortal,
-  AwaitedReactNode,
-  Key,
-} from "react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import {
   Tooltip,
@@ -53,34 +45,37 @@ interface ColumnsProps {
   serviceNameById: Map<string, string>;
 }
 
-
+/** Build a filter function that can match party/vendor, description and line names */
 const makeCustomFilterFn = (
   serviceNameById: Map<string, string>
-): FilterFn<Transaction> => (row, columnId, filterValue) => {
+): FilterFn<Transaction> => {
+  return (row, _columnId, filterValue) => {
+    if (!filterValue) return true;
 
+    const tx = row.original;
+    const q = String(filterValue).toLowerCase();
 
-const customFilterFn: FilterFn<Transaction> = (row, columnId, filterValue) => {
+    // party / vendor
+    let partyName = "";
+    const pv = tx.party || tx.vendor;
+    if (pv && typeof pv === "object") {
+      partyName = (pv as any).name || (pv as any).vendorName || "";
+    }
 
-  if (!filterValue) return true;
-  const tx = row.original;
-  const q = String(filterValue).toLowerCase();
+    const desc = (tx.description || tx.narration || "").toLowerCase();
 
-  // party / vendor
-  let partyName = "";
-  const pv = tx.party || tx.vendor;
-  if (pv && typeof pv === "object") {
-    partyName = (pv as any).name || (pv as any).vendorName || "";
-  }
+    // lines (products/services)
+    const lines = getUnifiedLines(tx, serviceNameById);
+    const matchLine = lines.some((l: { name?: string }) =>
+      (l.name || "").toLowerCase().includes(q)
+    );
 
-  const desc = (tx.description || tx.narration || "").toLowerCase();
-
-  // products and services (new + legacy)
-  const lines = getUnifiedLines(tx, serviceNameById);
-  const matchLine = lines.some((l: { name: any }) =>
-    (l.name || "").toLowerCase().includes(q)
-  );
-
-  return partyName.toLowerCase().includes(q) || desc.includes(q) || matchLine;
+    return (
+      partyName.toLowerCase().includes(q) ||
+      desc.includes(q) ||
+      matchLine
+    );
+  };
 };
 
 export const columns = ({
@@ -92,25 +87,10 @@ export const columns = ({
   companyMap,
   serviceNameById,
 }: ColumnsProps): ColumnDef<Transaction>[] => {
-  console.log("[columns factory] handler types", {
-    onPreview: typeof onPreview,
-    onDownloadInvoice: typeof onDownloadInvoice,
-    onViewItems: typeof onViewItems,
-  });
-
-  const callDownload = (tx: Transaction) => {
-    if (typeof onDownloadInvoice !== "function") {
-      console.error(
-        "[columns] onDownloadInvoice is NOT a function. Value:",
-        onDownloadInvoice
-      );
-      // Optional: UX fallback to avoid hard crash
-      return;
-    }
-    onDownloadInvoice(tx);
-  };
+  const customFilterFn = makeCustomFilterFn(serviceNameById);
 
   return [
+    // SELECT COLUMN
     {
       id: "select",
       header: ({ table }) => (
@@ -133,6 +113,8 @@ export const columns = ({
       enableSorting: false,
       enableHiding: false,
     },
+
+    // PARTY / DETAILS
     {
       accessorKey: "party",
       header: "Party / Details",
@@ -160,33 +142,11 @@ export const columns = ({
         let partyName = "N/A";
         if (partyOrVendor && typeof partyOrVendor === "object") {
           if ("name" in partyOrVendor) {
-            partyName = partyOrVendor.name;
+            partyName = (partyOrVendor as any).name;
           } else if ("vendorName" in partyOrVendor) {
-            partyName = partyOrVendor.vendorName;
+            partyName = (partyOrVendor as any).vendorName;
           }
         }
-
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "party",
-    header: "Party / Details",
-   filterFn: makeCustomFilterFn(serviceNameById),
-    cell: ({ row }) => {
-      const transaction = row.original;
-
 
         return (
           <div className="flex items-center gap-3">
@@ -205,15 +165,15 @@ export const columns = ({
         );
       },
     },
+
+    // COMPANY
     {
       accessorKey: "company",
       header: "Company",
       cell: ({ row }: { row: Row<Transaction> }) => {
         const company = row.original.company;
         const companyId =
-          typeof company === "object" && company !== null
-            ? company._id
-            : company;
+          typeof company === "object" && company !== null ? (company as any)._id : company;
 
         if (!companyId) return "N/A";
 
@@ -226,6 +186,8 @@ export const columns = ({
         );
       },
     },
+
+    // LINES (ITEMS/SERVICES)
     {
       id: "lines",
       header: "Items / Services",
@@ -277,8 +239,8 @@ export const columns = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
-                  className="flex items-center -space-x-2"
-                  onClick={() => onViewItems(tx)}
+                  className="flex items-center -space-x-2 cursor-pointer"
+                  onClick={() => onViewItems(row.original)}
                 >
                   {displayLines.map((l: any, idx: number) => (
                     <Avatar
@@ -311,23 +273,23 @@ export const columns = ({
         );
       },
     },
+
+    // AMOUNT
     {
       accessorKey: "totalAmount",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-right w-full justify-end px-0"
-          >
-            Amount
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="text-right w-full justify-end px-0"
+        >
+          Amount
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => {
         const amount = parseFloat(
-          String(row.original.totalAmount || row.original.amount || 0)
+          String(row.original.totalAmount || (row.original as any).amount || 0)
         );
         const formatted = new Intl.NumberFormat("en-IN", {
           style: "currency",
@@ -337,6 +299,8 @@ export const columns = ({
         return <div className="text-right font-medium">{formatted}</div>;
       },
     },
+
+    // DATE
     {
       accessorKey: "date",
       header: "Date",
@@ -345,15 +309,17 @@ export const columns = ({
           day: "2-digit",
           month: "short",
           year: "numeric",
-        }).format(new Date(row.getValue("date"))),
+        }).format(new Date(row.getValue("date") as string)),
     },
+
+    // TYPE
     {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }) => {
         const type = row.getValue("type") as string;
 
-        const typeStyles: { [key: string]: string } = {
+        const typeStyles: Record<string, string> = {
           sales: "bg-green-500/20 text-green-700 dark:text-green-300",
           purchases: "bg-orange-500/20 text-orange-700 dark:text-orange-300",
           receipt: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
@@ -363,25 +329,24 @@ export const columns = ({
 
         const variant = type === "sales" ? "default" : "secondary";
         return (
-          <Badge variant={variant} className={typeStyles[type]}>
+          <Badge variant={variant} className={typeStyles[type] ?? ""}>
             {type}
           </Badge>
         );
       },
     },
 
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      const transaction = row.original;
-       const isSales =
-   transaction.type === "sales" || getUnifiedLines(transaction, serviceNameById).length > 0;
+    // ACTIONS
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const transaction = row.original;
+        const isSales =
+          transaction.type === "sales" ||
+          getUnifiedLines(transaction as any, serviceNameById).length > 0;
 
-
-        // helper to build minimal company/party objects for the PDF
         const buildCompany = (): Company | undefined => {
-          const c = transaction.company;
+          const c = transaction.company as any;
           const companyId = typeof c === "object" && c ? c._id : c;
           const companyName = companyId
             ? companyMap.get(companyId as string)
@@ -392,7 +357,7 @@ export const columns = ({
         };
 
         const buildParty = (): Party | undefined => {
-          const pv = transaction.party || transaction.vendor;
+          const pv = (transaction as any).party || (transaction as any).vendor;
           return pv && typeof pv === "object" ? (pv as Party) : undefined;
         };
 
@@ -419,12 +384,16 @@ export const columns = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
               <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(transaction._id)}
+                onClick={() =>
+                  navigator.clipboard.writeText(String(transaction._id || ""))
+                }
               >
                 <Copy className="mr-2 h-4 w-4" />
                 <span>Copy transaction ID</span>
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => onPreview(transaction)}
                 disabled={!isSales}
@@ -432,20 +401,14 @@ export const columns = ({
                 <Eye className="mr-2 h-4 w-4" />
                 <span>Preview Invoice</span>
               </DropdownMenuItem>
-              {/* <DropdownMenuItem  onClick={() => onDownloadInvoice(transaction)} disabled={!isSales}>
-              <Download className="mr-2 h-4 w-4" />
-              <span>Download Invoice</span>
-            </DropdownMenuItem> */}
+
               <DropdownMenuItem
                 onClick={() => {
-                  if (typeof onDownloadInvoice !== "function") {
-                    console.error(
-                      "[columns] onDownloadInvoice is NOT a function. Value:",
-                      onDownloadInvoice
-                    );
-                    return;
+                  if (typeof onDownloadInvoice === "function") {
+                    onDownloadInvoice(transaction);
+                  } else {
+                    handleDownload();
                   }
-                  onDownloadInvoice(transaction);
                 }}
                 disabled={!isSales}
               >
@@ -454,10 +417,12 @@ export const columns = ({
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
+
               <DropdownMenuItem onClick={() => onEdit(transaction)}>
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Edit transaction</span>
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => onDelete(transaction)}
                 className="text-destructive"
