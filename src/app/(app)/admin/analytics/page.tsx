@@ -38,8 +38,7 @@ import { UsersTab } from "@/components/analytics/users-tab";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function AnalyticsDashboardPage() {
-
-  const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = React.useState<string>("");
   const [isClientsLoading, setIsClientsLoading] = React.useState(true);
@@ -169,7 +168,7 @@ export default function AnalyticsDashboardPage() {
   }, [companies]);
 
   return (
-    <div className="space-y-6">
+    <div className="pt-16 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">

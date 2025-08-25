@@ -9,20 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  PlusCircle,
-  Building,
-  Edit,
-  Trash2,
-  List,
-  LayoutGrid,
-  Loader2,
-  User,
-  Phone,
-  Hash,
-  FileText as FileTextIcon,
-  MoreHorizontal,
-} from "lucide-react";
+import { PlusCircle, Building, Edit, Trash2, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,14 +21,6 @@ import { AdminCompanyForm } from "@/components/companies/admin-company-form";
 import type { Company, Client } from "@/lib/types";
 import { CompanyCard } from "@/components/companies/company-card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -52,15 +31,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 
-export default function AdminCompaniesPage() {
-   const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
+export default function AdminCompaniesPage() { 
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -72,7 +45,6 @@ export default function AdminCompaniesPage() {
   const [companyToDelete, setCompanyToDelete] = React.useState<Company | null>(
     null
   );
-  const [viewMode, setViewMode] = React.useState<"card" | "list">("list");
   const { toast } = useToast();
 
   const fetchAllData = React.useCallback(async () => {
@@ -205,56 +177,29 @@ export default function AdminCompaniesPage() {
   };
 
   return (
-    <div className="space-y-6">
-     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-  <div>
-    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-      Company Management
-    </h2>
-    <p className="text-sm sm:text-base text-muted-foreground">
-      Manage all companies across all clients.
-    </p>
-  </div>
-  
-  <div className="flex items-center justify-between gap-2">
-    {/* View mode toggle - hidden on small screens if not needed */}
-    <div className="hidden xs:flex items-center gap-1 rounded-md bg-secondary p-1">
-      <Button
-        variant={viewMode === "card" ? "primary" : "ghost"}
-        size="sm"
-        onClick={() => setViewMode("card")}
-        className="h-8 w-8"
-        aria-label="Card view"
-      >
-        <LayoutGrid className="h-4 w-4" />
-      </Button>
-      <Button
-        variant={viewMode === "list" ? "primary" : "ghost"}
-        size="sm"
-        onClick={() => setViewMode("list")}
-        className="h-8 w-8"
-        aria-label="List view"
-      >
-        <List className="h-4 w-4" />
-      </Button>
-    </div>
+    <div className="pt-16 px-2 sm:px-4 lg:px-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">
+            Company Management
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Manage all companies across all clients.
+          </p>
+        </div>
 
-    {/* Create Company button - full width on mobile, auto on desktop */}
-    <Button 
-      onClick={handleAddNew}
-      size="sm"
-      className=" xs:w-auto"
-    >
-      <PlusCircle className="mr-0 xs:mr-2 h-4 w-4" />
-      <span className="hidden xs:inline">Create Company</span>
-      <span className="xs:hidden">Add</span>
-    </Button>
-  </div>
-</div>
+        <Button onClick={handleAddNew} size="sm" className="w-full sm:w-auto">
+          <PlusCircle className="mr-0 sm:mr-2 h-4 w-4" />
+          <span className="hidden sm:inline">Create Company</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
+      </div>
 
+      {/* Dialog for Add/Edit */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-4xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
-          <DialogHeader className="p-6">
+          <DialogHeader className="p-4 sm:p-6">
             <DialogTitle>
               {selectedCompany ? "Edit Company" : "Create New Company"}
             </DialogTitle>
@@ -272,6 +217,7 @@ export default function AdminCompaniesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -291,120 +237,36 @@ export default function AdminCompaniesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Companies List */}
       <div>
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : companies.length > 0 ? (
-          viewMode === "card" ? (
-            <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-              {companies.map((company) => (
-                <CompanyCard
-                  key={company._id}
-                  company={company}
-                  clientName={getClientInfo(company.selectedClient || company.client).name}
-                  onEdit={() => handleEdit(company)}
-                  onDelete={() => handleDelete(company)}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Assigned Client</TableHead>
-                      <TableHead>Owner & Contact</TableHead>
-                      <TableHead>Identifiers</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {companies.map((company) => {
-                      const clientInfo = getClientInfo(
-                        company.selectedClient || company.client
-                      );
-                      return (
-                        <TableRow key={company._id}>
-                          <TableCell>
-                            <div className="font-semibold">
-                              {company.businessName}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {company.businessType}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm font-medium">
-                              {clientInfo.name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {clientInfo.email}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">
-                                {company.mobileNumber}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 mb-1">
-                              <Hash className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-mono bg-secondary px-2 py-0.5 rounded">
-                                {company.registrationNumber}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-mono bg-secondary px-2 py-0.5 rounded">
-                                {company.gstin || "N/A"}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent>
-                                <DropdownMenuItem
-                                  onClick={() => handleEdit(company)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(company)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+            {companies.map((company) => (
+              <CompanyCard
+                key={company._id}
+                company={company}
+                clientName={
+                  getClientInfo(company.selectedClient || company.client).name
+                }
+                onEdit={() => handleEdit(company)}
+                onDelete={() => handleDelete(company)}
+              />
+            ))}
+          </div>
         ) : (
-          <Card className="flex flex-col items-center justify-center p-12 border-dashed">
-            <Building className="h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No Companies Found</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+          <Card className="flex flex-col items-center justify-center p-6 sm:p-12 border-dashed text-center">
+            <Building className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg sm:text-xl font-semibold">
+              No Companies Found
+            </h3>
+            <p className="mt-1 text-sm sm:text-base text-muted-foreground">
               Get started by creating the first company.
             </p>
-            <Button className="mt-6" onClick={handleAddNew}>
+            <Button className="mt-4 sm:mt-6" onClick={handleAddNew}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Company
             </Button>
@@ -413,4 +275,4 @@ export default function AdminCompaniesPage() {
       </div>
     </div>
   );
-}
+}           

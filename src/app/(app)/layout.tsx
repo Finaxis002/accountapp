@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Search,
-  Moon,
   Bell,
   FileText,
   DollarSign,
@@ -47,13 +46,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // ✅ treat these as public routes: do NOT wrap, do NOT redirect
   const isAuthRoute =
     pathname === "/login" || pathname.startsWith("/client-login/");
 
   useEffect(() => {
     if (isAuthRoute) {
-      // skip auth checks completely on auth pages
       setIsLoading(false);
       return;
     }
@@ -70,7 +67,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     const user = getCurrentUser();
     if (!user) {
-      // protected app page → go to generic login
       router.replace("/login");
       setIsLoading(false);
       return;
@@ -80,7 +76,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, [router, pathname, isAuthRoute]);
 
-  // ⛔️ On auth routes, render ONLY the auth page (no sidebar/header/guard)
   if (isAuthRoute) {
     return <>{children}</>;
   }
@@ -106,22 +101,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const role = localStorage.getItem("role");
-  console.log("User role:", role);
-
   const handleLogout = () => {
-    // read BEFORE clearing
     const role = localStorage.getItem("role");
     const slug =
       localStorage.getItem("tenantSlug") ||
       localStorage.getItem("slug") ||
       localStorage.getItem("clientUsername");
 
-    // clear everything
     localStorage.clear();
-    console.debug("Logout redirect →", role, slug);
 
-    // hard navigation to avoid any lingering layout state
     if (role === "customer" && slug) {
       window.location.assign(`/client-login/${slug}`);
     } else {
@@ -133,60 +121,86 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <CompanyProvider>
       <PermissionProvider>
         <SidebarProvider>
-          <div className="flex min-h-screen bg-background text-foreground ">
+          <div className="flex min-h-screen bg-background text-foreground">
+            {/* Sidebar */}
             <AppSidebar />
+
+            {/* Page Content */}
             <div className="flex-1 flex flex-col w-full">
-              <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 z-20">
-                <div className="flex items-center gap-2 md:gap-4">
-                  <SidebarTrigger className="md:hidden" />
-                  <div className="hidden md:block">
-                    <h1 className="text-lg font-semibold">
-                      Welcome back,{" "}
-                      {currentUser?.role === "master"
-                        ? "Master!"
-                        : currentUser?.name?.split(" ")[0]}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                      {dateString}
-                    </p>
-                  </div>
-                  {(currentUser?.role === "customer" ||
-                    currentUser?.role === "user" ||
-                    currentUser?.role === "admin" ||
-                    currentUser?.role === "master") && (
-                    <div className="hidden md:block">
-                      <CompanySwitcher />
+              {/* ===== Header ===== */}
+              <header className="fixed top-0 left-0 right-0 z-20 h-16 border-b border-border/40 bg-card">
+                <div className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-between px-3 sm:px-4 md:px-6">
+                  {/* Left Section */}
+                  <div className="flex items-center gap-2 md:gap-4">
+                    {/* Mobile Sidebar Trigger */}
+                    <SidebarTrigger className="md:hidden" />
+
+                    {/* Welcome text only on md+ */}
+                    <div className="hidden sm:block">
+                      <h1 className="text-base sm:text-lg font-semibold truncate max-w-[150px] sm:max-w-xs md:max-w-md">
+                        Welcome back,{" "}
+                        {currentUser?.role === "master"
+                          ? "Master!"
+                          : currentUser?.name?.split(" ")[0]}
+                      </h1>
+                      <p className="hidden sm:block text-xs sm:text-sm text-muted-foreground truncate">
+                        {dateString}
+                      </p>
                     </div>
-                  )}
-                </div>
-                <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
-                  <div className="relative w-full max-w-md hidden md:block">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search..."
-                      className="pl-9 bg-background"
-                    />
+
+                    {/* Company Switcher (md+) */}
+                    {(currentUser?.role === "customer" ||
+                      currentUser?.role === "user" ||
+                      currentUser?.role === "admin" ||
+                      currentUser?.role === "master") && (
+                      <div className="hidden md:block">
+                        <CompanySwitcher />
+                      </div>
+                    )}
                   </div>
-                  <Button variant="ghost" size="icon" className="md:hidden">
-                    <Search className="h-5 w-5" />
-                  </Button>
-                  <ThemeToggle />
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5" />
-                        <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-red-500"></span>
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent>
-                      <SheetHeader>
-                        <SheetTitle>Notifications</SheetTitle>
-                        <SheetDescription>
-                          You have 3 unread messages.
-                        </SheetDescription>
-                      </SheetHeader>
-                      <div className="py-4">
-                        <div className="space-y-4">
+
+                  {/* Right Section */}
+                  <div className="flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
+                    {/* Search Desktop */}
+                    <div className="relative hidden md:block w-[160px] lg:w-[240px] xl:w-[320px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search..."
+                        className="pl-9 bg-background text-sm"
+                      />
+                    </div>
+
+                    {/* Search Mobile */}
+                    <Button variant="ghost" size="icon" className="md:hidden">
+                      <Search className="h-5 w-5" />
+                    </Button>
+
+                    <ThemeToggle />
+
+                    {/* Notifications */}
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="relative"
+                        >
+                          <Bell className="h-5 w-5" />
+                          <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-red-500"></span>
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent
+                        side="right"
+                        className="w-[90vw] sm:w-[400px]"
+                      >
+                        <SheetHeader>
+                          <SheetTitle>Notifications</SheetTitle>
+                          <SheetDescription>
+                            You have 3 unread messages.
+                          </SheetDescription>
+                        </SheetHeader>
+                        <div className="py-4 space-y-4">
+                          {/* Example notifications */}
                           <div className="flex items-start gap-4">
                             <div className="bg-primary/10 p-2 rounded-full">
                               <FileText className="h-5 w-5 text-primary" />
@@ -229,37 +243,43 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
+                      </SheetContent>
+                    </Sheet>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="flex items-center gap-2 p-1 md:p-2 h-auto"
+                    {/* User Menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="flex items-center gap-2 p-1 sm:p-2 h-auto"
+                        >
+                          <UserNav />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-[160px] sm:w-[200px]"
                       >
-                        <UserNav />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => router.push("/profile")}>
-                        Profile
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleSettingsClick}>
-                        Settings
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout}>
-                        Logout
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => router.push("/profile")}>
+                          Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleSettingsClick}>
+                          Settings
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout}>
+                          Logout
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </header>
-              <main className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
+
+              {/* ===== Main Content ===== */}
+              <main className="flex-1 w-full pt-16 p-3 sm:p-4 md:p-6 lg:p-8 max-w-[1800px] mx-auto">
                 {children}
               </main>
             </div>
