@@ -26,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { State, City } from "country-state-city";
+import { Combobox } from "@/components/ui/combobox";
 
 interface CustomerFormProps {
   customer?: Party;
@@ -111,12 +113,55 @@ export function CustomerForm({
   });
 
   const regType = form.watch("gstRegistrationType");
+  const indiaStates = React.useMemo(() => State.getStatesOfCountry("IN"), []);
+  const [stateCode, setStateCode] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (regType === "Unregistered") {
       form.setValue("gstin", "", { shouldValidate: true });
     }
   }, [regType, form]);
+
+  React.useEffect(() => {
+    const currentStateName = form.getValues("state")?.trim();
+    if (!currentStateName) {
+      setStateCode(null);
+      return;
+    }
+    const found = indiaStates.find(
+      (s) => s.name.toLowerCase() === currentStateName.toLowerCase()
+    );
+    setStateCode(found?.isoCode || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+  const current = (form.getValues("state") || "").trim().toLowerCase();
+  const found = indiaStates.find((s) => s.name.toLowerCase() === current);
+  setStateCode(found?.isoCode ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+  const stateOptions = React.useMemo(
+    () =>
+      indiaStates
+        .map((s) => ({ value: s.isoCode, label: s.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [indiaStates]
+  );
+
+  const cityOptions = React.useMemo(() => {
+    if (!stateCode) return [];
+    const list = City.getCitiesOfState("IN", stateCode);
+    return list
+      .map((c) => ({ value: c.name, label: c.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [stateCode]);
+
+  // when state changes, clear the city field
+  React.useEffect(() => {
+    form.setValue("city", "", { shouldValidate: true });
+  }, [stateCode]);
 
   const isTDSApplicable = form.watch("isTDSApplicable");
 
@@ -225,7 +270,8 @@ export function CustomerForm({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+
+            {/* <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="city"
@@ -252,7 +298,77 @@ export function CustomerForm({
                   </FormItem>
                 )}
               />
+            </div> */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* STATE (searchable) */}
+              <FormField
+                control={form.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>State</FormLabel>
+                    <Combobox
+                      options={stateOptions}
+                      // value is the isoCode of the selected state
+                      value={
+                        stateCode ??
+                        stateOptions.find(
+                          (o) =>
+                            o.label.toLowerCase() ===
+                            (field.value || "").toLowerCase()
+                        )?.value ??
+                        ""
+                      }
+                      onChange={(iso) => {
+                        setStateCode(iso);
+                        const selected = indiaStates.find(
+                          (s) => s.isoCode === iso
+                        );
+                        // store STATE NAME in your form (backend unchanged)
+                        field.onChange(selected?.name || "");
+                      }}
+                      placeholder="Select state"
+                      searchPlaceholder="Type a state…"
+                      noResultsText="No states found."
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* CITY (searchable, depends on state) */}
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <Combobox
+                      options={cityOptions}
+                      // we store the city NAME directly
+                      value={
+                        cityOptions.find(
+                          (o) =>
+                            o.label.toLowerCase() ===
+                            (field.value || "").toLowerCase()
+                        )?.value ?? ""
+                      }
+                      onChange={(v) => field.onChange(v)}
+                      placeholder={
+                        stateCode ? "Select city" : "Select a state first"
+                      }
+                      searchPlaceholder="Type a city…"
+                      noResultsText={
+                        stateCode ? "No cities found." : "Select a state first"
+                      }
+                      disabled={!stateCode || cityOptions.length === 0}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               {/* …after City/State … */}
 
@@ -313,7 +429,7 @@ export function CustomerForm({
                 />
               )}
             </div>
-            <FormField
+            {/* <FormField
               control={form.control}
               name="gstRegistrationType"
               render={({ field }) => (
@@ -336,7 +452,7 @@ export function CustomerForm({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
             <FormField
               control={form.control}
               name="isTDSApplicable"
