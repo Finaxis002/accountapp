@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -272,14 +273,14 @@ export function ServiceSettings() {
             <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col items-center text-center space-y-3 lg:flex-row lg:items-center lg:justify-between lg:text-left lg:space-y-0">
             <div>
-              <CardTitle>Manage Services</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl font-semibold">Manage Services</CardTitle>
+              <CardDescription className="max-w-md">
                 A list of all your available services.
               </CardDescription>
             </div>
-            <Button onClick={() => handleOpenForm()}>
+            <Button onClick={() => handleOpenForm()} className="w-full sm:w-auto lg:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Service
             </Button>
           </div>
