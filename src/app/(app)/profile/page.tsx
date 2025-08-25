@@ -88,8 +88,12 @@ export default function ProfilePage() {
     { value: "notifications", label: "Notifications", component: <NotificationsTab /> },
   ];
 
+  const permissionsTab = isUser
+  ? { value: "my-permissions", label: "My Permissions", component: <UserPermissionsTab /> }
+  : { value: "permissions",     label: "Permissions",    component: <PermissionsTab /> };
+
   const memberTabs = [
-    { value: "permissions", label: "Permissions", component: <PermissionsTab /> },
+    permissionsTab,
 
     allow(permissions?.canCreateVendors, userCaps?.canCreateVendors) && {
       value: "vendors",
@@ -354,6 +358,77 @@ function PermissionsTab() {
       {isCustomer && permissions?.canSendInvoiceEmail && (
         <EmailSendingConsent />
       )}
+    </div>
+  );
+}
+
+
+
+function UserPermissionsTab() {
+  const { permissions: userCaps } = useUserPermissions();
+
+  // convenience: treat only literal `true` as granted
+  const yes = (v: unknown) => v === true;
+
+  const features = [
+    { label: "Create Sales Entries",     granted: yes(userCaps?.canCreateSaleEntries),     icon: Users },
+    { label: "Create Purchase Entries",  granted: yes(userCaps?.canCreatePurchaseEntries), icon: Store },
+    { label: "Create Receipt Entries",   granted: yes(userCaps?.canCreateReceiptEntries),  icon: Contact },
+    { label: "Create Payment Entries",   granted: yes(userCaps?.canCreatePaymentEntries),  icon: Send },
+    { label: "Create Journal Entries",   granted: yes(userCaps?.canCreateJournalEntries),  icon: Package },
+    { label: "Create Customers",         granted: yes(userCaps?.canCreateCustomers),       icon: Contact },
+    { label: "Create Vendors",           granted: yes(userCaps?.canCreateVendors),         icon: Store },
+    { label: "Create Inventory",         granted: yes(userCaps?.canCreateInventory),       icon: Package },
+    { label: "Send Invoice via Email",   granted: yes(userCaps?.canSendInvoiceEmail),      icon: Send },
+    { label: "Send Invoice via WhatsApp",granted: yes(userCaps?.canSendInvoiceWhatsapp),   icon: MessageSquare },
+  ];
+
+  return (
+    <div className="grid md:grid-cols-1 gap-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Shield className="h-6 w-6" />
+            <div className="flex flex-col">
+              <CardTitle className="text-lg">My Permissions</CardTitle>
+              <CardDescription>
+                What I’m allowed to do in this account.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+        
+          <Separator />
+
+          {/* Feature Access */}
+          <div>
+            <h4 className="font-medium mb-4 text-sm text-muted-foreground">
+              Feature Access
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {features.map((f) => (
+                <div key={f.label} className="flex items-center justify-between text-sm p-3 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <f.icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{f.label}</span>
+                  </div>
+                  {f.granted ? (
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-500/20">
+                      <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                    </div>
+                  ) : (
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                      <X className="h-3 w-3 text-red-600 dark:text-red-400" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
