@@ -268,7 +268,7 @@ export default function AdminCompaniesPage() {
             </p>
             <Button className="mt-4 sm:mt-6" onClick={handleAddNew}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Create Company
+              Create Company ..
             </Button>
           </Card>
         )}
