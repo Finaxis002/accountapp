@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import type { User, Company } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { X as RemoveIcon, ChevronsUpDown, Plus } from "lucide-react";
+import { X as RemoveIcon, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -22,60 +22,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ALL_PERMISSIONS, type Permission } from "@/lib/permissions";
-import { Switch } from "@/components/ui/switch";
 
-type RoleDoc = {
-  _id: string;
-  name: string;
-  defaultPermissions: string[]; // or ["*"]
-};
+type RoleDoc = { _id: string; name: "admin" | "manager" | "user" };
 
-// Mirror backend CAP_KEYS here
-const ALL_CAPS = [
-  "canCreateInventory",
-  "canCreateProducts",
-  "canCreateCustomers",
-  "canCreateVendors",
-  "canCreateCompanies",
-  "canUpdateCompanies",
-  "canSendInvoiceEmail",
-  "canSendInvoiceWhatsapp",
-  "canCreateSaleEntries",
-  "canCreatePurchaseEntries",
-  "canCreateJournalEntries",
-  "canCreateReceiptEntries",
-  "canCreatePaymentEntries",
-] as const;
-
-type CapKey = (typeof ALL_CAPS)[number];
-
-const CAP_LABELS: Record<CapKey, string> = {
-  canCreateInventory: "Create Inventory",
-  canCreateProducts: "Create Products/Services",
-  canCreateCustomers: "Create Customers",
-  canCreateVendors: "Create Vendors",
-  canCreateCompanies: "Create Companies",
-  canUpdateCompanies: "Update Companies",
-  canSendInvoiceEmail: "Send Invoice via Email",
-  canSendInvoiceWhatsapp: "Send Invoice via WhatsApp",
-  canCreateSaleEntries: "Create Sales Entries",
-  canCreatePurchaseEntries: "Create Purchase Entries",
-  canCreateJournalEntries: "Create Journal Entries",
-  canCreateReceiptEntries: "Create Receipt Entries",
-  canCreatePaymentEntries: "Create Payment Entries",
-};
+// ✅ Hardcode the 3 default roles (PUT YOUR REAL ROLE IDS HERE)
+const DEFAULT_ROLES: RoleDoc[] = [
+  { _id: "REPLACE_ADMIN_ROLE_ID", name: "admin" },
+  { _id: "REPLACE_MANAGER_ROLE_ID", name: "manager" },
+  { _id: "REPLACE_USER_ROLE_ID", name: "user" },
+];
 
 interface UserFormProps {
   user: User | null;
@@ -90,11 +46,9 @@ export function UserForm({
   onSave,
   onCancel,
 }: UserFormProps) {
-  const baseURL = process.env.NEXT_PUBLIC_BASE_URL!;
   const { toast } = useToast();
-
-  const [roles, setRoles] = useState<RoleDoc[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
+  const [roles] = useState<RoleDoc[]>(DEFAULT_ROLES); // no fetching
+  const [rolesLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     userName: "",
@@ -103,85 +57,14 @@ export function UserForm({
     contactNumber: "",
     address: "",
     companies: [] as string[],
-    roleId: "" as string, // <- we’ll store roleId now
+    roleId: "" as string,
   });
 
   const [openCompanySelect, setOpenCompanySelect] = React.useState(false);
 
-  // Create Role dialog state
-  const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
-
-  const [newRole, setNewRole] = useState<{
-    name: string;
-    defaultPermissions: CapKey[] | ["*"];
-    grantAll: boolean;
-  }>({
-    name: "",
-    defaultPermissions: [],
-    grantAll: false,
-  });
-
-  const toggleCap = (cap: CapKey) => {
-    setNewRole((prev) => {
-      if (prev.grantAll) return prev; // when Grant all is ON, per-cap toggles disabled
-      const set = new Set(prev.defaultPermissions as CapKey[]);
-      set.has(cap) ? set.delete(cap) : set.add(cap);
-      return { ...prev, defaultPermissions: Array.from(set) as CapKey[] };
-    });
-  };
-
-  const toggleGrantAll = (val: boolean) => {
-    setNewRole((prev) => ({
-      ...prev,
-      grantAll: val,
-      defaultPermissions: val ? ["*"] : ([] as CapKey[]),
-    }));
-  };
-
+  // when user prop changes, hydrate fields; roleId set below
   useEffect(() => {
-    const loadRoles = async () => {
-      setRolesLoading(true);
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${baseURL}/api/roles`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data: RoleDoc[] = await res.json();
-        setRoles(data);
-
-        // set default selected role on create
-        if (!user && data.length > 0) {
-          const userDefault =
-            data.find((r) => r.name === "user") || data[data.length - 1];
-          setFormData((prev) => ({ ...prev, roleId: userDefault._id }));
-        }
-
-        // when editing, try to map user.role (string) to roleId if needed
-        if (user) {
-          const match = data.find(
-            (r) => r.name === String(user.role).toLowerCase()
-          );
-          if (match) {
-            setFormData((prev) => ({ ...prev, roleId: match._id }));
-          }
-        }
-      } catch (e) {
-        toast({
-          variant: "destructive",
-          title: "Failed to load roles",
-          description: String(e),
-        });
-      } finally {
-        setRolesLoading(false);
-      }
-    };
-
-    loadRoles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseURL]);
-
-  useEffect(() => {
-    setFormData(
+    setFormData((prev) =>
       user
         ? {
             userName: user.userName || "",
@@ -194,7 +77,7 @@ export function UserForm({
                   .map((c: any) => (typeof c === "string" ? c : c?._id))
                   .filter(Boolean)
               : [],
-            roleId: "", // will be set after roles load
+            roleId: prev.roleId, // set after we match by name
           }
         : {
             userName: "",
@@ -203,19 +86,49 @@ export function UserForm({
             contactNumber: "",
             address: "",
             companies: [],
-            roleId: formData.roleId, // keep whatever default we picked after roles load
+            roleId: prev.roleId,
           }
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // set default role on create; map user.role (string) to roleId on edit
+  useEffect(() => {
+    if (!roles || roles.length === 0) return;
+
+    if (!user) {
+      const def = roles.find((r) => r.name === "user") || roles[0];
+      setFormData((prev) => ({ ...prev, roleId: def._id }));
+    } else {
+      const currentName = String(user.role || "").toLowerCase();
+      const match = roles.find((r) => r.name === currentName);
+      if (match) setFormData((prev) => ({ ...prev, roleId: match._id }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roles, user]);
+
+  // helper: true only for real 24-hex objectids
+  const isObjectId = (s?: string) => !!s && /^[a-f0-9]{24}$/i.test(s);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.roleId) {
+    // find the selected role from your local defaults
+    const selectedRole =
+      roles.find((r) => r._id === formData.roleId) ||
+      roles.find((r) => r.name === "user"); // fallback
+
+    if (!selectedRole) {
       toast({ variant: "destructive", title: "Please select a role" });
       return;
     }
-    onSave(formData); // includes roleId
+
+    // only send roleId if it's a real ObjectId; always send roleName
+    const payload = {
+      ...formData,
+      roleId: isObjectId(selectedRole._id) ? selectedRole._id : undefined,
+      roleName: selectedRole.name, // backend will resolve by name if id is missing/invalid
+    } as any; // cast if your onSave type doesn't include roleName
+
+    onSave(payload);
   };
 
   const handleCompanySelect = (companyId: string) => {
@@ -230,45 +143,6 @@ export function UserForm({
   const selectedCompanies = allCompanies.filter((c) =>
     formData.companies.includes(c._id)
   );
-  const createRole = async () => {
-    try {
-      if (!newRole.name) {
-        toast({ variant: "destructive", title: "Role name is required" });
-        return;
-      }
-      const token = localStorage.getItem("token");
-      const payload = {
-        name: newRole.name,
-        defaultPermissions: newRole.defaultPermissions,
-      };
-
-      const res = await fetch(`${baseURL}/api/roles`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const role: RoleDoc = await res.json();
-      if (!res.ok)
-        throw new Error((role as any)?.message || "Failed to create role");
-
-      setRoles((prev) => [role, ...prev]);
-      setFormData((prev) => ({ ...prev, roleId: role._id }));
-
-      setNewRole({ name: "", defaultPermissions: [], grantAll: false });
-      setIsCreateRoleOpen(false);
-      toast({ title: "Role created", description: `${role.name} added` });
-    } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Create role failed",
-        description: String(e),
-      });
-    }
-  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -285,7 +159,6 @@ export function UserForm({
               }
             />
           </div>
-
           <div>
             <Label htmlFor="userId">User ID</Label>
             <Input
@@ -324,7 +197,6 @@ export function UserForm({
               }
             />
           </div>
-
           <div>
             <Label htmlFor="address">Address</Label>
             <Input
@@ -337,122 +209,9 @@ export function UserForm({
           </div>
         </div>
 
-        {/* --- Role selector + Create role --- */}
+        {/* Role selector (no API, just defaults) */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Role</Label>
-            <Dialog open={isCreateRoleOpen} onOpenChange={setIsCreateRoleOpen}>
-              <DialogTrigger asChild>
-                <Button type="button" size="sm" variant="outline">
-                  <Plus className="h-4 w-4 mr-1" /> New Role
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Role</DialogTitle>
-                  <DialogDescription>
-                    Define a new role and its default permissions.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  {/* Role Name */}
-                  <div>
-                    <Label>Role Name</Label>
-                    <Input
-                      placeholder="e.g. auditor"
-                      value={newRole.name}
-                      onChange={(e) =>
-                        setNewRole({
-                          ...newRole,
-                          name: e.target.value,
-                        })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Lowercase, no spaces. Used internally (e.g., “admin”,
-                      “client”, “user”, “auditor”).
-                    </p>
-                  </div>
-
-                  {/* Grant all */}
-                  <div className="flex items-center justify-between rounded-xl border p-3">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="grant-all">Grant all permissions</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Instantly selects all capabilities for this role.
-                      </p>
-                    </div>
-                    <Checkbox
-                      id="grant-all"
-                      checked={newRole.grantAll}
-                      onCheckedChange={(v) => toggleGrantAll(!!v)}
-                      className="rounded-full data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                    />
-                  </div>
-
-                  {/* Permissions grid */}
-                  <div>
-                    <Label>Default Permissions</Label>
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      {ALL_CAPS.map((cap) => {
-                        const checked =
-                          newRole.grantAll ||
-                          (Array.isArray(newRole.defaultPermissions) &&
-                            (newRole.defaultPermissions as CapKey[]).includes(
-                              cap
-                            ));
-
-                        return (
-                          <label
-                            key={cap}
-                            className={cn(
-                              "flex items-center justify-between rounded-xl border p-3 transition-colors",
-                              "hover:bg-accent/40"
-                            )}
-                          >
-                            <div className="pr-3">
-                              <div className="text-sm font-medium leading-none">
-                                {CAP_LABELS[cap]}
-                              </div>
-                            </div>
-
-                            <Checkbox
-                              checked={checked}
-                              disabled={newRole.grantAll}
-                              onCheckedChange={(v) => toggleCap(cap, !!v)}
-                              className="rounded-full data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                            />
-                          </label>
-                        );
-                      })}
-                    </div>
-
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      These are the role’s default capabilities. Tenant caps and
-                      per-user overrides still apply.
-                    </p>
-                  </div>
-                </div>
-
-                <DialogFooter className="mt-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setIsCreateRoleOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="button" onClick={createRole}>
-                    Create
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* simple radio list for roles (you can swap to Combobox if you prefer) */}
+          <Label>Role</Label>
           <RadioGroup
             className="mt-2 grid gap-3"
             value={formData.roleId}
@@ -464,7 +223,7 @@ export function UserForm({
               </div>
             ) : roles.length === 0 ? (
               <div className="text-sm text-muted-foreground">
-                No roles found. Create one.
+                No roles available. Please set DEFAULT_ROLES ids.
               </div>
             ) : (
               roles.map((r) => (

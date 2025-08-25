@@ -73,8 +73,6 @@ export function AppSidebar() {
   };
 
   const isReportsActive = isActive("/reports");
-  const isAdminNavActive = pathname.startsWith("/admin");
-  const isUserNavActive = !pathname.startsWith("/admin");
 
   const isAdmin = currentUser?.role === "master";
 
