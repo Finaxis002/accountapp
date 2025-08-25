@@ -137,6 +137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const showAppSidebar = ["master", "client" , "customer"].includes(
     roleLower
   );
+  
 
   return (
     <CompanyProvider>
