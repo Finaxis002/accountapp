@@ -24,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Country, State, City } from "country-state-city";
+import { Combobox } from "@/components/ui/combobox"; // your searchable combobox
 
 interface CompanyFormProps {
   company?: Company;
@@ -74,6 +76,15 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
     React.useState<string[]>(defaultbusinessTypes);
   const [isAddingNewType, setIsAddingNewType] = React.useState(false);
   const [newbusinessType, setNewbusinessType] = React.useState("");
+  const india = Country.getCountryByCode("IN")!;
+  const [countryCode, setCountryCode] = React.useState<string>("IN"); // default India
+  const [stateCode, setStateCode] = React.useState<string>(""); // ISO code for state
+  const [stateOptions, setStateOptions] = React.useState<
+    { label: string; value: string }[]
+  >([]);
+  const [cityOptions, setCityOptions] = React.useState<
+    { label: string; value: string }[]
+  >([]);
 
   const getClientId = (client: string | Client | undefined) => {
     if (!client) return "";
@@ -205,6 +216,38 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
     }
   };
 
+  React.useEffect(() => {
+    const states = State.getStatesOfCountry(countryCode) || [];
+    setStateOptions(states.map((s) => ({ label: s.name, value: s.isoCode })));
+  }, [countryCode]);
+
+  // build city list when state (iso) changes
+  React.useEffect(() => {
+    if (!countryCode || !stateCode) {
+      setCityOptions([]);
+      return;
+    }
+    const cities = City.getCitiesOfState(countryCode, stateCode) || [];
+    setCityOptions(cities.map((c) => ({ label: c.name, value: c.name }))); // store city name as value
+  }, [countryCode, stateCode]);
+
+  // On first load, sync existing values (edit mode)
+  React.useEffect(() => {
+    // default country to India in the form if empty
+    if (!form.getValues("Country")) {
+      form.setValue("Country", india.name, { shouldValidate: true });
+    }
+
+    // if an existing state name is present, find its iso and set stateCode
+    const existingStateName = (form.getValues("addressState") || "").toString();
+    if (existingStateName) {
+      const iso = State.getStatesOfCountry("IN").find(
+        (s) => s.name.toLowerCase() === existingStateName.toLowerCase()
+      )?.isoCode;
+      if (iso) setStateCode(iso);
+    }
+  }, []); // run once
+
   return (
     <Form {...form}>
       <form
@@ -262,8 +305,97 @@ export function CompanyForm({ company, onFormSubmit }: CompanyFormProps) {
           )}
         />
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* COUNTRY */}
+          <FormField
+            control={form.control}
+            name="Country"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Country</FormLabel>
+                <Combobox
+                  options={[{ label: india.name, value: india.isoCode }]}
+                  value={countryCode}
+                  onChange={(iso) => {
+                    setCountryCode(iso);
+                    setStateCode("");
+                    setCityOptions([]);
+                    field.onChange(Country.getCountryByCode(iso)?.name || "");
+                    form.setValue("addressState", "");
+                    form.setValue("City", "");
+                  }}
+                  placeholder="Select country"
+                  searchPlaceholder="Type to search"
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* STATE */}
+          <FormField
+            control={form.control}
+            name="addressState"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>State</FormLabel>
+                <Combobox
+                  options={stateOptions}
+                  value={
+                    stateCode ||
+                    stateOptions.find(
+                      (o) =>
+                        o.label.toLowerCase() ===
+                        (field.value || "").toLowerCase()
+                    )?.value ||
+                    ""
+                  }
+                  onChange={(iso) => {
+                    setStateCode(iso);
+                    const selected = State.getStatesOfCountry(countryCode).find(
+                      (s) => s.isoCode === iso
+                    );
+                    field.onChange(selected?.name || "");
+                    form.setValue("City", "");
+                  }}
+                  placeholder="Select state"
+                  searchPlaceholder="Type state name"
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* CITY */}
+          <FormField
+            control={form.control}
+            name="City"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>City</FormLabel>
+                <Combobox
+                  options={cityOptions}
+                  value={
+                    cityOptions.find(
+                      (o) =>
+                        o.label.toLowerCase() ===
+                        (field.value || "").toLowerCase()
+                    )?.value || ""
+                  }
+                  onChange={(v) => field.onChange(v)}
+                  placeholder={
+                    stateCode ? "Select city" : "Select a state first"
+                  }
+                  searchPlaceholder="Type city name"
+                  disabled={!stateCode || cityOptions.length === 0}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         
           <FormField
             control={form.control}
             name="mobileNumber"
