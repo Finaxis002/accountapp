@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/types";
 
+
 // ---- Capability constants (mirror backend CAP_KEYS) ----
 const ALL_CAPS = [
   "canCreateInventory",
@@ -58,10 +59,8 @@ function ManageUserPermissionsDialog({
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL!;
   const { toast } = useToast();
 
-  // overrides: true | false | null
-  const [overrides, setOverrides] = useState<
-    Partial<Record<CapKey, boolean | null>>
-  >({});
+  // Only true (Allow) or false (Deny) - no null (Inherit)
+  const [overrides, setOverrides] = useState<Partial<Record<CapKey, boolean>>>({});
   const [loading, setLoading] = useState(true);
 
   const authHeaders = {
@@ -77,17 +76,22 @@ function ManageUserPermissionsDialog({
         const res = await fetch(`${baseURL}/api/user-permissions/${user._id}`, {
           headers: authHeaders,
         });
-        if (res.status === 404) {
-          const init: Partial<Record<CapKey, boolean | null>> = {};
-          for (const k of ALL_CAPS) init[k] = null;
-          setOverrides(init);
-        } else {
+        
+        if (res.ok) {
           const data = await res.json();
-          const init: Partial<Record<CapKey, boolean | null>> = {};
+          const init: Partial<Record<CapKey, boolean>> = {};
           for (const k of ALL_CAPS) {
-            init[k] = data[k] === true ? true : data[k] === false ? false : null;
+            // Convert null/undefined to false (Deny)
+            init[k] = data[k] === true;
           }
           setOverrides(init);
+        } else if (res.status === 404) {
+          // Initialize all permissions to false (Deny) by default
+          const init: Partial<Record<CapKey, boolean>> = {};
+          for (const k of ALL_CAPS) init[k] = false;
+          setOverrides(init);
+        } else {
+          throw new Error("Failed to load permissions");
         }
       } catch (e) {
         toast({
@@ -95,6 +99,10 @@ function ManageUserPermissionsDialog({
           title: "Failed to load permissions",
           description: String(e),
         });
+        // Initialize all permissions to false on error
+        const init: Partial<Record<CapKey, boolean>> = {};
+        for (const k of ALL_CAPS) init[k] = false;
+        setOverrides(init);
       } finally {
         setLoading(false);
       }
@@ -102,48 +110,44 @@ function ManageUserPermissionsDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?._id, baseURL]);
 
-  // Cycle Inherit(null) -> Allow(true) -> Deny(false) -> Inherit(null)
-  const cycle = (k: CapKey) => {
-    setOverrides((prev) => {
-      const v = prev[k];
-      const next = v === null || v === undefined ? true : v === true ? false : null;
-      return { ...prev, [k]: next };
-    });
-  };
-
-  const clearAllToInherit = () => {
-    const next: Partial<Record<CapKey, boolean | null>> = {};
-    for (const k of ALL_CAPS) next[k] = null;
-    setOverrides(next);
-  };
-
-  const grantAll = () => {
-    const next: Partial<Record<CapKey, boolean | null>> = {};
-    for (const k of ALL_CAPS) next[k] = true;
-    setOverrides(next);
+  // Toggle between Allow (true) and Deny (false)
+  const togglePermission = (k: CapKey) => {
+    setOverrides((prev) => ({
+      ...prev,
+      [k]: !prev[k] // Toggle between true and false
+    }));
   };
 
   const denyAll = () => {
-    const next: Partial<Record<CapKey, boolean | null>> = {};
+    const next: Partial<Record<CapKey, boolean>> = {};
     for (const k of ALL_CAPS) next[k] = false;
+    setOverrides(next);
+  };
+
+  const allowAll = () => {
+    const next: Partial<Record<CapKey, boolean>> = {};
+    for (const k of ALL_CAPS) next[k] = true;
     setOverrides(next);
   };
 
   const save = async () => {
     try {
-      const body: Record<string, boolean | null> = {};
+      const body: Record<string, boolean> = {};
       for (const k of ALL_CAPS) {
-        if (overrides[k] !== undefined) body[k] = overrides[k]!;
+        body[k] = overrides[k] || false; // Ensure all permissions are sent as boolean
       }
+      
       const res = await fetch(`${baseURL}/api/user-permissions/${user._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify(body),
       });
+      
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.message || "Failed to save permissions");
       }
+      
       toast({ title: "Permissions updated" });
       onClose();
     } catch (e) {
@@ -157,7 +161,7 @@ function ManageUserPermissionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Manage Permissions — {user.userName}</DialogTitle>
         </DialogHeader>
@@ -167,34 +171,36 @@ function ManageUserPermissionsDialog({
         ) : (
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={clearAllToInherit}>
-                Clear all
+              <Button size="sm" variant="outline" onClick={denyAll}>
+                Deny All
               </Button>
-              <Button size="sm" variant="outline" onClick={grantAll}>
-                Allow all
+              <Button size="sm" variant="outline" onClick={allowAll}>
+                Allow All
               </Button>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
               {ALL_CAPS.map((k) => {
-                const v = overrides[k];
-                const isChecked = v === true; // only true shows a tick
-                const badge = v === null ? "Inherit" : v === true ? "Allow" : "Deny";
+                const isAllowed = overrides[k] === true;
+                const badge = isAllowed ? "Allow" : "Deny";
+                const badgeColor = isAllowed ? "text-green-600" : "text-destructive";
 
                 return (
                   <label
                     key={k}
                     className={`flex items-center justify-between rounded-xl border p-3 hover:bg-accent/40 ${
-                      v === false ? "border-destructive/70" : ""
+                      !isAllowed ? "border-gray-200" : "border-green-200"
                     }`}
                   >
-                    <div className="pr-3">
+                    <div className="pr-3 flex-1">
                       <div className="text-sm font-medium">{CAP_LABELS[k as CapKey]}</div>
-                      <div className="text-xs text-muted-foreground">{badge}</div>
+                      <div className={`text-xs ${badgeColor} font-medium`}>
+                        {badge}
+                      </div>
                     </div>
                     <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={() => cycle(k as CapKey)}
+                      checked={isAllowed}
+                      onCheckedChange={() => togglePermission(k as CapKey)}
                       className="rounded-full data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                     />
                   </label>

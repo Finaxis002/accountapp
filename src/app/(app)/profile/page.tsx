@@ -36,6 +36,7 @@ import { VendorSettings } from "@/components/settings/vendor-settings";
 import { CustomerSettings } from "@/components/settings/customer-settings";
 import { ProductSettings } from "@/components/settings/product-settings";
 import { usePermissions } from "@/contexts/permission-context";
+import { useUserPermissions } from "@/contexts/user-permissions-context";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
 import { ProfileTab } from "@/components/settings/profile-tab";
@@ -58,11 +59,19 @@ import {
 import { AlertTriangle, CheckCircle2, Link2, Mail } from "lucide-react";
 
 export default function ProfilePage() {
-  const { permissions, isLoading } = usePermissions();
-  const currentUser = getCurrentUser();
-  const isCustomer = currentUser?.role === "customer";
+  const { permissions, isLoading } = usePermissions();           // client (master) perms
+  const { permissions: userCaps, isLoading: isUserLoading } = useUserPermissions(); // user perms
 
-  if (isLoading && isCustomer) {
+  const currentUser = getCurrentUser();
+  const role = currentUser?.role;
+
+  // clients in your app are usually "customer" (sometimes "client")
+  const isClient = role === "customer";
+  const isUser   = role === "user" || role === "manager" || role === "admin";
+  const isMember = isClient || isUser;  // someone whose tabs depend on perms
+
+  // wait until the relevant perms are loaded
+  if (isMember && (isLoading || isUserLoading)) {
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -70,58 +79,45 @@ export default function ProfilePage() {
     );
   }
 
+  // helper: allow if client has it OR user has it
+  const allow = (clientFlag?: boolean | null, userFlag?: boolean | null) =>
+    (isClient && !!clientFlag) || (isUser && !!userFlag);
+
   const adminTabs = [
     { value: "profile", label: "Profile", component: <ProfileTab /> },
-    {
-      value: "notifications",
-      label: "Notifications",
-      component: <NotificationsTab />,
-    },
+    { value: "notifications", label: "Notifications", component: <NotificationsTab /> },
   ];
 
-  const customerTabs = [
-    {
-      value: "permissions",
-      label: "Permissions",
-      component: <PermissionsTab />,
-    },
-    isCustomer &&
-      permissions?.canCreateVendors && {
-        value: "vendors",
-        label: "Vendors",
-        component: <VendorSettings />,
-      },
-    isCustomer &&
-      permissions?.canCreateCustomers && {
-        value: "customers",
-        label: "Customers",
-        component: <CustomerSettings />,
-      },
-    isCustomer &&
-      permissions?.canCreateProducts && {
-        value: "products",
-        label: "Products",
-        component: <ProductSettings />,
-      },
-    isCustomer &&
-      permissions?.canCreateProducts && {
-        value: "services",
-        label: "Services",
-        component: <ServiceSettings />,
-      }, // Assuming same permission for now
-    {
-      value: "notifications",
-      label: "Notifications",
-      component: <NotificationsTab />,
-    },
-  ].filter(Boolean) as {
-    value: string;
-    label: string;
-    component: React.ReactNode;
-  }[];
+  const memberTabs = [
+    { value: "permissions", label: "Permissions", component: <PermissionsTab /> },
 
-  const availableTabs = isCustomer ? customerTabs : adminTabs;
-  const defaultTab = isCustomer ? "permissions" : "profile";
+    allow(permissions?.canCreateVendors, userCaps?.canCreateVendors) && {
+      value: "vendors",
+      label: "Vendors",
+      component: <VendorSettings />,
+    },
+    allow(permissions?.canCreateCustomers, userCaps?.canCreateCustomers) && {
+      value: "customers",
+      label: "Customers",
+      component: <CustomerSettings />,
+    },
+    // Inventory controls both Products and Services
+    allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
+      value: "products",
+      label: "Products",
+      component: <ProductSettings />,
+    },
+    allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
+      value: "services",
+      label: "Services",
+      component: <ServiceSettings />,
+    },
+
+    { value: "notifications", label: "Notifications", component: <NotificationsTab /> },
+  ].filter(Boolean) as { value: string; label: string; component: React.ReactNode }[];
+
+  const availableTabs = isMember ? memberTabs : adminTabs;
+  const defaultTab = isMember ? "permissions" : "profile";
 
   const gridColsClass = `grid-cols-${availableTabs.length}`;
 
@@ -153,8 +149,10 @@ export default function ProfilePage() {
   );
 }
 
+
 function PermissionsTab() {
-  const { permissions } = usePermissions();
+   const { permissions } = usePermissions();                 // client perms
+  const { permissions: userCaps } = useUserPermissions();   // user perms
   const currentUser = getCurrentUser();
   const isCustomer = currentUser?.role === "customer";
 

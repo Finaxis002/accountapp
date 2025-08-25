@@ -37,7 +37,7 @@ import {
 
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
-  onDownloadInvoice: (transaction: Transaction) => void;
+  // onDownloadInvoice: (transaction: Transaction) => void;
   onViewItems: (tx: Transaction) => void;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
@@ -80,7 +80,7 @@ const makeCustomFilterFn = (
 
 export const columns = ({
   onPreview,
-  onDownloadInvoice,
+  // onDownloadInvoice,
   onViewItems,
   onEdit,
   onDelete,
@@ -403,13 +403,7 @@ export const columns = ({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => {
-                  if (typeof onDownloadInvoice === "function") {
-                    onDownloadInvoice(transaction);
-                  } else {
-                    handleDownload();
-                  }
-                }}
+                onClick={handleDownload}
                 disabled={!isSales}
               >
                 <Download className="mr-2 h-4 w-4" />

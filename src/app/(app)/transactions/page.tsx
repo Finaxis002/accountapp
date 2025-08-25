@@ -49,6 +49,8 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
+import { useUserPermissions } from "@/contexts/user-permissions-context";
+
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -86,171 +88,278 @@ export default function TransactionsPage() {
   const { selectedCompanyId } = useCompany();
   const { toast } = useToast();
 
+  // ---- PERMISSION GATING ----
+  const { permissions: userCaps, role } = useUserPermissions(); // ensure your hook exposes role; otherwise get it from your auth context
+  const isSuper = role === "master" || role === "client";
+
+  const canSales = isSuper || !!userCaps?.canCreateSaleEntries;
+  const canPurchases = isSuper || !!userCaps?.canCreatePurchaseEntries;
+  const canReceipt = isSuper || !!userCaps?.canCreateReceiptEntries;
+  const canPayment = isSuper || !!userCaps?.canCreatePaymentEntries;
+  const canJournal = isSuper || !!userCaps?.canCreateJournalEntries;
+
+  const allowedTypes = React.useMemo(() => {
+    const arr: Array<
+      "sales" | "purchases" | "receipt" | "payment" | "journal"
+    > = [];
+    if (canSales) arr.push("sales");
+    if (canPurchases) arr.push("purchases");
+    if (canReceipt) arr.push("receipt");
+    if (canPayment) arr.push("payment");
+    if (canJournal) arr.push("journal");
+    return arr;
+  }, [canSales, canPurchases, canReceipt, canPayment, canJournal]);
+
+  const canCreateAny = allowedTypes.length > 0;
+
   const lastFetchRef = React.useRef<{
     timestamp: number;
     companyId: string | null;
   }>({ timestamp: 0, companyId: null });
 
-const fetchTransactions = React.useCallback(async () => {
-  setIsLoading(true);
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Authentication token not found.");
+  const fetchTransactions = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
 
-    const queryParam = selectedCompanyId
-      ? `?companyId=${selectedCompanyId}`
-      : "";
+      const queryParam = selectedCompanyId
+        ? `?companyId=${selectedCompanyId}`
+        : "";
 
-    lastFetchRef.current = {
-      timestamp: Date.now(),
-      companyId: selectedCompanyId,
-    };
+      lastFetchRef.current = {
+        timestamp: Date.now(),
+        companyId: selectedCompanyId,
+      };
 
-    const buildRequest = (url: string) =>
-      fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const buildRequest = (url: string) =>
+        fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
-    console.log("Fetching sales with query:", queryParam);
-    console.log("Selected company ID:", selectedCompanyId);
+      console.log("Fetching sales with query:", queryParam);
+      console.log("Selected company ID:", selectedCompanyId);
 
-    // Response parsing utilities
-    const parseResponse = (data: any, possibleArrayKeys: string[] = []) => {
-      console.log("Parsing response:", data);
-      
-      if (Array.isArray(data)) return data;
-      
-      // Check for common success patterns
-      if (data?.success && Array.isArray(data?.data)) return data.data;
-      if (data?.success && Array.isArray(data?.entries)) return data.entries;
-      
-      // Check for specific keys
-      for (const key of possibleArrayKeys) {
-        if (Array.isArray(data?.[key])) return data[key];
-      }
-      
-      // Fallback: check any array in the response
-      for (const key in data) {
-        if (Array.isArray(data[key])) {
-          console.warn(`Found array in unexpected key: ${key}`);
-          return data[key];
+      // Response parsing utilities
+      const parseResponse = (data: any, possibleArrayKeys: string[] = []) => {
+        console.log("Parsing response:", data);
+
+        if (Array.isArray(data)) return data;
+
+        // Check for common success patterns
+        if (data?.success && Array.isArray(data?.data)) return data.data;
+        if (data?.success && Array.isArray(data?.entries)) return data.entries;
+
+        // Check for specific keys
+        for (const key of possibleArrayKeys) {
+          if (Array.isArray(data?.[key])) return data[key];
         }
-      }
-      
-      console.warn("No array data found in response:", data);
-      return [];
-    };
 
-    const parseSalesResponse = (data: any) => {
-      return parseResponse(data, ['salesEntries', 'sales', 'entries']);
-    };
-
-    const parsePurchasesResponse = (data: any) => {
-      return parseResponse(data, ['purchaseEntries', 'purchases', 'entries']);
-    };
-
-    const parseReceiptsResponse = (data: any) => {
-      return parseResponse(data, ['receiptEntries', 'receipts', 'entries']);
-    };
-
-    const parsePaymentsResponse = (data: any) => {
-      return parseResponse(data, ['paymentEntries', 'payments', 'entries']);
-    };
-
-    const parseJournalsResponse = (data: any) => {
-      return parseResponse(data, ['journalEntries', 'journals', 'entries']);
-    };
-
-    const parseCompaniesResponse = (data: any) => {
-      return parseResponse(data, ['companies', 'data']);
-    };
-
-    const parsePartiesResponse = (data: any) => {
-      return parseResponse(data, ['parties', 'customers', 'data']);
-    };
-
-    const parseVendorsResponse = (data: any) => {
-      return parseResponse(data, ['vendors', 'suppliers', 'data']);
-    };
-
-    const parseProductsResponse = (data: any) => {
-      return parseResponse(data, ['products', 'items', 'data']);
-    };
-
-    const parseServicesResponse = (data: any) => {
-      return parseResponse(data, ['services', 'data']);
-    };
-
-    // Helper function to check response status and parse JSON
-    const fetchAndParse = async (url: string, parser: Function, endpointName: string) => {
-      try {
-        const response = await buildRequest(url);
-        if (!response.ok) {
-          throw new Error(`${endpointName} failed: ${response.status} ${response.statusText}`);
+        // Fallback: check any array in the response
+        for (const key in data) {
+          if (Array.isArray(data[key])) {
+            console.warn(`Found array in unexpected key: ${key}`);
+            return data[key];
+          }
         }
-        const data = await response.json();
-        console.log(`${endpointName} response:`, data);
-        return parser(data);
-      } catch (error) {
-        console.error(`Error fetching ${endpointName}:`, error);
-        throw error;
-      }
-    };
 
-    // Fetch all data with proper error handling
-    const [
-      salesArray,
-      purchasesArray,
-      receiptsArray,
-      paymentsArray,
-      journalsArray,
-      companiesArray,
-      partiesArray,
-      vendorsArray,
-      productsArray,
-      servicesArray
-    ] = await Promise.all([
-      fetchAndParse(`${baseURL}/api/sales${queryParam}`, parseSalesResponse, 'sales'),
-      fetchAndParse(`${baseURL}/api/purchase${queryParam}`, parsePurchasesResponse, 'purchases'),
-      fetchAndParse(`${baseURL}/api/receipts${queryParam}`, parseReceiptsResponse, 'receipts'),
-      fetchAndParse(`${baseURL}/api/payments${queryParam}`, parsePaymentsResponse, 'payments'),
-      fetchAndParse(`${baseURL}/api/journals${queryParam}`, parseJournalsResponse, 'journals'),
-      fetchAndParse(`${baseURL}/api/companies/my`, parseCompaniesResponse, 'companies'),
-      fetchAndParse(`${baseURL}/api/parties`, parsePartiesResponse, 'parties'),
-      fetchAndParse(`${baseURL}/api/vendors`, parseVendorsResponse, 'vendors'),
-      fetchAndParse(`${baseURL}/api/products`, parseProductsResponse, 'products'),
-      fetchAndParse(`${baseURL}/api/services`, parseServicesResponse, 'services')
-    ]);
+        console.warn("No array data found in response:", data);
+        return [];
+      };
 
-    console.log("Parsed sales:", salesArray);
-    console.log("Parsed purchases:", purchasesArray);
+      const parseSalesResponse = (data: any) => {
+        return parseResponse(data, ["salesEntries", "sales", "entries"]);
+      };
 
-    // Update state with parsed data
-    setSales(salesArray.map((p: any) => ({ ...p, type: "sales" })));
-    setPurchases(purchasesArray.map((p: any) => ({ ...p, type: "purchases" })));
-    setReceipts(receiptsArray.map((r: any) => ({ ...r, type: "receipt" })));
-    setPayments(paymentsArray.map((p: any) => ({ ...p, type: "payment" })));
-    setJournals(journalsArray.map((j: any) => ({
-      ...j,
-      description: j.narration || j.description,
-      type: "journal"
-    })));
-    
-    setCompanies(companiesArray);
-    setParties(partiesArray);
-    setVendors(vendorsArray);
-    setProductsList(productsArray);
-    setServicesList(servicesArray);
+      const parsePurchasesResponse = (data: any) => {
+        return parseResponse(data, ["purchaseEntries", "purchases", "entries"]);
+      };
 
-  } catch (error) {
-    console.error("Fetch transactions error:", error);
-    toast({
-      variant: "destructive",
-      title: "Failed to load transactions",
-      description: error instanceof Error ? error.message : "Something went wrong.",
-    });
-  } finally {
-    setIsLoading(false);
-  }
-}, [selectedCompanyId, toast, baseURL]);
+      const parseReceiptsResponse = (data: any) => {
+        return parseResponse(data, ["receiptEntries", "receipts", "entries"]);
+      };
+
+      const parsePaymentsResponse = (data: any) => {
+        return parseResponse(data, ["paymentEntries", "payments", "entries"]);
+      };
+
+      const parseJournalsResponse = (data: any) => {
+        return parseResponse(data, ["journalEntries", "journals", "entries"]);
+      };
+
+      const parseCompaniesResponse = (data: any) => {
+        return parseResponse(data, ["companies", "data"]);
+      };
+
+      const parsePartiesResponse = (data: any) => {
+        return parseResponse(data, ["parties", "customers", "data"]);
+      };
+
+      const parseVendorsResponse = (data: any) => {
+        return parseResponse(data, ["vendors", "suppliers", "data"]);
+      };
+
+      const parseProductsResponse = (data: any) => {
+        return parseResponse(data, ["products", "items", "data"]);
+      };
+
+      const parseServicesResponse = (data: any) => {
+        return parseResponse(data, ["services", "data"]);
+      };
+
+      // Helper function to check response status and parse JSON
+      const fetchAndParse = async (
+        url: string,
+        parser: Function,
+        endpointName: string
+      ) => {
+        try {
+          const response = await buildRequest(url);
+          if (!response.ok) {
+            throw new Error(
+              `${endpointName} failed: ${response.status} ${response.statusText}`
+            );
+          }
+          const data = await response.json();
+          console.log(`${endpointName} response:`, data);
+          return parser(data);
+        } catch (error) {
+          console.error(`Error fetching ${endpointName}:`, error);
+          throw error;
+        }
+      };
+
+      // Fetch all data with proper error handling
+      // tiny helper
+      const maybeFetch = <T,>(
+        cond: boolean,
+        task: () => Promise<T>,
+        fallback: T
+      ) => (cond ? task() : Promise.resolve(fallback));
+
+      // Fetch only allowed entry types; always fetch masters (companies/parties/products/services)
+      const [
+        salesArray,
+        purchasesArray,
+        receiptsArray,
+        paymentsArray,
+        journalsArray,
+        companiesArray,
+        partiesArray,
+        vendorsArray,
+        productsArray,
+        servicesArray,
+      ] = await Promise.all([
+        maybeFetch(
+          canSales,
+          () =>
+            fetchAndParse(
+              `${baseURL}/api/sales${queryParam}`,
+              parseSalesResponse,
+              "sales"
+            ),
+          []
+        ),
+        maybeFetch(
+          canPurchases,
+          () =>
+            fetchAndParse(
+              `${baseURL}/api/purchase${queryParam}`,
+              parsePurchasesResponse,
+              "purchases"
+            ),
+          []
+        ),
+        maybeFetch(
+          canReceipt,
+          () =>
+            fetchAndParse(
+              `${baseURL}/api/receipts${queryParam}`,
+              parseReceiptsResponse,
+              "receipts"
+            ),
+          []
+        ),
+        maybeFetch(
+          canPayment,
+          () =>
+            fetchAndParse(
+              `${baseURL}/api/payments${queryParam}`,
+              parsePaymentsResponse,
+              "payments"
+            ),
+          []
+        ),
+        maybeFetch(
+          canJournal,
+          () =>
+            fetchAndParse(
+              `${baseURL}/api/journals${queryParam}`,
+              parseJournalsResponse,
+              "journals"
+            ),
+          []
+        ),
+        fetchAndParse(
+          `${baseURL}/api/companies/my`,
+          parseCompaniesResponse,
+          "companies"
+        ),
+        fetchAndParse(
+          `${baseURL}/api/parties`,
+          parsePartiesResponse,
+          "parties"
+        ),
+        fetchAndParse(
+          `${baseURL}/api/vendors`,
+          parseVendorsResponse,
+          "vendors"
+        ),
+        fetchAndParse(
+          `${baseURL}/api/products`,
+          parseProductsResponse,
+          "products"
+        ),
+        fetchAndParse(
+          `${baseURL}/api/services`,
+          parseServicesResponse,
+          "services"
+        ),
+      ]);
+
+      console.log("Parsed sales:", salesArray);
+      console.log("Parsed purchases:", purchasesArray);
+
+      // Update state with parsed data
+      setSales(salesArray.map((p: any) => ({ ...p, type: "sales" })));
+      setPurchases(
+        purchasesArray.map((p: any) => ({ ...p, type: "purchases" }))
+      );
+      setReceipts(receiptsArray.map((r: any) => ({ ...r, type: "receipt" })));
+      setPayments(paymentsArray.map((p: any) => ({ ...p, type: "payment" })));
+      setJournals(
+        journalsArray.map((j: any) => ({
+          ...j,
+          description: j.narration || j.description,
+          type: "journal",
+        }))
+      );
+
+      setCompanies(companiesArray);
+      setParties(partiesArray);
+      setVendors(vendorsArray);
+      setProductsList(productsArray);
+      setServicesList(servicesArray);
+    } catch (error) {
+      console.error("Fetch transactions error:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load transactions",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCompanyId, toast, baseURL]);
 
   const productNameById = React.useMemo(() => {
     const m = new Map<string, string>();
@@ -395,6 +504,22 @@ const fetchTransactions = React.useCallback(async () => {
     [sales, purchases, receipts, payments, journals]
   );
 
+
+  // Only show lists the user is allowed to see
+const visibleSales     = canSales     ? sales     : [];
+const visiblePurchases = canPurchases ? purchases : [];
+const visibleReceipts  = canReceipt   ? receipts  : [];
+const visiblePayments  = canPayment   ? payments  : [];
+const visibleJournals  = canJournal   ? journals  : [];
+
+const allVisibleTransactions = React.useMemo(
+  () =>
+    [...visibleSales, ...visiblePurchases, ...visibleReceipts, ...visiblePayments, ...visibleJournals]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+  [visibleSales, visiblePurchases, visibleReceipts, visiblePayments, visibleJournals]
+);
+
+
   const companyMap = React.useMemo(() => {
     const map = new Map<string, string>();
     companies.forEach((company) => {
@@ -408,6 +533,7 @@ const fetchTransactions = React.useCallback(async () => {
       onViewItems: (tx) => handleViewItems(tx),
       onPreview: handleOpenPreviewDialog,
       onEdit: handleOpenForm,
+      // onDownloadInvoice: handleDownloadInvoice,
       onDelete: handleOpenDeleteDialog,
       companyMap,
       serviceNameById, // Add this line
@@ -544,6 +670,7 @@ const fetchTransactions = React.useCallback(async () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {canCreateAny && (
               <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                 <DialogTrigger asChild>
                   <Button
@@ -577,6 +704,7 @@ const fetchTransactions = React.useCallback(async () => {
                   />
                 </DialogContent>
               </Dialog>
+              )}
             </div>
           </div>
 
@@ -701,36 +829,64 @@ const fetchTransactions = React.useCallback(async () => {
             </DialogContent>
           </Dialog>
 
-          <Tabs defaultValue="all">
-            <div className="overflow-x-auto pb-2">
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="sales">Sales</TabsTrigger>
-                <TabsTrigger value="purchases">Purchases</TabsTrigger>
-                <TabsTrigger value="receipts">Receipts</TabsTrigger>
-                <TabsTrigger value="payments">Payments</TabsTrigger>
-                <TabsTrigger value="journals">Journals</TabsTrigger>
-              </TabsList>
-            </div>
-            <TabsContent value="all" className="mt-4">
-              {renderContent(allTransactions)}
-            </TabsContent>
-            <TabsContent value="sales" className="mt-4">
-              {renderContent(sales)}
-            </TabsContent>
-            <TabsContent value="purchases" className="mt-4">
-              {renderContent(purchases)}
-            </TabsContent>
-            <TabsContent value="receipts" className="mt-4">
-              {renderContent(receipts)}
-            </TabsContent>
-            <TabsContent value="payments" className="mt-4">
-              {renderContent(payments)}
-            </TabsContent>
-            <TabsContent value="journals" className="mt-4">
-              {renderContent(journals)}
-            </TabsContent>
-          </Tabs>
+          {allowedTypes.length === 0 ? (
+  <Card>
+    <CardContent className="p-6">
+      <h3 className="text-lg font-semibold">No transaction access</h3>
+      <p className="text-sm text-muted-foreground">
+        You don’t have permission to view transaction entries. Please contact your administrator.
+      </p>
+    </CardContent>
+  </Card>
+) : (
+  <Tabs defaultValue="all">
+    <div className="overflow-x-auto pb-2">
+      <TabsList>
+        <TabsTrigger value="all">All</TabsTrigger>
+        {canSales     && <TabsTrigger value="sales">Sales</TabsTrigger>}
+        {canPurchases && <TabsTrigger value="purchases">Purchases</TabsTrigger>}
+        {canReceipt   && <TabsTrigger value="receipts">Receipts</TabsTrigger>}
+        {canPayment   && <TabsTrigger value="payments">Payments</TabsTrigger>}
+        {canJournal   && <TabsTrigger value="journals">Journals</TabsTrigger>}
+      </TabsList>
+    </div>
+
+    <TabsContent value="all" className="mt-4">
+      {renderContent(allVisibleTransactions)}
+    </TabsContent>
+
+    {canSales && (
+      <TabsContent value="sales" className="mt-4">
+        {renderContent(sales)}
+      </TabsContent>
+    )}
+
+    {canPurchases && (
+      <TabsContent value="purchases" className="mt-4">
+        {renderContent(purchases)}
+      </TabsContent>
+    )}
+
+    {canReceipt && (
+      <TabsContent value="receipts" className="mt-4">
+        {renderContent(receipts)}
+      </TabsContent>
+    )}
+
+    {canPayment && (
+      <TabsContent value="payments" className="mt-4">
+        {renderContent(payments)}
+      </TabsContent>
+    )}
+
+    {canJournal && (
+      <TabsContent value="journals" className="mt-4">
+        {renderContent(journals)}
+      </TabsContent>
+    )}
+  </Tabs>
+)}
+
         </>
       )}
     </div>
