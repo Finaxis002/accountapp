@@ -279,7 +279,7 @@ function NotificationsTab() {
               </p>
             ) : (
               <p className="text-xs text-amber-700">
-                Gmail not linked. Invoices won’t be emailed until you connect.
+                Gmail not linked. Invoices won’t be emailed until you connect.....
               </p>
             )}
           </div>
