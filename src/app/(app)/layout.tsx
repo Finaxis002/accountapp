@@ -182,7 +182,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <SheetHeader>
                         <SheetTitle>Notifications</SheetTitle>
                         <SheetDescription>
-                          You have 3 unread messages.
+                          You have 3 unread messages...
                         </SheetDescription>
                       </SheetHeader>
                       <div className="py-4">
