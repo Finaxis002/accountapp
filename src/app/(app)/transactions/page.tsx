@@ -86,6 +86,7 @@ export default function TransactionsPage() {
   const [parties, setParties] = React.useState<Party[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { selectedCompanyId } = useCompany();
+   const getCompanyId = (c: any) => (typeof c === "object" ? c?._id : c) || null;
   const { toast } = useToast();
 
   // ---- PERMISSION GATING ----
@@ -496,12 +497,48 @@ export default function TransactionsPage() {
     }
   };
 
+  // const allTransactions = React.useMemo(
+  //   () =>
+  //     [...sales, ...purchases, ...receipts, ...payments, ...journals].sort(
+  //       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  //     ),
+  //   [sales, purchases, receipts, payments, journals]
+  // );
+
+  
+  // --- Client-side company filters (defensive) ---
+  const filteredSales = React.useMemo(
+    () => (selectedCompanyId ? sales.filter(s => getCompanyId(s.company) === selectedCompanyId) : sales),
+    [sales, selectedCompanyId]
+  );
+
+  const filteredPurchases = React.useMemo(
+    () => (selectedCompanyId ? purchases.filter(p => getCompanyId(p.company) === selectedCompanyId) : purchases),
+    [purchases, selectedCompanyId]
+  );
+
+  const filteredReceipts = React.useMemo(
+    () => (selectedCompanyId ? receipts.filter(r => getCompanyId(r.company) === selectedCompanyId) : receipts),
+    [receipts, selectedCompanyId]
+  );
+
+  const filteredPayments = React.useMemo(
+    () => (selectedCompanyId ? payments.filter(p => getCompanyId(p.company) === selectedCompanyId) : payments),
+    [payments, selectedCompanyId]
+  );
+
+  const filteredJournals = React.useMemo(
+    () => (selectedCompanyId ? journals.filter(j => getCompanyId(j.company) === selectedCompanyId) : journals),
+    [journals, selectedCompanyId]
+  );
+
+  // Build "All" from the filtered arrays
   const allTransactions = React.useMemo(
     () =>
-      [...sales, ...purchases, ...receipts, ...payments, ...journals].sort(
+      [...filteredSales, ...filteredPurchases, ...filteredReceipts, ...filteredPayments, ...filteredJournals].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       ),
-    [sales, purchases, receipts, payments, journals]
+    [filteredSales, filteredPurchases, filteredReceipts, filteredPayments, filteredJournals]
   );
 
 
@@ -829,6 +866,7 @@ const allVisibleTransactions = React.useMemo(
             </DialogContent>
           </Dialog>
 
+
           {allowedTypes.length === 0 ? (
   <Card>
     <CardContent className="p-6">
@@ -886,6 +924,7 @@ const allVisibleTransactions = React.useMemo(
     )}
   </Tabs>
 )}
+
 
         </>
       )}
