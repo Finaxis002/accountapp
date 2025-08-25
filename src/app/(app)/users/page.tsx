@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PlusCircle, Users, Loader2, LayoutGrid, List } from "lucide-react";
+import { PlusCircle, Users, Loader2, LayoutGrid, List, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -39,7 +39,29 @@ export default function UsersPage() {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
+   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+
+
+   const userLoginUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/user-login`;
+
+   const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(userLoginUrl);
+      setCopied(true);
+      toast({
+        title: "URL copied to clipboard!",
+        description: "Share this link with your users for login.",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Failed to copy URL",
+        description: "Please copy the URL manually.",
+      });
+    }
+  };
 
   const fetchUsersAndCompanies = async () => {
     setIsLoading(true);
@@ -175,6 +197,33 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-blue-800 mb-1">
+                User Login URL
+              </h3>
+              <p className="text-xs text-blue-600 break-all bg-blue-100 px-2 py-1 rounded-md">
+                {userLoginUrl}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-white hover:bg-blue-500 text-blue-700 border-blue-300"
+              onClick={copyToClipboard}
+            >
+              {copied ? (
+                <Check className="h-4 w-4 mr-1" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {copied ? "Copied!" : "Copy URL"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
        {isLoading ? (
               // Full-page loader while first fetch is in-flight
               <div className="h-[80vh] w-full flex items-center justify-center">

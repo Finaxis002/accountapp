@@ -50,6 +50,7 @@ import { ProductForm } from "@/components/products/product-form";
 // ⬇️ import your real ServiceForm
 import { ServiceForm } from "@/components/services/service-form";
 import { usePermissions } from "@/contexts/permission-context";
+import { useUserPermissions } from "@/contexts/user-permissions-context";
 import { Badge } from "@/components/ui/badge";
 
 type Service = {
@@ -62,7 +63,7 @@ type Service = {
 
 export default function InventoryPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
-
+const { permissions: userCaps, isLoading } = useUserPermissions();
   // Lists
   const [products, setProducts] = React.useState<Product[]>([]);
   const [services, setServices] = React.useState<Service[]>([]);
@@ -276,6 +277,8 @@ export default function InventoryPage() {
     }
   };
 
+
+
   // Render helpers
   const renderProductsTable = () => {
     if (isLoadingProducts) {
@@ -293,7 +296,7 @@ export default function InventoryPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Create your first product to get started.
           </p>
-          {permissions?.canCreateProducts && (
+          {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
             <Button className="mt-6" onClick={openCreateProduct}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Product
@@ -374,7 +377,7 @@ export default function InventoryPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Create your first service to get started.
           </p>
-          {permissions?.canCreateProducts && (
+           {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
             <Button className="mt-6" onClick={openCreateService}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Service
@@ -443,6 +446,11 @@ export default function InventoryPage() {
       </div>
     );
   }
+
+
+  console.log("userCaps?.canCreateInventory" , userCaps?.canCreateInventory)
+  console.log("permissions?.canCreateProducts" , permissions?.canCreateProducts)
+    console.log("userCaps?.canCreateSaleEntries",userCaps?.canCreateSaleEntries)
 
   return (
     <div className="space-y-6">
@@ -550,7 +558,7 @@ export default function InventoryPage() {
                     </TabsTrigger>
                   </TabsList>
 
-                  {permissions?.canCreateProducts && (
+                  {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
                     <div className="flex gap-2">
                       <Button variant="outline" onClick={openCreateProduct}>
                         <PlusCircle className="mr-2 h-4 w-4" />

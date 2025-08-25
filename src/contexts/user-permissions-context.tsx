@@ -4,9 +4,6 @@ import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export type UserPermissions = {
-  // caps (effective = tenant ceiling ∧ user overrides)
-  canCreateUsers?: boolean; // tenant-level
-  canCreateProducts?: boolean; // tenant-level
   canCreateInventory?: boolean;
   canCreateCustomers?: boolean;
   canCreateVendors?: boolean;
@@ -19,44 +16,78 @@ export type UserPermissions = {
   canCreateJournalEntries?: boolean;
   canCreateReceiptEntries?: boolean;
   canCreatePaymentEntries?: boolean;
-
-  // limits (tenant-level)
-  maxCompanies?: number;
-  maxUsers?: number;
-  maxInventories?: number;
 };
 
 type Ctx = {
+  role: string | null;
   permissions: UserPermissions | null;
   isLoading: boolean;
   error: string | null;
+  /** convenience helper for UI gating */
+  isAllowed: (key: keyof UserPermissions) => boolean;
   refetch: () => void;
 };
 
 const UserPermissionsContext = React.createContext<Ctx | undefined>(undefined);
 
-export function UserPermissionsProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+/** Decode role from JWT without any libs */
+function getRoleFromToken(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const [, payload] = token.split(".");
+    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    // support multiple token shapes
+    return (json.role || json.userRole || json.r || "").toLowerCase() || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Everything allowed object (used for master/client bypass) */
+const ALL_ALLOWED: UserPermissions = {
+  canCreateInventory: true,
+  canCreateCustomers: true,
+  canCreateVendors: true,
+  canCreateCompanies: true,
+  canUpdateCompanies: true,
+  canSendInvoiceEmail: true,
+  canSendInvoiceWhatsapp: true,
+  canCreateSaleEntries: true,
+  canCreatePurchaseEntries: true,
+  canCreateJournalEntries: true,
+  canCreateReceiptEntries: true,
+  canCreatePaymentEntries: true,
+  // limits can be omitted or set very high; UI typically doesn't gate on them
+};
+
+export function UserPermissionsProvider({ children }: { children: React.ReactNode }) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL!;
   const { toast } = useToast();
 
-  const [permissions, setPermissions] = React.useState<UserPermissions | null>(
-    null
-  );
+  const [role, setRole] = React.useState<string | null>(null);
+  const [permissions, setPermissions] = React.useState<UserPermissions | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   const fetchPermissions = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const currentRole = getRoleFromToken(token);
+    setRole(currentRole);
+
     try {
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("Authentication token not found.");
 
+      // ✅ BYPASS: enforce caps only for 'user'
+      if (currentRole && currentRole !== "user") {
+        setPermissions(ALL_ALLOWED);
+        return;
+      }
+
+      // Only role === 'user' comes here
       const res = await fetch(`${baseURL}/api/user-permissions/me/effective`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -68,11 +99,9 @@ export function UserPermissionsProvider({
         throw new Error(msg);
       }
 
-      // The endpoint should return a flattened object: { ...caps, ...limits }
       const data = await res.json();
+      console.log("data of User Permissions : " , data)
       setPermissions({
-        canCreateUsers: data.canCreateUsers,
-        canCreateProducts: data.canCreateProducts,
         canCreateInventory: data.canCreateInventory,
         canCreateCustomers: data.canCreateCustomers,
         canCreateVendors: data.canCreateVendors,
@@ -85,27 +114,33 @@ export function UserPermissionsProvider({
         canCreateJournalEntries: data.canCreateJournalEntries,
         canCreateReceiptEntries: data.canCreateReceiptEntries,
         canCreatePaymentEntries: data.canCreatePaymentEntries,
-        maxCompanies: data.maxCompanies,
-        maxUsers: data.maxUsers,
-        maxInventories: data.maxInventories,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       setError(msg);
-      // toast({ variant: 'destructive', title: 'Could not load your permissions', description: msg });
       setPermissions(null);
+      // optionally toast here
     } finally {
       setIsLoading(false);
     }
-  }, [baseURL, toast]);
+  }, [baseURL]);
 
   React.useEffect(() => {
     fetchPermissions();
   }, [fetchPermissions]);
 
+  const isAllowed = React.useCallback(
+    (key: keyof UserPermissions) => {
+      // master/client (and any non-user role) are always allowed
+      if (role && role !== "user" && role !== "admin" && role !== "manager") return true;
+      return Boolean(permissions?.[key]);
+    },
+    [role, permissions]
+  );
+
   const value: Ctx = React.useMemo(
-    () => ({ permissions, isLoading, error, refetch: fetchPermissions }),
-    [permissions, isLoading, error, fetchPermissions]
+    () => ({ role, permissions, isLoading, error, isAllowed, refetch: fetchPermissions }),
+    [role, permissions, isLoading, error, isAllowed, fetchPermissions]
   );
 
   return (
@@ -117,10 +152,6 @@ export function UserPermissionsProvider({
 
 export function useUserPermissions() {
   const ctx = React.useContext(UserPermissionsContext);
-  if (!ctx) {
-    throw new Error(
-      "useUserPermissions must be used within a UserPermissionsProvider"
-    );
-  }
+  if (!ctx) throw new Error("useUserPermissions must be used within a UserPermissionsProvider");
   return ctx;
 }
