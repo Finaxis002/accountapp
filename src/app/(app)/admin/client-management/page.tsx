@@ -53,6 +53,7 @@ import { Input } from "@/components/ui/input";
 import { ClientCard } from "@/components/clients/client-card";
 import {
   Dialog,
+  DialogOverlay,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -476,145 +477,199 @@ export default function ClientManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Client Management
-          </h2>
-          <p className="text-muted-foreground">
-            Manage your clients and their accounts.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md bg-secondary p-1">
-            <Button
-              variant={viewMode === "card" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("card")}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-          <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Client
-          </Button>
-        </div>
-      </div>
+   <div className="space-y-6 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-16">
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[625px] grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
-          <DialogHeader className="p-6">
-            <DialogTitle>
-              {selectedClient ? "Edit Client" : "Add New Client"}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedClient
-                ? `Update the details for ${selectedClient.contactName}.`
-                : "Fill in the form below to add a new client."}
-            </DialogDescription>
-          </DialogHeader>
-          <ClientForm
-            client={selectedClient || undefined}
-            onFormSubmit={onFormSubmit}
-          />
-        </DialogContent>
-      </Dialog>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  {/* Left Side (Heading + Description) */}
+  <div>
+    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">
+      Client Management
+    </h2>
+    <p className="text-sm sm:text-base text-muted-foreground">
+      Manage your clients and their accounts.
+    </p>
+  </div>
+
+  {/* Right Side (Buttons) */}
+  <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-1 rounded-md bg-secondary p-1">
+      <Button
+        variant={viewMode === "card" ? "primary" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("card")}
+      >
+        <LayoutGrid className="h-4 w-4" />
+      </Button>
+      <Button
+        variant={viewMode === "list" ? "primary" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("list")}
+      >
+        <List className="h-4 w-4" />
+      </Button>
+    </div>
+    <Button onClick={handleAddNew} className="w-full sm:w-auto">
+      <PlusCircle className="mr-2 h-4 w-4" />
+      Add Client
+    </Button>
+  </div>
+</div>
+
+
+<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+  <DialogContent
+    className="
+      w-[95vw] sm:w-[80vw] lg:w-[625px]   /* 📱 phone 95%, 📟 tab 80%, 💻 laptop fixed */
+      max-h-[90vh] overflow-y-auto        /* scroll if overflow */
+      grid-rows-[auto,1fr,auto]
+      p-0 rounded-xl
+    "
+  >
+    <DialogHeader className="p-4 sm:p-6">
+      <DialogTitle className="text-lg sm:text-xl lg:text-2xl">
+        {selectedClient ? "Edit Client" : "Add New Client"}
+      </DialogTitle>
+      <DialogDescription className="text-sm sm:text-base">
+        {selectedClient
+          ? `Update the details for ${selectedClient.contactName}.`
+          : "Fill in the form below to add a new client."}
+      </DialogDescription>
+    </DialogHeader>
+
+    <ClientForm
+      client={selectedClient || undefined}
+      onFormSubmit={onFormSubmit}
+    />
+  </DialogContent>
+</Dialog>
+
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              client account and all associated data for{" "}
-              {clientToDelete?.contactName}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+  <AlertDialogContent
+    className="
+      w-[95vw] sm:w-[80vw] lg:w-[500px]   /* 📱full width, 📟medium, 💻fixed */
+      max-h-[90vh] overflow-y-auto
+      rounded-xl p-4 sm:p-6
+    "
+  >
+    <AlertDialogHeader>
+      <AlertDialogTitle className="text-lg sm:text-xl lg:text-2xl font-semibold">
+        Are you absolutely sure?
+      </AlertDialogTitle>
+      <AlertDialogDescription className="text-sm sm:text-base text-gray-600">
+        This action cannot be undone. This will permanently delete the client
+        account and all associated data for{" "}
+        <span className="font-semibold">{clientToDelete?.contactName}</span>.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
 
-      <Dialog
-        open={isResetPasswordDialogOpen}
-        onOpenChange={setIsResetPasswordDialogOpen}
+    <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+      <AlertDialogCancel className="w-full sm:w-auto">
+        Cancel
+      </AlertDialogCancel>
+      <AlertDialogAction
+        onClick={confirmDelete}
+        className="w-full sm:w-auto"
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
-            <DialogDescription>
-              Enter a new password for {clientToResetPassword?.contactName}.
-              They will be notified of this change.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
-              <div className="relative">
-                <Input
-                  id="new-password"
-                  type={eyeOpen ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setEyeOpen((prev) => !prev)}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
-                >
-                  {eyeOpen ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsResetPasswordDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmResetPassword}
-              disabled={isSubmittingPassword}
-            >
-              {isSubmittingPassword && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Reset Password
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        Continue
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+
+    <Dialog
+  open={isResetPasswordDialogOpen}
+  onOpenChange={setIsResetPasswordDialogOpen}
+>
+  <DialogContent
+    className="
+      w-[95vw] sm:w-[80vw] lg:w-[500px]    /* 📱 Mobile full, 📟 Tablet wide, 💻 Desktop compact */
+      max-h-[90vh] overflow-y-auto
+      rounded-xl p-4 sm:p-6
+    "
+  >
+    <DialogHeader>
+      <DialogTitle className="text-lg sm:text-xl lg:text-2xl font-semibold">
+        Reset Password
+      </DialogTitle>
+      <DialogDescription className="text-sm sm:text-base text-gray-600">
+        Enter a new password for{" "}
+        <span className="font-semibold">{clientToResetPassword?.contactName}</span>.
+        They will be notified of this change.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="new-password">New Password</Label>
+        <div className="relative">
+          <Input
+            id="new-password"
+            type={eyeOpen ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Enter new password"
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setEyeOpen((prev) => !prev)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 focus:outline-none"
+          >
+            {eyeOpen ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4">
+      <Button
+        variant="outline"
+        onClick={() => setIsResetPasswordDialogOpen(false)}
+        className="w-full sm:w-auto"
+      >
+        Cancel
+      </Button>
+      <Button
+        onClick={confirmResetPassword}
+        disabled={isSubmittingPassword}
+        className="w-full sm:w-auto"
+      >
+        {isSubmittingPassword && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        Reset Password
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
       {/* permissions dialogue */}
       <Dialog
         open={isPermissionsDialogOpen}
         onOpenChange={setIsPermissionsDialogOpen}
       >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              Manage Permissions for {clientForPermissions?.contactName}
-            </DialogTitle>
-            <DialogDescription>
-              Modify usage limits and feature access for this client.
-            </DialogDescription>
+         <DialogOverlay className="fixed inset-0 bg-black/50 flex items-center justify-center p-2"></DialogOverlay>
+       <DialogContent
+  className="
+    w-[calc(100vw-2rem)]          /* phone: sides पर 1rem gap */
+    sm:w-[calc(100vw-4rem)]       /* small tablets: थोड़ा ज्यादा gap */
+    md:w-auto                     /* md+ पर fixed max-widths use करो */
+    max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-4xl
+    max-h-[85svh] md:max-h-[90vh] /* iOS/iPad Safari safe viewport heights */
+    overflow-y-auto               /* content बड़ा हो तो scroll मिले */
+  "
+>
+
+          <DialogHeader className="space-y-2 text-center sm:text-left">
+             <DialogTitle className="text-lg sm:text-xl md:text-2xl font-semibold break-words">
+                  Manage Permissions for {clientForPermissions?.contactName}
+             </DialogTitle>
+              <DialogDescription className="text-sm sm:text-base text-muted-foreground">
+                  Modify usage limits and feature access for this client.
+             </DialogDescription>
           </DialogHeader>
           {clientForPermissions && (
             <div className="grid gap-6 py-4">
@@ -624,7 +679,14 @@ export default function ClientManagementPage() {
                     Feature Permissions
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 grid md:grid-cols-2 gap-4">
+                <CardContent
+                    className="
+                     p-4 
+                     grid grid-cols-1 gap-3       
+                     sm:grid-cols-2 sm:gap-4      
+                     lg:grid-cols-3 lg:gap-5      
+                     "
+                     >
                   <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <Users className="h-5 w-5 text-muted-foreground" />
@@ -857,74 +919,88 @@ export default function ClientManagementPage() {
       </Dialog>
       <Card className="w-full">
         <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            {/* Mobile filter button */}
-            <div className="sm:hidden w-full">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[calc(100vw-2rem)] p-4 space-y-4">
-                  <Combobox
-                    options={contactNameOptions}
-                    value={contactNameFilter}
-                    onChange={setContactNameFilter}
-                    placeholder="Filter by name..."
-                    searchPlaceholder="Search by name..."
-                    noResultsText="No clients found."
-                  />
-                  <Combobox
-                    options={usernameOptions}
-                    value={usernameFilter}
-                    onChange={setUsernameFilter}
-                    placeholder="Filter by username..."
-                    searchPlaceholder="Search by username..."
-                    noResultsText="No clients found."
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={handleClearFilters}
-                    disabled={!contactNameFilter && !usernameFilter}
-                    className="w-full"
-                  >
-                    Clear Filters
-                  </Button>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  {/* 📱 Mobile filter button */}
+  <div className="sm:hidden w-full">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full flex items-center justify-center text-sm py-2"
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          Filters
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[calc(100vw-2rem)] max-w-sm mx-auto p-4 space-y-4">
+        <Combobox
+          options={contactNameOptions}
+          value={contactNameFilter}
+          onChange={setContactNameFilter}
+          placeholder="Filter by name..."
+          searchPlaceholder="Search by name..."
+          noResultsText="No clients found."
+        />
+        <Combobox
+          options={usernameOptions}
+          value={usernameFilter}
+          onChange={setUsernameFilter}
+          placeholder="Filter by username..."
+          searchPlaceholder="Search by username..."
+          noResultsText="No clients found."
+        />
+        <Button
+          variant="outline"
+          onClick={handleClearFilters}
+          disabled={!contactNameFilter && !usernameFilter}
+          className="w-full text-sm py-2"
+        >
+          Clear Filters
+        </Button>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
 
-            {/* Desktop filters */}
-            <div className="hidden sm:flex items-center gap-2">
-              <Combobox
-                options={contactNameOptions}
-                value={contactNameFilter}
-                onChange={setContactNameFilter}
-                placeholder="Filter by name..."
-                searchPlaceholder="Search by name..."
-                noResultsText="No clients found."
-              />
-              <Combobox
-                options={usernameOptions}
-                value={usernameFilter}
-                onChange={setUsernameFilter}
-                placeholder="Filter by username..."
-                searchPlaceholder="Search by username..."
-                noResultsText="No clients found."
-              />
-            </div>
+  {/* 💻 Tablet & Desktop filters */}
+  <div className="hidden sm:flex flex-row flex-nowrap items-center gap-3 flex-1">
 
-            <Button
-              variant="outline"
-              onClick={handleClearFilters}
-              disabled={!contactNameFilter && !usernameFilter}
-              className="hidden sm:flex"
-            >
-              Clear Filters
-            </Button>
-          </div>
+    <Combobox
+      options={contactNameOptions}
+      value={contactNameFilter}
+      onChange={setContactNameFilter}
+      placeholder="Filter by name..."
+      searchPlaceholder="Search by name..."
+      noResultsText="No clients found."
+      className="min-w-[160px]"
+    />
+    <Combobox
+      options={usernameOptions}
+      value={usernameFilter}
+      onChange={setUsernameFilter}
+      placeholder="Filter by username..."
+      searchPlaceholder="Search by username..."
+      noResultsText="No clients found."
+      className="min-w-[160px]"
+    />
+  </div>
+
+  {/* 🧹 Clear Filters Button */}
+  <Button
+    variant="outline"
+    onClick={handleClearFilters}
+    disabled={!contactNameFilter && !usernameFilter}
+    className="
+      w-full sm:w-auto        /* Mobile full width, tablet/desktop auto */
+      text-sm sm:text-base    /* Font size responsive */
+      px-3 sm:px-4            /* Padding responsive */
+      py-2 sm:py-2.5
+      flex items-center justify-center
+    "
+  >
+    Clear Filters
+  </Button>
+</div>
+
         </CardHeader>
         <CardContent className={viewMode === "list" ? "p-0" : ""}>
           {isLoading ? (

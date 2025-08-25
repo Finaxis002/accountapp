@@ -136,7 +136,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex min-h-screen bg-background text-foreground ">
             <AppSidebar />
             <div className="flex-1 flex flex-col w-full">
-              <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 z-20">
+              <header className="fixed top-0 left-0 right-0 h-16 flex items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 z-20">
                 <div className="flex items-center gap-2 md:gap-4">
                   <SidebarTrigger className="md:hidden" />
                   <div className="hidden md:block">
@@ -154,10 +154,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     currentUser?.role === "user" ||
                     currentUser?.role === "admin" ||
                     currentUser?.role === "master") && (
-                    <div className="hidden md:block">
-                      <CompanySwitcher />
-                    </div>
-                  )}
+                      <div className="hidden md:block">
+                        <CompanySwitcher />
+                      </div>
+                    )}
                 </div>
                 <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
                   <div className="relative w-full max-w-md hidden md:block">
