@@ -261,7 +261,7 @@ export default function AdminCompaniesPage() {
           <Card className="flex flex-col items-center justify-center p-6 sm:p-12 border-dashed text-center">
             <Building className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg sm:text-xl font-semibold">
-              No Companies Found
+              No Companies Found ...
             </h3>
             <p className="mt-1 text-sm sm:text-base text-muted-foreground">
               Get started by creating the first company.
