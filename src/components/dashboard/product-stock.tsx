@@ -45,6 +45,10 @@ import { useCompany } from "@/contexts/company-context";
 import { Badge } from "../ui/badge";
 import { ServiceForm } from "../services/service-form";
 
+const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
+
+
+
 function StockEditForm({
   product,
   onSuccess,
@@ -66,7 +70,7 @@ function StockEditForm({
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
       const res = await fetch(
-        `http://localhost:5000/api/products/${product._id}`,
+        `${baseURL}/api/products/${product._id}`,
         {
           method: "PUT",
           headers: {
@@ -141,8 +145,8 @@ export function ProductStock() {
       if (!token) throw new Error("Authentication token not found.");
 
       const url = selectedCompanyId
-        ? `http://localhost:5000/api/products?companyId=${selectedCompanyId}`
-        : `http://localhost:5000/api/products?companyId=${selectedCompanyId}`;
+        ? `${baseURL}/api/products?companyId=${selectedCompanyId}`
+        : `${baseURL}/api/products?companyId=${selectedCompanyId}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
