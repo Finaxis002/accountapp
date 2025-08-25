@@ -1178,7 +1178,7 @@ export default function ClientManagementPage() {
                                 onClick={() => handleEdit(client)}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
-                                Edit
+                                Edit........
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleResetPassword(client)}
