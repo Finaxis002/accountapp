@@ -52,7 +52,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
   const isAuthRoute =
-    pathname === "/login" || pathname.startsWith("/client-login/");
+    pathname === "/login" ||
+    pathname === "/user-login" ||
+    pathname.startsWith("/client-login/") ||
+    pathname.startsWith("/user-login/");
 
   useEffect(() => {
     if (isAuthRoute) {
@@ -124,20 +127,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     localStorage.clear();
     console.debug("Logout redirect →", role, slug);
 
-    // hard navigation to avoid any lingering layout state
+    // 🔑 redirect logic
     if (role === "customer" && slug) {
+      // customer → their own client login page
       window.location.assign(`/client-login/${slug}`);
-    } else {
+    } else if (role === "master") {
+      // master → generic login
       window.location.assign(`/login`);
+    } else {
+      // everyone else (client, user, admin, manager, etc.)
+      window.location.assign(`/user-login`);
     }
   };
 
   const roleLower = (currentUser?.role ?? "").toLowerCase();
-  console.log("current User :", currentUser)
-  const showAppSidebar = ["master", "client" , "customer"].includes(
-    roleLower
-  );
-  
+  console.log("current User :", currentUser);
+  const showAppSidebar = ["master", "client", "customer"].includes(roleLower);
 
   return (
     <CompanyProvider>
