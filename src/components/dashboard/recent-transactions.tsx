@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Transaction } from "@/lib/types";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { ArrowRight, Package, Server } from "lucide-react";
+import { ArrowRight, Package, Server, Calendar, User } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import {
   Dialog,
@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { motion } from "framer-motion";
 
 /* ---------- helpers ---------- */
 const inr = (n: number) =>
@@ -44,7 +45,6 @@ const safeDate = (d: any) => {
     : "-";
 };
 
-// amount per type/shape
 const getAmount = (tx: any) => {
   switch (tx.type) {
     case "sales":
@@ -71,18 +71,16 @@ type LineItem = {
   description?: string;
 };
 
-// extract items for cell label AND full list for dialog
 function getItems(
   tx: any,
   svcMap?: Map<string, string>
 ): { label: string; icon: "product" | "service" | "none"; items: LineItem[] } {
   const productsArr = Array.isArray(tx?.products) ? tx.products : [];
-const servicesArr =
-  Array.isArray(tx?.services) ? tx.services
-  : Array.isArray(tx?.service)  ? tx.service      // <-- service can be an array
-  : tx?.service                 ? [tx.service]    // <-- or a single object
-  : [];
-
+  const servicesArr =
+    Array.isArray(tx?.services) ? tx.services
+      : Array.isArray(tx?.service) ? tx.service
+      : tx?.service ? [tx.service]
+      : [];
 
   const normalized: LineItem[] = [];
 
@@ -103,25 +101,19 @@ const servicesArr =
     });
   }
   for (const s of servicesArr) {
-    // id or object may live on `serviceName` OR `service`
     const ref: any = s?.serviceName ?? s?.service;
-
     let sName = "(service)";
     if (ref && typeof ref === "object") {
-      // populated object
       sName =
         ref.serviceName ||
         ref.name ||
         (ref._id ? svcMap?.get(String(ref._id)) : "") ||
         "(service)";
     } else if (typeof ref === "string") {
-      // plain ObjectId string -> look up in map
       sName = svcMap?.get(String(ref)) || "(service)";
     } else if (typeof s?.serviceName === "string") {
-      // legacy/fallback
       sName = svcMap?.get(String(s.serviceName)) || "(service)";
     }
-
     normalized.push({
       itemType: "service",
       name: sName,
@@ -132,19 +124,16 @@ const servicesArr =
     });
   }
 
-  // Label for the cell
   if (normalized.length === 0) return { label: "—", icon: "none", items: [] };
-
   const first = normalized[0];
   const extra = normalized.length - 1;
-  const label = extra > 0 ? `${first.name} ${extra} more` : first.name;
+  const label = extra > 0 ? `${first.name} +${extra}` : first.name;
 
   return { label, icon: first.itemType, items: normalized };
 }
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
-  /** optional: map serviceId -> serviceName */
   serviceNameById?: Map<string, string>;
 }
 
@@ -159,7 +148,6 @@ export function RecentTransactions({
   const openItemsDialog = (tx: any, items: LineItem[]) => {
     if (items.length === 0) return;
     setDialogItems(items);
-    // Optional: include party & date in title for clarity
     const party =
       (tx?.party && typeof tx.party === "object" && (tx.party.name || "")) ||
       (tx?.vendor &&
@@ -180,118 +168,167 @@ export function RecentTransactions({
   };
 
   const typeStyles: Record<string, string> = {
-    sales: "bg-green-500/20 text-green-700 dark:text-green-300",
-    purchases: "bg-orange-500/20 text-orange-700 dark:text-orange-300",
-    receipt: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
-    payment: "bg-red-500/20 text-red-700 dark:text-red-300",
-    journal: "bg-purple-500/20 text-purple-700 dark:text-purple-300",
+    sales: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300",
+    purchases: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300",
+    receipt: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300",
+    payment: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300",
+    journal: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300",
   };
 
   return (
     <>
-      <Card className="w-full h-full flex flex-col">
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
+      <Card className="w-full h-full flex flex-col shadow-lg rounded-2xl border border-border/50">
+        <CardHeader className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-t-2xl">
+          <CardTitle className="text-lg font-bold">Recent Transactions</CardTitle>
           <CardDescription>
             A summary of your most recent financial activities.
           </CardDescription>
         </CardHeader>
+
         <CardContent className="p-0 flex-1">
-          <ScrollArea className="h-72">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Party</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="hidden md:table-cell">Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions?.length > 0 ? (
-                  transactions.map((tx: any) => {
-                    const item = getItems(tx, serviceNameById);
-                    console.log(
-                      "getItems ->",
-                      tx._id,
-                      {
-                        products: tx.products,
-                        service: tx.service,
-                        services: tx.services,
-                      },
-                      item
-                    );
-                    const amt = getAmount(tx);
-                    const clickable = item.items.length > 0; // click to view details if any items
-
-                    return (
-                      <TableRow key={tx._id}>
-                        <TableCell>
-                          <div className="font-medium">{getPartyName(tx)}</div>
-                          <div className="hidden text-sm text-muted-foreground md:block">
-                            {tx.description || tx.narration}
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          {item.icon === "product" ? (
-                            <button
-                              type="button"
-                              disabled={!clickable}
-                              onClick={() => openItemsDialog(tx, item.items)}
-                              className={`flex items-center gap-2 ${
-                                clickable ? "hover:underline text-left" : ""
-                              }`}
-                            >
-                              <Package className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{item.label}</span>
-                            </button>
-                          ) : item.icon === "service" ? (
-                            <button
-                              type="button"
-                              disabled={!clickable}
-                              onClick={() => openItemsDialog(tx, item.items)}
-                              className={`flex items-center gap-2 ${
-                                clickable ? "hover:underline text-left" : ""
-                              }`}
-                            >
-                              <Server className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{item.label}</span>
-                            </button>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
-
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge
-                            variant="secondary"
-                            className={typeStyles[tx.type] || ""}
-                          >
-                            {tx.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {safeDate(tx.date)}
-                        </TableCell>
-                        <TableCell className="text-right">{inr(amt)}</TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
+          <ScrollArea className="h-80">
+            {/* ✅ Desktop Table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No recent transactions.
-                    </TableCell>
+                    <TableHead>Party</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {transactions?.length > 0 ? (
+                    transactions.map((tx: any) => {
+                      const item = getItems(tx, serviceNameById);
+                      const amt = getAmount(tx);
+                      const clickable = item.items.length > 0;
+                      return (
+                        <TableRow
+                          key={tx._id}
+                          className="hover:bg-muted/50 transition-colors"
+                        >
+                          <TableCell>
+                            <div className="font-medium flex items-center gap-2">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                              {getPartyName(tx)}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {tx.description || tx.narration}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {item.icon !== "none" ? (
+                              <button
+                                type="button"
+                                disabled={!clickable}
+                                onClick={() => openItemsDialog(tx, item.items)}
+                                className="flex items-center gap-2 hover:underline"
+                              >
+                                {item.icon === "product" ? (
+                                  <Package className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Server className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <span className="font-medium">{item.label}</span>
+                              </button>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="secondary"
+                              className={`${typeStyles[tx.type]} capitalize`}
+                            >
+                              {tx.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            {safeDate(tx.date)}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {inr(amt)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                        No recent transactions.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card View */}
+<div className="grid gap-5 md:hidden p-4">
+  {transactions?.length > 0 ? (
+    transactions.map((tx: any, i) => {
+      const item = getItems(tx, serviceNameById);
+      const amt = getAmount(tx);
+      return (
+        <motion.div
+          key={tx._id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05 }}
+          className="rounded-2xl border backdrop-blur-md bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 shadow-xl p-5 space-y-4 hover:shadow-2xl hover:scale-[1.02] transition-all"
+        >
+          {/* ✅ Party name & date (no User / Calendar icon on mobile) */}
+          <div className="flex justify-between items-center">
+            <span className="font-semibold text-base text-gray-900 dark:text-gray-100">
+              {getPartyName(tx)}
+            </span>
+            <span className="text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+              {safeDate(tx.date)}
+            </span>
+          </div>
+
+          {/* ✅ Items (no Package / Server icons on mobile) */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium">{item.label}</span>
+          </div>
+
+          {tx.description && (
+            <p className="text-xs italic text-gray-500 dark:text-gray-400">
+              {tx.description}
+            </p>
+          )}
+
+          {/* ✅ Transaction Type & Amount */}
+          <div className="flex justify-between items-center">
+            <Badge
+              variant="secondary"
+              className={`${typeStyles[tx.type]} capitalize`}
+            >
+              {tx.type}
+            </Badge>
+            <span className="px-4 py-1 rounded-full font-bold text-sm bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md">
+              {inr(amt)}
+            </span>
+          </div>
+        </motion.div>
+      );
+    })
+  ) : (
+    <p className="text-center text-muted-foreground">
+      No recent transactions.
+    </p>
+  )}
+</div>
+
           </ScrollArea>
         </CardContent>
+
         <CardFooter className="justify-end pt-4">
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild variant="outline" size="sm" className="rounded-full">
             <Link href="/transactions">
               View All Transactions <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
@@ -299,16 +336,15 @@ export function RecentTransactions({
         </CardFooter>
       </Card>
 
-      {/* Detailed Items Dialog */}
+      {/* Items Dialog */}
       <Dialog open={isItemsOpen} onOpenChange={setIsItemsOpen}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl rounded-xl">
           <DialogHeader>
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>
-              A detailed list of all items in this transaction.
+              Detailed list of all items in this transaction.
             </DialogDescription>
           </DialogHeader>
-
           <div className="mt-2">
             <Table>
               <TableHeader>
@@ -324,9 +360,7 @@ export function RecentTransactions({
                 {dialogItems.map((li, idx) => {
                   const isService = li.itemType === "service";
                   const qty =
-                    !isService &&
-                    li.quantity !== undefined &&
-                    li.quantity !== ""
+                    !isService && li.quantity !== undefined && li.quantity !== ""
                       ? li.quantity
                       : "—";
                   const rate = !isService ? inr(li.pricePerUnit ?? 0) : "—";

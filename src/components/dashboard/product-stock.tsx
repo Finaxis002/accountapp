@@ -23,6 +23,7 @@ import {
   Edit,
   PlusCircle,
   Server,
+  Boxes,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Product, Service } from "@/lib/types";
@@ -130,7 +131,6 @@ export function ProductStock() {
     null
   );
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = React.useState(false);
   const [isAddServiceOpen, setIsAddServiceOpen] = React.useState(false);
 
@@ -185,7 +185,7 @@ export function ProductStock() {
 
   const handleAddProductSuccess = (newProduct: Product) => {
     setProducts((prev) => [...prev, newProduct]);
-    setIsAddProductOpen(false); // close only product dialog
+    setIsAddProductOpen(false);
     toast({
       title: "Product Created!",
       description: `${newProduct.name} added.`,
@@ -198,7 +198,7 @@ export function ProductStock() {
       name: newService.serviceName,
       type: "service",
       stocks: 0,
-      createdByClient: newService.createdByClient, // ✅ now valid
+      createdByClient: newService.createdByClient,
     };
 
     setProducts((prev) => [...prev, serviceAsProduct]);
@@ -217,30 +217,32 @@ export function ProductStock() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <Card className="shadow-sm border rounded-xl">
+        <CardHeader className="border-b pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <CardTitle>Product & Service Stock</CardTitle>
-              <CardDescription>Current inventory levels.</CardDescription>
+              <CardTitle className="text-lg font-semibold">
+                Product & Service Stock
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Current inventory levels
+              </CardDescription>
             </div>
             {permissions?.canCreateProducts && (
-              <div className="items-end flex gap-4">
+              <div className="flex flex-wrap gap-3">
                 {/* Add Product */}
-                <Dialog
-                  open={isAddProductOpen}
-                  onOpenChange={setIsAddProductOpen}
-                >
+                <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
                   <DialogTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
+                      className="rounded-full"
                       onClick={() => setIsAddProductOpen(true)}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Product
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
+                  <DialogContent className="sm:max-w-lg rounded-2xl shadow-lg">
                     <DialogHeader>
                       <DialogTitle>Create New Product</DialogTitle>
                       <DialogDescription>
@@ -252,20 +254,18 @@ export function ProductStock() {
                 </Dialog>
 
                 {/* Add Service */}
-                <Dialog
-                  open={isAddServiceOpen}
-                  onOpenChange={setIsAddServiceOpen}
-                >
+                <Dialog open={isAddServiceOpen} onOpenChange={setIsAddServiceOpen}>
                   <DialogTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
+                      className="rounded-full"
                       onClick={() => setIsAddServiceOpen(true)}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Service
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
+                  <DialogContent className="sm:max-w-lg rounded-2xl shadow-lg">
                     <DialogHeader>
                       <DialogTitle>Create New Service</DialogTitle>
                       <DialogDescription>
@@ -279,89 +279,163 @@ export function ProductStock() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="relative mb-4">
+
+        <CardContent className="p-4 sm:p-6">
+          {/* Search bar */}
+          <div className="relative mb-5">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search items..."
-              className="pl-9"
+              className="pl-9 pr-3 rounded-full shadow-sm focus:ring-2 focus:ring-primary/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <ScrollArea className="h-60">
+
+          {/* ✅ Desktop Table View */}
+          <div className="hidden md:block">
+            <ScrollArea className="h-72 rounded-md border">
+              {isLoading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredProducts.length > 0 ? (
+                <Table>
+                  <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Stock</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.map((product) => (
+                      <TableRow
+                        key={product._id}
+                        className="hover:bg-muted/40 transition-colors"
+                      >
+                        <TableCell className="font-medium flex items-center gap-2">
+                          {product.type === "service" ? (
+                            <Server className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          {product.name}
+                          {product.type === "service" && (
+                            <Badge variant="outline" className="ml-2 rounded-full">
+                              Service
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {product.type === "service" ? (
+                            <span className="text-muted-foreground text-xs">N/A</span>
+                          ) : (
+                            <span className="font-bold text-lg">{product.stocks ?? 0}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {permissions?.canCreateProducts &&
+                            product.type !== "service" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="rounded-full"
+                                onClick={() => handleEditClick(product)}
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                            )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mb-3" />
+                  <h3 className="text-lg font-semibold">No Items Found</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {searchTerm
+                      ? `No items match "${searchTerm}".`
+                      : "You haven't added any products or services yet."}
+                  </p>
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          {/* ✅ Mobile Card View */}
+          <div className="grid gap-4 md:hidden">
             {isLoading ? (
-              <div className="flex justify-center items-center h-full">
+              <div className="flex justify-center items-center h-40">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : filteredProducts.length > 0 ? (
-              <Table>
-                <TableHeader className="sticky top-0 bg-card">
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product) => (
-                    <TableRow key={product._id}>
-                      <TableCell className="font-medium flex items-center gap-2">
-                        {product.type === "service" ? (
-                          <Server className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        {product.name}
+              filteredProducts.map((product) => (
+                <Card
+                  key={product._id}
+                  className="p-4 shadow-md rounded-2xl border hover:shadow-lg transition"
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      {product.type === "service" ? (
+                        <Server className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <Boxes className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-semibold">{product.name}</p>
                         {product.type === "service" && (
-                          <Badge variant="outline">Service</Badge>
+                          <Badge variant="outline" className="mt-1 rounded-full text-xs">
+                            Service
+                          </Badge>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        {product.type === "service" ? (
-                          <span className="text-muted-foreground text-xs">
-                            N/A
-                          </span>
-                        ) : (
-                          <span className="font-bold text-lg">
-                            {product.stocks ?? 0}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {permissions?.canCreateProducts &&
-                          product.type !== "service" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(product)}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Stock
-                            </Button>
-                          )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    </div>
+                    {permissions?.canCreateProducts &&
+                      product.type !== "service" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => handleEditClick(product)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                      )}
+                  </div>
+                  <div className="mt-3">
+                    {product.type === "service" ? (
+                      <span className="text-xs text-muted-foreground">No Stock</span>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Stock:{" "}
+                        <span className="font-bold text-base">{product.stocks ?? 0}</span>
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              ))
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                <Package className="h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
+              <div className="flex flex-col items-center justify-center h-40 text-center">
+                <Package className="h-10 w-10 text-muted-foreground mb-2" />
+                <h3 className="font-semibold">No Items Found</h3>
+                <p className="text-sm text-muted-foreground">
                   {searchTerm
                     ? `No items match "${searchTerm}".`
                     : "You haven't added any products or services yet."}
                 </p>
               </div>
             )}
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Edit stock dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg rounded-2xl shadow-lg">
           <DialogHeader>
             <DialogTitle>Edit Stock</DialogTitle>
             <DialogDescription>

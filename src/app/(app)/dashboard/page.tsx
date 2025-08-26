@@ -246,99 +246,111 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            {selectedCompany
-              ? `An overview of ${selectedCompany.businessName}.`
-              : "An overview across all companies."}
-          </p>
-        </div>
-        {companies.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/profile">
-                <Settings className="mr-2 h-4 w-4" /> Go to Settings
-              </Link>
-            </Button>
-            <Dialog
-              open={isTransactionFormOpen}
-              onOpenChange={setIsTransactionFormOpen}
-            >
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Transaction
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
-                <DialogHeader className="p-6">
-                  <DialogTitle>Create a New Transaction</DialogTitle>
-                  <DialogDescription>
-                    Fill in the details below to record a new financial event.
-                  </DialogDescription>
-                </DialogHeader>
-                <TransactionForm onFormSubmit={handleTransactionFormSubmit} />
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
-      </div>
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
-                <div className="h-4 w-4 bg-muted rounded-full animate-pulse" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-1/2 mb-2 animate-pulse" />
-                <div className="h-3 bg-muted rounded w-1/3 animate-pulse" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : companies.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-12 border-dashed">
-          <Building className="h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No Company Selected</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Please select a company from the header to view its dashboard.
-          </p>
-        </Card>
-      ) : (
-        <>
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
-            {kpiData.map((kpi) => (
-              <Card key={kpi.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {kpi.title}
-                  </CardTitle>
-                  <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{kpi.value}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {kpi.description}
-                  </p>{" "}
-                  {/* ✅ Add this line */}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-1">
-            <ProductStock />
-            <RecentTransactions
-              transactions={recentTransactions}
-              serviceNameById={serviceNameById}
-            />
-          </div>
-        </>
-      )}
+    <div className="space-y-8">
+  {/* 🔹 Dashboard Header */}
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 className="text-2xl font-bold tracking-tight"> Dashboard</h2>
+      <p className="text-muted-foreground text-sm sm:text-base">
+        {selectedCompany
+          ? `An overview of ${selectedCompany.businessName}.`
+          : "An overview across all companies."}
+      </p>
     </div>
+
+    {companies.length > 0 && (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          className="rounded-full flex items-center gap-2"
+          asChild
+        >
+          <Link href="/profile">
+            <Settings className="h-4 w-4" /> Settings
+          </Link>
+        </Button>
+        <Dialog
+          open={isTransactionFormOpen}
+          onOpenChange={setIsTransactionFormOpen}
+        >
+          <DialogTrigger asChild>
+            <Button className="rounded-full flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" /> New
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogHeader className="p-6">
+              <DialogTitle>Create Transaction</DialogTitle>
+              <DialogDescription>
+                Record a new financial event.
+              </DialogDescription>
+            </DialogHeader>
+            <TransactionForm onFormSubmit={handleTransactionFormSubmit} />
+          </DialogContent>
+        </Dialog>
+      </div>
+    )}
+  </div>
+
+  {/* 🔹 Loading State */}
+  {isLoading ? (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card
+          key={index}
+          className="p-4 animate-pulse rounded-xl shadow-sm border"
+        >
+          <div className="h-4 bg-muted rounded w-2/3 mb-3" />
+          <div className="h-6 bg-muted rounded w-1/2 mb-2" />
+          <div className="h-3 bg-muted rounded w-1/3" />
+        </Card>
+      ))}
+    </div>
+  ) : companies.length === 0 ? (
+    /* 🔹 Empty State */
+    <Card className="flex flex-col items-center justify-center p-10 border-dashed text-center rounded-xl">
+      <Building className="h-12 w-12 text-muted-foreground" />
+      <h3 className="mt-4 text-lg font-semibold">No Company Selected</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Please select a company to view its dashboard.
+      </p>
+    </Card>
+  ) : (
+    <>
+      {/* 🔹 KPI Section */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {kpiData.map((kpi, i) => (
+          <Card
+            key={i}
+            className="p-4 hover:shadow-md transition rounded-xl"
+          >
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                {kpi.title}
+              </CardTitle>
+              <kpi.icon className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpi.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {kpi.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* 🔹 Detailed Sections */}
+      <div className="grid gap-6 grid-cols-1">
+        <ProductStock />
+        <RecentTransactions
+          transactions={recentTransactions}
+          serviceNameById={serviceNameById}
+        />
+      </div>
+    </>
+  )}
+</div>
+
   );
 }

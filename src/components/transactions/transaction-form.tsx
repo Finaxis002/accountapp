@@ -871,80 +871,383 @@ export function TransactionForm({
   }
 
   const renderSalesPurchasesFields = () => (
-    <div className="space-y-4">
-      {/* Core Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="company"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Company</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a company" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {companies.map((c) => (
-                    <SelectItem key={c._id} value={c._id}>
-                      {c.businessName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
+<div className="space-y-6">
+  {/* Core Details */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 w-full">
+    {/* Company */}
+    <FormField
+      control={form.control}
+      name="company"
+      render={({ field }) => (
+        <FormItem className="w-full">
+          <FormLabel>Company</FormLabel>
+          <Select onValueChange={field.onChange} value={field.value}>
+            <FormControl>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a company" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {companies.map((c) => (
+                <SelectItem key={c._id} value={c._id}>
+                  {c.businessName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+
+    {/* Date */}
+    <FormField
+      control={form.control}
+      name="date"
+      render={({ field }) => (
+        <FormItem className="flex flex-col w-full">
+          <FormLabel>Transaction Date</FormLabel>
+          <Popover>
+            <PopoverTrigger asChild>
+              <FormControl>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full pl-3 text-left font-normal",
+                    !field.value && "text-muted-foreground"
+                  )}
+                >
+                  {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </FormControl>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={field.value}
+                onSelect={field.onChange}
+                disabled={(date) =>
+                  date > new Date() || date < new Date("1900-01-01")
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </div>
+
+  {/* Party */}
+  <FormField
+    control={form.control}
+    name="party"
+    render={({ field }) => (
+      <FormItem className="w-full">
+        <FormLabel>{partyLabel}</FormLabel>
+        <Combobox
+          options={partyOptions}
+          value={field.value || ""}
+          onChange={field.onChange}
+          placeholder="Select or create..."
+          searchPlaceholder="Search..."
+          noResultsText="No results found."
+          creatable
+          onCreate={async (name) => {
+            handleTriggerCreateParty(name);
+            return Promise.resolve("");
+          }}
         />
-        <FormField
-          control={form.control}
-          name="date"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Transaction Date</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) =>
-                      date > new Date() || date < new Date("1900-01-01")
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+
+  <Separator />
+
+  {/* Items Array */}
+  <div className="space-y-6">
+    <h3 className="text-base font-semibold">Items & Services</h3>
+
+    {fields.map((item, index) => (
+      <Card key={item.id} className="relative">
+        <CardContent className="p-4 space-y-6">
+          {/* Delete button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 h-6 w-6"
+            onClick={() => remove(index)}
+            disabled={fields.length <= 1}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+
+          {/* Product Item */}
+          {item.itemType === "product" ? (
+            <>
+              <FormField
+                control={form.control}
+                name={`items.${index}.product`}
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Product</FormLabel>
+                    <Combobox
+                      options={productOptions}
+                      value={field.value || ""}
+                      onChange={(value) => field.onChange(value)}
+                      placeholder="Select or create a product..."
+                      searchPlaceholder="Search products..."
+                      noResultsText="No product found."
+                      creatable
+                      onCreate={async (name) => {
+                        handleTriggerCreateProduct(name);
+                        return Promise.resolve();
+                      }}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Responsive grid for inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Quantity */}
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.quantity`}
+                  render={({ field }) => (
+                    <FormItem className="w-full">
+                      <FormLabel>Quantity</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="1"
+                          className="w-full"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === ""
+                                ? ""
+                                : e.target.valueAsNumber
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Unit */}
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.unitType`}
+                  render={({ field }) => (
+                    <FormItem className="w-full">
+                      <FormLabel>Unit</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {unitTypes.map((u) => (
+                            <SelectItem key={u} value={u}>
+                              {u}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Price/Unit */}
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.pricePerUnit`}
+                  render={({ field }) => (
+                    <FormItem className="w-full">
+                      <FormLabel>Price/Unit</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          className="w-full"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === ""
+                                ? ""
+                                : e.target.valueAsNumber
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Amount */}
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.amount`}
+                  render={({ field }) => (
+                    <FormItem className="w-full">
+                      <FormLabel>Amount</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          className="w-full bg-muted"
+                          {...field}
+                          readOnly
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </>
+          ) : (
+            /* Service Item */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name={`items.${index}.service`}
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Service</FormLabel>
+                    <Combobox
+                      options={serviceOptions}
+                      value={field.value || ""}
+                      onChange={(value) => field.onChange(value)}
+                      placeholder="Select or create a service..."
+                      searchPlaceholder="Search services..."
+                      noResultsText="No service found."
+                      creatable
+                      onCreate={async (name) => {
+                        const newServiceId = await handleTriggerCreateService(name);
+                        return newServiceId || "";
+                      }}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Amount */}
+              <FormField
+                control={form.control}
+                name={`items.${index}.amount`}
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        className="w-full"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === "" ? "" : e.target.valueAsNumber
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Description */}
+              <FormField
+                control={form.control}
+                name={`items.${index}.description`}
+                render={({ field }) => (
+                  <FormItem className="w-full sm:col-span-2">
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Brief service description"
+                        className="w-full"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           )}
-        />
-      </div>
+        </CardContent>
+      </Card>
+    ))}
+
+    {/* Add Buttons */}
+    <div className="flex flex-col sm:flex-row gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1"
+        onClick={() => append({ ...PRODUCT_DEFAULT })}
+      >
+        <PlusCircle className="mr-2 h-4 w-4" />
+        Add Product
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1"
+        onClick={() =>
+          append({
+            itemType: "service",
+            service: "",
+            amount: 0,
+            description: "",
+          })
+        }
+      >
+        <PlusCircle className="mr-2 h-4 w-4" />
+        Add Service
+      </Button>
+    </div>
+  </div>
+
+  <Separator />
+
+  {/* 
+  */}
+  <div className="flex justify-end">
+    <div className="w-full sm:max-w-sm space-y-2">
       <FormField
         control={form.control}
-        name="party"
+        name="totalAmount"
         render={({ field }) => (
           <FormItem>
+
+            <FormLabel className="text-lg font-bold">Total Amount</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                className="text-lg font-bold h-12 text-right bg-muted w-full"
+                {...field}
+                readOnly
+              />
+            </FormControl>
+
             <FormLabel>{partyLabel}</FormLabel>
             <Combobox
               options={partyOptions}
@@ -971,10 +1274,12 @@ export function TransactionForm({
               }}
             />
 
+
             <FormMessage />
           </FormItem>
         )}
       />
+
 
       <Separator />
 
@@ -1258,17 +1563,24 @@ export function TransactionForm({
           />
         </div>
       </div>
+
     </div>
+  </div>
+</div>
   );
 
-  const renderReceiptPaymentFields = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+const renderReceiptPaymentFields = () => (
+  <div className="flex flex-col max-h-[80vh] overflow-hidden">
+    {/* Scrollable form content */}
+    <div className="space-y-6 overflow-y-auto pr-2">
+      {/* Responsive Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Company */}
         <FormField
           control={form.control}
           name="company"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="w-full">
               <FormLabel>Company</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
@@ -1288,11 +1600,13 @@ export function TransactionForm({
             </FormItem>
           )}
         />
+
+        {/* Transaction Date */}
         <FormField
           control={form.control}
           name="date"
           render={({ field }) => (
-            <FormItem className="flex flex-col">
+            <FormItem className="flex flex-col w-full">
               <FormLabel>Transaction Date</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
@@ -1329,11 +1643,13 @@ export function TransactionForm({
             </FormItem>
           )}
         />
+
+        {/* Party */}
         <FormField
           control={form.control}
           name="party"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="w-full">
               <FormLabel>{partyLabel}</FormLabel>
               <Combobox
                 options={partyOptions}
@@ -1342,7 +1658,9 @@ export function TransactionForm({
                 placeholder="Select or create..."
                 searchPlaceholder="Search..."
                 noResultsText="No results found."
+
                 creatable={partyCreatable}
+
                 onCreate={async (name) => {
                   if (!partyCreatable) {
                     toast({
@@ -1363,11 +1681,13 @@ export function TransactionForm({
             </FormItem>
           )}
         />
+
+        {/* Amount */}
         <FormField
           control={form.control}
           name="totalAmount"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="w-full">
               <FormLabel>Amount</FormLabel>
               <FormControl>
                 <Input type="number" placeholder="0.00" {...field} />
@@ -1377,11 +1697,13 @@ export function TransactionForm({
           )}
         />
       </div>
+
+      {/* Reference Number */}
       <FormField
         control={form.control}
         name="referenceNumber"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="w-full">
             <FormLabel>Reference Number (Optional)</FormLabel>
             <FormControl>
               <Input placeholder="e.g. Cheque No, Ref #" {...field} />
@@ -1390,21 +1712,30 @@ export function TransactionForm({
           </FormItem>
         )}
       />
+
+      {/* Description */}
       <FormField
         control={form.control}
         name="description"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="w-full">
             <FormLabel>Description / Narration</FormLabel>
             <FormControl>
-              <Textarea placeholder="Describe the transaction..." {...field} />
+              <Textarea
+                placeholder="Describe the transaction..."
+                className="resize-none"
+                {...field}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
     </div>
-  );
+  </div>
+);
+
+
 
   if (!transactionToEdit && !isSuper && allowedTypes.length === 0) {
     return (

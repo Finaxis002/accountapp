@@ -122,119 +122,128 @@ export const columns = ({
       cell: ({ row }) => {
         const transaction = row.original;
 
-        if (transaction.type === "journal") {
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarFallback>JE</AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="font-medium">Journal Entry</div>
-                <div className="text-sm text-muted-foreground">
-                  {transaction.debitAccount} / {transaction.creditAccount}
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        const partyOrVendor = transaction.party || transaction.vendor;
-        let partyName = "N/A";
-        if (partyOrVendor && typeof partyOrVendor === "object") {
-          if ("name" in partyOrVendor) {
-            partyName = (partyOrVendor as any).name;
-          } else if ("vendorName" in partyOrVendor) {
-            partyName = (partyOrVendor as any).vendorName;
-          }
-        }
-
-        return (
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarFallback>
-                {partyName.substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-medium">{partyName || "N/A"}</div>
-              <div className="text-sm text-muted-foreground hidden sm:block truncate max-w-xs">
-                {transaction.description || transaction.narration || ""}
-              </div>
-            </div>
+         if (transaction.type === "journal") {
+      return (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback>JE</AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="font-medium">Journal Entry</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">
+              {transaction.debitAccount} / {transaction.creditAccount}
+            </span>
           </div>
-        );
-      },
-    },
+        </div>
+      );
+    }
 
-    // COMPANY
-    {
-      accessorKey: "company",
-      header: "Company",
-      cell: ({ row }: { row: Row<Transaction> }) => {
-        const company = row.original.company;
-        const companyId =
-          typeof company === "object" && company !== null ? (company as any)._id : company;
+    const partyOrVendor = transaction.party || transaction.vendor;
+    let partyName = "N/A";
+    if (partyOrVendor && typeof partyOrVendor === "object") {
+      if ("name" in partyOrVendor) {
+        partyName = (partyOrVendor as any).name;
+      } else if ("vendorName" in partyOrVendor) {
+        partyName = (partyOrVendor as any).vendorName;
+      }
+    }
 
-        if (!companyId) return "N/A";
+    return (
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <Avatar className="h-8 w-8">
+          <AvatarFallback>
+            {partyName.substring(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col max-w-[200px]">
+          <span className="font-medium">{partyName || "N/A"}</span>
+          <span className="text-xs sm:text-sm text-muted-foreground truncate">
+            {transaction.description || transaction.narration || ""}
+          </span>
+        </div>
+      </div>
+    );
+  },
+},
 
-        const companyName = companyMap?.get(companyId as string) || "N/A";
-        return (
-          <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden lg:inline">{companyName}</span>
-          </div>
-        );
-      },
-    },
+// COMPANY
+{
+  accessorKey: "company",
+  header: "Company",
+  cell: ({ row }: { row: Row<Transaction> }) => {
+    const company = row.original.company;
+    const companyId =
+      typeof company === "object" && company !== null
+        ? (company as any)._id
+        : company;
+
+    if (!companyId) return "N/A";
+
+    const companyName = companyMap?.get(companyId as string) || "N/A";
+
+    return (
+      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+        <Building className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs sm:text-sm truncate">{companyName}</span>
+      </div>
+    );
+  },
+},
 
     // LINES (ITEMS/SERVICES)
-    {
-      id: "lines",
-      header: "Items / Services",
-      cell: ({ row }) => {
-        const tx = row.original as any;
-        const lines = getUnifiedLines(tx, serviceNameById);
-        if (!lines.length)
-          return <span className="text-muted-foreground">-</span>;
+   {
+  id: "lines",
+  header: "Items / Services",
+  cell: ({ row }) => {
+    const tx = row.original as any;
+    const lines = getUnifiedLines(tx, serviceNameById);
+    if (!lines.length)
+      return <span className="text-muted-foreground">-</span>;
 
-        const MAX_DISPLAY = 2;
-        const displayLines = lines.slice(0, MAX_DISPLAY);
-        const remainingCount = lines.length - MAX_DISPLAY;
+    const MAX_DISPLAY = 2;
+    const displayLines = lines.slice(0, MAX_DISPLAY);
+    const remainingCount = lines.length - MAX_DISPLAY;
 
-        const fullList = (
-          <div className="space-y-2">
-            {lines.map((l: any, idx: number) => (
-              <div key={idx} className="flex items-center gap-2 text-sm">
-                {l.type === "product" ? (
-                  <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-                ) : (
-                  <Server className="h-4 w-4 text-muted-foreground shrink-0" />
-                )}
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{l.name}</div>
-                  {l.type === "product" && (
-                    <div className="text-xs text-muted-foreground">
-                      {l.quantity}
-                      {l.unitType ? ` ${l.unitType}` : ""}
-                      {l.pricePerUnit
-                        ? ` @ ${new Intl.NumberFormat("en-IN").format(
-                            Number(l.pricePerUnit)
-                          )}`
-                        : ""}
-                    </div>
-                  )}
-                  {l.type === "service" && l.description && (
-                    <div className="text-xs text-muted-foreground truncate">
-                      {l.description}
-                    </div>
-                  )}
+    const fullList = (
+      <div className="space-y-2">
+        {lines.map((l: any, idx: number) => (
+          <div
+            key={idx}
+            className="flex items-center gap-2 text-sm bg-muted/30 p-2 rounded-lg"
+          >
+            {l.type === "product" ? (
+              <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+            ) : (
+              <Server className="h-4 w-4 text-muted-foreground shrink-0" />
+            )}
+            <div className="min-w-0">
+              <div className="truncate font-medium">{l.name}</div>
+              {l.type === "product" && (
+                <div className="text-xs text-muted-foreground">
+                  {l.quantity}
+                  {l.unitType ? ` ${l.unitType}` : ""}
+                  {l.pricePerUnit
+                    ? ` @ ${new Intl.NumberFormat("en-IN").format(
+                        Number(l.pricePerUnit)
+                      )}`
+                    : ""}
                 </div>
-              </div>
-            ))}
+              )}
+              {l.type === "service" && l.description && (
+                <div className="text-xs text-muted-foreground truncate">
+                  {l.description}
+                </div>
+              )}
+            </div>
           </div>
-        );
+        ))}
+      </div>
+    );
 
-        return (
+    return (
+      <>
+        {/* Desktop: Avatar + Tooltip */}
+        <div className="hidden sm:block">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -270,9 +279,46 @@ export const columns = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        );
-      },
-    },
+        </div>
+
+        {/* Mobile: Show full list directly */}
+        <div className="block sm:hidden max-h-32 overflow-y-auto pr-1 space-y-2">
+          {lines.map((l: any, idx: number) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 text-sm bg-muted/40 p-2 rounded-lg shadow-sm"
+            >
+              {l.type === "product" ? (
+                <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+              ) : (
+                <Server className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
+              <div className="min-w-0">
+                <div className="truncate font-medium">{l.name}</div>
+                {l.type === "product" && (
+                  <div className="text-xs text-muted-foreground">
+                    {l.quantity}
+                    {l.unitType ? ` ${l.unitType}` : ""}
+                    {l.pricePerUnit
+                      ? ` @ ${new Intl.NumberFormat("en-IN").format(
+                          Number(l.pricePerUnit)
+                        )}`
+                      : ""}
+                  </div>
+                )}
+                {l.type === "service" && l.description && (
+                  <div className="text-xs text-muted-foreground truncate">
+                    {l.description}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  },
+},
 
     // AMOUNT
     {

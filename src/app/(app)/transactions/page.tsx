@@ -584,7 +584,7 @@ const allVisibleTransactions = React.useMemo(
 
   const renderContent = (data: Transaction[]) => {
     if (isLoading) {
-      // Show a loading state while data is being fetched
+      // Show a loading state while data is being fetched ...
       return (
         <Card>
           <CardContent className="flex justify-center items-center h-64">
@@ -718,7 +718,7 @@ const allVisibleTransactions = React.useMemo(
                     New Transaction
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+                <DialogContent className="w-[95vw] sm:max-w-2xl  lg:max-w-4xl  grid-rows-[auto,1fr,auto]  max-h-[90vh]  overflow-auto p-0 sm:p-6 rounded-xl">
                   <DialogHeader className="p-6">
                     <DialogTitle>
                       {transactionToEdit

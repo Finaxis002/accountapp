@@ -14,11 +14,13 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
+
       // ✅ Responsive grid
       "grid w-full gap-2 rounded-md bg-muted p-2 text-muted-foreground",
       "max-sm:grid-cols-2",       // 📱 Mobile = 2 columns
       "sm:max-lg:grid-cols-3",    // 📲 Tablet = 3 columns
       "lg:flex lg:gap-2 lg:h-10 lg:items-center lg:justify-start", // 💻 Desktop = row layout
+
       className
     )}
     {...props}
@@ -33,9 +35,14 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "w-full px-0.5 py-0.5 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap",
-      "rounded-sm ring-offset-background transition-all",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+
+      // ✅ Mobile → full width inside its grid cell
+      "w-full",
+      // ✅ Desktop → shrink to fit
+      "sm:w-auto",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium",
+      "ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+
       "disabled:pointer-events-none disabled:opacity-50",
       "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
       className
