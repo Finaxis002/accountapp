@@ -53,10 +53,38 @@ export function AppSidebar() {
     setCurrentUser(getCurrentUser());
   }, []);
 
-  const handleLogout = () => {
-  const to = logout();          // ← get the right destination
-  window.location.assign(to);   // hard navigate so layout state doesn’t interfere
+
+  const isAuthRoute =
+  pathname === "/login" ||
+  pathname === "/user-login" ||
+  pathname.startsWith("/client-login/") ||
+  pathname.startsWith("/user-login/");
+
+ const handleLogout = () => {
+  // read BEFORE clearing
+  const role = localStorage.getItem("role");
+  const slug =
+    localStorage.getItem("tenantSlug") ||
+    localStorage.getItem("slug") ||
+    localStorage.getItem("clientUsername");
+
+  // clear everything
+  localStorage.clear();
+  console.debug("Logout redirect →", role, slug);
+
+  // 🔑 redirect logic
+  if (role === "customer" && slug) {
+    // customer → their own client login page
+    window.location.assign(`/client-login/${slug}`);
+  } else if (role === "master") {
+    // master → generic login
+    window.location.assign(`/login`);
+  } else {
+    // everyone else (client, user, admin, manager, etc.)
+    window.location.assign(`/user-login`);
+  }
 };
+
 
   const isActive = (path: string) => {
     // Avoids matching /admin/dashboard when on /dashboard
@@ -318,14 +346,14 @@ export function AppSidebar() {
               </p>
             </div>
           </div>
-          <Button
+          {/* <Button
             variant="ghost"
             className="w-full justify-start"
             onClick={handleLogout}
           >
             <LogOut className="mr-2 h-4 w-4" />
             Logout
-          </Button>
+          </Button> */}
         </div>
       )}
     </Sidebar>
