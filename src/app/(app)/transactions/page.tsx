@@ -421,7 +421,7 @@ const fetchTransactions = React.useCallback(async () => {
 
   const renderContent = (data: Transaction[]) => {
     if (isLoading) {
-      // Show a loading state while data is being fetched
+      // Show a loading state while data is being fetched ...
       return (
         <Card>
           <CardContent className="flex justify-center items-center h-64">
