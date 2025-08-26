@@ -22,7 +22,7 @@ interface ProductFormProps {
   productType?: string;
   product?: Product;
   onSuccess: (product: Product) => void;
-  initialName?: string; // Add this
+  initialName?: string;
 }
 
 const formSchema = z.object({
@@ -32,18 +32,24 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function ProductForm({ product, onSuccess , initialName, productType}: ProductFormProps) {
+export function ProductForm({
+  product,
+  onSuccess,
+  initialName,
+  productType,
+}: ProductFormProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-const form = useForm<FormData>({
-  resolver: zodResolver(formSchema),
-  defaultValues: {
-    name: product?.name || initialName || "", // Use initialName here
-    stocks: product?.stocks ?? 0,
-  },
-});
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: product?.name || initialName || "",
+      stocks: product?.stocks ?? 0,
+    },
+  });
+
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
     try {
@@ -86,41 +92,54 @@ const form = useForm<FormData>({
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Product/Service Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g. Website Development" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="stocks"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Opening Stock</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="0" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="flex justify-end pt-4">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {product ? "Save Changes" : "Create Product"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+    <div
+      className="
+        w-full
+        max-w-xs
+        sm:max-w-sm
+        md:max-w-md
+        lg:max-w-lg
+        mx-auto
+      "
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-2">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Product/Service Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Website Development" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="stocks"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Opening Stock</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="0" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+              {isSubmitting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {product ? "Save Changes" : "Create Product"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }
