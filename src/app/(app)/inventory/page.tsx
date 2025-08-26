@@ -34,6 +34,7 @@ import type { Company, Product } from "@/lib/types";
 import { ProductForm } from "@/components/products/product-form";
 import { ServiceForm } from "@/components/services/service-form";
 import { usePermissions } from "@/contexts/permission-context";
+import { useUserPermissions } from "@/contexts/user-permissions-context";
 import { Badge } from "@/components/ui/badge";
 
 type Service = {
@@ -45,6 +46,9 @@ type Service = {
 
 export default function InventoryPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
+
+const { permissions: userCaps, isLoading } = useUserPermissions();
+  // Lists
 
   const [products, setProducts] = React.useState<Product[]>([]);
   const [services, setServices] = React.useState<Service[]>([]);
@@ -251,6 +255,170 @@ export default function InventoryPage() {
     }
   };
 
+
+
+
+  // Render helpers
+  const renderProductsTable = () => {
+    if (isLoadingProducts) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      );
+    }
+    if (products.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Package className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Products Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create your first product to get started.
+          </p>
+          {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
+            <Button className="mt-6" onClick={openCreateProduct}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Product
+            </Button>
+          )}
+        </div>
+      );
+    }
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Product</TableHead>
+            <TableHead>Stock</TableHead>
+            <TableHead>Created At</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {products.map((p) => (
+            <TableRow key={p._id}>
+              <TableCell>
+                <div className="font-medium flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  {p.name}
+                </div>
+              </TableCell>
+              <TableCell>
+                <span className="font-bold text-lg">{p.stocks ?? 0}</span>
+              </TableCell>
+              <TableCell>
+                {p.createdAt
+                  ? new Intl.DateTimeFormat("en-US").format(
+                      new Date(p.createdAt)
+                    )
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => openEditProduct(p)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => confirmDeleteProduct(p)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
+  const renderServicesTable = () => {
+    if (isLoadingServices) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      );
+    }
+    if (services.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Server className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Services Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create your first service to get started.
+          </p>
+           {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
+            <Button className="mt-6" onClick={openCreateService}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Service
+            </Button>
+          )}
+        </div>
+      );
+    }
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Service</TableHead>
+            <TableHead>Created At</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {services.map((s) => (
+            <TableRow key={s._id}>
+              <TableCell>
+                <div className="font-medium flex items-center gap-2">
+                  <Server className="h-4 w-4 text-muted-foreground" />
+                  {s.serviceName}
+                  <Badge variant="outline">Service</Badge>
+                </div>
+              </TableCell>
+              <TableCell>
+                {s.createdAt
+                  ? new Intl.DateTimeFormat("en-US").format(
+                      new Date(s.createdAt)
+                    )
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => openEditService(s)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => confirmDeleteService(s)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
+
   if (isLoadingCompanies) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -258,6 +426,11 @@ export default function InventoryPage() {
       </div>
     );
   }
+
+
+  console.log("userCaps?.canCreateInventory" , userCaps?.canCreateInventory)
+  console.log("permissions?.canCreateProducts" , permissions?.canCreateProducts)
+    console.log("userCaps?.canCreateSaleEntries",userCaps?.canCreateSaleEntries)
 
   return (
     <div className="space-y-6 px-4 sm:px-6 md:px-8 max-w-full overflow-x-hidden min-h-screen">
@@ -310,6 +483,21 @@ export default function InventoryPage() {
                       Services ({services.length})
                     </TabsTrigger>
                   </TabsList>
+
+
+                  {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={openCreateProduct}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Product
+                      </Button>
+                      <Button onClick={openCreateService}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Service
+                      </Button>
+                    </div>
+                  )}
+
                 </div>
 
                 <TabsContent value="products" className="p-4 pt-2">

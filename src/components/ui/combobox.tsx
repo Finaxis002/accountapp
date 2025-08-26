@@ -30,6 +30,7 @@ interface ComboboxProps {
     creatable?: boolean;
     onCreate?: (inputValue: string) => Promise<any>;
     className?: string;
+    disabled?: boolean;
 }
 
 export function Combobox({ 
@@ -41,6 +42,7 @@ export function Combobox({
     noResultsText = "No results found.",
     creatable = false,
     onCreate,
+     disabled = false,    
     className,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
@@ -77,6 +79,7 @@ export function Combobox({
         <Button
           variant="outline"
           role="combobox"
+          disabled={disabled} 
           aria-expanded={open}
           className={cn("w-full justify-between", className)}
         >
