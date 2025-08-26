@@ -47,6 +47,7 @@
     "embla-carousel-react": "^8.6.0",
     "file-saver": "^2.0.5",
     "firebase": "^11.9.1",
+    "framer-motion": "^12.23.12",
     "genkit": "^1.14.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
