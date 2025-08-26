@@ -71,6 +71,15 @@ const unitTypes = [
   "Pack",
   "Other",
 ] as const;
+const STANDARD_GST = 18; // default "Standard"
+const GST_OPTIONS = [
+  { label: "Standard (18%)", value: "18" },
+  { label: "0%", value: "0" },
+  { label: "5%", value: "5" },
+  { label: "12%", value: "12" },
+
+  { label: "28%", value: "28" },
+] as const;
 
 type StockItemInput = { product: string; quantity: number };
 
@@ -152,6 +161,9 @@ const formSchema = z
     fromAccount: z.string().optional(), // For Journal Debit
     toAccount: z.string().optional(), // For Journal Credit
     narration: z.string().optional(),
+    gstRate: z.coerce.number().min(0).max(100).optional(),      // <-- NEW
+  taxAmount: z.coerce.number().min(0).optional(),              // <-- NEW (derived)
+  invoiceTotal: z.coerce.number().min(0).optional(),     
   })
   .refine(
     (data) => {
@@ -257,6 +269,9 @@ export function TransactionForm({
       narration: "",
       company: selectedCompanyId || "",
       date: new Date(),
+      gstRate: STANDARD_GST,   // <-- NEW (Sales/Purchases will use this)
+  taxAmount: 0,            // <-- NEW
+  invoiceTotal: 0,  
     },
   });
 
@@ -293,36 +308,81 @@ export function TransactionForm({
   }, [type, replace, form]);
 
   // REPLACE the whole calc effect with this:
-  React.useEffect(() => {
-    // Only auto-calc in sales/purchases
-    if (!watchedItems || !["sales", "purchases"].includes(type)) return;
+  // React.useEffect(() => {
+  //   // Only auto-calc in sales/purchases
+  //   if (!watchedItems || !["sales", "purchases"].includes(type)) return;
 
-    let grandTotal = 0;
+  //   let grandTotal = 0;
 
-    watchedItems.forEach((it, idx) => {
-      if (it?.itemType === "product") {
-        const q = Number(it.quantity) || 0;
-        const p = Number(it.pricePerUnit) || 0;
-        const amt = +(q * p).toFixed(2);
-        grandTotal += amt;
+  //   watchedItems.forEach((it, idx) => {
+  //     if (it?.itemType === "product") {
+  //       const q = Number(it.quantity) || 0;
+  //       const p = Number(it.pricePerUnit) || 0;
+  //       const amt = +(q * p).toFixed(2);
+  //       grandTotal += amt;
 
-        // write back only if changed to avoid loops
-        const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
-        if (current !== amt) {
-          form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
-        }
-      } else if (it?.itemType === "service") {
-        // DO NOT overwrite service amounts; just read them
-        const amt = Number(it.amount) || 0;
-        grandTotal += amt;
+  //       // write back only if changed to avoid loops
+  //       const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
+  //       if (current !== amt) {
+  //         form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
+  //       }
+  //     } else if (it?.itemType === "service") {
+  //       // DO NOT overwrite service amounts; just read them
+  //       const amt = Number(it.amount) || 0;
+  //       grandTotal += amt;
+  //     }
+  //   });
+
+  //   const curTotal = Number(form.getValues("totalAmount")) || 0;
+  //   if (curTotal !== grandTotal) {
+  //     form.setValue("totalAmount", grandTotal, { shouldValidate: true });
+  //   }
+  // }, [watchedItems, type, form]);
+
+  
+
+const gstRate = useWatch({ control: form.control, name: "gstRate" });
+
+React.useEffect(() => {
+  // Only auto-calc in sales/purchases
+  if (!watchedItems || !["sales", "purchases"].includes(type)) return;
+
+  let subTotal = 0;
+
+  watchedItems.forEach((it, idx) => {
+    if (it?.itemType === "product") {
+      const q = Number(it.quantity) || 0;
+      const p = Number(it.pricePerUnit) || 0;
+      const amt = +(q * p).toFixed(2);
+      subTotal += amt;
+
+      const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
+      if (current !== amt) {
+        form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
       }
-    });
-
-    const curTotal = Number(form.getValues("totalAmount")) || 0;
-    if (curTotal !== grandTotal) {
-      form.setValue("totalAmount", grandTotal, { shouldValidate: true });
+    } else if (it?.itemType === "service") {
+      const amt = Number(it.amount) || 0;
+      subTotal += amt;
     }
-  }, [watchedItems, type, form]);
+  });
+
+  const currentSubtotal = Number(form.getValues("totalAmount")) || 0;
+  if (currentSubtotal !== subTotal) {
+    form.setValue("totalAmount", subTotal, { shouldValidate: true });
+  }
+
+  const rate = Number(gstRate ?? STANDARD_GST);
+  const tax = +((subTotal * rate) / 100).toFixed(2);
+  const invoiceTotal = +(subTotal + tax).toFixed(2);
+
+  if ((Number(form.getValues("taxAmount")) || 0) !== tax) {
+    form.setValue("taxAmount", tax, { shouldValidate: false });
+  }
+  if ((Number(form.getValues("invoiceTotal")) || 0) !== invoiceTotal) {
+    form.setValue("invoiceTotal", invoiceTotal, { shouldValidate: false });
+  }
+}, [watchedItems, type, gstRate, form]);
+
 
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
@@ -600,9 +660,10 @@ export function TransactionForm({
         delete payload.items;
         delete payload.referenceNumber;
       }
-
-      // 🔑 NEW: issue invoice number only when creating a NEW sales transaction
-      // Replace the invoice number issuance logic:
+      
+      payload.gstRate = values.gstRate ?? STANDARD_GST;
+payload.taxAmount = values.taxAmount ?? 0;
+payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
 
       const res = await fetch(`${baseURL}${endpoint}`, {
         method,
@@ -725,6 +786,7 @@ export function TransactionForm({
     setNewEntityName(name); // Store the name in state
     setIsProductDialogOpen(true);
   };
+
   const handleTriggerCreateService = async (name: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -975,6 +1037,37 @@ export function TransactionForm({
           </FormItem>
         )}
       />
+
+{/* GST Rate */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <FormField
+    control={form.control}
+    name="gstRate"
+    render={({ field }) => (
+      <FormItem>
+        <FormLabel>GST %</FormLabel>
+        <Select
+          value={String(field.value ?? STANDARD_GST)}
+          onValueChange={(v) => field.onChange(Number(v))}
+        >
+          <FormControl>
+            <SelectTrigger>
+              <SelectValue placeholder="Select GST %" />
+            </SelectTrigger>
+          </FormControl>
+          <SelectContent>
+            {GST_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+</div>
 
       <Separator />
 
@@ -1234,7 +1327,7 @@ export function TransactionForm({
       <Separator />
 
       {/* Total Amount */}
-      <div className="flex justify-end">
+      {/* <div className="flex justify-end">
         <div className="w-full max-w-xs space-y-2">
           <FormField
             control={form.control}
@@ -1257,7 +1350,68 @@ export function TransactionForm({
             )}
           />
         </div>
-      </div>
+      </div> */}
+      {/* Totals */}
+<div className="flex justify-end">
+  <div className="w-full max-w-sm space-y-3">
+    <FormField
+      control={form.control}
+      name="totalAmount"
+      render={({ field }) => (
+        <FormItem>
+          <div className="flex items-center justify-between">
+            <FormLabel className="font-medium">Subtotal</FormLabel>
+            <Input
+              type="number"
+              readOnly
+              className="w-40 text-right bg-muted"
+              {...field}
+            />
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+    <div className="flex items-center justify-between">
+      <FormLabel className="font-medium">
+        GST ({String(form.getValues("gstRate") ?? STANDARD_GST)}%)
+      </FormLabel>
+      <FormField
+        control={form.control}
+        name="taxAmount"
+        render={({ field }) => (
+          <Input
+            type="number"
+            readOnly
+            className="w-40 text-right bg-muted"
+            value={field.value ?? 0}
+            onChange={field.onChange}
+          />
+        )}
+      />
+    </div>
+    <FormField
+      control={form.control}
+      name="invoiceTotal"
+      render={({ field }) => (
+        <FormItem>
+          <div className="flex items-center justify-between">
+            <FormLabel className="text-lg font-bold">Invoice Total</FormLabel>
+            <Input
+              type="number"
+              readOnly
+              className="w-40 text-right bg-muted text-lg font-bold"
+              value={field.value ?? 0}
+              onChange={field.onChange}
+            />
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </div>
+</div>
+
     </div>
   );
 
