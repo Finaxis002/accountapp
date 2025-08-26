@@ -28,7 +28,14 @@ import {
   X,
   FileText,
   Hash,
-  BadgeIndianRupee,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  FileBadge,
+  IdCard,
+  Settings,
+  Edit2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -65,12 +72,10 @@ export function CustomerSettings() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
-  const [selectedCustomer, setSelectedCustomer] = React.useState<Party | null>(
-    null
-  );
-  const [customerToDelete, setCustomerToDelete] = React.useState<Party | null>(
-    null
-  );
+  const [selectedCustomer, setSelectedCustomer] =
+    React.useState<Party | null>(null);
+  const [customerToDelete, setCustomerToDelete] =
+    React.useState<Party | null>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = React.useState(true);
   const { toast } = useToast();
@@ -80,7 +85,6 @@ export function CustomerSettings() {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
-
       const res = await fetch(`${baseURL}/api/companies/my`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -88,14 +92,12 @@ export function CustomerSettings() {
       const data = await res.json();
       setCompanies(Array.isArray(data) ? data : data.companies || []);
     } catch (err) {
-      // optional toast if you want
       console.error(err);
     } finally {
       setIsLoadingCompanies(false);
     }
   }, [baseURL]);
 
-  // 1) add this useEffect
   React.useEffect(() => {
     fetchCompanies();
   }, [fetchCompanies]);
@@ -121,7 +123,7 @@ export function CustomerSettings() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, baseURL]);
 
   React.useEffect(() => {
     fetchCustomers();
@@ -193,25 +195,6 @@ export function CustomerSettings() {
           <Card className="w-full max-w-md mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-lg overflow-hidden">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
-                {/* Icon Section */}
-                <div className="mb-5 w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-blue-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-4 0H9m4 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v12m4 0V9m0 12h4m0 0V9m0 12h2"
-                    ></path>
-                  </svg>
-                </div>
-
-                {/* Text Content */}
                 <h3 className="text-xl font-semibold text-gray-800 mb-2">
                   Company Setup Required
                 </h3>
@@ -219,49 +202,6 @@ export function CustomerSettings() {
                   Contact us to enable your company account and access all
                   features.
                 </p>
-
-                {/* Call-to-Action Button */}
-                <div className="flex flex-col sm:flex-row gap-3 w-full">
-                  <a className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-2 rounded-lg transition-colors flex items-center justify-center gap-2">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                      ></path>
-                    </svg>
-                    +91-8989773689
-                  </a>
-                  <a
-                    href="mailto:support@company.com"
-                    className="flex-1 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      ></path>
-                    </svg>
-                    Email Us
-                  </a>
-                </div>
-
-                {/* Support Hours */}
               </div>
             </CardContent>
           </Card>
@@ -270,137 +210,293 @@ export function CustomerSettings() {
         <>
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Manage Customers</CardTitle>
-                  <CardDescription>
-                    A list of all your customers.
-                  </CardDescription>
-                </div>
-                <Button onClick={() => handleOpenForm()}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Customer
-                </Button>
-              </div>
-            </CardHeader>
+  <div className="flex flex-col items-center text-center space-y-3 lg:flex-row lg:items-center lg:justify-between lg:text-left lg:space-y-0">
+    <div>
+      <CardTitle className="text-xl font-semibold">
+        Manage Customer
+      </CardTitle>
+      <CardDescription className="max-w-md">
+        A list of all your customer.
+      </CardDescription>
+    </div>
+
+    <Button
+      onClick={() => handleOpenForm()}
+      className="w-full sm:w-auto lg:w-auto"
+    >
+      <PlusCircle className="mr-2 h-4 w-4" /> Add Customer
+    </Button>
+  </div>
+</CardHeader>
+
             <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center items-center h-40">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : customers.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer Details</TableHead>
-                      <TableHead>Address</TableHead>
-                      <TableHead>Tax Information</TableHead>
-                      <TableHead>TDS</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customers.map((customer) => (
-                      <TableRow key={customer._id}>
-                        <TableCell>
-                          <div className="font-medium">{customer.name}</div>
-                          <div className="text-muted-foreground text-xs">
-                            {customer.contactNumber || "N/A"}
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            {customer.email || ""}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">{customer.address}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {customer.city}, {customer.state}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 mb-1">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-mono text-xs">
-                              GSTIN: {customer.gstin || "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Hash className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-mono text-xs">
-                              PAN: {customer.pan || "N/A"}
-                            </span>
-                          </div>
-                          <Badge variant="outline" className="mt-2 text-xs">
-                            {customer.gstRegistrationType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={cn(
-                                "flex h-6 w-6 items-center justify-center rounded-full",
-                                customer.isTDSApplicable
-                                  ? "bg-green-100 dark:bg-green-900/50"
-                                  : "bg-red-100 dark:bg-red-900/50"
-                              )}
-                            >
-                              {customer.isTDSApplicable ? (
-                                <Check className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <X className="h-4 w-4 text-red-600" />
-                              )}
-                            </div>
-                            {customer.isTDSApplicable && (
-                              <div className="text-xs">
-                                <div>{customer.tdsRate}%</div>
-                                <div className="text-muted-foreground">
-                                  {customer.tdsSection}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem
-                                onClick={() => handleOpenForm(customer)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleOpenDeleteDialog(customer)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-                  <Users className="h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-semibold">
-                    No Customers Found
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Get started by adding your first customer.
-                  </p>
-                  <Button className="mt-6" onClick={() => handleOpenForm()}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Customer
-                  </Button>
-                </div>
-              )}
-            </CardContent>
+  {isLoading ? (
+    <div className="flex justify-center items-center h-40">
+      <Loader2 className="h-6 w-6 animate-spin" />
+    </div>
+  ) : customers.length > 0 ? (
+    <>
+      {/* ✅ Desktop / Laptop Table */}
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Customer Details</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead>GST / PAN</TableHead>
+              <TableHead>TDS</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {customers.map((customer) => (
+              <TableRow key={customer._id}>
+                <TableCell>
+                  <div className="font-medium">{customer.name}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {customer.contactNumber || "N/A"}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {customer.email || ""}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">{customer.address}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {customer.city}, {customer.state}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-xs">
+                      GSTIN: {customer.gstin || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-xs">
+                      PAN: {customer.pan || "N/A"}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="mt-2 text-xs">
+                    {customer.gstRegistrationType}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex h-6 w-6 items-center justify-center rounded-full",
+                        customer.isTDSApplicable
+                          ? "bg-green-100 dark:bg-green-900/50"
+                          : "bg-red-100 dark:bg-red-900/50"
+                      )}
+                    >
+                      {customer.isTDSApplicable ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600" />
+                      )}
+                    </div>
+                    {customer.isTDSApplicable && (
+                      <div className="text-xs text-muted-foreground">
+                        {customer.tdsSection}
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        onClick={() => handleOpenForm(customer)}
+                      >
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleOpenDeleteDialog(customer)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* ✅ Mobile / Tablet Card View */}
+     {/* ✅ Mobile / Tablet Card View for Customers */}
+<div className="block md:hidden space-y-4">
+  {customers.map((customer) => (
+    <div
+      key={customer._id}
+      className="border rounded-xl p-4 shadow-sm bg-white dark:bg-gray-900"
+    >
+      {/* Name */}
+      <div className="flex justify-between items-center text-sm">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-100">
+            <User className="h-3.5 w-3.5 text-blue-600" />
+          </span>
+          <span className="font-medium text-gray-600 ">Customer</span>
+        </div>
+        <span className="text-gray-900 dark:text-gray-100 font-semibold">
+          {customer.name}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* Contact */}
+      <div className="flex justify-between items-center text-xs">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-full bg-green-100 dark:bg-green-100">
+            <Phone className="h-3.5 w-3.5 text-green-600" />
+          </span>
+          <span className="font-medium text-gray-600">Contact</span>
+        </div>
+        <span className="text-gray-800 dark:text-gray-200">
+          {customer.contactNumber || "N/A"}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* Email */}
+      <div className="flex justify-between items-center text-xs">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-full bg-indigo-100 dark:bg-indigo-100">
+            <Mail className="h-3.5 w-3.5 text-indigo-600" />
+          </span>
+          <span className="font-medium text-gray-600">Email</span>
+        </div>
+        <span className="text-gray-800 dark:text-gray-200 truncate max-w-[150px] text-right">
+          {customer.email || "N/A"}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* Address */}
+      <div className="flex justify-between items-start text-xs">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-full bg-red-100 dark:bg-red-100">
+            <MapPin className="h-3.5 w-3.5 text-red-600" />
+          </span>
+          <span className="font-medium text-gray-600">Address</span>
+        </div>
+        <span className="text-gray-800 dark:text-gray-200 text-right max-w-[150px]">
+          {customer.address}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* GSTIN */}
+      <div className="flex justify-between items-center text-xs">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-full bg-orange-100 dark:bg-orange-100">
+            <FileBadge className="h-3.5 w-3.5 text-orange-600" />
+          </span>
+          <span className="font-medium text-gray-600">GSTIN</span>
+        </div>
+        <span className="font-mono">{customer.gstin || "N/A"}</span>
+      </div>
+      <hr className="my-2" />
+
+      {/* PAN */}
+      <div className="flex justify-between items-center text-xs">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-full bg-teal-100 dark:bg-teal-100">
+            <IdCard className="h-3.5 w-3.5 text-teal-600" />
+          </span>
+          <span className="font-medium text-gray-600">PAN</span>
+        </div>
+        <span className="font-mono">{customer.pan || "N/A"}</span>
+      </div>
+      <hr className="my-2" />
+
+      {/* TDS */}
+      <div className="flex justify-between items-center text-xs">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-full bg-yellow-100 dark:bg-yellow-100">
+            <FileText className="h-3.5 w-3.5 text-yellow-600" />
+          </span>
+          <span className="font-medium text-gray-600">TDS</span>
+        </div>
+        <div className="flex items-center gap-1">
+          {customer.isTDSApplicable ? (
+            <Check className="h-4 w-4 text-green-600" />
+          ) : (
+            <X className="h-4 w-4 text-red-600" />
+          )}
+          {customer.isTDSApplicable && (
+            <span className="text-muted-foreground">{customer.tdsSection}</span>
+          )}
+        </div>
+      </div>
+      <hr className="my-2" />
+
+      {/* Actions - unchanged */}
+      {/* Actions */}
+<div className="flex justify-between items-center text-xs">
+  {/* Left side - label */}
+  <div className="flex items-center gap-2">
+    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-100">
+      <FileText className="h-3.5 w-3.5 text-blue-600" />
+    </span>
+    <span className="font-medium text-gray-600">Actions</span>
+  </div>
+
+  {/* Right side - 3 dots dropdown */}
+  <div className="flex justify-end">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={() => handleOpenForm(customer)}>
+          <Edit className="mr-2 h-4 w-4" /> Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => handleOpenDeleteDialog(customer)}
+          className="text-destructive"
+        >
+          <Trash2 className="mr-2 h-4 w-4" /> Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+</div>
+
+    </div>
+  ))}
+</div>
+
+    </>
+  ) : (
+    <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+      <Users className="h-12 w-12 text-muted-foreground" />
+      <h3 className="mt-4 text-lg font-semibold">No Customers Found</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Get started by adding your first customer.
+      </p>
+      <Button className="mt-6" onClick={() => handleOpenForm()}>
+        <PlusCircle className="mr-2 h-4 w-4" />
+        Add Customer
+      </Button>
+    </div>
+  )}
+</CardContent>
+
           </Card>
 
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

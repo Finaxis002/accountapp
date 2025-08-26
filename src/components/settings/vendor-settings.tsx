@@ -5,7 +5,8 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, MoreHorizontal, Edit, Trash2, PlusCircle, Building, Check, X, FileText, Hash, BadgeIndianRupee } from 'lucide-react';
+import { Loader2, MoreHorizontal, Edit, Trash2, PlusCircle, Building, Check, X, FileText, Hash, BadgeIndianRupee,Phone,Mail,IdCard, Building2,MapPin, Settings, Settings2, Edit2, Settings2Icon,} from 'lucide-react';
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -26,6 +27,12 @@ export function VendorSettings() {
      const [isLoadingCompanies, setIsLoadingCompanies] = React.useState(true);
     const [vendorToDelete, setVendorToDelete] = React.useState<Vendor | null>(null);
     const { toast } = useToast();
+    const [expandedVendorId, setExpandedVendorId] = React.useState<string | null>(null);
+
+
+    
+
+    
 
 
       const fetchCompanies = React.useCallback(async () => {
@@ -204,92 +211,277 @@ React.useEffect(() => {
               ) : (
                 <>
             <Card>
-                <CardHeader>
-                    <div className='flex items-center justify-between'>
-                        <div>
-                            <CardTitle>Manage Vendors</CardTitle>
-                            <CardDescription>A list of all your vendors and suppliers.</CardDescription>
-                        </div>
-                        <Button onClick={() => handleOpenForm()}>
-                            <PlusCircle className='mr-2 h-4 w-4' /> Add Vendor
-                        </Button>
+          <CardHeader>
+              <div className="flex flex-col items-center text-center space-y-3 lg:flex-row lg:items-center lg:justify-between lg:text-left lg:space-y-0">
+                <div>
+                      <CardTitle className="text-xl font-semibold">
+                             Manage Vendors
+                       </CardTitle>
+                     <CardDescription className="max-w-md">
+                             A list of all your vendors and suppliers.
+                      </CardDescription>
+                </div>
+
+    <Button
+      onClick={() => handleOpenForm()}
+      className="w-full sm:w-auto lg:w-auto"
+    >
+      <PlusCircle className="mr-2 h-4 w-4" /> Add Vendor
+    </Button>
+  </div>
+</CardHeader>
+
+  <CardContent>
+  {isLoading ? (
+    <div className="flex justify-center items-center h-40">
+      <Loader2 className="h-6 w-6 animate-spin" />
+    </div>
+  ) : vendors.length > 0 ? (
+    <>
+      {/* ✅ Desktop / Laptop Table */}
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Vendor Details</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead>Tax Information</TableHead>
+              <TableHead>TDS</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {vendors.map((vendor) => (
+              <TableRow key={vendor._id}>
+                <TableCell>
+                  <div className="font-medium">{vendor.vendorName}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {vendor.contactNumber || "N/A"}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {vendor.email || ""}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">{vendor.address}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {vendor.city}, {vendor.state}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-xs">
+                      GSTIN: {vendor.gstin || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-xs">
+                      PAN: {vendor.pan || "N/A"}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="mt-2 text-xs">
+                    {vendor.gstRegistrationType}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex h-6 w-6 items-center justify-center rounded-full",
+                        vendor.isTDSApplicable
+                          ? "bg-green-100 dark:bg-green-900/50"
+                          : "bg-red-100 dark:bg-red-900/50"
+                      )}
+                    >
+                      {vendor.isTDSApplicable ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600" />
+                      )}
                     </div>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="flex justify-center items-center h-40"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                    ) : vendors.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Vendor Details</TableHead>
-                                    <TableHead>Address</TableHead>
-                                    <TableHead>Tax Information</TableHead>
-                                    <TableHead>TDS</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {vendors.map(vendor => (
-                                    <TableRow key={vendor._id}>
-                                        <TableCell>
-                                            <div className='font-medium'>{vendor.vendorName}</div>
-                                            <div className='text-muted-foreground text-xs'>{vendor.contactNumber || 'N/A'}</div>
-                                            <div className='text-muted-foreground text-xs'>{vendor.email || ''}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className='text-sm'>{vendor.address}</div>
-                                            <div className='text-xs text-muted-foreground'>{vendor.city}, {vendor.state}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className='flex items-center gap-2 mb-1'>
-                                                <FileText className='h-4 w-4 text-muted-foreground' />
-                                                <span className='font-mono text-xs'>GSTIN: {vendor.gstin || 'N/A'}</span>
-                                            </div>
-                                            <div className='flex items-center gap-2'>
-                                                 <Hash className='h-4 w-4 text-muted-foreground' />
-                                                <span className='font-mono text-xs'>PAN: {vendor.pan || 'N/A'}</span>
-                                            </div>
-                                            <Badge variant="outline" className='mt-2 text-xs'>{vendor.gstRegistrationType}</Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div className={cn("flex h-6 w-6 items-center justify-center rounded-full", vendor.isTDSApplicable ? "bg-green-100 dark:bg-green-900/50" : "bg-red-100 dark:bg-red-900/50")}>
-                                                    {vendor.isTDSApplicable ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-600" />}
-                                                </div>
-                                                {vendor.isTDSApplicable && (
-                                                    <div className="text-xs">
-                                                        {/* <div>{vendor.tdsRate}%</div> */}
-                                                        <div className="text-muted-foreground">{vendor.tdsSection}</div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onClick={() => handleOpenForm(vendor)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleOpenDeleteDialog(vendor)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                         <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-                            <Building className="h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-4 text-lg font-semibold">No Vendors Found</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">Get started by adding your first vendor.</p>
-                            <Button className="mt-6" onClick={() => handleOpenForm()}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Vendor
-                            </Button>
-                        </div>
+                    {vendor.isTDSApplicable && (
+                      <div className="text-xs text-muted-foreground">
+                        {vendor.tdsSection}
+                      </div>
                     )}
-                </CardContent>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => handleOpenForm(vendor)}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleOpenDeleteDialog(vendor)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* ✅ Mobile Card View */}
+     {/* ✅ Mobile / Tablet Card View */}
+<div className="block md:hidden space-y-4">
+  {vendors.map((vendor) => (
+    <div
+      key={vendor._id}
+      className="border rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow bg-white dark:bg-gray-900"
+    >
+      {/* Vendor Name */}
+      <div className="flex items-center gap-2 text-xs mb-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
+          <Building2 className="h-3.5 w-3.5 text-blue-600" />
+        </span>
+        <span className="font-medium text-gray-600">Vendor</span>
+        <span className="ml-auto text-gray-900 dark:text-gray-100 font-semibold">
+          {vendor.vendorName}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* Contact */}
+      <div className="flex items-center gap-2 text-xs mb-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+          <Phone className="h-3.5 w-3.5 text-green-600" />
+        </span>
+        <span className="font-medium text-gray-600">Contact</span>
+        <span className="ml-auto text-gray-800 dark:text-gray-200">
+          {vendor.contactNumber || "N/A"}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* Email */}
+      <div className="flex items-center gap-2 text-xs mb-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
+          <Mail className="h-3.5 w-3.5 text-red-600" />
+        </span>
+        <span className="font-medium text-gray-600">Email</span>
+        <span className="ml-auto text-gray-800 dark:text-gray-200 truncate max-w-[150px] text-right">
+          {vendor.email || "N/A"}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* Address */}
+      <div className="flex items-center gap-2 text-xs mb-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100">
+          <MapPin className="h-3.5 w-3.5 text-purple-600" />
+        </span>
+        <span className="font-medium text-gray-600">Address</span>
+        <span className="ml-auto text-gray-800 dark:text-gray-200 text-right max-w-[150px]">
+          {vendor.address}
+        </span>
+      </div>
+      <hr className="my-2" />
+
+      {/* GSTIN */}
+      <div className="flex items-center gap-2 text-xs mb-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100">
+          <FileText className="h-3.5 w-3.5 text-orange-600" />
+        </span>
+        <span className="font-medium text-gray-600">GSTIN</span>
+        <span className="ml-auto font-mono">{vendor.gstin || "N/A"}</span>
+      </div>
+      <hr className="my-2" />
+
+      {/* PAN */}
+      <div className="flex items-center gap-2 text-xs mb-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100">
+          <IdCard className="h-3.5 w-3.5 text-pink-600" />
+        </span>
+        <span className="font-medium text-gray-600">PAN</span>
+        <span className="ml-auto font-mono">{vendor.pan || "N/A"}</span>
+      </div>
+      <hr className="my-2" />
+
+      {/* TDS */}
+      <div className="flex items-center gap-2 text-xs mb-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
+          <FileText className="h-4 w-4 text-indigo-600" />
+        </span>
+        <span className="font-medium text-gray-600">TDS</span>
+        <div className="ml-auto flex items-center gap-1">
+          {vendor.isTDSApplicable ? (
+            <Check className="h-4 w-4 text-green-600" />
+          ) : (
+            <X className="h-4 w-4 text-red-600" />
+          )}
+          {vendor.isTDSApplicable && (
+            <span className="text-muted-foreground">{vendor.tdsSection}</span>
+          )}
+        </div>
+      </div>
+      <hr className="my-2" />
+
+      {/* Actions */}
+      <div className='flex justify-between'>
+        <div className="flex items-center  text-xs mb-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
+          <Edit2 className="h-4 w-4 text-indigo-600" />
+        </span>
+        <span className="font-medium ml-2 text-gray-600">Actions</span>
+        </div>
+        <div className="flex justify-end pt-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+         
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => handleOpenForm(vendor)}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleOpenDeleteDialog(vendor)}
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+
+
+    </>
+  ) : (
+    <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+      <Building className="h-12 w-12 text-muted-foreground" />
+      <h3 className="mt-4 text-lg font-semibold">No Vendors Found</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Get started by adding your first vendor.
+      </p>
+      <Button className="mt-6" onClick={() => handleOpenForm()}>
+        <PlusCircle className="mr-2 h-4 w-4" />
+        Add Vendor
+      </Button>
+    </div>
+  )}
+</CardContent>
+
+
+
             </Card>
 
              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
