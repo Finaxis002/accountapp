@@ -59,6 +59,7 @@ import { ProductForm } from "../products/product-form";
 import { ServiceForm } from "../services/service-form";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
+import { useUserPermissions } from "@/contexts/user-permissions-context";
 
 const unitTypes = [
   "Kg",
@@ -214,6 +215,31 @@ export function TransactionForm({
   const [isLoading, setIsLoading] = React.useState(true);
 
   const { selectedCompanyId } = useCompany();
+  const { permissions: userCaps } = useUserPermissions();
+
+  const role = localStorage.getItem("role");
+  const isSuper = role === "master" || role === "client";
+
+  const canSales = isSuper || !!userCaps?.canCreateSaleEntries;
+  const canPurchases = isSuper || !!userCaps?.canCreatePurchaseEntries;
+  const canReceipt = isSuper || !!userCaps?.canCreateReceiptEntries;
+  const canPayment = isSuper || !!userCaps?.canCreatePaymentEntries;
+  const canJournal = isSuper || !!userCaps?.canCreateJournalEntries;
+
+  // entity-create caps (single inventory flag)
+  const canCreateCustomer = isSuper || !!userCaps?.canCreateCustomers;
+  const canCreateVendor = isSuper || !!userCaps?.canCreateVendors;
+  const canCreateInventory = isSuper || !!userCaps?.canCreateInventory;
+
+  const allowedTypes = React.useMemo(() => {
+    const arr: Array<z.infer<typeof formSchema>["type"]> = [];
+    if (canSales) arr.push("sales");
+    if (canPurchases) arr.push("purchases");
+    if (canReceipt) arr.push("receipt");
+    if (canPayment) arr.push("payment");
+    if (canJournal) arr.push("journal");
+    return arr;
+  }, [canSales, canPurchases, canReceipt, canPayment, canJournal]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -241,6 +267,16 @@ export function TransactionForm({
 
   const watchedItems = useWatch({ control: form.control, name: "items" });
   const type = form.watch("type");
+
+  // Derived flags for current tab
+  const partyCreatable = React.useMemo(() => {
+    if (type === "sales" || type === "receipt") return canCreateCustomer;
+    if (type === "purchases" || type === "payment") return canCreateVendor;
+    return false;
+  }, [type, canCreateCustomer, canCreateVendor]);
+
+  const productCreatable = canCreateInventory;
+  const serviceCreatable = canCreateInventory;
 
   // ADD THIS useEffect (keeps items only where they belong)
   React.useEffect(() => {
@@ -462,22 +498,13 @@ export function TransactionForm({
     replace(itemsToSet);
   }, [transactionToEdit, form, replace]);
 
-async function fetchInvoiceNumber(baseURL: string, token: string, companyId: string, date: Date, series: string = "sales") {
-  const res = await fetch(`${baseURL}/api/invoices/issue-number`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ companyId, date, series }),
-  });
-
-  const data = await res.json();
-  if (!res.ok || !data?.invoiceNumber) {
-    throw new Error(data?.message || "Failed to issue invoice number");
-  }
-  return data.invoiceNumber as string;
-}
+  React.useEffect(() => {
+    if (transactionToEdit) return; // don't change type while editing
+    const current = form.getValues("type");
+    if (!allowedTypes.includes(current)) {
+      form.setValue("type", allowedTypes[0] ?? "sales");
+    }
+  }, [allowedTypes, transactionToEdit, form]);
 
   // async function updateStock(token: string, items: Item[]) {
   async function updateStock(token: string, items: StockItemInput[]) {
@@ -521,13 +548,13 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
 
       const method = transactionToEdit ? "PUT" : "POST";
       let endpoint = endpointMap[values.type];
-      if (transactionToEdit) {
-        const transactionTypeEndpoint =
-          transactionToEdit.type === "purchases"
-            ? "/api/purchase"
-            : `/api/${transactionToEdit.type}`;
-        endpoint = `${transactionTypeEndpoint}/${transactionToEdit._id}`;
-      }
+      // if (transactionToEdit) {
+      //   const transactionTypeEndpoint =
+      //     transactionToEdit.type === "purchases"
+      //       ? "/api/purchase"
+      //       : `/api/${transactionToEdit.type}`;
+      //   endpoint = `${transactionTypeEndpoint}/${transactionToEdit._id}`;
+      // }
 
       const productLines =
         values.items
@@ -545,14 +572,14 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
         values.items
           ?.filter((i) => i.itemType === "service")
           .map((i) => ({
-            service: i.service, // ObjectId of Service
+            service: i.service, // Keep this as service for the individual item
             amount: i.amount,
             description: i.description ?? "",
           })) ?? [];
 
       const payload: any = { ...values };
       payload.products = productLines;
-      payload.service = serviceLines;
+      payload.services = serviceLines;
       payload.amount = values.totalAmount; // if your model also stores amount
       payload.totalAmount = values.totalAmount;
       if (values.description) payload.description = values.description;
@@ -576,20 +603,6 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
 
       // 🔑 NEW: issue invoice number only when creating a NEW sales transaction
       // Replace the invoice number issuance logic:
-      if (
-        !transactionToEdit &&
-        (values.type === "sales" || values.type === "purchases")
-      ) {
-        const series = values.type === "sales" ? "sales" : "purchase";
-        const invoiceNumber = await fetchInvoiceNumber(
-          baseURL!,
-          token,
-          values.company,
-          values.date,
-          series
-        );
-        payload.invoiceNumber = invoiceNumber;
-      }
 
       const res = await fetch(`${baseURL}${endpoint}`, {
         method,
@@ -600,9 +613,19 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
         body: JSON.stringify(payload),
       });
 
+      console.log("Request payload:", payload); // Add this for debugging
+
       const data = await res.json();
+      const inv = data?.entry?.invoiceNumber;
+      toast({
+        title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
+        description: inv
+          ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
+          : `Your ${values.type} entry has been recorded.`,
+      });
 
       if (!res.ok) {
+        console.error("Backend error details:", data);
         throw new Error(
           data.message ||
             `Failed to ${transactionToEdit ? "update" : "create"} ${
@@ -653,10 +676,22 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
     }
   }
 
-  const handleTriggerCreateParty = (name: string) => {
-    setNewEntityName(name);
-    setIsPartyDialogOpen(true);
-  };
+ const handleTriggerCreateParty = (name: string) => {
+  const needCustomer = type === "sales" || type === "receipt";
+  const allowed = needCustomer ? canCreateCustomer : canCreateVendor;
+  if (!allowed) {
+    toast({
+      variant: "destructive",
+      title: "Permission denied",
+      description: needCustomer
+        ? "You don't have permission to create customers."
+        : "You don't have permission to create vendors.",
+    });
+    return;
+  }
+  setNewEntityName(name);
+  setIsPartyDialogOpen(true);
+};
 
   const handlePartyCreated = (newEntity: Party | Vendor) => {
     const entityId = newEntity._id;
@@ -788,6 +823,49 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
       <div className="flex justify-center items-center h-full p-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         <p className="ml-4">Loading form data...</p>
+      </div>
+    );
+  }
+
+  // Must have at least one transaction-create permission AND at least one entity-create permission.
+  const hasAnyTxnCreate =
+    canSales || canPurchases || canReceipt || canPayment || canJournal;
+
+  const hasAnyEntityCreate =
+    canCreateCustomer || canCreateVendor || canCreateInventory;
+
+  const canOpenForm =
+    isSuper || !!transactionToEdit || (hasAnyTxnCreate && hasAnyEntityCreate);
+
+  if (!canOpenForm) {
+    return (
+      <div className="p-6">
+        <Card className="max-w-xl mx-auto">
+          <CardContent className="p-6 space-y-3">
+            <h2 className="text-lg font-semibold">Access denied</h2>
+            <p className="text-sm text-muted-foreground">
+              Your admin hasn’t granted you the permissions required to create
+              transactions here.
+            </p>
+            <ul className="text-sm list-disc pl-5 space-y-1">
+              {!hasAnyTxnCreate && (
+                <li>
+                  You lack permission to create
+                  Sales/Purchases/Receipt/Payment/Journal.
+                </li>
+              )}
+              {!hasAnyEntityCreate && (
+                <li>
+                  You lack permission to create Customers, Vendors, or Inventory
+                  (Products/Services).
+                </li>
+              )}
+            </ul>
+            <p className="text-sm text-muted-foreground">
+              Please contact your administrator.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -1150,7 +1228,8 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
 
   <Separator />
 
-  {/* Total Amount */}
+  {/* 
+  */}
   <div className="flex justify-end">
     <div className="w-full sm:max-w-sm space-y-2">
       <FormField
@@ -1158,6 +1237,7 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
         name="totalAmount"
         render={({ field }) => (
           <FormItem>
+
             <FormLabel className="text-lg font-bold">Total Amount</FormLabel>
             <FormControl>
               <Input
@@ -1167,10 +1247,323 @@ async function fetchInvoiceNumber(baseURL: string, token: string, companyId: str
                 readOnly
               />
             </FormControl>
+
+            <FormLabel>{partyLabel}</FormLabel>
+            <Combobox
+              options={partyOptions}
+              value={field.value || ""}
+              onChange={field.onChange}
+              placeholder="Select or create..."
+              searchPlaceholder="Search..."
+              noResultsText="No results found."
+              creatable={partyCreatable} // ⬅️ was always true
+              onCreate={async (name) => {
+                if (!partyCreatable) {
+                  toast({
+                    variant: "destructive",
+                    title: "Permission denied",
+                    description:
+                      type === "sales" || type === "receipt"
+                        ? "You don't have permission to create customers."
+                        : "You don't have permission to create vendors.",
+                  });
+                  return ""; // do NOT open dialog
+                }
+                handleTriggerCreateParty(name); // ⬅️ only when allowed
+                return "";
+              }}
+            />
+
+
             <FormMessage />
           </FormItem>
         )}
       />
+
+
+      <Separator />
+
+      {/* Items Array */}
+      <div className="space-y-4">
+        <h3 className="text-base font-medium">Items & Services</h3>
+        {fields.map((item, index) => (
+          <Card key={item.id} className="relative">
+            <CardContent className="p-4 space-y-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 h-6 w-6"
+                onClick={() => remove(index)}
+                disabled={fields.length <= 1}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+
+              {item.itemType === "product" ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.product`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product</FormLabel>
+                        <Combobox
+                          options={productOptions}
+                          value={field.value || ""}
+                          onChange={(value) => field.onChange(value)}
+                          placeholder="Select or create a product..."
+                          searchPlaceholder="Search products..."
+                          noResultsText="No product found."
+                          creatable
+                          // Change the onCreate prop in the Combobox component:
+                          onCreate={async (name) => {
+                            handleTriggerCreateProduct(name);
+                            return Promise.resolve();
+                          }}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.quantity`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="1"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : e.target.valueAsNumber
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.unitType`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {unitTypes.map((u) => (
+                                <SelectItem key={u} value={u}>
+                                  {u}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.pricePerUnit`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price/Unit</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : e.target.valueAsNumber
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              readOnly
+                              className="bg-muted"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.service`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Service</FormLabel>
+                        <Combobox
+                          options={serviceOptions}
+                          value={field.value || ""}
+                          onChange={(value) => field.onChange(value)}
+                          placeholder="Select or create a service..."
+                          searchPlaceholder="Search services..."
+                          noResultsText="No service found."
+                          creatable={serviceCreatable}
+                          onCreate={async (name) => {
+                            if (!serviceCreatable) {
+                              toast({
+                                variant: "destructive",
+                                title: "Permission denied",
+                                description:
+                                  "You don't have permission to create inventory.",
+                              });
+                              return "";
+                            }
+                            const newServiceId =
+                              await handleTriggerCreateService(name);
+                            return newServiceId || "";
+                          }}
+                        />
+
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : e.target.valueAsNumber
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.description`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Brief service description"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() => append({ ...PRODUCT_DEFAULT })}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() =>
+              append({
+                itemType: "service",
+                service: "",
+                amount: 0,
+                description: "",
+              })
+            }
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Service
+          </Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Total Amount */}
+      <div className="flex justify-end">
+        <div className="w-full max-w-xs space-y-2">
+          <FormField
+            control={form.control}
+            name="totalAmount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-lg font-bold">
+                  Total Amount
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    className="text-lg font-bold h-12 text-right bg-muted"
+                    {...field}
+                    readOnly
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1265,10 +1658,23 @@ const renderReceiptPaymentFields = () => (
                 placeholder="Select or create..."
                 searchPlaceholder="Search..."
                 noResultsText="No results found."
-                creatable
+
+                creatable={partyCreatable}
+
                 onCreate={async (name) => {
+                  if (!partyCreatable) {
+                    toast({
+                      variant: "destructive",
+                      title: "Permission denied",
+                      description:
+                        type === "sales" || type === "receipt"
+                          ? "You don't have permission to create customers."
+                          : "You don't have permission to create vendors.",
+                    });
+                    return "";
+                  }
                   handleTriggerCreateParty(name);
-                  return Promise.resolve();
+                  return "";
                 }}
               />
               <FormMessage />
@@ -1331,6 +1737,18 @@ const renderReceiptPaymentFields = () => (
 
 
 
+  if (!transactionToEdit && !isSuper && allowedTypes.length === 0) {
+    return (
+      <div className="p-6">
+        <h2 className="text-xl font-semibold">No permissions</h2>
+        <p className="text-sm text-muted-foreground">
+          You don’t have access to create any transactions. Please contact your
+          administrator.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       <Form {...form}>
@@ -1343,21 +1761,34 @@ const renderReceiptPaymentFields = () => (
                 className="w-full"
               >
                 <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="sales" disabled={!!transactionToEdit}>
-                    Sales
-                  </TabsTrigger>
-                  <TabsTrigger value="purchases" disabled={!!transactionToEdit}>
-                    Purchases
-                  </TabsTrigger>
-                  <TabsTrigger value="receipt" disabled={!!transactionToEdit}>
-                    Receipt
-                  </TabsTrigger>
-                  <TabsTrigger value="payment" disabled={!!transactionToEdit}>
-                    Payment
-                  </TabsTrigger>
-                  <TabsTrigger value="journal" disabled={!!transactionToEdit}>
-                    Journal
-                  </TabsTrigger>
+                  {canSales && (
+                    <TabsTrigger value="sales" disabled={!!transactionToEdit}>
+                      Sales
+                    </TabsTrigger>
+                  )}
+                  {canPurchases && (
+                    <TabsTrigger
+                      value="purchases"
+                      disabled={!!transactionToEdit}
+                    >
+                      Purchases
+                    </TabsTrigger>
+                  )}
+                  {canReceipt && (
+                    <TabsTrigger value="receipt" disabled={!!transactionToEdit}>
+                      Receipt
+                    </TabsTrigger>
+                  )}
+                  {canPayment && (
+                    <TabsTrigger value="payment" disabled={!!transactionToEdit}>
+                      Payment
+                    </TabsTrigger>
+                  )}
+                  {canJournal && (
+                    <TabsTrigger value="journal" disabled={!!transactionToEdit}>
+                      Journal
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 <TabsContent value="sales" className="pt-6">

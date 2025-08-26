@@ -78,31 +78,48 @@ export default function SettingsPage() {
   const gridColsClass = `grid-cols-${availableTabs.length}`;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage your account, preferences, and business entities.
-        </p>
-      </div>
-
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className={cn("grid w-full", gridColsClass)}>
-          {availableTabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {availableTabs.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value} className="mt-6">
-            {tab.component}
-          </TabsContent>
-        ))}
-      </Tabs>
+  <div className="space-y-8 px-0 sm:px-0 md:px-6 lg:px-0">
+    {/* Heading */}
+    <div>
+      <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+      <p className="text-muted-foreground">
+        Manage your account, preferences, and business entities.
+      </p>
     </div>
-  );
+
+    {/* Tabs */}
+    <Tabs defaultValue="profile" className="w-full">
+      <TabsList
+        className={cn(
+          "grid w-full gap-2",
+          "grid-cols-2 sm:grid-cols-3", 
+          "lg:flex lg:justify-start lg:gap-2"
+        )}
+      >
+        {availableTabs.map((tab) => (
+          <TabsTrigger
+            key={tab.value}
+            value={tab.value}
+            className="w-full lg:w-auto"
+          >
+            {tab.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {availableTabs.map((tab) => (
+        <TabsContent
+          key={tab.value}
+          value={tab.value}
+          className="mt-6"
+        >
+          {tab.component}
+        </TabsContent>
+      ))}
+    </Tabs>
+  </div>
+);
+
 }
 
 function ProfileTab() {
