@@ -193,11 +193,13 @@ const formSchema = z
 interface TransactionFormProps {
   transactionToEdit?: Transaction | null;
   onFormSubmit: () => void;
+  defaultType?: "sales" | "purchases" | "receipt" | "payment" | "journal"; // Add this
 }
 
 export function TransactionForm({
   transactionToEdit,
   onFormSubmit,
+  defaultType = "sales",
 }: TransactionFormProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
@@ -211,6 +213,13 @@ export function TransactionForm({
   const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [services, setServices] = React.useState<Service[]>([]);
+  // which line (items[index]) is creating a product/service right now?
+  const [creatingProductForIndex, setCreatingProductForIndex] = React.useState<
+    number | null
+  >(null);
+  const [creatingServiceForIndex, setCreatingServiceForIndex] = React.useState<
+    number | null
+  >(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -250,7 +259,7 @@ export function TransactionForm({
       description: "",
       totalAmount: 0,
       items: [PRODUCT_DEFAULT],
-      type: "sales",
+      type: defaultType,
       referenceNumber: "",
       fromAccount: "",
       toAccount: "",
@@ -546,15 +555,15 @@ export function TransactionForm({
         journal: `/api/journals`,
       };
 
+      // in onSubmit(...)
       const method = transactionToEdit ? "PUT" : "POST";
       let endpoint = endpointMap[values.type];
-      // if (transactionToEdit) {
-      //   const transactionTypeEndpoint =
-      //     transactionToEdit.type === "purchases"
-      //       ? "/api/purchase"
-      //       : `/api/${transactionToEdit.type}`;
-      //   endpoint = `${transactionTypeEndpoint}/${transactionToEdit._id}`;
-      // }
+
+      if (transactionToEdit) {
+        // use the original type’s endpoint and append the id
+        const editType = transactionToEdit.type; // "sales" here
+        endpoint = `${endpointMap[editType]}/${transactionToEdit._id}`;
+      }
 
       const productLines =
         values.items
@@ -572,11 +581,10 @@ export function TransactionForm({
         values.items
           ?.filter((i) => i.itemType === "service")
           .map((i) => ({
-            service: i.service, // Keep this as service for the individual item
+            service: i.service, // This should be the ID, which you already set
             amount: i.amount,
             description: i.description ?? "",
           })) ?? [];
-
       const payload: any = { ...values };
       payload.products = productLines;
       payload.services = serviceLines;
@@ -676,22 +684,22 @@ export function TransactionForm({
     }
   }
 
- const handleTriggerCreateParty = (name: string) => {
-  const needCustomer = type === "sales" || type === "receipt";
-  const allowed = needCustomer ? canCreateCustomer : canCreateVendor;
-  if (!allowed) {
-    toast({
-      variant: "destructive",
-      title: "Permission denied",
-      description: needCustomer
-        ? "You don't have permission to create customers."
-        : "You don't have permission to create vendors.",
-    });
-    return;
-  }
-  setNewEntityName(name);
-  setIsPartyDialogOpen(true);
-};
+  const handleTriggerCreateParty = (name: string) => {
+    const needCustomer = type === "sales" || type === "receipt";
+    const allowed = needCustomer ? canCreateCustomer : canCreateVendor;
+    if (!allowed) {
+      toast({
+        variant: "destructive",
+        title: "Permission denied",
+        description: needCustomer
+          ? "You don't have permission to create customers."
+          : "You don't have permission to create vendors.",
+      });
+      return;
+    }
+    setNewEntityName(name);
+    setIsPartyDialogOpen(true);
+  };
 
   const handlePartyCreated = (newEntity: Party | Vendor) => {
     const entityId = newEntity._id;
@@ -759,6 +767,21 @@ export function TransactionForm({
 
   const handleProductCreated = (newProduct: Product) => {
     setProducts((prev) => [...prev, newProduct]);
+
+    // ⬇️ NEW: auto-select on the row that initiated creation
+    if (creatingProductForIndex !== null) {
+      form.setValue(
+        `items.${creatingProductForIndex}.product`,
+        newProduct._id,
+        { shouldValidate: true, shouldDirty: true }
+      );
+      // ensure the row is a product row (defensive)
+      form.setValue(`items.${creatingProductForIndex}.itemType`, "product", {
+        shouldValidate: false,
+      });
+    }
+    setCreatingProductForIndex(null);
+
     toast({
       title: "Product Created",
       description: `${newProduct.name} has been added.`,
@@ -768,11 +791,23 @@ export function TransactionForm({
 
   const handleServiceCreated = (newService: Service) => {
     setServices((prev) => [...prev, newService]);
+
+    // ⬇️ NEW: auto-select on the row that initiated creation
+    if (creatingServiceForIndex !== null) {
+      form.setValue(
+        `items.${creatingServiceForIndex}.service`,
+        newService._id,
+        { shouldValidate: true, shouldDirty: true }
+      );
+      form.setValue(`items.${creatingServiceForIndex}.itemType`, "service", {
+        shouldValidate: false,
+      });
+    }
+    setCreatingServiceForIndex(null);
+
     toast({
       title: "Service Created",
-      description: `${
-        newService.serviceName || (newService as any).serviceName
-      } has been added.`,
+      description: `${newService.serviceName} has been added.`,
     });
     setIsServiceDialogOpen(false);
   };
@@ -1013,8 +1048,10 @@ export function TransactionForm({
                           creatable
                           // Change the onCreate prop in the Combobox component:
                           onCreate={async (name) => {
-                            handleTriggerCreateProduct(name);
-                            return Promise.resolve();
+                            // ⬇️ CHANGE this block
+                            setCreatingProductForIndex(index); // remember which row
+                            handleTriggerCreateProduct(name); // opens dialog
+                            return ""; // return empty for now; we'll set after dialog
                           }}
                         />
                         <FormMessage />
@@ -1145,9 +1182,40 @@ export function TransactionForm({
                               });
                               return "";
                             }
+
+                            // remember which row triggered this (optional now)
+                            setCreatingServiceForIndex(index);
+
+                            // create the service via API (your function already adds it to `services` and toasts)
                             const newServiceId =
                               await handleTriggerCreateService(name);
-                            return newServiceId || "";
+
+                            if (newServiceId) {
+                              // ✅ immediately set the RHF value for THIS row
+                              form.setValue(
+                                `items.${index}.service`,
+                                newServiceId,
+                                {
+                                  shouldValidate: true,
+                                  shouldDirty: true,
+                                }
+                              );
+                              form.setValue(
+                                `items.${index}.itemType`,
+                                "service",
+                                {
+                                  shouldValidate: false,
+                                }
+                              );
+
+                              // If your Combobox expects the onCreate return to set selection, you can return the id:
+                              return newServiceId;
+
+                              // If your Combobox expects an option object instead, use:
+                              // return { value: newServiceId, label: name };
+                            }
+
+                            return "";
                           }}
                         />
 

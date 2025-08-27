@@ -24,14 +24,56 @@ import {
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-type RoleDoc = { _id: string; name: "admin" | "manager" | "user" };
+type RoleDoc = { _id: string; name: "admin" | "user" };
 
-// ✅ Hardcode the 3 default roles (PUT YOUR REAL ROLE IDS HERE)
+// ✅ Put your real role IDs here
 const DEFAULT_ROLES: RoleDoc[] = [
   { _id: "REPLACE_ADMIN_ROLE_ID", name: "admin" },
-  { _id: "REPLACE_MANAGER_ROLE_ID", name: "manager" },
   { _id: "REPLACE_USER_ROLE_ID", name: "user" },
 ];
+
+// put with your helpers
+const isObjectId = (s?: string) => !!s && /^[a-f0-9]{24}$/i.test(s);
+
+// read a human name from mixed role types
+const coerceRoleName = (r: unknown): string | null => {
+  if (!r) return null;
+  if (typeof r === "string") return r.toLowerCase();
+  if (typeof r === "object") {
+    const o = r as { name?: string; label?: string };
+    const n = (o.name || o.label || "").toLowerCase();
+    return n || null;
+  }
+  return null;
+};
+
+// decide "admin" | "user" using both name + id
+const mapExistingRoleToForm = (
+  r: unknown,
+  roles: RoleDoc[]
+): "admin" | "user" => {
+  const n = coerceRoleName(r);
+  if (n) {
+    if (n === "admin" || n === "manager" || n === "client") return "admin";
+    if (n === "user") return "user";
+  }
+
+  // If it's an ObjectId string, try to resolve via roles list
+  if (typeof r === "string" && isObjectId(r)) {
+    const found = roles.find((x) => x._id === r);
+    if (found) return found.name;
+  }
+
+  // If it's an object with _id, try to resolve via roles list
+  if (r && typeof r === "object" && "_id" in (r as any)) {
+    const id = (r as any)._id as string | undefined;
+    const found = roles.find((x) => x._id === id);
+    if (found) return found.name;
+  }
+
+  return "user";
+};
+
 
 interface UserFormProps {
   user: User | null;
@@ -54,6 +96,7 @@ export function UserForm({
     userName: "",
     userId: "",
     password: "",
+    email: " ",
     contactNumber: "",
     address: "",
     companies: [] as string[],
@@ -71,6 +114,7 @@ export function UserForm({
             userId: user.userId || "",
             password: "",
             contactNumber: user.contactNumber || "",
+            email: user.email || "",
             address: user.address || "",
             companies: Array.isArray(user.companies)
               ? user.companies
@@ -84,6 +128,7 @@ export function UserForm({
             userId: "",
             password: "",
             contactNumber: "",
+            email: "",
             address: "",
             companies: [],
             roleId: prev.roleId,
@@ -92,44 +137,64 @@ export function UserForm({
   }, [user]);
 
   // set default role on create; map user.role (string) to roleId on edit
-  useEffect(() => {
-    if (!roles || roles.length === 0) return;
+ useEffect(() => {
+  if (!roles || roles.length === 0) return;
 
-    if (!user) {
-      const def = roles.find((r) => r.name === "user") || roles[0];
-      setFormData((prev) => ({ ...prev, roleId: def._id }));
-    } else {
-      const currentName = String(user.role || "").toLowerCase();
-      const match = roles.find((r) => r.name === currentName);
-      if (match) setFormData((prev) => ({ ...prev, roleId: match._id }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roles, user]);
+  if (!user) {
+    // creating → default to "user"
+    const def = roles.find((r) => r.name === "user") || roles[0];
+    setFormData((prev) => ({ ...prev, roleId: def._id }));
+  } else {
+    // editing → correctly map existing role to "admin" | "user"
+    const coerced = mapExistingRoleToForm(user.role, roles);
+    const match = roles.find((r) => r.name === coerced);
+    if (match) setFormData((prev) => ({ ...prev, roleId: match._id }));
+  }
+}, [roles, user]);
+
 
   // helper: true only for real 24-hex objectids
   const isObjectId = (s?: string) => !!s && /^[a-f0-9]{24}$/i.test(s);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // find the selected role from your local defaults
-    const selectedRole =
-      roles.find((r) => r._id === formData.roleId) ||
-      roles.find((r) => r.name === "user"); // fallback
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!selectedRole) {
-      toast({ variant: "destructive", title: "Please select a role" });
-      return;
-    }
+  const selectedRole =
+    roles.find((r) => r._id === formData.roleId) ||
+    roles.find((r) => r.name === "user"); // fallback
 
-    // only send roleId if it's a real ObjectId; always send roleName
-    const payload = {
-      ...formData,
-      roleId: isObjectId(selectedRole._id) ? selectedRole._id : undefined,
-      roleName: selectedRole.name, // backend will resolve by name if id is missing/invalid
-    } as any; // cast if your onSave type doesn't include roleName
+  if (!selectedRole) {
+    toast({ variant: "destructive", title: "Please select a role" });
+    return;
+  }
 
-    onSave(payload);
+  // Build payload WITHOUT tenant fields like `client`
+  const payload: any = {
+    userName: formData.userName,
+    contactNumber: formData.contactNumber,
+    email: formData.email?.trim(),
+    address: formData.address,
+    companies: formData.companies,        // array of company ids (strings)
   };
+
+  // Creation vs update
+  if (!user) payload.userId = formData.userId;
+
+  // Only send password if user typed one
+  if (formData.password?.trim()) {
+    payload.password = formData.password.trim();
+  }
+
+  // Send role using whichever your backend accepts:
+  // Prefer roleId if it’s a real ObjectId, otherwise send roleName ("admin" | "user")
+  const looksLikeObjectId = /^[a-f0-9]{24}$/i.test(selectedRole._id);
+  if (looksLikeObjectId) payload.roleId = selectedRole._id;
+  else payload.roleName = selectedRole.name;
+
+  // IMPORTANT: do NOT add `client` or `client._id` anywhere here
+
+  onSave(payload);
+};
 
   const handleCompanySelect = (companyId: string) => {
     setFormData((prev) => {
@@ -194,6 +259,17 @@ export function UserForm({
               value={formData.contactNumber}
               onChange={(e) =>
                 setFormData({ ...formData, contactNumber: e.target.value })
+              }
+            />
+          </div>
+
+           <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
               }
             />
           </div>

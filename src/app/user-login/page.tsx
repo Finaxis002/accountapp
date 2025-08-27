@@ -13,21 +13,24 @@ import { loginUser, getCurrentUser } from "@/lib/auth";
 export default function UserLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-
   const [userId, setUserId] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
 
   // ✅ Guard: if already logged in, redirect based on role
-  React.useEffect(() => {
-    const u = getCurrentUser();
-    if (u) {
-      // tweak these routes to your app’s structure
-      if (u.role === "master" || u.role === "admin") router.replace("/admin/dashboard");
-      else router.replace("/user-dashboard");
-    }
-  }, [router]);
+React.useEffect(() => {
+  const u = getCurrentUser();
+  if (!u) return;
+
+  if (u.role === "master") {
+    router.replace("/admin/dashboard");
+  } else if (u.role === "admin" || u.role === "customer") {
+    router.replace("/dashboard");
+  } else {
+    router.replace("/user-dashboard");
+  }
+}, [router]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,9 +42,13 @@ export default function UserLoginPage() {
       // you can persist it here as needed (e.g. localStorage.setItem("createdByClient", ...))
 
       // Redirect based on role
-      if (user.role === "master" || user.role === "admin") {
+      if (user.role === "master") {
         router.push("/admin/dashboard");
-      } else {
+      } 
+      else if(user.role === "admin" || user.role === "customer" || user.role === "client"){
+        router.push("/dashboard")
+      }
+      else {
         router.push("/user-dashboard");
       }
 

@@ -42,10 +42,15 @@ export default function UserSidebar() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { permissions: userCaps, isLoading } = useUserPermissions();
 
+  const roleLower = (currentUser?.role ?? "").toLowerCase();
+  const dashboardHref =
+    roleLower === "admin" ? "/admin/dashboard" : "/user-dashboard";
 
   useEffect(() => {
     setCurrentUser(getCurrentUser());
   }, []);
+
+  console.log("user / admin / manager Permissions :" , userCaps)
 
   const handleLogout = () => {
     const to = logout();
@@ -73,8 +78,12 @@ export default function UserSidebar() {
       <SidebarMenu className="flex-1 p-4 space-y-2">
         {/* Dashboard */}
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={isActive("/dashboard")} tooltip="Dashboard">
-            <Link href="/dashboard">
+          <SidebarMenuButton
+            asChild
+            isActive={isActive(dashboardHref)}
+            tooltip="Dashboard"
+          >
+            <Link href={dashboardHref}>
               <LayoutGrid />
               <span>Dashboard</span>
             </Link>
@@ -83,7 +92,11 @@ export default function UserSidebar() {
 
         {/* Transactions */}
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={isActive("/transactions")} tooltip="Transactions">
+          <SidebarMenuButton
+            asChild
+            isActive={isActive("/transactions")}
+            tooltip="Transactions"
+          >
             <Link href="/transactions">
               <ArrowRightLeft />
               <span>Transactions</span>
@@ -100,7 +113,11 @@ export default function UserSidebar() {
           <>
             {userCaps?.canCreateInventory && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/inventory")} tooltip="Inventory">
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/inventory")}
+                  tooltip="Inventory"
+                >
                   <Link href="/inventory">
                     <Package />
                     <span>Inventory</span>
@@ -112,7 +129,7 @@ export default function UserSidebar() {
         )}
 
         {/* Reports */}
-        <Collapsible defaultOpen={isReportsActive}>
+        {/* <Collapsible defaultOpen={isReportsActive}>
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
@@ -131,33 +148,48 @@ export default function UserSidebar() {
           <CollapsibleContent>
             <SidebarMenuSub>
               <SidebarMenuSubItem>
-                <SidebarMenuSubButton asChild isActive={isActive("/reports/profit-loss")}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={isActive("/reports/profit-loss")}
+                >
                   <Link href="/reports/profit-loss">Profit &amp; Loss</Link>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
               <SidebarMenuSubItem>
-                <SidebarMenuSubButton asChild isActive={isActive("/reports/balance-sheet")}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={isActive("/reports/balance-sheet")}
+                >
                   <Link href="/reports/balance-sheet">Balance Sheet</Link>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             </SidebarMenuSub>
           </CollapsibleContent>
-        </Collapsible>
+        </Collapsible> */}
       </SidebarMenu>
 
       {currentUser && (
         <div className="p-4 space-y-4 border-t border-sidebar-border">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={currentUser?.avatar} alt={`@${currentUser?.name}`} />
+              <AvatarImage
+                src={currentUser?.avatar}
+                alt={`@${currentUser?.name}`}
+              />
               <AvatarFallback>{currentUser?.initials}</AvatarFallback>
             </Avatar>
             <div>
               <p className="text-sm font-semibold">{currentUser?.name}</p>
-              <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+              <p className="text-xs text-muted-foreground">
+                {currentUser?.email}
+              </p>
             </div>
           </div>
-          <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
+          <Button
+            variant="ghost"
+            className="w-full justify-start"
+            onClick={handleLogout}
+          >
             <LogOut className="mr-2 h-4 w-4" />
             Logout
           </Button>

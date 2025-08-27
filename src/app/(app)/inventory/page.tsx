@@ -1,16 +1,31 @@
 "use client";
 
 import * as React from "react";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Loader2,
+  MoreHorizontal,
   Edit,
   Trash2,
   PlusCircle,
   Package,
   Server,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import type { Company, Product } from "@/lib/types";
 import { ProductForm } from "@/components/products/product-form";
+// ⬇️ import your real ServiceForm
 import { ServiceForm } from "@/components/services/service-form";
 import { usePermissions } from "@/contexts/permission-context";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
@@ -42,20 +58,21 @@ type Service = {
   serviceName: string;
   createdAt?: string;
   updatedAt?: string;
+  // add more fields if you have them (price, description, etc.)
 };
 
 export default function InventoryPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
-
-const { permissions: userCaps, isLoading } = useUserPermissions();
+  const { permissions: userCaps, isLoading } = useUserPermissions();
   // Lists
-
   const [products, setProducts] = React.useState<Product[]>([]);
   const [services, setServices] = React.useState<Service[]>([]);
 
+  // Loading states
   const [isLoadingProducts, setIsLoadingProducts] = React.useState(true);
   const [isLoadingServices, setIsLoadingServices] = React.useState(true);
 
+  // Dialog states: product
   const [isProductFormOpen, setIsProductFormOpen] = React.useState(false);
   const [productToEdit, setProductToEdit] = React.useState<Product | null>(
     null
@@ -64,6 +81,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
     null
   );
 
+  // Dialog states: service
   const [isServiceFormOpen, setIsServiceFormOpen] = React.useState(false);
   const [serviceToEdit, setServiceToEdit] = React.useState<Service | null>(
     null
@@ -71,7 +89,6 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
   const [serviceToDelete, setServiceToDelete] = React.useState<Service | null>(
     null
   );
-
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = React.useState(true);
 
@@ -92,6 +109,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       const data = await res.json();
       setCompanies(Array.isArray(data) ? data : data.companies || []);
     } catch (err) {
+      // optional toast if you want
       console.error(err);
     } finally {
       setIsLoadingCompanies(false);
@@ -102,6 +120,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
     fetchCompanies();
   }, [fetchCompanies]);
 
+  // Fetchers
   const fetchProducts = React.useCallback(async () => {
     setIsLoadingProducts(true);
     try {
@@ -153,6 +172,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
     fetchServices();
   }, [fetchProducts, fetchServices]);
 
+  // Open forms
   const openCreateProduct = () => {
     setProductToEdit(null);
     setIsProductFormOpen(true);
@@ -170,6 +190,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
     setIsServiceFormOpen(true);
   };
 
+  // Success callbacks
   const onProductSaved = (saved: Product) => {
     setIsProductFormOpen(false);
     setProductToEdit(null);
@@ -198,6 +219,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
     });
   };
 
+  // Delete handlers
   const confirmDeleteProduct = (p: Product) => {
     setProductToDelete(p);
     setServiceToDelete(null);
@@ -254,9 +276,6 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       setServiceToDelete(null);
     }
   };
-
-
-
 
   // Render helpers
   const renderProductsTable = () => {
@@ -356,7 +375,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
           <p className="mt-1 text-sm text-muted-foreground">
             Create your first service to get started.
           </p>
-           {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
+          {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
             <Button className="mt-6" onClick={openCreateService}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Service
@@ -418,7 +437,6 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
     );
   };
 
-
   if (isLoadingCompanies) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -427,54 +445,121 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
     );
   }
 
-
-  console.log("userCaps?.canCreateInventory" , userCaps?.canCreateInventory)
-  console.log("permissions?.canCreateProducts" , permissions?.canCreateProducts)
-    console.log("userCaps?.canCreateSaleEntries",userCaps?.canCreateSaleEntries)
+  console.log("userCaps?.canCreateInventory", userCaps?.canCreateInventory);
+  console.log("permissions?.canCreateProducts", permissions?.canCreateProducts);
+  console.log("userCaps?.canCreateSaleEntries", userCaps?.canCreateSaleEntries);
 
   return (
-    <div className="space-y-6 px-4 sm:px-6 md:px-8 max-w-full overflow-x-hidden min-h-screen">
+    <div className="space-y-6">
       {companies.length === 0 ? (
         <div className="h-[80vh] w-full flex align-middle items-center justify-center">
-          {/* Company setup required card can be placed here */}
+          <Card className="w-full max-w-md mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-lg overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center text-center">
+                {/* Icon Section */}
+                <div className="mb-5 w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+                  <svg
+                    className="w-8 h-8 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-4 0H9m4 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v12m4 0V9m0 12h4m0 0V9m0 12h2"
+                    ></path>
+                  </svg>
+                </div>
+
+                {/* Text Content */}
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  Company Setup Required
+                </h3>
+                <p className="text-gray-600 mb-5">
+                  Contact us to enable your company account and access all
+                  features.
+                </p>
+
+                {/* Call-to-Action Button */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <a className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                      ></path>
+                    </svg>
+                    +91-8989773689
+                  </a>
+                  <a
+                    href="mailto:support@company.com"
+                    className="flex-1 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      ></path>
+                    </svg>
+                    Email Us
+                  </a>
+                </div>
+
+                {/* Support Hours */}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                Inventory Management
-              </h2>
-              <p className="text-muted-foreground">
-                Track and manage your products and services.
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  Inventory Management
+                </h2>
+                <p className="text-muted-foreground">
+                  Track and manage your products and services.
+                </p>
+              </div>
             </div>
-
-            {permissions?.canCreateProducts && (
-              <div className="flex flex-wrap gap-2 justify-center sm:justify-start max-w-full">
-                <Button
-                  variant="outline"
-                  onClick={openCreateProduct}
-                  className="whitespace-nowrap"
-                >
+            {(permissions?.canCreateProducts ||
+              userCaps?.canCreateInventory) && (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={openCreateProduct}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Product
                 </Button>
-                <Button
-                  onClick={openCreateService}
-                  className="whitespace-nowrap"
-                >
+                <Button onClick={openCreateService}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Service
                 </Button>
               </div>
             )}
           </div>
-
-          <Card className="overflow-visible">
+          <Card>
             <CardContent className="p-0">
               <Tabs defaultValue="products" className="w-full">
-                <div className="px-4 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="px-4 pt-4 flex items-center justify-between">
                   <TabsList>
                     <TabsTrigger value="products">
                       Products ({products.length})
@@ -483,310 +568,20 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
                       Services ({services.length})
                     </TabsTrigger>
                   </TabsList>
-
-
-                  {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={openCreateProduct}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Product
-                      </Button>
-                      <Button onClick={openCreateService}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Service
-                      </Button>
-                    </div>
-                  )}
-
                 </div>
 
                 <TabsContent value="products" className="p-4 pt-2">
-                  {isLoadingProducts ? (
-                    <div className="flex justify-center items-center h-48">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    </div>
-                  ) : products.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-                      <Package className="h-12 w-12 text-muted-foreground" />
-                      <h3 className="mt-4 text-lg font-semibold">
-                        No Products Found
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Create your first product to get started.
-                      </p>
-                      {permissions?.canCreateProducts && (
-                        <Button className="mt-6" onClick={openCreateProduct}>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Product
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Card view for small devices */}
-                      <div className="grid grid-cols-1 gap-4 md:hidden">
-                        {products.map((p) => (
-                          <Card
-                            key={p._id}
-                            className="flex flex-col min-w-0 break-words"
-                          >
-                            <CardContent className="pt-6">
-                              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                                <Package className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                                <h3 className="font-bold text-lg truncate max-w-[calc(100%-8rem)]">
-                                  {p.name ?? "Unnamed Product"}
-                                </h3>
-                                <Badge
-                                  variant="outline"
-                                  className="flex-shrink-0"
-                                >
-                                  Product
-                                </Badge>
-                              </div>
-
-                              <p className="text-sm truncate">
-                                Stocks:{" "}
-                                <span className="font-medium">
-                                  {p.stocks != null ? p.stocks : "N/A"}
-                                </span>
-                              </p>
-
-                              <p className="text-xs text-muted-foreground mt-1 truncate">
-                                Created:{" "}
-                                {p.createdAt
-                                  ? new Date(p.createdAt).toLocaleDateString(
-                                      "en-IN"
-                                    )
-                                  : "—"}
-                              </p>
-                            </CardContent>
-
-                            <CardFooter className="mt-auto border-t p-2 flex flex-wrap justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEditProduct(p)}
-                                className="whitespace-nowrap"
-                              >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                              </Button>
-
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => confirmDeleteProduct(p)}
-                                className="whitespace-nowrap"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        ))}
-                      </div>
-
-                      {/* Table view for medium+ devices */}
-                      <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full table-auto border-collapse">
-                          <thead>
-                            <tr>
-                              <th className="text-left p-2 border-b">
-                                Product
-                              </th>
-                              <th className="text-left p-2 border-b">Stock</th>
-                              <th className="text-left p-2 border-b">
-                                Created At
-                              </th>
-                              <th className="text-right p-2 border-b">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {products.map((p) => (
-                              <tr key={p._id} className="hover:bg-gray-50">
-                                <td className="p-2 border-b">
-                                  <div className="flex items-center gap-2">
-                                    <Package className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                    <span className="truncate">{p.name}</span>
-                                  </div>
-                                </td>
-                                <td className="p-2 border-b">
-                                  {p.stocks ?? 0}
-                                </td>
-                                <td className="p-2 border-b whitespace-nowrap">
-                                  {p.createdAt
-                                    ? new Intl.DateTimeFormat("en-US").format(
-                                        new Date(p.createdAt)
-                                      )
-                                    : "—"}
-                                </td>
-                                <td className="p-2 border-b text-right whitespace-nowrap">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mr-2"
-                                    onClick={() => openEditProduct(p)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => confirmDeleteProduct(p)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
+                  {renderProductsTable()}
                 </TabsContent>
 
                 <TabsContent value="services" className="p-4 pt-2">
-                  {isLoadingServices ? (
-                    <div className="flex justify-center items-center h-48">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    </div>
-                  ) : services.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-                      <Server className="h-12 w-12 text-muted-foreground" />
-                      <h3 className="mt-4 text-lg font-semibold">
-                        No Services Found
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Create your first service to get started.
-                      </p>
-                      {permissions?.canCreateProducts && (
-                        <Button className="mt-6" onClick={openCreateService}>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Service
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Card view for small devices */}
-                      <div className="grid grid-cols-1 gap-4 md:hidden">
-                        {services.map((s) => (
-                          <Card
-                            key={s._id}
-                            className="flex flex-col min-w-0 break-words"
-                          >
-                            <CardContent className="pt-6">
-                              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                                <Server className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                                <h3 className="font-bold text-lg truncate max-w-[calc(100%-8rem)]">
-                                  {s.serviceName ?? "Unnamed Service"}
-                                </h3>
-                                <Badge
-                                  variant="outline"
-                                  className="flex-shrink-0"
-                                >
-                                  Service
-                                </Badge>
-                              </div>
-
-                              <p className="text-xs text-muted-foreground mt-1 truncate">
-                                Created:{" "}
-                                {s.createdAt
-                                  ? new Date(s.createdAt).toLocaleDateString(
-                                      "en-IN"
-                                    )
-                                  : "—"}
-                              </p>
-                            </CardContent>
-
-                            <CardFooter className="mt-auto border-t p-2 flex flex-wrap justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEditService(s)}
-                                className="whitespace-nowrap"
-                              >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                              </Button>
-
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => confirmDeleteService(s)}
-                                className="whitespace-nowrap"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        ))}
-                      </div>
-
-                      {/* Table view for medium+ devices */}
-                      <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full table-auto border-collapse">
-                          <thead>
-                            <tr>
-                              <th className="text-left p-2 border-b">
-                                Service
-                              </th>
-                              <th className="text-left p-2 border-b">
-                                Created At
-                              </th>
-                              <th className="text-right p-2 border-b">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {services.map((s) => (
-                              <tr key={s._id} className="hover:bg-gray-50">
-                                <td className="p-2 border-b">
-                                  <div className="flex items-center gap-2">
-                                    <Server className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                    <span className="truncate">
-                                      {s.serviceName}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="p-2 border-b whitespace-nowrap">
-                                  {s.createdAt
-                                    ? new Intl.DateTimeFormat("en-US").format(
-                                        new Date(s.createdAt)
-                                      )
-                                    : "—"}
-                                </td>
-                                <td className="p-2 border-b text-right whitespace-nowrap">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mr-2"
-                                    onClick={() => openEditService(s)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => confirmDeleteService(s)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
+                  {renderServicesTable()}
                 </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
 
-          {/* Product Form Dialog */}
+          {/* Product Form */}
           <Dialog
             open={isProductFormOpen}
             onOpenChange={(isOpen) => {
@@ -794,10 +589,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
               setIsProductFormOpen(isOpen);
             }}
           >
-            <DialogContent
-              className="w-full max-w-md mx-auto my-8 p-6 overflow-y-auto rounded-lg"
-              style={{ maxHeight: "85vh" }}
-            >
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {productToEdit ? "Edit Product" : "Create New Product"}
@@ -815,7 +607,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
             </DialogContent>
           </Dialog>
 
-          {/* Service Form Dialog */}
+          {/* Service Form */}
           <Dialog
             open={isServiceFormOpen}
             onOpenChange={(isOpen) => {
@@ -823,10 +615,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
               setIsServiceFormOpen(isOpen);
             }}
           >
-            <DialogContent
-              className="w-full max-w-md mx-auto my-8 p-6 overflow-y-auto rounded-lg"
-              style={{ maxHeight: "85vh" }}
-            >
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {serviceToEdit ? "Edit Service" : "Create New Service"}
@@ -844,7 +633,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
             </DialogContent>
           </Dialog>
 
-          {/* Delete Confirmation */}
+          {/* Shared delete confirm (knows which one is set) */}
           <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
