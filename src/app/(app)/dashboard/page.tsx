@@ -22,7 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import type { Transaction, Product, Company } from "@/lib/types";
-
+import { useUserPermissions } from "@/contexts/user-permissions-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -82,6 +82,7 @@ export default function DashboardPage() {
   const [companyData, setCompanyData] = React.useState<any>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
 
+    const { permissions: userCaps} = useUserPermissions();
   const selectedCompany = React.useMemo(
     () =>
       selectedCompanyId

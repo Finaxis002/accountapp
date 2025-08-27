@@ -51,13 +51,21 @@ import {
 } from "@/components/ui/table";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
 
-
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
   }).format(amount);
 };
+
+type TabKey =
+  | "all"
+  | "sales"
+  | "purchases"
+  | "receipts"
+  | "payments"
+  | "journals";
+type FormType = "sales" | "purchases" | "receipt" | "payment" | "journal";
 
 export default function TransactionsPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -85,8 +93,14 @@ export default function TransactionsPage() {
 
   const [parties, setParties] = React.useState<Party[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [activeTab, setActiveTab] = React.useState<TabKey>("all");
   const { selectedCompanyId } = useCompany();
-   const getCompanyId = (c: any) => (typeof c === "object" ? c?._id : c) || null;
+  const getCompanyId = (c: any) => (typeof c === "object" ? c?._id : c) || null;
+
+  const [defaultTransactionType, setDefaultTransactionType] = React.useState<
+    "sales" | "purchases" | "receipt" | "payment" | "journal" | null
+  >(null);
+
   const { toast } = useToast();
 
   // ---- PERMISSION GATING ----
@@ -110,6 +124,23 @@ export default function TransactionsPage() {
     if (canJournal) arr.push("journal");
     return arr;
   }, [canSales, canPurchases, canReceipt, canPayment, canJournal]);
+
+  const tabToFormType = (t: TabKey): FormType | null => {
+    switch (t) {
+      case "sales":
+        return "sales";
+      case "purchases":
+        return "purchases";
+      case "receipts":
+        return "receipt";
+      case "payments":
+        return "payment";
+      case "journals":
+        return "journal";
+      default:
+        return null; // "all"
+    }
+  };
 
   const canCreateAny = allowedTypes.length > 0;
 
@@ -391,11 +422,14 @@ export default function TransactionsPage() {
     };
   }, [fetchTransactions]);
 
-  const handleOpenForm = (transaction: Transaction | null = null) => {
+  const handleOpenForm = (
+    transaction: Transaction | null = null,
+    type?: "sales" | "purchases" | "receipt" | "payment" | "journal"
+  ) => {
     setTransactionToEdit(transaction);
+    setDefaultTransactionType(type || null);
     setIsFormOpen(true);
   };
-
   const handleOpenDeleteDialog = (transaction: Transaction) => {
     setTransactionToDelete(transaction);
     setIsAlertOpen(true);
@@ -505,40 +539,89 @@ export default function TransactionsPage() {
   //   [sales, purchases, receipts, payments, journals]
   // );
 
-  
   // --- Client-side company filters (defensive) ---
   const filteredSales = React.useMemo(
-    () => (selectedCompanyId ? sales.filter(s => getCompanyId(s.company) === selectedCompanyId) : sales),
+    () =>
+      selectedCompanyId
+        ? sales.filter((s) => getCompanyId(s.company) === selectedCompanyId)
+        : sales,
     [sales, selectedCompanyId]
   );
 
   const filteredPurchases = React.useMemo(
-    () => (selectedCompanyId ? purchases.filter(p => getCompanyId(p.company) === selectedCompanyId) : purchases),
+    () =>
+      selectedCompanyId
+        ? purchases.filter((p) => getCompanyId(p.company) === selectedCompanyId)
+        : purchases,
     [purchases, selectedCompanyId]
   );
 
   const filteredReceipts = React.useMemo(
-    () => (selectedCompanyId ? receipts.filter(r => getCompanyId(r.company) === selectedCompanyId) : receipts),
+    () =>
+      selectedCompanyId
+        ? receipts.filter((r) => getCompanyId(r.company) === selectedCompanyId)
+        : receipts,
     [receipts, selectedCompanyId]
   );
 
   const filteredPayments = React.useMemo(
-    () => (selectedCompanyId ? payments.filter(p => getCompanyId(p.company) === selectedCompanyId) : payments),
+    () =>
+      selectedCompanyId
+        ? payments.filter((p) => getCompanyId(p.company) === selectedCompanyId)
+        : payments,
     [payments, selectedCompanyId]
   );
 
   const filteredJournals = React.useMemo(
-    () => (selectedCompanyId ? journals.filter(j => getCompanyId(j.company) === selectedCompanyId) : journals),
+    () =>
+      selectedCompanyId
+        ? journals.filter((j) => getCompanyId(j.company) === selectedCompanyId)
+        : journals,
     [journals, selectedCompanyId]
   );
 
   // Build "All" from the filtered arrays
   const allTransactions = React.useMemo(
     () =>
-      [...filteredSales, ...filteredPurchases, ...filteredReceipts, ...filteredPayments, ...filteredJournals].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      ),
-    [sales, purchases, receipts, payments, journals]
+      [
+        ...filteredSales,
+        ...filteredPurchases,
+        ...filteredReceipts,
+        ...filteredPayments,
+        ...filteredJournals,
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [
+      filteredSales,
+      filteredPurchases,
+      filteredReceipts,
+      filteredPayments,
+      filteredJournals,
+    ]
+  );
+
+  // Only show lists the user is allowed to see
+  const visibleSales = canSales ? sales : [];
+  const visiblePurchases = canPurchases ? purchases : [];
+  const visibleReceipts = canReceipt ? receipts : [];
+  const visiblePayments = canPayment ? payments : [];
+  const visibleJournals = canJournal ? journals : [];
+
+  const allVisibleTransactions = React.useMemo(
+    () =>
+      [
+        ...visibleSales,
+        ...visiblePurchases,
+        ...visibleReceipts,
+        ...visiblePayments,
+        ...visibleJournals,
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [
+      visibleSales,
+      visiblePurchases,
+      visibleReceipts,
+      visiblePayments,
+      visibleJournals,
+    ]
   );
 
   const companyMap = React.useMemo(() => {
@@ -692,39 +775,45 @@ export default function TransactionsPage() {
             </div>
             <div className="flex items-center gap-2">
               {canCreateAny && (
-              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    onClick={() => handleOpenForm(null)}
-                    className="w-full md:w-auto"
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    New Transaction
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
-                  <DialogHeader className="p-6">
-                    <DialogTitle>
-                      {transactionToEdit
-                        ? "Edit Transaction"
-                        : "Create a New Transaction"}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {transactionToEdit
-                        ? "Update the details of the financial event."
-                        : "Fill in the details below to record a new financial event."}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <TransactionForm
-                    transactionToEdit={transactionToEdit}
-                    onFormSubmit={() => {
-                      setIsFormOpen(false);
-                      setTransactionToEdit(null);
-                      fetchTransactions();
-                    }}
-                  />
-                </DialogContent>
-              </Dialog>
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      onClick={() => handleOpenForm(null)}
+                      className="w-full md:w-auto"
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      New Transaction
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+                    <DialogHeader className="p-6">
+                      <DialogTitle>
+                        {transactionToEdit
+                          ? "Edit Transaction"
+                          : "Create a New Transaction"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {transactionToEdit
+                          ? "Update the details of the financial event."
+                          : "Fill in the details below to record a new financial event."}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <TransactionForm
+                      transactionToEdit={transactionToEdit}
+                      onFormSubmit={() => {
+                        setIsFormOpen(false);
+                        setTransactionToEdit(null);
+                        fetchTransactions();
+                      }}
+                      defaultType={
+                        defaultTransactionType ??
+                        tabToFormType(activeTab) ??
+                        allowedTypes[0] ??
+                        "sales"
+                      }
+                    />
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
           </div>
@@ -850,36 +939,75 @@ export default function TransactionsPage() {
             </DialogContent>
           </Dialog>
 
-          <Tabs defaultValue="all">
-            <div className="overflow-x-auto pb-2">
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="sales">Sales</TabsTrigger>
-                <TabsTrigger value="purchases">Purchases</TabsTrigger>
-                <TabsTrigger value="receipts">Receipts</TabsTrigger>
-                <TabsTrigger value="payments">Payments</TabsTrigger>
-                <TabsTrigger value="journals">Journals</TabsTrigger>
-              </TabsList>
-            </div>
-            <TabsContent value="all" className="mt-4">
-              {renderContent(allTransactions)}
-            </TabsContent>
-            <TabsContent value="sales" className="mt-4">
-              {renderContent(filteredSales)}
-            </TabsContent>
-            <TabsContent value="purchases" className="mt-4">
-              {renderContent(filteredPurchases)}
-            </TabsContent>
-            <TabsContent value="receipts" className="mt-4">
-              {renderContent(filteredReceipts)}
-            </TabsContent>
-            <TabsContent value="payments" className="mt-4">
-              {renderContent(filteredPayments)}
-            </TabsContent>
-            <TabsContent value="journals" className="mt-4">
-              {renderContent(filteredJournals)}
-            </TabsContent>
-          </Tabs>
+          {allowedTypes.length === 0 ? (
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold">No transaction access</h3>
+                <p className="text-sm text-muted-foreground">
+                  You don’t have permission to view transaction entries. Please
+                  contact your administrator.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as TabKey)}
+            >
+              <div className="overflow-x-auto pb-2">
+                <TabsList>
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  {canSales && <TabsTrigger value="sales">Sales</TabsTrigger>}
+                  {canPurchases && (
+                    <TabsTrigger value="purchases">Purchases</TabsTrigger>
+                  )}
+                  {canReceipt && (
+                    <TabsTrigger value="receipts">Receipts</TabsTrigger>
+                  )}
+                  {canPayment && (
+                    <TabsTrigger value="payments">Payments</TabsTrigger>
+                  )}
+                  {canJournal && (
+                    <TabsTrigger value="journals">Journals</TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
+
+              <TabsContent value="all" className="mt-4">
+                {renderContent(allVisibleTransactions)}
+              </TabsContent>
+
+              {canSales && (
+                <TabsContent value="sales" className="mt-4">
+                  {renderContent(sales)}
+                </TabsContent>
+              )}
+
+              {canPurchases && (
+                <TabsContent value="purchases" className="mt-4">
+                  {renderContent(purchases)}
+                </TabsContent>
+              )}
+
+              {canReceipt && (
+                <TabsContent value="receipts" className="mt-4">
+                  {renderContent(receipts)}
+                </TabsContent>
+              )}
+
+              {canPayment && (
+                <TabsContent value="payments" className="mt-4">
+                  {renderContent(payments)}
+                </TabsContent>
+              )}
+
+              {canJournal && (
+                <TabsContent value="journals" className="mt-4">
+                  {renderContent(journals)}
+                </TabsContent>
+              )}
+            </Tabs>
+          )}
         </>
       )}
     </div>

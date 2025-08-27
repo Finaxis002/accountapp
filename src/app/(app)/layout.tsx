@@ -51,11 +51,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
-  const isAuthRoute =
-    pathname === "/login" ||
-    pathname === "/user-login" ||
-    pathname.startsWith("/client-login/") ||
-    pathname.startsWith("/user-login/");
+const isAuthRoute =
+  pathname === "/login" ||
+  pathname === "/user-login" ||
+  pathname.startsWith("/client-login/") ||
+  pathname.startsWith("/user-login/");
+
 
   useEffect(() => {
     if (isAuthRoute) {
@@ -115,34 +116,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const role = localStorage.getItem("role");
   console.log("User role:", role);
 
-  const handleLogout = () => {
-    // read BEFORE clearing
-    const role = localStorage.getItem("role");
-    const slug =
-      localStorage.getItem("tenantSlug") ||
-      localStorage.getItem("slug") ||
-      localStorage.getItem("clientUsername");
+ const handleLogout = () => {
+  // read BEFORE clearing
+  const role = localStorage.getItem("role");
+  const slug =
+    localStorage.getItem("tenantSlug") ||
+    localStorage.getItem("slug") ||
+    localStorage.getItem("clientUsername");
 
-    // clear everything
-    localStorage.clear();
-    console.debug("Logout redirect →", role, slug);
+  // clear everything
+  localStorage.clear();
+  console.debug("Logout redirect →", role, slug);
 
-    // 🔑 redirect logic
-    if (role === "customer" && slug) {
-      // customer → their own client login page
-      window.location.assign(`/client-login/${slug}`);
-    } else if (role === "master") {
-      // master → generic login
-      window.location.assign(`/login`);
-    } else {
-      // everyone else (client, user, admin, manager, etc.)
-      window.location.assign(`/user-login`);
-    }
-  };
+  // 🔑 redirect logic
+  if (role === "customer" && slug) {
+    // customer → their own client login page
+    window.location.assign(`/client-login/${slug}`);
+  } else if (role === "master") {
+    // master → generic login
+    window.location.assign(`/login`);
+  } else {
+    // everyone else (client, user, admin, manager, etc.)
+    window.location.assign(`/user-login`);
+  }
+};
+
 
   const roleLower = (currentUser?.role ?? "").toLowerCase();
   console.log("current User :", currentUser);
-  const showAppSidebar = ["master", "client", "customer"].includes(roleLower);
+ const showAppSidebar = ["master", "client", "customer", "admin"].includes(roleLower);
+
 
   return (
     <CompanyProvider>

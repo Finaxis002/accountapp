@@ -44,7 +44,7 @@ import { usePermissions } from "@/contexts/permission-context";
 import { useCompany } from "@/contexts/company-context";
 import { Badge } from "../ui/badge";
 import { ServiceForm } from "../services/service-form";
-
+import { useUserPermissions } from "@/contexts/user-permissions-context";
 const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 
@@ -138,6 +138,8 @@ export function ProductStock() {
   const { permissions } = usePermissions();
   const { selectedCompanyId } = useCompany();
 
+   const { permissions: userCaps } = useUserPermissions();
+
   const fetchProducts = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -209,7 +211,7 @@ export function ProductStock() {
   );
 
   if (
-    !permissions?.canCreateProducts &&
+    !permissions?.canCreateProducts && !userCaps?.canCreateInventory &&
     (permissions?.maxInventories ?? 0) === 0
   ) {
     return null;
@@ -224,7 +226,7 @@ export function ProductStock() {
               <CardTitle>Product & Service Stock</CardTitle>
               <CardDescription>Current inventory levels.</CardDescription>
             </div>
-            {permissions?.canCreateProducts && (
+            {(permissions?.canCreateProducts || userCaps?.canCreateInventory) &&(
               <div className="items-end flex gap-4">
                 {/* Add Product */}
                 <Dialog
