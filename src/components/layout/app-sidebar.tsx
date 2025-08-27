@@ -42,21 +42,25 @@ import {
   SidebarMenuSubButton,
 } from "../ui/sidebar";
 import { usePermissions } from "@/contexts/permission-context";
+import { useUserPermissions } from "@/contexts/user-permissions-context";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { permissions, isLoading: permissionsLoading } = usePermissions();
-
+const { permissions: userCaps, isLoading } = useUserPermissions();
   useEffect(() => {
     setCurrentUser(getCurrentUser());
   }, []);
 
-  const handleLogout = () => {
-  const to = logout();          // ← get the right destination
-  window.location.assign(to);   // hard navigate so layout state doesn’t interfere
-};
+
+ const roleLower = (currentUser?.role ?? "").toLowerCase();
+  const canSeeUsers =
+    roleLower === "admin" || (!!permissions && permissions.canCreateUsers);
+
+  const canSeeInventory = roleLower === "admin" || (!!userCaps && userCaps.canCreateInventory)
+
 
   const isActive = (path: string) => {
     // Avoids matching /admin/dashboard when on /dashboard
@@ -156,61 +160,30 @@ export function AppSidebar() {
 
   const customerMenu = (
     <>
+      {/* Dashboard */}
       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/dashboard")}
-          tooltip="Dashboard"
-        >
+        <SidebarMenuButton asChild isActive={isActive("/dashboard")} tooltip="Dashboard">
           <Link href="/dashboard">
             <LayoutGrid />
             <span>Dashboard</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
+
+      {/* Transactions */}
       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/transactions")}
-          tooltip="Transactions"
-        >
+        <SidebarMenuButton asChild isActive={isActive("/transactions")} tooltip="Transactions">
           <Link href="/transactions">
             <ArrowRightLeft />
             <span>Transactions</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
-      {/* <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/invoices")}
-          tooltip="Invoices"
-        >
-          <Link href="/invoices">
-            <FileText />
-            <span>Invoices</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem> */}
-      {/* <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/companies")}
-          tooltip="Companies"
-        >
-          <Link href="/companies">
-            <Building />
-            <span>Companies</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem> */}
-      {permissions?.canCreateProducts && (
+
+      {/* Inventory (keeps existing permission gating) */}
+      { canSeeInventory && (
         <SidebarMenuItem>
-          <SidebarMenuButton
-            asChild
-            isActive={isActive("/inventory")}
-            tooltip="Inventory"
-          >
+          <SidebarMenuButton asChild isActive={isActive("/inventory")} tooltip="Inventory">
             <Link href="/inventory">
               <Package />
               <span>Inventory</span>
@@ -219,27 +192,23 @@ export function AppSidebar() {
         </SidebarMenuItem>
       )}
 
-      {permissionsLoading ? (
+      {/* Users — show for admins OR when permission allows */}
+      {canSeeUsers && (
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={isActive("/users")} tooltip="Users">
+            <Link href="/users">
+              <Users />
+              <span>Users</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
+
+      {/* (optional) keep the loading indicator for other caps, but it's no longer gating "Users" for admin */}
+      {permissionsLoading && (
         <div className="flex items-center gap-2 p-2">
           <Loader2 className="h-4 w-4 animate-spin" /> <span>Loading...</span>
         </div>
-      ) : (
-        <>
-          {permissions?.canCreateUsers && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive("/users")}
-                tooltip="Users"
-              >
-                <Link href="/users">
-                  <Users />
-                  <span>Users</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-        </>
       )}
 
       <Collapsible defaultOpen={isReportsActive}>
@@ -318,14 +287,14 @@ export function AppSidebar() {
               </p>
             </div>
           </div>
-          <Button
+          {/* <Button
             variant="ghost"
             className="w-full justify-start"
             onClick={handleLogout}
           >
             <LogOut className="mr-2 h-4 w-4" />
             Logout
-          </Button>
+          </Button> */}
         </div>
       )}
     </Sidebar>

@@ -70,11 +70,7 @@ const makeCustomFilterFn = (
       (l.name || "").toLowerCase().includes(q)
     );
 
-    return (
-      partyName.toLowerCase().includes(q) ||
-      desc.includes(q) ||
-      matchLine
-    );
+    return partyName.toLowerCase().includes(q) || desc.includes(q) || matchLine;
   };
 };
 
@@ -173,7 +169,9 @@ export const columns = ({
       cell: ({ row }: { row: Row<Transaction> }) => {
         const company = row.original.company;
         const companyId =
-          typeof company === "object" && company !== null ? (company as any)._id : company;
+          typeof company === "object" && company !== null
+            ? (company as any)._id
+            : company;
 
         if (!companyId) return "N/A";
 
@@ -340,10 +338,11 @@ export const columns = ({
     {
       id: "actions",
       cell: ({ row }) => {
+        // inside actions column cell
         const transaction = row.original;
-        const isSales =
-          transaction.type === "sales" ||
-          getUnifiedLines(transaction as any, serviceNameById).length > 0;
+
+        // Invoice actions are allowed ONLY for sales
+        const isInvoiceable = transaction.type === "sales";
 
         const buildCompany = (): Company | undefined => {
           const c = transaction.company as any;
@@ -394,9 +393,10 @@ export const columns = ({
                 <span>Copy transaction ID</span>
               </DropdownMenuItem>
 
+              {/* Preview / Download enabled only for sales */}
               <DropdownMenuItem
                 onClick={() => onPreview(transaction)}
-                disabled={!isSales}
+                disabled={!isInvoiceable}
               >
                 <Eye className="mr-2 h-4 w-4" />
                 <span>Preview Invoice</span>
@@ -404,7 +404,7 @@ export const columns = ({
 
               <DropdownMenuItem
                 onClick={handleDownload}
-                disabled={!isSales}
+                disabled={!isInvoiceable}
               >
                 <Download className="mr-2 h-4 w-4" />
                 <span>Download Invoice</span>

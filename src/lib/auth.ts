@@ -93,58 +93,66 @@ export async function loginCustomer(
   return user;
 }
 
-export function getCurrentUser(): (User & { clientUsername?: string; slug?: string }) | null {
+
+// lib/auth.ts
+export const normalizeRole = (r?: string) => {
+  const s = String(r || "").trim().toLowerCase();
+  // map display roles to canonical if you want:
+  if (s === "viewer") return "user";
+  if (s === "accountant") return "user";
+  return s; // "master" | "customer" | "admin" | "manager" | "user" | "client"
+};
+
+
+export function getCurrentUser():
+  (User & { clientUsername?: string; slug?: string }) | null {
   if (typeof window === "undefined") return null;
 
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role") as User["role"] | null;
-  const username = localStorage.getItem("username");
+  const role = normalizeRole(localStorage.getItem("role") || "");
 
-  if (!token || !role || !username) return null;
+  // be lenient about which username key was stored
+  const username =
+    localStorage.getItem("username") ||
+    localStorage.getItem("userId") ||
+    localStorage.getItem("userName") ||
+    localStorage.getItem("name") ||
+    "";
 
-  // master admin
+  if (!token || !role) return null;
+
+  const name = localStorage.getItem("name") || username || "User";
+  const email =
+    localStorage.getItem("email") ||
+    (username ? `${username}@accountech.com` : "user@accountech.com");
+  const initials = (name || "U").slice(0, 2).toUpperCase();
+
   if (role === "master") {
-    return {
-      name: username,
-      username,
-      email: `${username}@accountech.com`,
-      avatar: "/avatars/01.png",
-      initials: username.substring(0, 2).toUpperCase(),
-      role: "master",
-    };
+    return { name, username: username || "master", email, avatar: "/avatars/01.png", initials, role: "master" };
   }
 
-  // client/customer
   if (role === "customer") {
-    const clientUsername = localStorage.getItem("clientUsername") || username;
-    const slug = localStorage.getItem("slug") || clientUsername;
+    const clientUsername = localStorage.getItem("clientUsername") || username || "";
+    const slug = localStorage.getItem("slug") || clientUsername || "";
     return {
-      name: localStorage.getItem("name") || "",
-      username,
-      email: localStorage.getItem("email") || "",
+      name,
+      username: username || clientUsername || "customer",
+      email,
       avatar: "/avatars/02.png",
-      initials: (localStorage.getItem("name") || "").substring(0, 2).toUpperCase(),
+      initials,
       role: "customer",
       clientUsername,
       slug,
     };
   }
 
-  // ✅ employee/admin
-  if (role === "admin" || role === "user") {
-    return {
-      name: username,
-      username,
-      email: `${username}@accountech.com`, // swap to real email if you store it
-      avatar: "/avatars/03.png",
-      initials: username.substring(0, 2).toUpperCase(),
-      role, // "admin" | "user"
-    };
+  // employees: admin / manager / user / client
+  if (["admin", "manager", "user", "client"].includes(role)) {
+    return { name, username: username || role, email, avatar: "/avatars/03.png", initials, role: role as User["role"] };
   }
 
   return null;
 }
-
 
 
 export async function loginClientBySlug(
@@ -183,47 +191,46 @@ export async function loginClientBySlug(
   return user;
 }
 
-export async function loginUser(userId: string, password: string): Promise<User> {
-  if (!userId || !password) throw new Error("User ID and password are required.");
-
-  const res = await fetch(`${baseURL}/api/users/login`, {
+// lib/auth.ts
+export async function loginUser(userId: string, password: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, password }),
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || data?.error || "Login failed");
-
-  // Expecting: { token, user: { _id, userName, role, companies, ... } }
-  const { token, user } = data;
-
-  const normalized: User = {
-    name: user.userName,
-    username: user.userName,
-    email: `${user.userName}@accountech.com`, // swap to real email if you have it
-    avatar: "/avatars/03.png",
-    initials: (user.userName || "").substring(0, 2).toUpperCase(),
-    role: user.role, // "admin" | "user"
-    token,
-  };
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", user.role);
-    localStorage.setItem("username", user.userName);
-
-    // Optional extras if you need them later
-    if (Array.isArray(user.companies)) {
-      localStorage.setItem("companies", JSON.stringify(user.companies));
-    }
-    if (user.createdByClient) {
-      localStorage.setItem("createdByClient", user.createdByClient);
-    }
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.message || "Login failed");
   }
 
-  return normalized;
+  const data = await res.json();
+
+  // role can be a string, populated object, or separate field
+  const roleRaw =
+    (typeof data?.user?.role === "string" && data.user.role) ||
+    data?.user?.role?.name ||
+    data?.roleName ||
+    "";
+  const role = normalizeRole(roleRaw);
+
+  // pick a stable username key for storage
+  const username =
+    data?.user?.userId ||
+    data?.user?.userName ||
+    data?.user?.username ||
+    data?.user?.name ||
+    "";
+
+  localStorage.setItem("token", data.token || "");
+  localStorage.setItem("role", role);
+  localStorage.setItem("username", username);
+  localStorage.setItem("name", data?.user?.name || data?.user?.userName || "");
+  localStorage.setItem("email", data?.user?.email || "");
+
+  // return a normalized user to the caller
+  return { ...data.user, role };
 }
+
 
 
 
