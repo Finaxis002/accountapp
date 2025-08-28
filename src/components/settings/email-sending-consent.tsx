@@ -22,6 +22,11 @@ type EmailStatus = {
   connected: boolean;
   email?: string | null;
   termsAcceptedAt?: string | null;
+
+  // OPTIONAL: add in your backend if you can.
+  // If not present, the UI still works with `connected` + `email`.
+  reason?: "token_expired" | "revoked" | "unknown" | null;
+  lastFailureAt?: string | null;
 };
 
 export function EmailSendingConsent() {
@@ -34,7 +39,13 @@ export function EmailSendingConsent() {
   const [connecting, setConnecting] = React.useState(false);
   const [reconnectNotice, setReconnectNotice] = React.useState(false);
 
-  // add near top (below other state):
+  // Track previous "connected" state to detect a flip -> disconnected
+  const prevConnectedRef = React.useRef<boolean | null>(null);
+
+  // Polling interval (ms)
+  const POLL_MS = 120_000; // 2 minutes
+
+  // Fetch current status
   const refreshStatus = React.useCallback(async () => {
     const token = localStorage.getItem("token");
     const res = await fetch(`${baseURL}/api/integrations/gmail/status`, {
@@ -42,20 +53,34 @@ export function EmailSendingConsent() {
     });
     if (!res.ok) throw new Error("Failed to load email status");
     const data = (await res.json()) as EmailStatus;
-    setStatus(data);
-  }, []);
 
-  // effect #1: on mount, if callback added ?gmail=connected, handle it
-  // effect #1: on mount, handle callback flags added to URL by the backend
+    // Compare with previous "connected" value to detect expiry
+    const wasConnected = prevConnectedRef.current;
+    const nowConnected = !!data.connected;
+
+    setStatus(data);
+    prevConnectedRef.current = nowConnected;
+
+    // If we were connected and now we're not -> show reconnect banner & toast
+    if (wasConnected && !nowConnected && data.email) {
+      setReconnectNotice(true);
+      const msg =
+        data.reason === "token_expired"
+          ? "Your Gmail session expired. Please reconnect to keep emailing invoices."
+          : "Your Gmail connection is no longer active. Please reconnect.";
+      toast({ variant: "destructive", title: "Gmail needs reconnect", description: msg });
+    }
+  }, [toast]);
+
+  // Handle callback flags added to URL by backend (e.g., after OAuth)
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
-    const gmailFlag = sp.get("gmail"); // connected | reconnect | revoked | disconnected
+    const gmailFlag = sp.get("gmail"); // "connected" | "reconnect" | "revoked" | "disconnected"
     const connectedEmail = sp.get("email");
 
-    async function handle() {
+    (async () => {
       if (!gmailFlag) return;
 
-      // Always refresh status first so UI reflects the latest
       try {
         await refreshStatus();
       } catch {
@@ -69,6 +94,7 @@ export function EmailSendingConsent() {
             ? `Connected as ${connectedEmail}`
             : "Connection successful.",
         });
+        setReconnectNotice(false);
       } else if (
         gmailFlag === "reconnect" ||
         gmailFlag === "revoked" ||
@@ -88,12 +114,10 @@ export function EmailSendingConsent() {
       url.searchParams.delete("gmail");
       url.searchParams.delete("email");
       window.history.replaceState({}, "", url.toString());
-    }
-
-    handle();
+    })();
   }, [refreshStatus, toast]);
 
-  // effect #2: listen for a global event to force the reconnect dialog/banner
+  // Listen for a global event to force the reconnect dialog/banner
   React.useEffect(() => {
     const onNeedsReconnect = () => setReconnectNotice(true);
     window.addEventListener("gmail:reconnect-required", onNeedsReconnect);
@@ -101,8 +125,7 @@ export function EmailSendingConsent() {
       window.removeEventListener("gmail:reconnect-required", onNeedsReconnect);
   }, []);
 
-  // 🔎 Fetch current status (terms + gmail connection)
-  // 🔎 Fetch current status (terms + gmail connection)
+  // Initial load
   React.useEffect(() => {
     let mounted = true;
     (async () => {
@@ -119,22 +142,29 @@ export function EmailSendingConsent() {
     };
   }, [refreshStatus]);
 
+  // Light polling to catch token expiry while user is on the screen
+  const hasAccepted = Boolean(status.termsAcceptedAt);
+  React.useEffect(() => {
+    if (!hasAccepted) return; // no need to poll until terms are accepted
+    const id = setInterval(() => {
+      refreshStatus().catch(() => {});
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [hasAccepted, refreshStatus]);
+
   const handleAgree = async () => {
     if (!agreeChecked) return;
     setSavingAgree(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${baseURL}/api/integrations/gmail/accept-terms`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token || ""}`,
-          },
-          body: JSON.stringify({ accepted: true }),
-        }
-      );
+      const res = await fetch(`${baseURL}/api/integrations/gmail/accept-terms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token || ""}`,
+        },
+        body: JSON.stringify({ accepted: true }),
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || "Failed to record acceptance");
@@ -164,24 +194,23 @@ export function EmailSendingConsent() {
       const url =
         `${baseURL}/api/integrations/gmail/connect` +
         `?redirect=${encodeURIComponent(redirect)}` +
-        `&token=${encodeURIComponent(token)}`; // <-- pass token in query for this flow
+        `&token=${encodeURIComponent(token)}`;
 
-      // open in a new tab
       window.open(url, "_blank", "noopener,noreferrer");
     } finally {
       setConnecting(false);
     }
   };
 
-  const hasAccepted = Boolean(status.termsAcceptedAt);
   const needsReconnect =
-    reconnectNotice || (hasAccepted && !!status.email && !status.connected);
+    reconnectNotice ||
+    (hasAccepted && !!status.email && !status.connected) ||
+    (hasAccepted && status.reason === "token_expired");
 
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Checking email-sending
-        status…
+        <Loader2 className="h-4 w-4 animate-spin" /> Checking email-sending status…
       </div>
     );
   }
@@ -193,8 +222,8 @@ export function EmailSendingConsent() {
           <ShieldCheck className="h-4 w-4" />
           <AlertTitle>Email invoicing is enabled for your account</AlertTitle>
           <AlertDescription className="mt-2">
-            Your administrator has granted you permission to send invoices via
-            email. Please review and accept the terms to activate this feature.
+            Your administrator has granted you permission to send invoices via email.
+            Please review and accept the terms to activate this feature.
             <div className="mt-3">
               <Button size="sm" onClick={() => setDialogOpen(true)}>
                 Read & Agree
@@ -206,15 +235,20 @@ export function EmailSendingConsent() {
 
       {needsReconnect && (
         <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-500/10">
-          <AlertTitle className="font-medium">
-            Gmail disconnected — action required
-          </AlertTitle>
+          <AlertTitle className="font-medium">Gmail disconnected — action required</AlertTitle>
           <AlertDescription className="mt-1">
-            To email invoices, please reconnect your Gmail account.
+            {status.reason === "token_expired"
+              ? "Your Gmail session has expired. Please reconnect to continue emailing invoices."
+              : "To email invoices, please reconnect your Gmail account."}
+            {status.lastFailureAt ? (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Last send failure: {new Date(status.lastFailureAt).toLocaleString()}
+              </div>
+            ) : null}
             <div className="mt-3">
               <Button size="sm" onClick={handleConnect}>
                 <Mail className="h-4 w-4 mr-2" />
-                Reconnect Gmail
+                {status.email ? "Reconnect Gmail" : "Connect Gmail"}
               </Button>
             </div>
           </AlertDescription>
@@ -240,20 +274,13 @@ export function EmailSendingConsent() {
           </div>
           <div className="flex items-center gap-2">
             {status.connected ? (
-              // Show a simple "Connected" pill (no button)
               <div className="px-3 py-2 rounded-md bg-emerald-50 text-emerald-700 text-sm flex items-center gap-2 dark:bg-emerald-500/10 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4" />
                 <span>Connected{status.email ? `: ${status.email}` : ""}</span>
               </div>
             ) : (
-              // If previously had an email on file -> "Reconnect", else "Connect"
-              <Button
-                onClick={handleConnect}
-                disabled={!hasAccepted || connecting}
-              >
-                {connecting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
+              <Button onClick={handleConnect} disabled={!hasAccepted || connecting}>
+                {connecting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {status.email ? "Reconnect Gmail" : "Connect Gmail"}
               </Button>
             )}
@@ -269,29 +296,25 @@ export function EmailSendingConsent() {
           </DialogHeader>
           <ScrollArea className="h-64 rounded-md border p-4 text-sm space-y-4">
             <p>
-              <strong>1. Scope.</strong> You authorize this app to send invoice
-              emails on your behalf.
+              <strong>1. Scope.</strong> You authorize this app to send invoice emails on your behalf.
             </p>
             <p>
-              <strong>2. Data usage.</strong> Email metadata (recipient,
-              subject) and invoice PDFs may be processed to deliver messages.
+              <strong>2. Data usage.</strong> Email metadata (recipient, subject) and invoice PDFs may be
+              processed to deliver messages.
             </p>
             <p>
-              <strong>3. Gmail access.</strong> We request the Gmail scope{" "}
-              <code>gmail.send</code> solely to send messages; we do not read
-              your inbox.
+              <strong>3. Gmail access.</strong> We request the Gmail scope <code>gmail.send</code> solely
+              to send messages; we do not read your inbox.
             </p>
             <p>
-              <strong>4. Compliance.</strong> You agree to comply with anti-spam
-              and email content policies. Do not send unsolicited emails.
+              <strong>4. Compliance.</strong> You agree to comply with anti-spam and email content policies.
+              Do not send unsolicited emails.
             </p>
             <p>
-              <strong>5. Revocation.</strong> You can disconnect your email
-              anytime from this screen.
+              <strong>5. Revocation.</strong> You can disconnect your email anytime from this screen.
             </p>
             <p>
-              <strong>6. Liability.</strong> Use at your own risk; the service
-              is provided “as is”.
+              <strong>6. Liability.</strong> Use at your own risk; the service is provided “as is”.
             </p>
           </ScrollArea>
           <div className="flex items-center gap-2 pt-3">
@@ -308,13 +331,8 @@ export function EmailSendingConsent() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleAgree}
-              disabled={!agreeChecked || savingAgree}
-            >
-              {savingAgree ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
+            <Button onClick={handleAgree} disabled={!agreeChecked || savingAgree}>
+              {savingAgree ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Agree & Continue
             </Button>
           </DialogFooter>

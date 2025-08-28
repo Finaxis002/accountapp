@@ -22,18 +22,20 @@ interface InvoicePreviewProps {
   transaction: Transaction | null;
   company: Company | null;
   party: Party | null;
+   serviceNameById?: Map<string, string>;
 }
 
 export function InvoicePreview({
   transaction,
   company,
   party,
+  serviceNameById,
 }: InvoicePreviewProps) {
   const [selectedTemplate, setSelectedTemplate] = React.useState("template1");
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  React.useEffect(() => {
+React.useEffect(() => {
     let objectUrl: string | null = null;
 
     const generatePdf = async () => {
@@ -41,23 +43,17 @@ export function InvoicePreview({
         setIsLoading(false);
         return;
       }
-
       setIsLoading(true);
       try {
-        // 👉 Always produce a Promise, then await it
+        // ✅ forward serviceNameById to the PDF generators
         const docPromise =
           selectedTemplate === "template1"
-            ? Promise.resolve(
-                generatePdfForTemplate1(transaction, company, party)
-              )
+            ? Promise.resolve(generatePdfForTemplate1(transaction, company, party, serviceNameById))
             : selectedTemplate === "template2"
-            ? Promise.resolve(
-                generatePdfForTemplate2(transaction, company, party)
-              )
-            : generatePdfForTemplate3(transaction, company, party); // <-- async
+            ? Promise.resolve(generatePdfForTemplate2(transaction, company, party, serviceNameById))
+            : generatePdfForTemplate3(transaction, company, party, serviceNameById);
 
-        const doc = await docPromise; // <-- IMPORTANT
-
+        const doc = await docPromise;
         const pdfBlob = doc.output("blob");
         objectUrl = URL.createObjectURL(pdfBlob);
         setPdfUrl(objectUrl);
@@ -70,11 +66,8 @@ export function InvoicePreview({
     };
 
     generatePdf();
-
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [selectedTemplate, transaction, company, party]);
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [selectedTemplate, transaction, company, party, serviceNameById]);
 
   const handleDownload = () => {
     if (pdfUrl) {

@@ -43,7 +43,9 @@ export type Transaction = {
   invoiceNumber?: string | null;
   invoiceYearYY?: number | null;
   date: Date;
-  party?: { _id: string; name: string } | string;
+  party?: {
+    email: boolean; _id: string; name: string 
+} | string;
   vendor?: { _id: string; vendorName: string } | string;
   description?: string;
    amount: number; // Fallback for old transactions, new ones use totalAmount
