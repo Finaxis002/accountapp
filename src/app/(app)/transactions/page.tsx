@@ -167,12 +167,12 @@ export default function TransactionsPage() {
       const buildRequest = (url: string) =>
         fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
-      console.log("Fetching sales with query:", queryParam);
-      console.log("Selected company ID:", selectedCompanyId);
+      // console.log("Fetching sales with query:", queryParam);
+      // console.log("Selected company ID:", selectedCompanyId);
 
       // Response parsing utilities
       const parseResponse = (data: any, possibleArrayKeys: string[] = []) => {
-        console.log("Parsing response:", data);
+        // console.log("Parsing response:", data);
 
         if (Array.isArray(data)) return data;
 
@@ -251,7 +251,7 @@ export default function TransactionsPage() {
             );
           }
           const data = await response.json();
-          console.log(`${endpointName} response:`, data);
+          // console.log(`${endpointName} response:`, data);
           return parser(data);
         } catch (error) {
           console.error(`Error fetching ${endpointName}:`, error);
@@ -357,8 +357,8 @@ export default function TransactionsPage() {
         ),
       ]);
 
-      console.log("Parsed sales:", salesArray);
-      console.log("Parsed purchases:", purchasesArray);
+      // console.log("Parsed sales:", salesArray);
+      // console.log("Parsed purchases:", purchasesArray);
 
       // Update state with parsed data
       setSales(salesArray.map((p: any) => ({ ...p, type: "sales" })));
@@ -408,6 +408,9 @@ export default function TransactionsPage() {
     return m;
   }, [servicesList]);
 
+  // console.log("serviceNameById  :", serviceNameById);
+  // console.log("servicesList  :", servicesList);
+
   React.useEffect(() => {
     let isMounted = true;
 
@@ -446,11 +449,11 @@ export default function TransactionsPage() {
       // Debug: Log the product ID and name lookup
       const productName =
         productNameById.get(p.product) || p.product?.name || "(product)";
-      console.log("Product lookup:", {
-        id: p.product,
-        foundName: productNameById.get(p.product),
-        productObj: p.product,
-      });
+      // console.log("Product lookup:", {
+      //   id: p.product,
+      //   foundName: productNameById.get(p.product),
+      //   productObj: p.product,
+      // });
 
       return {
         itemType: "product" as const,
@@ -463,19 +466,39 @@ export default function TransactionsPage() {
       };
     });
 
-    const svcArr = tx.service ?? tx.services ?? [];
-    const svcs = svcArr.map((s: any) => ({
-      itemType: "service" as const,
-      name:
-        serviceNameById.get(
-          typeof s.serviceName === "object" ? s.serviceName._id : s.serviceName
-        ) || "(service)",
-      quantity: "",
-      unitType: "",
-      pricePerUnit: "",
-      description: s.description || "",
-      amount: Number(s.amount) || 0,
-    }));
+    // inside handleViewItems
+    const svcArr = Array.isArray(tx.services)
+      ? tx.services
+      : Array.isArray(tx.service)
+      ? tx.service
+      : [];
+
+    const svcs = svcArr.map((s: any) => {
+      // id can be raw ObjectId or populated doc; also support legacy s.serviceName
+      const id =
+        typeof s.service === "object"
+          ? s.service._id
+          : s.service ??
+            (typeof s.serviceName === "object"
+              ? s.serviceName._id
+              : s.serviceName);
+
+      const name =
+        (id && serviceNameById.get(String(id))) ||
+        (typeof s.service === "object" && s.service.serviceName) ||
+        (typeof s.serviceName === "object" && s.serviceName.serviceName) ||
+        "(service)";
+
+      return {
+        itemType: "service" as const,
+        name,
+        quantity: "",
+        unitType: "",
+        pricePerUnit: "",
+        description: s.description || "",
+        amount: Number(s.amount) || 0,
+      };
+    });
 
     setItemsToView([...prods, ...svcs]);
     setIsItemsDialogOpen(true);
@@ -531,13 +554,31 @@ export default function TransactionsPage() {
     }
   };
 
-  // const allTransactions = React.useMemo(
-  //   () =>
-  //     [...sales, ...purchases, ...receipts, ...payments, ...journals].sort(
-  //       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  //     ),
-  //   [sales, purchases, receipts, payments, journals]
-  // );
+  async function handleSendInvoice(tx: Transaction) {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`${baseURL}/api/sales/${tx._id}/send-invoice`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to send invoice");
+
+      toast({
+        title: "Invoice sent",
+        description:
+          typeof tx.party === "object" && tx.party?.email
+            ? `Sent to ${tx.party.email}`
+            : "Sent to customer’s email.",
+      });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Send failed",
+        description: e instanceof Error ? e.message : "Something went wrong.",
+      });
+    }
+  }
 
   // --- Client-side company filters (defensive) ---
   const filteredSales = React.useMemo(
@@ -578,25 +619,6 @@ export default function TransactionsPage() {
         ? journals.filter((j) => getCompanyId(j.company) === selectedCompanyId)
         : journals,
     [journals, selectedCompanyId]
-  );
-
-  // Build "All" from the filtered arrays
-  const allTransactions = React.useMemo(
-    () =>
-      [
-        ...filteredSales,
-        ...filteredPurchases,
-        ...filteredReceipts,
-        ...filteredPayments,
-        ...filteredJournals,
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [
-      filteredSales,
-      filteredPurchases,
-      filteredReceipts,
-      filteredPayments,
-      filteredJournals,
-    ]
   );
 
   // Only show lists the user is allowed to see
@@ -641,6 +663,7 @@ export default function TransactionsPage() {
       onDelete: handleOpenDeleteDialog,
       companyMap,
       serviceNameById, // Add this line
+      onSendInvoice: handleSendInvoice,
     });
 
     if (companies.length <= 1) {
@@ -665,12 +688,12 @@ export default function TransactionsPage() {
     return <DataTable columns={tableColumns} data={data} />;
   };
 
-  React.useEffect(() => {
-    console.log("Loading state:", isLoading);
-    console.log("Companies count:", companies.length);
-    console.log("Sales data:", sales);
-    console.log("Purchases data:", purchases);
-  }, [isLoading, companies.length, sales, purchases]);
+  // React.useEffect(() => {
+  //   console.log("Loading state:", isLoading);
+  //   console.log("Companies count:", companies.length);
+  //   console.log("Sales data:", sales);
+  //   console.log("Purchases data:", purchases);
+  // }, [isLoading, companies.length, sales, purchases]);
 
   return (
     <div className="space-y-6">
@@ -811,6 +834,21 @@ export default function TransactionsPage() {
                         allowedTypes[0] ??
                         "sales"
                       }
+                      transaction={transactionToPreview}
+                      company={
+                        companies.find(
+                          (c) => c._id === transactionToPreview?.company?._id
+                        ) || null
+                      }
+                      party={
+                        parties.find(
+                          (p) =>
+                            p._id ===
+                              (transactionToPreview as any)?.party?._id ||
+                            transactionToPreview?.party === p._id
+                        ) || null
+                      }
+                      serviceNameById={serviceNameById} // ✅ pass it
                     />
                   </DialogContent>
                 </Dialog>
@@ -855,10 +893,11 @@ export default function TransactionsPage() {
                 party={
                   parties.find(
                     (p) =>
-                      p._id === (transactionToPreview?.party as any)?._id ||
+                      p._id === (transactionToPreview as any)?.party?._id ||
                       transactionToPreview?.party === p._id
                   ) || null
                 }
+                serviceNameById={serviceNameById} // ✅ pass it
               />
             </DialogContent>
           </Dialog>

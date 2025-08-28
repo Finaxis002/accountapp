@@ -12,6 +12,7 @@ import {
   Package,
   Eye,
   Server,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,7 @@ interface ColumnsProps {
   onDelete: (transaction: Transaction) => void;
   companyMap: Map<string, string>;
   serviceNameById: Map<string, string>;
+  onSendInvoice: (tx: Transaction) => void;
 }
 
 /** Build a filter function that can match party/vendor, description and line names */
@@ -82,6 +84,7 @@ export const columns = ({
   onDelete,
   companyMap,
   serviceNameById,
+  onSendInvoice,
 }: ColumnsProps): ColumnDef<Transaction>[] => {
   const customFilterFn = makeCustomFilterFn(serviceNameById);
 
@@ -364,7 +367,8 @@ export const columns = ({
           const doc = generatePdfForTemplate1(
             transaction,
             buildCompany(),
-            buildParty()
+            buildParty(),
+            serviceNameById
           );
           const fname = `Invoice-${(transaction._id ?? "INV")
             .toString()
@@ -409,6 +413,14 @@ export const columns = ({
                 <Download className="mr-2 h-4 w-4" />
                 <span>Download Invoice</span>
               </DropdownMenuItem>
+
+              {/* <DropdownMenuItem
+                onClick={() => onSendInvoice(transaction)}
+                disabled={!isInvoiceable}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                <span>Send invoice to client</span>
+              </DropdownMenuItem> */}
 
               <DropdownMenuSeparator />
 

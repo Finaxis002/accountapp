@@ -56,10 +56,29 @@ import { VendorForm } from "../vendors/vendor-form";
 import { CustomerForm } from "../customers/customer-form";
 import { useCompany } from "@/contexts/company-context";
 import { ProductForm } from "../products/product-form";
-import { ServiceForm } from "../services/service-form";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
+import {
+  generatePdfForTemplate3,
+  generatePdfForTemplate1,
+} from "@/lib/pdf-templates";
+import { getUnifiedLines } from "@/lib/getUnifiedLines";
+
+// reads gstin from various possible shapes/keys
+const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
+  const x = c as any;
+  return (
+    x?.gstin ??
+    x?.gstIn ??
+    x?.gstNumber ??
+    x?.gst_no ??
+    x?.gst ??
+    x?.gstinNumber ??
+    x?.tax?.gstin ??
+    null
+  );
+};
 
 const unitTypes = [
   "Kg",
@@ -92,7 +111,6 @@ const PRODUCT_DEFAULT = {
   amount: 0,
 };
 
-// REPLACE the whole itemSchema with this:
 const itemSchema = z
   .object({
     itemType: z.enum(["product", "service"]),
@@ -161,9 +179,9 @@ const formSchema = z
     fromAccount: z.string().optional(), // For Journal Debit
     toAccount: z.string().optional(), // For Journal Credit
     narration: z.string().optional(),
-    gstRate: z.coerce.number().min(0).max(100).optional(),      // <-- NEW
-  taxAmount: z.coerce.number().min(0).optional(),              // <-- NEW (derived)
-  invoiceTotal: z.coerce.number().min(0).optional(),     
+    gstRate: z.coerce.number().min(0).max(100).optional(), // <-- NEW
+    taxAmount: z.coerce.number().min(0).optional(), // <-- NEW (derived)
+    invoiceTotal: z.coerce.number().min(0).optional(),
   })
   .refine(
     (data) => {
@@ -206,12 +224,20 @@ interface TransactionFormProps {
   transactionToEdit?: Transaction | null;
   onFormSubmit: () => void;
   defaultType?: "sales" | "purchases" | "receipt" | "payment" | "journal"; // Add this
+  serviceNameById: Map<string, string>;
+  transaction: any;
+  party: any;
+  company: any;
 }
 
 export function TransactionForm({
   transactionToEdit,
   onFormSubmit,
   defaultType = "sales",
+  serviceNameById,
+  transaction,
+  party,
+  company,
 }: TransactionFormProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
@@ -238,6 +264,46 @@ export function TransactionForm({
   const { selectedCompanyId } = useCompany();
   const { permissions: userCaps } = useUserPermissions();
 
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    mode: "onChange", // <— add this
+    reValidateMode: "onChange", // <— and this
+    defaultValues: {
+      party: "",
+      description: "",
+      totalAmount: 0,
+      items: [PRODUCT_DEFAULT],
+      type: defaultType,
+      referenceNumber: "",
+      fromAccount: "",
+      toAccount: "",
+      narration: "",
+      company: selectedCompanyId || "",
+      date: new Date(),
+      gstRate: STANDARD_GST, // <-- NEW (Sales/Purchases will use this)
+      taxAmount: 0, // <-- NEW
+      invoiceTotal: 0,
+    },
+  });
+
+  // which company is currently selected?
+  const selectedCompanyIdWatch = useWatch({
+    control: form.control,
+    name: "company",
+  });
+
+  const selectedCompany = React.useMemo(
+    () => companies.find((c) => c._id === selectedCompanyIdWatch),
+    [companies, selectedCompanyIdWatch]
+  );
+
+  const companyGSTIN = React.useMemo(
+    () => getCompanyGSTIN(selectedCompany),
+    [selectedCompany]
+  );
+
+  const gstEnabled = !!(companyGSTIN && String(companyGSTIN).trim());
+
   const role = localStorage.getItem("role");
   const isSuper = role === "master" || role === "client";
 
@@ -262,28 +328,6 @@ export function TransactionForm({
     return arr;
   }, [canSales, canPurchases, canReceipt, canPayment, canJournal]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    mode: "onChange", // <— add this
-    reValidateMode: "onChange", // <— and this
-    defaultValues: {
-      party: "",
-      description: "",
-      totalAmount: 0,
-      items: [PRODUCT_DEFAULT],
-      type: defaultType,
-      referenceNumber: "",
-      fromAccount: "",
-      toAccount: "",
-      narration: "",
-      company: selectedCompanyId || "",
-      date: new Date(),
-      gstRate: STANDARD_GST,   // <-- NEW (Sales/Purchases will use this)
-  taxAmount: 0,            // <-- NEW
-  invoiceTotal: 0,  
-    },
-  });
-
   const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items",
@@ -299,7 +343,6 @@ export function TransactionForm({
     return false;
   }, [type, canCreateCustomer, canCreateVendor]);
 
-  const productCreatable = canCreateInventory;
   const serviceCreatable = canCreateInventory;
 
   // ADD THIS useEffect (keeps items only where they belong)
@@ -316,82 +359,48 @@ export function TransactionForm({
     }
   }, [type, replace, form]);
 
-  // REPLACE the whole calc effect with this:
-  // React.useEffect(() => {
-  //   // Only auto-calc in sales/purchases
-  //   if (!watchedItems || !["sales", "purchases"].includes(type)) return;
+  const gstRate = useWatch({ control: form.control, name: "gstRate" });
 
-  //   let grandTotal = 0;
+  React.useEffect(() => {
+    if (!watchedItems || !["sales", "purchases"].includes(type)) return;
 
-  //   watchedItems.forEach((it, idx) => {
-  //     if (it?.itemType === "product") {
-  //       const q = Number(it.quantity) || 0;
-  //       const p = Number(it.pricePerUnit) || 0;
-  //       const amt = +(q * p).toFixed(2);
-  //       grandTotal += amt;
+    let subTotal = 0;
 
-  //       // write back only if changed to avoid loops
-  //       const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
-  //       if (current !== amt) {
-  //         form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
-  //       }
-  //     } else if (it?.itemType === "service") {
-  //       // DO NOT overwrite service amounts; just read them
-  //       const amt = Number(it.amount) || 0;
-  //       grandTotal += amt;
-  //     }
-  //   });
+    watchedItems.forEach((it, idx) => {
+      if (it?.itemType === "product") {
+        const q = Number(it.quantity) || 0;
+        const p = Number(it.pricePerUnit) || 0;
+        const amt = +(q * p).toFixed(2);
+        subTotal += amt;
 
-  //   const curTotal = Number(form.getValues("totalAmount")) || 0;
-  //   if (curTotal !== grandTotal) {
-  //     form.setValue("totalAmount", grandTotal, { shouldValidate: true });
-  //   }
-  // }, [watchedItems, type, form]);
-
-  
-
-const gstRate = useWatch({ control: form.control, name: "gstRate" });
-
-React.useEffect(() => {
-  // Only auto-calc in sales/purchases
-  if (!watchedItems || !["sales", "purchases"].includes(type)) return;
-
-  let subTotal = 0;
-
-  watchedItems.forEach((it, idx) => {
-    if (it?.itemType === "product") {
-      const q = Number(it.quantity) || 0;
-      const p = Number(it.pricePerUnit) || 0;
-      const amt = +(q * p).toFixed(2);
-      subTotal += amt;
-
-      const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
-      if (current !== amt) {
-        form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
+        const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
+        if (current !== amt) {
+          form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
+        }
+      } else if (it?.itemType === "service") {
+        const amt = Number(it.amount) || 0;
+        subTotal += amt;
       }
-    } else if (it?.itemType === "service") {
-      const amt = Number(it.amount) || 0;
-      subTotal += amt;
+    });
+
+    const currentSubtotal = Number(form.getValues("totalAmount")) || 0;
+    if (currentSubtotal !== subTotal) {
+      form.setValue("totalAmount", subTotal, { shouldValidate: true });
     }
-  });
 
-  const currentSubtotal = Number(form.getValues("totalAmount")) || 0;
-  if (currentSubtotal !== subTotal) {
-    form.setValue("totalAmount", subTotal, { shouldValidate: true });
-  }
+    // 🔑 only apply GST if company has GSTIN
+    const rate = gstEnabled ? Number(gstRate ?? STANDARD_GST) : 0;
+    const tax = +((subTotal * rate) / 100).toFixed(2);
+    const invoiceTotal = +(subTotal + tax).toFixed(2);
 
-  const rate = Number(gstRate ?? STANDARD_GST);
-  const tax = +((subTotal * rate) / 100).toFixed(2);
-  const invoiceTotal = +(subTotal + tax).toFixed(2);
-
-  if ((Number(form.getValues("taxAmount")) || 0) !== tax) {
-    form.setValue("taxAmount", tax, { shouldValidate: false });
-  }
-  if ((Number(form.getValues("invoiceTotal")) || 0) !== invoiceTotal) {
-    form.setValue("invoiceTotal", invoiceTotal, { shouldValidate: false });
-  }
-}, [watchedItems, type, gstRate, form]);
-
+    // write tax & total back
+    if ((Number(form.getValues("taxAmount")) || 0) !== tax) {
+      form.setValue("taxAmount", tax, { shouldValidate: false });
+    }
+    if ((Number(form.getValues("invoiceTotal")) || 0) !== invoiceTotal) {
+      form.setValue("invoiceTotal", invoiceTotal, { shouldValidate: false });
+    }
+  }, [watchedItems, type, gstRate, gstEnabled, form]);
 
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
@@ -471,65 +480,106 @@ React.useEffect(() => {
   React.useEffect(() => {
     if (!transactionToEdit) return;
 
-    // Prefer new unified shape if it exists
-    let itemsToSet =
+    // ---------- helpers ----------
+    const toProductItem = (p: any) => ({
+      itemType: "product" as const,
+      product:
+        typeof p.product === "object"
+          ? String(p.product._id)
+          : String(p.product || ""),
+      quantity: p.quantity ?? 1,
+      unitType: p.unitType ?? "Piece",
+      pricePerUnit: p.pricePerUnit ?? 0,
+      description: p.description ?? "",
+      amount:
+        typeof p.amount === "number"
+          ? p.amount
+          : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
+    });
+
+    const toServiceId = (s: any) => {
+      // handle both new and legacy shapes
+      const raw =
+        (s.service &&
+          (typeof s.service === "object" ? s.service._id : s.service)) ??
+        (s.serviceName &&
+          (typeof s.serviceName === "object"
+            ? s.serviceName._id
+            : s.serviceName));
+      return raw ? String(raw) : "";
+    };
+
+    const toServiceItem = (s: any) => ({
+      itemType: "service" as const,
+      service: toServiceId(s),
+      description: s.description ?? "",
+      amount: Number(s.amount || 0),
+    });
+
+    const toUnifiedItem = (i: any) => ({
+      itemType:
+        (i.itemType as "product" | "service") ??
+        (i.product || i.productId ? "product" : "service"),
+      product:
+        typeof i.product === "object"
+          ? String(i.product._id)
+          : String(i.product || ""),
+      service: toServiceId(i),
+      quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
+      unitType: i.unitType ?? "Piece",
+      pricePerUnit: i.pricePerUnit ?? undefined,
+      description: i.description ?? "",
+      amount:
+        typeof i.amount === "number"
+          ? i.amount
+          : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
+    });
+
+    // ---------- choose source ----------
+    let itemsToSet: any[] = [];
+
+    // 1) New unified shape already on the doc
+    if (
       Array.isArray((transactionToEdit as any).items) &&
       (transactionToEdit as any).items.length
-        ? (transactionToEdit as any).items.map((i: any) => ({
-            itemType: i.itemType ?? (i.product ? "product" : "service"),
-            product:
-              typeof i.product === "object" ? i.product._id : i.product || "",
-            service:
-              typeof i.service === "object"
-                ? i.service._id
-                : i.service ||
-                  (typeof i.serviceName === "object"
-                    ? i.serviceName._id
-                    : i.serviceName) ||
-                  "",
-            quantity: i.quantity ?? 1,
-            unitType: i.unitType ?? "Piece",
-            pricePerUnit: i.pricePerUnit ?? 0,
-            description: i.description ?? "",
-            amount:
-              typeof i.amount === "number"
-                ? i.amount
-                : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
-          }))
-        : [
-            // legacy: products[]
-            ...((transactionToEdit as any).products || []).map((p: any) => ({
-              itemType: "product" as const,
-              product:
-                typeof p.product === "object" ? p.product._id : p.product || "",
-              quantity: p.quantity ?? 1,
-              unitType: p.unitType ?? "Piece",
-              pricePerUnit: p.pricePerUnit ?? 0,
-              description: p.description ?? "",
-              amount:
-                typeof p.amount === "number"
-                  ? p.amount
-                  : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
-            })),
-            // legacy: service[] with serviceName
-            ...((transactionToEdit as any).service || []).map((s: any) => ({
-              itemType: "service" as const,
-              service:
-                typeof s.serviceName === "object"
-                  ? s.serviceName._id
-                  : s.serviceName || "",
-              description: s.description ?? "",
-              amount: Number(s.amount || 0),
-            })),
-          ];
+    ) {
+      itemsToSet = (transactionToEdit as any).items.map(toUnifiedItem);
+    } else {
+      // 2) Legacy/new arrays
+      const prodArr = Array.isArray((transactionToEdit as any).products)
+        ? (transactionToEdit as any).products.map(toProductItem)
+        : [];
 
-    // fallbacks for sales/purchases
+      // NEW: read plural `services`
+      const svcPlural = Array.isArray((transactionToEdit as any).services)
+        ? (transactionToEdit as any).services.map(toServiceItem)
+        : [];
+
+      // Legacy: some data used `service` (singular)
+      const svcLegacy = Array.isArray((transactionToEdit as any).service)
+        ? (transactionToEdit as any).service.map(toServiceItem)
+        : [];
+
+      itemsToSet = [...prodArr, ...svcPlural, ...svcLegacy];
+    }
+
+    // sales/purchases need at least one row
     if (
       (!itemsToSet || itemsToSet.length === 0) &&
       (transactionToEdit.type === "sales" ||
         transactionToEdit.type === "purchases")
     ) {
-      itemsToSet = [PRODUCT_DEFAULT];
+      itemsToSet = [
+        {
+          itemType: "product" as const,
+          product: "",
+          quantity: 1,
+          pricePerUnit: 0,
+          unitType: "Piece",
+          amount: 0,
+          description: "",
+        },
+      ];
     }
 
     // party/vendor id
@@ -546,6 +596,7 @@ React.useEffect(() => {
           : (transactionToEdit as any).vendor;
     }
 
+    // reset the form with normalized items
     form.reset({
       type: transactionToEdit.type,
       company:
@@ -562,6 +613,10 @@ React.useEffect(() => {
       referenceNumber: (transactionToEdit as any).referenceNumber,
       fromAccount: (transactionToEdit as any).debitAccount,
       toAccount: (transactionToEdit as any).creditAccount,
+      gstRate:
+        (transactionToEdit as any).gstPercentage ??
+        form.getValues("gstRate") ??
+        STANDARD_GST,
     });
 
     replace(itemsToSet);
@@ -601,6 +656,272 @@ React.useEffect(() => {
     }
   }
 
+  //   async function onSubmit(values: z.infer<typeof formSchema>) {
+  //     setIsSubmitting(true);
+  //     try {
+  //       const token = localStorage.getItem("token");
+  //       if (!token) throw new Error("Authentication token not found.");
+
+  //       const endpointMap: Record<string, string> = {
+  //         sales: `/api/sales`,
+  //         purchases: `/api/purchase`,
+  //         receipt: `/api/receipts`,
+  //         payment: `/api/payments`,
+  //         journal: `/api/journals`,
+  //       };
+
+  //       // in onSubmit(...)
+  //       const method = transactionToEdit ? "PUT" : "POST";
+  //       let endpoint = endpointMap[values.type];
+
+  //       if (transactionToEdit) {
+  //         // use the original type’s endpoint and append the id
+  //         const editType = transactionToEdit.type; // "sales" here
+  //         endpoint = `${endpointMap[editType]}/${transactionToEdit._id}`;
+  //       }
+
+  //       const productLines =
+  //         values.items
+  //           ?.filter((i) => i.itemType === "product")
+  //           .map((i) => ({
+  //             product: i.product, // ObjectId
+  //             quantity: i.quantity,
+  //             unitType: i.unitType,
+  //             pricePerUnit: i.pricePerUnit,
+  //             amount: i.amount, // optional if backend recomputes
+  //             description: i.description ?? "",
+  //           })) ?? [];
+
+  //       const serviceLines =
+  //         values.items
+  //           ?.filter((i) => i.itemType === "service")
+  //           .map((i) => ({
+  //             service: i.service, // This should be the ID, which you already set
+  //             amount: i.amount,
+  //             description: i.description ?? "",
+  //           })) ?? [];
+  //       const payload: any = { ...values };
+  //       payload.products = productLines;
+  //       payload.services = serviceLines;
+  //       payload.amount = values.totalAmount; // if your model also stores amount
+  //       payload.totalAmount = values.totalAmount;
+  //       if (values.description) payload.description = values.description;
+  //       if (values.narration) payload.narration = values.narration;
+
+  //       if (values.type === "purchases" || values.type === "payment") {
+  //         payload.vendor = values.party;
+  //         delete payload.party;
+  //       }
+  //       if (values.type === "journal") {
+  //         payload.debitAccount = values.fromAccount;
+  //         payload.creditAccount = values.toAccount;
+  //         if (values.description) payload.narration = values.description;
+  //         payload.amount = values.totalAmount;
+  //         delete payload.fromAccount;
+  //         delete payload.toAccount;
+  //         delete payload.party;
+  //         delete payload.items;
+  //         delete payload.referenceNumber;
+  //       }
+
+  //       payload.gstRate = values.gstRate ?? STANDARD_GST;
+  // payload.taxAmount = values.taxAmount ?? 0;
+  // payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
+
+  //       const res = await fetch(`${baseURL}${endpoint}`, {
+  //         method,
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify(payload),
+  //       });
+
+  //       console.log("Request payload:", payload); // Add this for debugging
+
+  //       const data = await res.json();
+  //       const inv = data?.entry?.invoiceNumber;
+  //       toast({
+  //         title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
+  //         description: inv
+  //           ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
+  //           : `Your ${values.type} entry has been recorded.`,
+  //       });
+
+  //       if (!res.ok) {
+  //         console.error("Backend error details:", data);
+  //         throw new Error(
+  //           data.message ||
+  //             `Failed to ${transactionToEdit ? "update" : "create"} ${
+  //               values.type
+  //             } entry.`
+  //         );
+  //       }
+
+  //       // If it's a sale and was successful, update the stock
+  //       if (values.type === "sales" && values.items) {
+  //         const stockItems = values.items
+  //           .filter(
+  //             (i) =>
+  //               i.itemType === "product" && i.product && (i.quantity ?? 0) > 0
+  //           )
+  //           .map((i) => ({
+  //             product: i.product!,
+  //             quantity: Number(i.quantity) || 0,
+  //           }));
+
+  //         if (stockItems.length) {
+  //           await updateStock(token, stockItems);
+  //         }
+  //       }
+
+  //       // UI feedback
+  //       const suffix =
+  //         !transactionToEdit && values.type === "sales" && payload.invoiceNumber
+  //           ? ` (Invoice #${payload.invoiceNumber})`
+  //           : "";
+
+  //       //send invoice on whatsapp directly
+
+  //       toast({
+  //         title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
+  //         description: `Your ${values.type} entry has been successfully recorded.`,
+  //       });
+  //       onFormSubmit();
+  //     } catch (error) {
+  //       toast({
+  //         variant: "destructive",
+  //         title: "Submission Failed",
+  //         description:
+  //           error instanceof Error ? error.message : "An unknown error occurred.",
+  //       });
+  //     } finally {
+  //       setIsSubmitting(false);
+  //     }
+  //   }
+
+  // Add this helper function
+  const enrichTransactionWithNames = (
+    transaction: any,
+    products: Product[],
+    services: Service[]
+  ) => {
+    if (!transaction) return transaction;
+
+    const enriched = { ...transaction };
+
+    // Enrich products
+    if (Array.isArray(enriched.products)) {
+      enriched.products = enriched.products.map((productItem: any) => {
+        const product = products.find((p) => p._id === productItem.product);
+        return {
+          ...productItem,
+          productName: product?.name || "Unknown Product",
+          product: product
+            ? { ...product, name: product.name }
+            : productItem.product,
+        };
+      });
+    }
+
+    // Enrich services
+    if (Array.isArray(enriched.services)) {
+      enriched.services = enriched.services.map((serviceItem: any) => {
+        const service = services.find((s) => s._id === serviceItem.service);
+        return {
+          ...serviceItem,
+          serviceName: service?.serviceName || "Unknown Service",
+          service: service
+            ? { ...service, serviceName: service.serviceName }
+            : serviceItem.service,
+        };
+      });
+    }
+
+    return enriched;
+  };
+
+  // Put this near your onSubmit (or in a util)
+  function buildInvoiceEmailHTML(opts: {
+    companyName: string;
+    partyName?: string | null;
+    supportEmail?: string | null;
+    supportPhone?: string | null;
+    logoUrl?: string | null; // optional if you store one
+  }) {
+    const {
+      companyName,
+      partyName = "Customer",
+      supportEmail = "",
+      supportPhone = "",
+      logoUrl,
+    } = opts;
+
+    const contactLine = supportEmail
+      ? `for any queries, feel free to contact us at <a href="mailto:${supportEmail}" style="color:#2563eb;text-decoration:none;">${supportEmail}</a>${
+          supportPhone ? ` or ${supportPhone}` : ""
+        }.`
+      : `for any queries, feel free to contact us${
+          supportPhone ? ` at ${supportPhone}` : ""
+        }.`;
+
+    return `
+  <table role="presentation" width="100%" style="background:#f5f7fb;padding:24px 12px;margin:0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
+          <tr>
+            <td style="background:#111827;color:#fff;padding:16px 24px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                ${
+                  logoUrl
+                    ? `<img src="${logoUrl}" alt="${companyName}" width="32" height="32" style="border-radius:6px;display:inline-block;">`
+                    : ``
+                }
+                <span style="font-size:18px;font-weight:700;letter-spacing:.3px;">${companyName}</span>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 24px 8px;">
+              <p style="margin:0 0 12px 0;font-size:16px;color:#111827;">Dear ${partyName},</p>
+              <p style="margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#374151;">
+                Thank you for choosing ${companyName}. Please find attached the invoice for your recent purchase.
+                We appreciate your business and look forward to serving you again.
+              </p>
+
+              <div style="margin:18px 0;padding:14px 16px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:10px;font-size:14px;color:#111827;">
+                Your invoice is attached as a PDF.
+              </div>
+
+              <p style="margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#374151;">
+                ${contactLine}
+              </p>
+
+              <p style="margin:24px 0 0 0;font-size:14px;color:#111827;">
+                Warm regards,<br>
+                <strong>${companyName}</strong><br>
+                ${
+                  supportEmail
+                    ? `<a href="mailto:${supportEmail}" style="color:#2563eb;text-decoration:none;">${supportEmail}</a>`
+                    : ``
+                }
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#f9fafb;color:#6b7280;font-size:12px;text-align:center;padding:12px 24px;border-top:1px solid #e5e7eb;">
+              This is an automated message regarding your invoice. Please reply to the address above if you need help.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>`;
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
@@ -615,16 +936,15 @@ React.useEffect(() => {
         journal: `/api/journals`,
       };
 
-      // in onSubmit(...)
       const method = transactionToEdit ? "PUT" : "POST";
       let endpoint = endpointMap[values.type];
 
       if (transactionToEdit) {
-        // use the original type’s endpoint and append the id
-        const editType = transactionToEdit.type; // "sales" here
+        const editType = transactionToEdit.type; // use original type for endpoint
         endpoint = `${endpointMap[editType]}/${transactionToEdit._id}`;
       }
 
+      // --- Build line items ---
       const productLines =
         values.items
           ?.filter((i) => i.itemType === "product")
@@ -633,7 +953,10 @@ React.useEffect(() => {
             quantity: i.quantity,
             unitType: i.unitType,
             pricePerUnit: i.pricePerUnit,
-            amount: i.amount, // optional if backend recomputes
+            amount:
+              typeof i.amount === "number"
+                ? i.amount
+                : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
             description: i.description ?? "",
           })) ?? [];
 
@@ -641,37 +964,81 @@ React.useEffect(() => {
         values.items
           ?.filter((i) => i.itemType === "service")
           .map((i) => ({
-            service: i.service, // This should be the ID, which you already set
+            service: i.service, // ✅ send id under "service"
             amount: i.amount,
             description: i.description ?? "",
           })) ?? [];
-      const payload: any = { ...values };
-      payload.products = productLines;
-      payload.services = serviceLines;
-      payload.amount = values.totalAmount; // if your model also stores amount
-      payload.totalAmount = values.totalAmount;
-      if (values.description) payload.description = values.description;
-      if (values.narration) payload.narration = values.narration;
 
+      // --- Totals coming from UI ---
+      const uiSubTotal = Number(values.totalAmount ?? 0);
+
+      // if GST disabled, force tax=0 and total=subtotal
+      const uiTax = gstEnabled ? Number(values.taxAmount ?? 0) : 0;
+      const uiInvoiceTotal = gstEnabled
+        ? Number(values.invoiceTotal ?? uiSubTotal)
+        : uiSubTotal;
+
+      const effectiveGstPct = gstEnabled
+        ? Number(values.gstRate ?? STANDARD_GST)
+        : 0;
+
+      // --- Build payload ---
+      const payload: any = {
+        type: values.type,
+        company: values.company,
+        party: values.party,
+        date: values.date,
+        description: values.description,
+        referenceNumber: values.referenceNumber,
+        narration: values.narration,
+
+        products: productLines,
+        services: serviceLines,
+
+        // ✅ server should store GST-inclusive total when enabled, otherwise subtotal
+        totalAmount: uiInvoiceTotal,
+
+        // extra breakdown
+        subTotal: uiSubTotal,
+        taxAmount: uiTax,
+
+        // server expects gstPercentage
+        gstPercentage: effectiveGstPct,
+
+        // backward-compat
+        invoiceTotal: uiInvoiceTotal,
+      };
+
+      // Clean up fields not needed by the server
+      // (We already mapped items into products/services)
+      delete (payload as any).items;
+      delete (payload as any).gstRate;
+
+      // Role-based payload tweaks
       if (values.type === "purchases" || values.type === "payment") {
         payload.vendor = values.party;
         delete payload.party;
       }
+
       if (values.type === "journal") {
         payload.debitAccount = values.fromAccount;
         payload.creditAccount = values.toAccount;
-        if (values.description) payload.narration = values.description;
-        payload.amount = values.totalAmount;
+        // journal's "amount" is just the entered main amount
+        payload.amount = Number(values.totalAmount ?? 0);
+
+        // remove fields that don't apply to journal
         delete payload.fromAccount;
         delete payload.toAccount;
         delete payload.party;
-        delete payload.items;
+        delete payload.products;
+        delete payload.services;
         delete payload.referenceNumber;
+        delete payload.subTotal;
+        delete payload.taxAmount;
+        delete payload.invoiceTotal;
+        delete payload.gstPercentage;
+        delete payload.totalAmount;
       }
-      
-      payload.gstRate = values.gstRate ?? STANDARD_GST;
-payload.taxAmount = values.taxAmount ?? 0;
-payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
 
       const res = await fetch(`${baseURL}${endpoint}`, {
         method,
@@ -682,16 +1049,9 @@ payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
         body: JSON.stringify(payload),
       });
 
-      console.log("Request payload:", payload); // Add this for debugging
+      console.log("Request payload:", payload);
 
       const data = await res.json();
-      const inv = data?.entry?.invoiceNumber;
-      toast({
-        title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
-        description: inv
-          ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
-          : `Your ${values.type} entry has been recorded.`,
-      });
 
       if (!res.ok) {
         console.error("Backend error details:", data);
@@ -703,35 +1063,156 @@ payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
         );
       }
 
-      // If it's a sale and was successful, update the stock
-      if (values.type === "sales" && values.items) {
-        const stockItems = values.items
-          .filter(
-            (i) =>
-              i.itemType === "product" && i.product && (i.quantity ?? 0) > 0
-          )
-          .map((i) => ({
-            product: i.product!,
-            quantity: Number(i.quantity) || 0,
-          }));
+      // If it's a sale and was successful, update stock
+      if (values.type === "sales" && productLines.length) {
+        await updateStock(
+          token,
+          productLines.map((p) => ({
+            product: p.product!,
+            quantity: Number(p.quantity) || 0,
+          }))
+        );
+      }
 
-        if (stockItems.length) {
-          await updateStock(token, stockItems);
+      // 🔽 SEND INVOICE PDF BY EMAIL (Sales only)
+      if (values.type === "sales") {
+        const saved = data?.entry || data?.sale || {};
+
+        console.log("Saved transaction:", saved);
+
+        const savedCompanyId = String(
+          typeof saved.company === "object"
+            ? saved.company?._id
+            : saved.company || values.company
+        );
+        const savedPartyId = String(
+          typeof saved.party === "object"
+            ? saved.party?._id
+            : saved.party || values.party
+        );
+
+        const companyDoc = companies.find(
+          (c) => String(c._id) === savedCompanyId
+        );
+        const partyDoc = parties.find((p) => String(p._id) === savedPartyId);
+
+        if (partyDoc?.email) {
+          let pdfDoc;
+          try {
+            // Enrich the saved data with product/service names before generating PDF
+            const enrichedTransaction = enrichTransactionWithNames(
+              saved,
+              products,
+              services
+            );
+
+            pdfDoc = await generatePdfForTemplate1(
+              enrichedTransaction, // ← Use enriched data instead of raw saved data
+              companyDoc as any,
+              partyDoc as any,
+              serviceNameById
+            );
+          } catch (error) {
+            console.error(
+              "Template 3 failed, falling back to Template 1:",
+              error
+            );
+
+            // Also enrich for fallback template
+            const enrichedTransaction = enrichTransactionWithNames(
+              saved,
+              products,
+              services
+            );
+
+            pdfDoc = generatePdfForTemplate3(
+              enrichedTransaction, // ← Use enriched data instead of raw saved data
+              companyDoc as any,
+              partyDoc as any,
+              serviceNameById
+            );
+          }
+
+          const pdfInstance = await pdfDoc;
+          const pdfBase64 = pdfInstance.output("datauristring").split(",")[1];
+
+          // 3) subject + message (as you requested)
+          // ...inside if (values.type === "sales") { ... }
+          const subject = `Invoice From ${
+            companyDoc?.businessName ?? "Your Company"
+          }`;
+
+          const bodyHtml = buildInvoiceEmailHTML({
+            companyName: companyDoc?.businessName ?? "Your Company",
+            partyName: partyDoc?.name ?? "Customer",
+            supportEmail: companyDoc?.emailId ?? "",
+            supportPhone: companyDoc?.mobileNumber ?? "",
+            // logoUrl: companyDoc?.logoUrl ?? null, // if you have one
+          });
+
+          const fileName = `${
+            saved.invoiceNumber ?? saved.referenceNumber ?? "invoice"
+          }.pdf`;
+
+          const emailRes = await fetch(
+            `${baseURL}/api/integrations/gmail/send-invoice`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                to: partyDoc.email,
+                subject,
+                html: bodyHtml, // ✅ send HTML
+                // message: bodyText,           // (optional) keep for fallback if you want
+                fileName,
+                pdfBase64,
+                companyId: savedCompanyId,
+                sendAs: "companyOwner",
+              }),
+            }
+          );
+
+          if (!emailRes.ok) {
+            const eData = await emailRes.json().catch(() => ({}));
+            console.error("Email API error:", {
+              status: emailRes.status,
+              statusText: emailRes.statusText,
+              data: eData,
+            });
+            toast({
+              variant: "destructive",
+              title: "Invoice email not sent",
+              description:
+                eData.message ||
+                "Couldn't send the invoice email. Please reconnect Gmail and try again.",
+            });
+          } else {
+            toast({
+              title: "Invoice emailed",
+              description: `Sent to ${partyDoc.email}`,
+            });
+          }
+        } else {
+          toast({
+            variant: "destructive",
+            title: "No customer email",
+            description:
+              "The selected customer does not have an email address.",
+          });
         }
       }
 
-      // UI feedback
-      const suffix =
-        !transactionToEdit && values.type === "sales" && payload.invoiceNumber
-          ? ` (Invoice #${payload.invoiceNumber})`
-          : "";
-
-      //send invoice on whatsapp directly
-
+      const inv = data?.entry?.invoiceNumber;
       toast({
         title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
-        description: `Your ${values.type} entry has been successfully recorded.`,
+        description: inv
+          ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
+          : `Your ${values.type} entry has been recorded.`,
       });
+
       onFormSubmit();
     } catch (error) {
       toast({
@@ -1073,36 +1554,38 @@ payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
         )}
       />
 
-{/* GST Rate */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <FormField
-    control={form.control}
-    name="gstRate"
-    render={({ field }) => (
-      <FormItem>
-        <FormLabel>GST %</FormLabel>
-        <Select
-          value={String(field.value ?? STANDARD_GST)}
-          onValueChange={(v) => field.onChange(Number(v))}
-        >
-          <FormControl>
-            <SelectTrigger>
-              <SelectValue placeholder="Select GST %" />
-            </SelectTrigger>
-          </FormControl>
-          <SelectContent>
-            {GST_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <FormMessage />
-      </FormItem>
-    )}
-  />
-</div>
+      {/* GST Rate */}
+      {gstEnabled && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="gstRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>GST %</FormLabel>
+                <Select
+                  value={String(field.value ?? STANDARD_GST)}
+                  onValueChange={(v) => field.onChange(Number(v))}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select GST %" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {GST_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
 
       <Separator />
 
@@ -1420,66 +1903,74 @@ payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
         </div>
       </div> */}
       {/* Totals */}
-<div className="flex justify-end">
-  <div className="w-full max-w-sm space-y-3">
-    <FormField
-      control={form.control}
-      name="totalAmount"
-      render={({ field }) => (
-        <FormItem>
-          <div className="flex items-center justify-between">
-            <FormLabel className="font-medium">Subtotal</FormLabel>
-            <Input
-              type="number"
-              readOnly
-              className="w-40 text-right bg-muted"
-              {...field}
-            />
-          </div>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-    <div className="flex items-center justify-between">
-      <FormLabel className="font-medium">
-        GST ({String(form.getValues("gstRate") ?? STANDARD_GST)}%)
-      </FormLabel>
-      <FormField
-        control={form.control}
-        name="taxAmount"
-        render={({ field }) => (
-          <Input
-            type="number"
-            readOnly
-            className="w-40 text-right bg-muted"
-            value={field.value ?? 0}
-            onChange={field.onChange}
+      <div className="flex justify-end">
+        <div className="w-full max-w-sm space-y-3">
+          {/* Subtotal */}
+          <FormField
+            control={form.control}
+            name="totalAmount"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel className="font-medium">Subtotal</FormLabel>
+                  <Input
+                    type="number"
+                    readOnly
+                    className="w-40 text-right bg-muted"
+                    {...field}
+                  />
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        )}
-      />
-    </div>
-    <FormField
-      control={form.control}
-      name="invoiceTotal"
-      render={({ field }) => (
-        <FormItem>
-          <div className="flex items-center justify-between">
-            <FormLabel className="text-lg font-bold">Invoice Total</FormLabel>
-            <Input
-              type="number"
-              readOnly
-              className="w-40 text-right bg-muted text-lg font-bold"
-              value={field.value ?? 0}
-              onChange={field.onChange}
-            />
-          </div>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  </div>
-</div>
 
+          {/* GST row only when enabled */}
+          {gstEnabled && (
+            <div className="flex items-center justify-between">
+              <FormLabel className="font-medium">
+                GST ({String(form.getValues("gstRate") ?? STANDARD_GST)}%)
+              </FormLabel>
+              <FormField
+                control={form.control}
+                name="taxAmount"
+                render={({ field }) => (
+                  <Input
+                    type="number"
+                    readOnly
+                    className="w-40 text-right bg-muted"
+                    value={field.value ?? 0}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+          )}
+
+          {/* Invoice total */}
+          <FormField
+            control={form.control}
+            name="invoiceTotal"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-lg font-bold">
+                    Invoice Total{gstEnabled ? " (GST incl.)" : ""}
+                  </FormLabel>
+                  <Input
+                    type="number"
+                    readOnly
+                    className="w-40 text-right bg-muted text-lg font-bold"
+                    value={field.value ?? 0}
+                    onChange={field.onChange}
+                  />
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
     </div>
   );
 
