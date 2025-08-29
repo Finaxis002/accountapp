@@ -48,50 +48,50 @@ export async function loginMasterAdmin(
   }
 }
 
-export async function loginCustomer(
-  clientUsername: string,
-  password: string
-): Promise<User> {
-  if (!clientUsername || !password) {
-    throw new Error("Username and password are required.");
-  }
+// export async function loginCustomer(
+//   clientUsername: string,
+//   password: string
+// ): Promise<User> {
+//   if (!clientUsername || !password) {
+//     throw new Error("Username and password are required.");
+//   }
 
-  const res = await fetch(`${baseURL}/api/clients/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientUsername, password }),
-  });
+//   const res = await fetch(`${baseURL}/api/clients/login`, {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify({ clientUsername, password }),
+//   });
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.message || "Login failed");
-  }
+//   const data = await res.json();
+//   if (!res.ok) {
+//     throw new Error(data.message || "Login failed");
+//   }
 
-  // expect your API to return: { token, client: { clientUsername, slug, contactName, email, ... } }
-  const { token, client } = data;
+//   // expect your API to return: { token, client: { clientUsername, slug, contactName, email, ... } }
+//   const { token, client } = data;
 
-  const user: User = {
-    name: client.contactName,
-    username: client.clientUsername, // display username
-    email: client.email,
-    avatar: "/avatars/02.png",
-    initials: (client.contactName || "").substring(0, 2).toUpperCase(),
-    role: "customer",
-    token,
-  };
+//   const user: User = {
+//     name: client.contactName,
+//     username: client.clientUsername, // display username
+//     email: client.email,
+//     avatar: "/avatars/02.png",
+//     initials: (client.contactName || "").substring(0, 2).toUpperCase(),
+//     role: "customer",
+//     token,
+//   };
 
-  if (typeof window !== "undefined") {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", "customer");
-    localStorage.setItem("username", client.clientUsername);          // display
-    localStorage.setItem("clientUsername", client.clientUsername);    // for logout redirect
-    localStorage.setItem("slug", client.slug ?? client.clientUsername); // for /client-login/[slug]
-    localStorage.setItem("name", client.contactName || "");
-    localStorage.setItem("email", client.email || "");
-  }
+//   if (typeof window !== "undefined") {
+//     localStorage.setItem("token", token);
+//     localStorage.setItem("role", "customer");
+//     localStorage.setItem("username", client.clientUsername);          // display
+//     localStorage.setItem("clientUsername", client.clientUsername);    // for logout redirect
+//     localStorage.setItem("slug", client.slug ?? client.clientUsername); // for /client-login/[slug]
+//     localStorage.setItem("name", client.contactName || "");
+//     localStorage.setItem("email", client.email || "");
+//   }
 
-  return user;
-}
+//   return user;
+// }
 
 
 // lib/auth.ts
@@ -190,6 +190,52 @@ export async function loginClientBySlug(
 
   return user;
 }
+
+
+export async function requestClientOtp(slug: string, clientUsername: string) {
+  const res = await fetch(`${baseURL}/api/clients/${slug}/request-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientUsername }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to send OTP");
+  return data;
+}
+
+
+export async function loginClientBySlugWithOtp(slug: string, clientUsername: string, otp: string) {
+  const res = await fetch(`${baseURL}/api/clients/${slug}/login-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientUsername, otp }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "OTP login failed");
+
+  // normalize result like your password login
+  const user = {
+    name: data?.client?.contactName,
+    username: data?.client?.clientUsername,
+    email: data?.client?.email,
+    role: "customer",
+    token: data?.token,
+  };
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("token", user.token || "");
+    localStorage.setItem("role", "customer");
+    localStorage.setItem("username", user.username || "");
+    localStorage.setItem("clientUsername", user.username || "");
+    localStorage.setItem("slug", data?.client?.slug || slug);
+    localStorage.setItem("tenantSlug", data?.client?.slug || slug);
+    localStorage.setItem("name", user.name || "");
+    localStorage.setItem("email", user.email || "");
+  }
+
+  return user;
+}
+
 
 // lib/auth.ts
 export async function loginUser(userId: string, password: string) {
