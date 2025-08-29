@@ -15,7 +15,7 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import {
@@ -42,6 +42,10 @@ import { CompanyProvider } from "@/contexts/company-context";
 import { PermissionProvider } from "@/contexts/permission-context";
 // imports (top)
 import { UserPermissionsProvider } from "@/contexts/user-permissions-context";
+import axios from "axios"; // 🆕
+import { jwtDecode } from "jwt-decode"; // 🆕
+
+type Decoded = { exp: number; id: string; role: string }; // 🆕
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dateString, setDateString] = useState("");
@@ -51,12 +55,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
-const isAuthRoute =
-  pathname === "/login" ||
-  pathname === "/user-login" ||
-  pathname.startsWith("/client-login/") ||
-  pathname.startsWith("/user-login/");
-
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/user-login" ||
+    pathname.startsWith("/client-login/") ||
+    pathname.startsWith("/user-login/");
 
   useEffect(() => {
     if (isAuthRoute) {
@@ -87,6 +90,101 @@ const isAuthRoute =
     setIsLoading(false);
   }, [router, pathname, isAuthRoute]);
 
+  const handleLogout = () => {
+    // read BEFORE clearing
+    const role = localStorage.getItem("role");
+    const slug =
+      localStorage.getItem("tenantSlug") ||
+      localStorage.getItem("slug") ||
+      localStorage.getItem("clientUsername");
+
+    // clear everything
+    localStorage.clear();
+    console.debug("Logout redirect →", role, slug);
+
+    // 🔑 redirect logic
+    if (role === "customer" && slug) {
+      // customer → their own client login page
+      window.location.assign(`/client-login/${slug}`);
+    } else if (role === "master") {
+      // master → generic login
+      window.location.assign(`/login`);
+    } else {
+      // everyone else (client, user, admin, manager, etc.)
+      window.location.assign(`/user-login`);
+    }
+  };
+
+  // 🆕 helper: if token expired → logout, else return ms left
+  const ensureValidToken = useCallback((): number | null => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return null;
+    try {
+      const { exp } = jwtDecode<Decoded>(token);
+      const msLeft = exp * 1000 - Date.now();
+      if (msLeft <= 0) {
+        handleLogout();
+        return null;
+      }
+      return msLeft;
+    } catch {
+      handleLogout();
+      return null;
+    }
+  }, [handleLogout]);
+
+  // 🆕 central logout function (moved up so effects can use it)
+  const logoutTimerRef = useRef<number | null>(null); // 🆕
+
+  useEffect(() => {
+    if (isAuthRoute) return;
+    const msLeft = ensureValidToken();
+    if (msLeft && msLeft > 0) {
+      if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = window.setTimeout(() => {
+        handleLogout();
+      }, msLeft) as unknown as number;
+    }
+    return () => {
+      if (logoutTimerRef.current) {
+        window.clearTimeout(logoutTimerRef.current);
+        logoutTimerRef.current = null;
+      }
+    };
+  }, [pathname, isAuthRoute, ensureValidToken, handleLogout]);
+
+  // 🆕 Effect 3: Global Axios interceptors (attach token + auto-logout on 401)
+  useEffect(() => {
+    if (isAuthRoute) return;
+
+    const reqId = axios.interceptors.request.use((config) => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+
+    const resId = axios.interceptors.response.use(
+      (res) => res,
+      (error) => {
+        const status = error?.response?.status;
+        if (status === 401) {
+          // token expired/invalid
+          handleLogout();
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.request.eject(reqId);
+      axios.interceptors.response.eject(resId);
+    };
+  }, [isAuthRoute, handleLogout]);
+
   // ⛔️ On auth routes, render ONLY the auth page (no sidebar/header/guard)
   if (isAuthRoute) {
     return <>{children}</>;
@@ -116,36 +214,56 @@ const isAuthRoute =
   const role = localStorage.getItem("role");
   console.log("User role:", role);
 
- const handleLogout = () => {
-  // read BEFORE clearing
-  const role = localStorage.getItem("role");
-  const slug =
-    localStorage.getItem("tenantSlug") ||
-    localStorage.getItem("slug") ||
-    localStorage.getItem("clientUsername");
+  
 
-  // clear everything
-  localStorage.clear();
-  console.debug("Logout redirect →", role, slug);
-
-  // 🔑 redirect logic
-  if (role === "customer" && slug) {
-    // customer → their own client login page
-    window.location.assign(`/client-login/${slug}`);
-  } else if (role === "master") {
-    // master → generic login
-    window.location.assign(`/login`);
-  } else {
-    // everyone else (client, user, admin, manager, etc.)
-    window.location.assign(`/user-login`);
-  }
-};
-
+  
 
   const roleLower = (currentUser?.role ?? "").toLowerCase();
   console.log("current User :", currentUser);
- const showAppSidebar = ["master", "client", "customer", "admin"].includes(roleLower);
+  const showAppSidebar = ["master", "client", "customer", "admin"].includes(
+    roleLower
+  );
 
+  
+
+  // 🆕 Effect 1: Initial guard on protected pages + set date/user
+  // useEffect(() => {
+  //   if (isAuthRoute) {
+  //     setIsLoading(false);
+  //     return;
+  //   }
+
+  //   const today = new Date();
+  //   setDateString(
+  //     today.toLocaleDateString("en-US", {
+  //       weekday: "long",
+  //       year: "numeric",
+  //       month: "long",
+  //       day: "numeric",
+  //     })
+  //   );
+
+  //   // Check token validity immediately
+  //   const msLeft = ensureValidToken();
+  //   if (msLeft === null) {
+  //     // token missing/expired → ensureValidToken already redirected
+  //     setIsLoading(false);
+  //     return;
+  //   }
+
+  //   const user = getCurrentUser();
+  //   if (!user) {
+  //     router.replace("/login");
+  //     setIsLoading(false);
+  //     return;
+  //   }
+
+  //   setCurrentUser(user);
+  //   setIsLoading(false);
+  // }, [router, pathname, isAuthRoute, ensureValidToken]);
+
+  // 🆕 Effect 2: Schedule auto-logout exactly when token expires
+  
 
   return (
     <CompanyProvider>

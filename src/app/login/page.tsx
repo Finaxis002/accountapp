@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react"; // 👈 add useEffect here
+import React, { useEffect } from "react"; 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +15,10 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginMasterAdmin, loginCustomer } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";       // ✅
-import { getCurrentUser } from "@/lib/auth";          // ✅ add this
+import { getCurrentUser } from "@/lib/auth";  
+import {getCurrentUserNew as getSession, saveSession, scheduleAutoLogout } from "@/lib/authSession";
+
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,13 +32,22 @@ export default function LoginPage() {
   );
 
     // ✅ guard: if already logged in, never show login
+  // useEffect(() => {
+  //   const u = getCurrentUser();
+  //   if (u) {
+  //     if (u.role === "master") router.replace("/admin/dashboard");
+  //     else if (u.role === "customer") router.replace("/dashboard"); // or "/"
+  //   }
+  // }, [router]);
+
   useEffect(() => {
-    const u = getCurrentUser();
-    if (u) {
-      if (u.role === "master") router.replace("/admin/dashboard");
-      else if (u.role === "customer") router.replace("/dashboard"); // or "/"
-    }
-  }, [router]);
+  const s = getSession();        // null if token missing/expired (also clears it)
+  if (!s) return;                // stay on login
+  const u = getCurrentUser();    // your existing role-based user object
+  if (u?.role === "master") router.replace("/admin/dashboard");
+  else if (u?.role === "customer") router.replace("/dashboard");
+}, [router]);
+
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,13 +55,37 @@ export default function LoginPage() {
 
     try {
       const user = await loginMasterAdmin(username, password);
-      if (user) {
-        router.push("/admin/dashboard");
-        toast({
-          title: "Login Successful",
-          description: `Welcome back!`,
-        });
-      }
+      // if (user) {
+      //   router.push("/admin/dashboard");
+      //   toast({
+      //     title: "Login Successful",
+      //     description: `Welcome back!`,
+      //   });
+      // }
+       if (user?.token) {
+      // persist for authSession-aware code
+      saveSession(user.token, {
+        role: user.role ?? "master",
+        username: user.username,
+        name: user.name,
+        email: user.email,
+      });
+
+      // keep these if other parts of the app read them
+      localStorage.setItem("role", user.role ?? "master");
+      localStorage.setItem("username", user.username ?? "");
+
+      // auto-logout exactly at JWT expiry
+      scheduleAutoLogout(user.token, () => {
+        localStorage.clear();
+        router.replace("/login");
+      });
+
+      toast({ title: "Login Successful", description: "Welcome back!" });
+      router.push("/admin/dashboard");
+    } else {
+      throw new Error("Invalid login response");
+    }
     } catch (error) {
       toast({
         variant: "destructive",
