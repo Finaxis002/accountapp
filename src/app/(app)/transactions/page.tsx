@@ -907,7 +907,7 @@ export default function TransactionsPage() {
               <DialogHeader>
                 <DialogTitle>Item Details</DialogTitle>
                 <DialogDescription>
-                  A detailed list of all items in this transaction.
+                  A detailed list of all items in this transaction..
                 </DialogDescription>
               </DialogHeader>
 
