@@ -102,6 +102,21 @@ const GST_OPTIONS = [
 
 type StockItemInput = { product: string; quantity: number };
 
+// ⬇️ Place this just above PRODUCT_DEFAULT
+type ItemWithGST = {
+  itemType: "product" | "service";
+  product?: string;
+  service?: string;
+  quantity?: number;
+  unitType?: (typeof unitTypes)[number];
+  pricePerUnit?: number;
+  description?: string;
+  amount: number; // base excl. GST
+  gstPct?: number; // per-line GST %
+  lineTax?: number; // amount * gstPct/100
+  lineTotal?: number; // amount + lineTax
+};
+
 const PRODUCT_DEFAULT = {
   itemType: "product" as const,
   product: "",
@@ -109,6 +124,9 @@ const PRODUCT_DEFAULT = {
   pricePerUnit: 0,
   unitType: "Piece" as const,
   amount: 0,
+  gstPct: STANDARD_GST, // NEW
+  lineTax: 0, // NEW
+  lineTotal: 0,
 };
 
 const itemSchema = z
@@ -120,7 +138,10 @@ const itemSchema = z
     unitType: z.enum(unitTypes).optional(),
     pricePerUnit: z.coerce.number().optional(),
     description: z.string().optional(),
-    amount: z.coerce.number(), // product: auto; service: user-entered
+    amount: z.coerce.number(),
+    gstPct: z.coerce.number().min(0).max(100).optional(), // NEW
+    lineTax: z.coerce.number().min(0).optional(), // NEW
+    lineTotal: z.coerce.number().min(0).optional(), // NEW
   })
   .superRefine((data, ctx) => {
     if (data.itemType === "product") {
@@ -179,7 +200,7 @@ const formSchema = z
     fromAccount: z.string().optional(), // For Journal Debit
     toAccount: z.string().optional(), // For Journal Credit
     narration: z.string().optional(),
-    gstRate: z.coerce.number().min(0).max(100).optional(), // <-- NEW
+    paymentMethod: z.string().optional(),
     taxAmount: z.coerce.number().min(0).optional(), // <-- NEW (derived)
     invoiceTotal: z.coerce.number().min(0).optional(),
   })
@@ -260,6 +281,8 @@ export function TransactionForm({
   >(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
+  const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer"];
+
 
   const { selectedCompanyId } = useCompany();
   const { permissions: userCaps } = useUserPermissions();
@@ -280,7 +303,7 @@ export function TransactionForm({
       narration: "",
       company: selectedCompanyId || "",
       date: new Date(),
-      gstRate: STANDARD_GST, // <-- NEW (Sales/Purchases will use this)
+      // gstRate: STANDARD_GST, // <-- NEW (Sales/Purchases will use this)
       taxAmount: 0, // <-- NEW
       invoiceTotal: 0,
     },
@@ -359,48 +382,111 @@ export function TransactionForm({
     }
   }, [type, replace, form]);
 
-  const gstRate = useWatch({ control: form.control, name: "gstRate" });
+  // const gstRate = useWatch({ control: form.control, name: "gstRate" });
 
+  // React.useEffect(() => {
+  //   if (!watchedItems || !["sales", "purchases"].includes(type)) return;
+
+  //   let subTotal = 0;
+
+  //   watchedItems.forEach((it, idx) => {
+  //     if (it?.itemType === "product") {
+  //       const q = Number(it.quantity) || 0;
+  //       const p = Number(it.pricePerUnit) || 0;
+  //       const amt = +(q * p).toFixed(2);
+  //       subTotal += amt;
+
+  //       const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
+  //       if (current !== amt) {
+  //         form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
+  //       }
+  //     } else if (it?.itemType === "service") {
+  //       const amt = Number(it.amount) || 0;
+  //       subTotal += amt;
+  //     }
+  //   });
+
+  //   const currentSubtotal = Number(form.getValues("totalAmount")) || 0;
+  //   if (currentSubtotal !== subTotal) {
+  //     form.setValue("totalAmount", subTotal, { shouldValidate: true });
+  //   }
+
+  //   // 🔑 only apply GST if company has GSTIN
+  //   const rate = gstEnabled ? Number(gstRate ?? STANDARD_GST) : 0;
+  //   const tax = +((subTotal * rate) / 100).toFixed(2);
+  //   const invoiceTotal = +(subTotal + tax).toFixed(2);
+
+  //   // write tax & total back
+  //   if ((Number(form.getValues("taxAmount")) || 0) !== tax) {
+  //     form.setValue("taxAmount", tax, { shouldValidate: false });
+  //   }
+  //   if ((Number(form.getValues("invoiceTotal")) || 0) !== invoiceTotal) {
+  //     form.setValue("invoiceTotal", invoiceTotal, { shouldValidate: false });
+  //   }
+  // }, [watchedItems, type, gstRate, gstEnabled, form]);
+
+  // ⬇️ DROP-IN REPLACEMENT: per-line GST computation
   React.useEffect(() => {
     if (!watchedItems || !["sales", "purchases"].includes(type)) return;
 
     let subTotal = 0;
+    let totalTax = 0;
 
     watchedItems.forEach((it, idx) => {
+      // 1) compute base (amount excl. GST)
+      let base = 0;
       if (it?.itemType === "product") {
         const q = Number(it.quantity) || 0;
         const p = Number(it.pricePerUnit) || 0;
-        const amt = +(q * p).toFixed(2);
-        subTotal += amt;
+        base = +(q * p).toFixed(2);
 
+        // keep items[idx].amount in sync (readonly field)
         const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
-        if (current !== amt) {
-          form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
+        if (current !== base) {
+          form.setValue(`items.${idx}.amount`, base, { shouldValidate: false });
         }
       } else if (it?.itemType === "service") {
-        const amt = Number(it.amount) || 0;
-        subTotal += amt;
+        base = Number(it.amount) || 0;
+      }
+
+      subTotal += base;
+
+      // 2) per-line GST%; if GST disabled, force 0
+      const pct = gstEnabled ? Number(it?.gstPct ?? 18) : 0;
+
+      const lineTax = +((base * pct) / 100).toFixed(2);
+      const lineTotal = +(base + lineTax).toFixed(2);
+      totalTax += lineTax;
+
+      // 3) write back to the line
+      const curTax = Number(form.getValues(`items.${idx}.lineTax`)) || 0;
+      if (curTax !== lineTax) {
+        form.setValue(`items.${idx}.lineTax`, lineTax, {
+          shouldValidate: false,
+        });
+      }
+      const curLineTotal =
+        Number(form.getValues(`items.${idx}.lineTotal`)) || 0;
+      if (curLineTotal !== lineTotal) {
+        form.setValue(`items.${idx}.lineTotal`, lineTotal, {
+          shouldValidate: false,
+        });
       }
     });
 
-    const currentSubtotal = Number(form.getValues("totalAmount")) || 0;
-    if (currentSubtotal !== subTotal) {
+    // 4) write invoice-level fields
+    const invoiceTotal = +(subTotal + totalTax).toFixed(2);
+
+    if ((Number(form.getValues("totalAmount")) || 0) !== subTotal) {
       form.setValue("totalAmount", subTotal, { shouldValidate: true });
     }
-
-    // 🔑 only apply GST if company has GSTIN
-    const rate = gstEnabled ? Number(gstRate ?? STANDARD_GST) : 0;
-    const tax = +((subTotal * rate) / 100).toFixed(2);
-    const invoiceTotal = +(subTotal + tax).toFixed(2);
-
-    // write tax & total back
-    if ((Number(form.getValues("taxAmount")) || 0) !== tax) {
-      form.setValue("taxAmount", tax, { shouldValidate: false });
+    if ((Number(form.getValues("taxAmount")) || 0) !== totalTax) {
+      form.setValue("taxAmount", totalTax, { shouldValidate: false });
     }
     if ((Number(form.getValues("invoiceTotal")) || 0) !== invoiceTotal) {
       form.setValue("invoiceTotal", invoiceTotal, { shouldValidate: false });
     }
-  }, [watchedItems, type, gstRate, gstEnabled, form]);
+  }, [watchedItems, type, gstEnabled, form]);
 
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
@@ -613,10 +699,10 @@ export function TransactionForm({
       referenceNumber: (transactionToEdit as any).referenceNumber,
       fromAccount: (transactionToEdit as any).debitAccount,
       toAccount: (transactionToEdit as any).creditAccount,
-      gstRate:
-        (transactionToEdit as any).gstPercentage ??
-        form.getValues("gstRate") ??
-        STANDARD_GST,
+      // gstRate:
+      //   (transactionToEdit as any).gstPercentage ??
+      //   form.getValues("gstRate") ??
+      //   STANDARD_GST,
     });
 
     replace(itemsToSet);
@@ -958,6 +1044,9 @@ export function TransactionForm({
                 ? i.amount
                 : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
             description: i.description ?? "",
+            gstPercentage: gstEnabled ? Number(i.gstPct ?? 18) : 0,
+            lineTax: gstEnabled ? Number(i.lineTax ?? 0) : 0,
+            lineTotal: gstEnabled ? Number(i.lineTotal ?? i.amount) : i.amount,
           })) ?? [];
 
       const serviceLines =
@@ -967,6 +1056,9 @@ export function TransactionForm({
             service: i.service, // ✅ send id under "service"
             amount: i.amount,
             description: i.description ?? "",
+            gstPercentage: gstEnabled ? Number(i.gstPct ?? 18) : 0,
+            lineTax: gstEnabled ? Number(i.lineTax ?? 0) : 0,
+            lineTotal: gstEnabled ? Number(i.lineTotal ?? i.amount) : i.amount,
           })) ?? [];
 
       // --- Totals coming from UI ---
@@ -978,9 +1070,9 @@ export function TransactionForm({
         ? Number(values.invoiceTotal ?? uiSubTotal)
         : uiSubTotal;
 
-      const effectiveGstPct = gstEnabled
-        ? Number(values.gstRate ?? STANDARD_GST)
-        : 0;
+      // const effectiveGstPct = gstEnabled
+      //   ? Number(values.gstRate ?? STANDARD_GST)
+      //   : 0;
 
       // --- Build payload ---
       const payload: any = {
@@ -991,21 +1083,12 @@ export function TransactionForm({
         description: values.description,
         referenceNumber: values.referenceNumber,
         narration: values.narration,
-
         products: productLines,
         services: serviceLines,
-
-        // ✅ server should store GST-inclusive total when enabled, otherwise subtotal
         totalAmount: uiInvoiceTotal,
-
-        // extra breakdown
         subTotal: uiSubTotal,
         taxAmount: uiTax,
-
-        // server expects gstPercentage
-        gstPercentage: effectiveGstPct,
-
-        // backward-compat
+        paymentMethod: values.paymentMethod,
         invoiceTotal: uiInvoiceTotal,
       };
 
@@ -1554,38 +1637,31 @@ export function TransactionForm({
         )}
       />
 
-      {/* GST Rate */}
-      {gstEnabled && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="gstRate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>GST %</FormLabel>
-                <Select
-                  value={String(field.value ?? STANDARD_GST)}
-                  onValueChange={(v) => field.onChange(Number(v))}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select GST %" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {GST_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      )}
+ <FormField
+        control={form.control}
+        name="paymentMethod"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs">Payment Method</FormLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <FormControl>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select Payment Method" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {paymentMethods.map((method) => (
+                  <SelectItem key={method} value={method}>
+                    {method}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+   
 
       <Separator />
 
@@ -1635,15 +1711,18 @@ export function TransactionForm({
                     )}
                   />
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* ONE ROW WITH 7 FIELDS (compact) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-2 items-end">
+                    {/* Quantity */}
                     <FormField
                       control={form.control}
                       name={`items.${index}.quantity`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantity</FormLabel>
+                        <FormItem className="lg:col-span-1">
+                          <FormLabel className="text-xs">Quantity</FormLabel>
                           <FormControl>
                             <Input
+                              className="h-8 text-xs px-2 max-w-[84px] tabular-nums"
                               type="number"
                               placeholder="1"
                               {...field}
@@ -1660,19 +1739,20 @@ export function TransactionForm({
                         </FormItem>
                       )}
                     />
+
+                    {/* Unit */}
                     <FormField
                       control={form.control}
                       name={`items.${index}.unitType`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unit</FormLabel>
+                        <FormItem className="lg:col-span-1">
+                          <FormLabel className="text-xs">Unit</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
-                            defaultValue={field.value}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="h-8 text-xs">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -1688,14 +1768,17 @@ export function TransactionForm({
                         </FormItem>
                       )}
                     />
+
+                    {/* Price/Unit */}
                     <FormField
                       control={form.control}
                       name={`items.${index}.pricePerUnit`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Price/Unit</FormLabel>
+                        <FormItem className="lg:col-span-2">
+                          <FormLabel className="text-xs">Price/Unit</FormLabel>
                           <FormControl>
                             <Input
+                              className="h-8 text-xs px-2 tabular-nums text-right"
                               type="number"
                               placeholder="0.00"
                               {...field}
@@ -1712,24 +1795,113 @@ export function TransactionForm({
                         </FormItem>
                       )}
                     />
+
+                    {/* Amount */}
                     <FormField
                       control={form.control}
                       name={`items.${index}.amount`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Amount</FormLabel>
+                        <FormItem className="lg:col-span-2">
+                          <FormLabel className="text-xs">Amount</FormLabel>
                           <FormControl>
                             <Input
+                              className="h-8 text-xs px-2 tabular-nums text-right bg-muted"
                               type="number"
-                              {...field}
                               readOnly
-                              className="bg-muted"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
+                    {gstEnabled && (
+                      <>
+                        {/* GST % (Item) */}
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.gstPct`}
+                          render={({ field }) => (
+                            <FormItem className="lg:col-span-1 lg:col-span-2">
+                              {" "}
+                              {/* Adjusted column span */}
+                              <FormLabel className="text-xs">
+                                GST % (Item)
+                              </FormLabel>
+                              <Select
+                                disabled={!gstEnabled}
+                                value={String(field.value ?? 18)}
+                                onValueChange={(v) => field.onChange(Number(v))}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-8 text-xs px-2 tabular-nums text-right bg-muted">
+                                    <SelectValue placeholder="GST %" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {GST_OPTIONS.map((opt) => (
+                                    <SelectItem
+                                      key={opt.value}
+                                      value={opt.value}
+                                    >
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Line Tax */}
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.lineTax`}
+                          render={({ field }) => (
+                            <FormItem className="lg:col-span-1">
+                              {" "}
+                              {/* Adjusted column span */}
+                              <FormLabel className="text-xs">
+                                Line Tax
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="h-8 text-xs px-2 tabular-nums text-right bg-muted"
+                                  type="number"
+                                  readOnly
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Line Total */}
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.lineTotal`}
+                          render={({ field }) => (
+                            <FormItem className="lg:col-span-2">
+                              <FormLabel className="text-xs">
+                                Line Total
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="h-8 text-xs px-2 tabular-nums text-right bg-muted"
+                                  type="number"
+                                  readOnly
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1799,7 +1971,7 @@ export function TransactionForm({
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name={`items.${index}.amount`}
@@ -1840,6 +2012,194 @@ export function TransactionForm({
                         </FormItem>
                       )}
                     />
+                  </div> */}
+                  {/* gst row */}
+                  {/* <div className="grid grid-cols-3 md:grid-cols-3">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.gstPct`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>GST % (Item)</FormLabel>
+                          <Select
+                            disabled={!gstEnabled}
+                            value={String(field.value ?? 18)}
+                            onValueChange={(v) => field.onChange(Number(v))}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select GST %" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {GST_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.lineTax`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Line Tax</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              readOnly
+                              className="bg-muted"
+                              value={field.value ?? 0}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.lineTotal`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Line Total</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              readOnly
+                              className="bg-muted"
+                              value={field.value ?? 0}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div> */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-4 items-end">
+                    {/* Amount */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2 md:col-span-2">
+                          <FormLabel className="text-xs">Amount</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : e.target.valueAsNumber
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Description */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.description`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-3 md:col-span-2">
+                          <FormLabel className="text-xs">Description</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Brief service description"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* GST % (Item) */}
+                    {gstEnabled && (<>
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.gstPct`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2 md:col-span-2">
+                          <FormLabel className="text-xs">
+                            GST % (Item)
+                          </FormLabel>
+                          <Select
+                            disabled={!gstEnabled}
+                            value={String(field.value ?? 18)}
+                            onValueChange={(v) => field.onChange(Number(v))}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select GST %" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {GST_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Line Tax */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.lineTax`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2 md:col-span-1">
+                          <FormLabel className="text-xs">Line Tax</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              readOnly
+                              className="bg-muted"
+                              value={field.value ?? 0}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Line Total */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.lineTotal`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2 md:col-span-1">
+                          <FormLabel className="text-xs">Line Total</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              readOnly
+                              className="bg-muted"
+                              value={field.value ?? 0}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    </>)}
                   </div>
                 </div>
               )}
@@ -1866,6 +2226,9 @@ export function TransactionForm({
                 service: "",
                 amount: 0,
                 description: "",
+                gstPct: 18, // NEW
+                lineTax: 0, // NEW
+                lineTotal: 0,
               })
             }
           >
@@ -2356,7 +2719,11 @@ export function TransactionForm({
         </form>
       </Form>
       <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
-        <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+        <DialogContent
+          wide
+          className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "
+          style={{ maxWidth: '1200px' }}
+        >
           <DialogHeader className="p-6">
             <DialogTitle>
               Create New{" "}
