@@ -272,6 +272,8 @@ export function TransactionForm({
   const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [services, setServices] = React.useState<Service[]>([]);
+  const [balance, setBalance] = React.useState<number | null>(null);
+
   // which line (items[index]) is creating a product/service right now?
   const [creatingProductForIndex, setCreatingProductForIndex] = React.useState<
     number | null
@@ -742,6 +744,8 @@ export function TransactionForm({
     }
   }
 
+
+  
   //   async function onSubmit(values: z.infer<typeof formSchema>) {
   //     setIsSubmitting(true);
   //     try {
@@ -1354,6 +1358,43 @@ export function TransactionForm({
     setIsPartyDialogOpen(false);
   };
 
+  const handlePartyChange = async (partyId: string) => {
+  if (!partyId) return;
+
+  try {
+    const token = localStorage.getItem("token");  // Get the token from localStorage or wherever it's stored
+    if (!token) {
+      throw new Error("Authentication token not found.");
+    }
+
+    const response = await fetch(`${baseURL}/api/parties/${partyId}/balance`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,  // Include the token in the Authorization header
+      },
+    });
+    const data = await response.json();
+
+    if (response.ok) {
+      setBalance(data.balance); // Set the balance in state
+    } else {
+      setBalance(null);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not fetch balance.",
+      });
+    }
+  } catch (error) {
+    setBalance(null);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to fetch balance.",
+    });
+  }
+};
+
   const handleTriggerCreateProduct = (name: string) => {
     setNewEntityName(name); // Store the name in state
     setIsProductDialogOpen(true);
@@ -1610,7 +1651,11 @@ export function TransactionForm({
             <Combobox
               options={partyOptions}
               value={field.value || ""}
-              onChange={field.onChange}
+              // onChange={field.onChange}
+               onChange={(value) => {
+          field.onChange(value); 
+          handlePartyChange(value); // Fetch balance when party is selected
+        }}
               placeholder="Select or create..."
               searchPlaceholder="Search..."
               noResultsText="No results found."
@@ -1633,6 +1678,12 @@ export function TransactionForm({
             />
 
             <FormMessage />
+            {/* Display balance if available */}
+      {balance !== null && (
+        <div className="text-red-500 text-sm mt-2">
+          Balance: ₹{balance.toFixed(2)}
+        </div>
+      )}
           </FormItem>
         )}
       />
