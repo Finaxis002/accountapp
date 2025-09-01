@@ -114,8 +114,8 @@ type ItemWithGST = {
   pricePerUnit?: number;
   description?: string;
   amount: number; // base excl. GST
-  gstPct?: number; // per-line GST %
-  lineTax?: number; // amount * gstPct/100
+  gstPercentage?: number; // per-line GST %
+  lineTax?: number; // amount * gstPercentage/100
   lineTotal?: number; // amount + lineTax
 };
 
@@ -126,7 +126,7 @@ const PRODUCT_DEFAULT = {
   pricePerUnit: 0,
   unitType: "Piece" as const,
   amount: 0,
-  gstPct: STANDARD_GST, // NEW
+  gstPercentage: STANDARD_GST, // NEW
   lineTax: 0, // NEW
   lineTotal: 0,
 };
@@ -141,11 +141,12 @@ const itemSchema = z
     pricePerUnit: z.coerce.number().optional(),
     description: z.string().optional(),
     amount: z.coerce.number(),
-    gstPct: z.coerce.number().min(0).max(100).optional(), // NEW
-    lineTax: z.coerce.number().min(0).optional(), // NEW
-    lineTotal: z.coerce.number().min(0).optional(), // NEW
+    gstPercentage: z.coerce.number().min(0).max(100).optional(),
+    lineTax: z.coerce.number().min(0).optional(),
+    lineTotal: z.coerce.number().min(0).optional(),
   })
   .superRefine((data, ctx) => {
+    // Custom validations for products
     if (data.itemType === "product") {
       if (!data.product) {
         ctx.addIssue({
@@ -166,21 +167,6 @@ const itemSchema = z
           code: z.ZodIssueCode.custom,
           path: ["pricePerUnit"],
           message: "Price/Unit must be ≥ 0",
-        });
-      }
-    } else if (data.itemType === "service") {
-      if (!data.service) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["service"],
-          message: "Select a service",
-        });
-      }
-      if (!data.amount || data.amount <= 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["amount"],
-          message: "Enter a positive amount",
         });
       }
     }
@@ -404,14 +390,13 @@ export function TransactionForm({
     let totalTax = 0;
 
     watchedItems.forEach((it, idx) => {
-      // 1) compute base (amount excl. GST)
       let base = 0;
+
       if (it?.itemType === "product") {
         const q = Number(it.quantity) || 0;
         const p = Number(it.pricePerUnit) || 0;
         base = +(q * p).toFixed(2);
 
-        // keep items[idx].amount in sync (readonly field)
         const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
         if (current !== base) {
           form.setValue(`items.${idx}.amount`, base, { shouldValidate: false });
@@ -422,32 +407,34 @@ export function TransactionForm({
 
       subTotal += base;
 
-      // 2) per-line GST%; if GST disabled, force 0
-      const pct = gstEnabled ? Number(it?.gstPct ?? 18) : 0;
+      // Per-line GST Calculation
+      const pct = gstEnabled ? Number(it?.gstPercentage ?? 18) : 0;
 
       const lineTax = +((base * pct) / 100).toFixed(2);
       const lineTotal = +(base + lineTax).toFixed(2);
       totalTax += lineTax;
 
-      // 3) write back to the line
-      const curTax = Number(form.getValues(`items.${idx}.lineTax`)) || 0;
-      if (curTax !== lineTax) {
+      // Set the line values back to form only if they have changed
+      const currentLineTax =
+        Number(form.getValues(`items.${idx}.lineTax`)) || 0;
+      const currentLineTotal =
+        Number(form.getValues(`items.${idx}.lineTotal`)) || 0;
+
+      if (currentLineTax !== lineTax) {
         form.setValue(`items.${idx}.lineTax`, lineTax, {
           shouldValidate: false,
         });
       }
-      const curLineTotal =
-        Number(form.getValues(`items.${idx}.lineTotal`)) || 0;
-      if (curLineTotal !== lineTotal) {
+      if (currentLineTotal !== lineTotal) {
         form.setValue(`items.${idx}.lineTotal`, lineTotal, {
           shouldValidate: false,
         });
       }
     });
 
-    // 4) write invoice-level fields
     const invoiceTotal = +(subTotal + totalTax).toFixed(2);
 
+    // Set the total values back to form only if they have changed
     if ((Number(form.getValues("totalAmount")) || 0) !== subTotal) {
       form.setValue("totalAmount", subTotal, { shouldValidate: true });
     }
@@ -612,6 +599,9 @@ export function TransactionForm({
         typeof p.amount === "number"
           ? p.amount
           : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
+      gstPercentage: p.gstPercentage ?? 18, // Ensure GST is set
+      lineTax: p.lineTax ?? 0, // Ensure lineTax is set
+      lineTotal: p.lineTotal ?? p.amount, // Ensure lineTotal is set correctly
     });
 
     const toServiceId = (s: any) => {
@@ -623,34 +613,43 @@ export function TransactionForm({
           (typeof s.serviceName === "object"
             ? s.serviceName._id
             : s.serviceName));
+
       return raw ? String(raw) : "";
     };
 
-    const toServiceItem = (s: any) => ({
-      itemType: "service" as const,
-      service: toServiceId(s),
-      description: s.description ?? "",
-      amount: Number(s.amount || 0),
-    });
+   const toServiceItem = (s: any) => ({
+  itemType: "service" as const,
+  service: toServiceId(s),
+  description: s.description ?? "",
+  amount: Number(s.amount || 0),
+  gstPercentage: s.gstPercentage ?? 18, // Ensure GST is included for services
+  lineTax: s.lineTax ?? 0, // Ensure lineTax is set for services
+  lineTotal: s.lineTotal ?? s.amount, // Ensure lineTotal is set correctly for services
+});
 
-    const toUnifiedItem = (i: any) => ({
-      itemType:
-        (i.itemType as "product" | "service") ??
-        (i.product || i.productId ? "product" : "service"),
-      product:
-        typeof i.product === "object"
-          ? String(i.product._id)
-          : String(i.product || ""),
-      service: toServiceId(i),
-      quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
-      unitType: i.unitType ?? "Piece",
-      pricePerUnit: i.pricePerUnit ?? undefined,
-      description: i.description ?? "",
-      amount:
-        typeof i.amount === "number"
-          ? i.amount
-          : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
-    });
+
+   const toUnifiedItem = (i: any) => ({
+  itemType:
+    (i.itemType as "product" | "service") ??
+    (i.product || i.productId ? "product" : "service"),
+  product:
+    typeof i.product === "object"
+      ? String(i.product._id)
+      : String(i.product || ""),
+  service: toServiceId(i),
+  quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
+  unitType: i.unitType ?? "Piece",
+  pricePerUnit: i.pricePerUnit ?? undefined,
+  description: i.description ?? "",
+  amount:
+    typeof i.amount === "number"
+      ? i.amount
+      : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
+  gstPercentage: i.gstPercentage ?? 18, // Ensure GST is set for both products and services
+  lineTax: i.lineTax ?? 0, // Ensure lineTax is set
+  lineTotal: i.lineTotal ?? i.amount, // Ensure lineTotal is set correctly
+});
+
 
     // ---------- choose source ----------
     let itemsToSet: any[] = [];
@@ -730,10 +729,6 @@ export function TransactionForm({
       referenceNumber: (transactionToEdit as any).referenceNumber,
       fromAccount: (transactionToEdit as any).debitAccount,
       toAccount: (transactionToEdit as any).creditAccount,
-      // gstRate:
-      //   (transactionToEdit as any).gstPercentage ??
-      //   form.getValues("gstRate") ??
-      //   STANDARD_GST,
     });
 
     replace(itemsToSet);
@@ -895,7 +890,6 @@ export function TransactionForm({
   </table>`;
   }
 
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
@@ -932,7 +926,7 @@ export function TransactionForm({
                 ? i.amount
                 : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
             description: i.description ?? "",
-            gstPercentage: gstEnabled ? Number(i.gstPct ?? 18) : 0,
+            gstPercentage: gstEnabled ? Number(i.gstPercentage ?? 18) : 0,
             lineTax: gstEnabled ? Number(i.lineTax ?? 0) : 0,
             lineTotal: gstEnabled ? Number(i.lineTotal ?? i.amount) : i.amount,
           })) ?? [];
@@ -944,7 +938,7 @@ export function TransactionForm({
             service: i.service, // ✅ send id under "service"
             amount: i.amount,
             description: i.description ?? "",
-            gstPercentage: gstEnabled ? Number(i.gstPct ?? 18) : 0,
+            gstPercentage: gstEnabled ? Number(i.gstPercentage ?? 18) : 0,
             lineTax: gstEnabled ? Number(i.lineTax ?? 0) : 0,
             lineTotal: gstEnabled ? Number(i.lineTotal ?? i.amount) : i.amount,
           })) ?? [];
@@ -1373,22 +1367,6 @@ export function TransactionForm({
     setIsServiceDialogOpen(false);
   };
 
-  // const getPartyOptions = () => {
-  //   if (type === "sales" || type === "receipt") {
-  //     return parties.map((p) => ({
-  //       value: p._id,
-  //       label: String(p.name || ""),
-  //     }));
-  //   }
-  //   if (type === "purchases" || type === "payment") {
-  //     return vendors.map((v) => ({
-  //       value: v._id,
-  //       label: String(v.vendorName || ""),
-  //     }));
-  //   }
-  //   return [];
-  // };
-
   const getPartyOptions = () => {
     if (type === "sales" || type === "receipt") {
       // customers
@@ -1706,226 +1684,226 @@ export function TransactionForm({
                   </div>
 
                   {/* Product Details - Compact Grid */}
-                 {/* Product Details - Single Row Layout */}
-<div className="flex flex-wrap items-end gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-  {/* Quantity */}
-  <div className="min-w-[80px] flex-1">
-    <FormField
-      control={form.control}
-      name={`items.${index}.quantity`}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-            Qty
-          </FormLabel>
-          <FormControl>
-            <Input
-              className="h-9 text-sm px-2 tabular-nums bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              type="number"
-              min="0"
-              placeholder="1"
-              {...field}
-              onChange={(e) =>
-                field.onChange(
-                  e.target.value === ""
-                    ? ""
-                    : e.target.valueAsNumber
-                )
-              }
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  </div>
+                  {/* Product Details - Single Row Layout */}
+                  <div className="flex flex-wrap items-end gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    {/* Quantity */}
+                    <div className="min-w-[80px] flex-1">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Qty
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="h-9 text-sm px-2 tabular-nums bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                type="number"
+                                min="0"
+                                placeholder="1"
+                                {...field}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value === ""
+                                      ? ""
+                                      : e.target.valueAsNumber
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-  {/* Unit */}
-  <div className="min-w-[100px] flex-1">
-    <FormField
-      control={form.control}
-      name={`items.${index}.unitType`}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-            Unit
-          </FormLabel>
-          <Select
-            onValueChange={field.onChange}
-            value={field.value}
-          >
-            <FormControl>
-              <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
-                <SelectValue placeholder="Unit" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {unitTypes.map((u) => (
-                <SelectItem
-                  key={u}
-                  value={u}
-                  className="text-sm"
-                >
-                  {u}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  </div>
+                    {/* Unit */}
+                    <div className="min-w-[100px] flex-1">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.unitType`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Unit
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
+                                  <SelectValue placeholder="Unit" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {unitTypes.map((u) => (
+                                  <SelectItem
+                                    key={u}
+                                    value={u}
+                                    className="text-sm"
+                                  >
+                                    {u}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-  {/* Price/Unit */}
-  <div className="min-w-[120px] flex-1">
-    <FormField
-      control={form.control}
-      name={`items.${index}.pricePerUnit`}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-            Price/Unit
-          </FormLabel>
-          <FormControl>
-            <Input
-              className="h-9 text-sm px-2 tabular-nums text-right bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              {...field}
-              onChange={(e) =>
-                field.onChange(
-                  e.target.value === ""
-                    ? ""
-                    : e.target.valueAsNumber
-                )
-              }
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  </div>
+                    {/* Price/Unit */}
+                    <div className="min-w-[120px] flex-1">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.pricePerUnit`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Price/Unit
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="h-9 text-sm px-2 tabular-nums text-right bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value === ""
+                                      ? ""
+                                      : e.target.valueAsNumber
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-  {/* Amount */}
-  <div className="min-w-[120px] flex-1">
-    <FormField
-      control={form.control}
-      name={`items.${index}.amount`}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-            Amount
-          </FormLabel>
-          <FormControl>
-            <Input
-              className="h-9 text-sm px-2 tabular-nums text-right bg-gray-100 dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 font-medium"
-              type="number"
-              readOnly
-              {...field}
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  </div>
+                    {/* Amount */}
+                    <div className="min-w-[120px] flex-1">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.amount`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Amount
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="h-9 text-sm px-2 tabular-nums text-right bg-gray-100 dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 font-medium"
+                                type="number"
+                                readOnly
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-  {/* GST % */}
-  {gstEnabled && (
-    <>
-      <div className="min-w-[100px] flex-1">
-        <FormField
-          control={form.control}
-          name={`items.${index}.gstPct`}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                GST %
-              </FormLabel>
-              <Select
-                disabled={!gstEnabled}
-                value={String(field.value ?? 18)}
-                onValueChange={(v) =>
-                  field.onChange(Number(v))
-                }
-              >
-                <FormControl>
-                  <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
-                    <SelectValue placeholder="GST %" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {GST_OPTIONS.map((opt) => (
-                    <SelectItem
-                      key={opt.value}
-                      value={opt.value}
-                      className="text-sm"
-                    >
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+                    {/* GST % */}
+                    {gstEnabled && (
+                      <>
+                        <div className="min-w-[100px] flex-1">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.gstPercentage`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  GST %
+                                </FormLabel>
+                                <Select
+                                  disabled={!gstEnabled}
+                                  value={String(field.value ?? 18)}
+                                  onValueChange={(v) =>
+                                    field.onChange(Number(v))
+                                  }
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
+                                      <SelectValue placeholder="GST %" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {GST_OPTIONS.map((opt) => (
+                                      <SelectItem
+                                        key={opt.value}
+                                        value={opt.value}
+                                        className="text-sm"
+                                      >
+                                        {opt.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
-      {/* Line Tax */}
-      <div className="min-w-[100px] flex-1">
-        <FormField
-          control={form.control}
-          name={`items.${index}.lineTax`}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Tax
-              </FormLabel>
-              <FormControl>
-                <Input
-                  className="h-9 text-sm px-2 tabular-nums text-right bg-gray-100 dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 font-medium"
-                  type="number"
-                  readOnly
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+                        {/* Line Tax */}
+                        <div className="min-w-[100px] flex-1">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.lineTax`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  Tax
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    className="h-9 text-sm px-2 tabular-nums text-right bg-gray-100 dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 font-medium"
+                                    type="number"
+                                    readOnly
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
-      {/* Line Total */}
-      <div className="min-w-[120px] flex-1">
-        <FormField
-          control={form.control}
-          name={`items.${index}.lineTotal`}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Total
-              </FormLabel>
-              <FormControl>
-                <Input
-                  className="h-9 text-sm px-2 tabular-nums text-right bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800/50 font-medium text-blue-700 dark:text-blue-300"
-                  type="number"
-                  readOnly
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-    </>
-  )}
-</div>
+                        {/* Line Total */}
+                        <div className="min-w-[120px] flex-1">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.lineTotal`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  Total
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    className="h-9 text-sm px-2 tabular-nums text-right bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800/50 font-medium text-blue-700 dark:text-blue-300"
+                                    type="number"
+                                    readOnly
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </>
               ) : (
                 /* Service Card */
@@ -2060,7 +2038,7 @@ export function TransactionForm({
                         <div className="md:col-span-2">
                           <FormField
                             control={form.control}
-                            name={`items.${index}.gstPct`}
+                            name={`items.${index}.gstPercentage`}
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -2171,7 +2149,7 @@ export function TransactionForm({
                 service: "",
                 amount: 0,
                 description: "",
-                gstPct: 18, // NEW
+                gstPercentage: 18, // NEW
                 lineTax: 0, // NEW
                 lineTotal: 0,
               })
