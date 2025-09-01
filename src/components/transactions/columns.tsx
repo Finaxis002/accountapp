@@ -45,6 +45,7 @@ interface ColumnsProps {
   companyMap: Map<string, string>;
   serviceNameById: Map<string, string>;
   onSendInvoice: (tx: Transaction) => void;
+  serviceMap?: Map<string, string>;
 }
 
 /** Build a filter function that can match party/vendor, description and line names */
