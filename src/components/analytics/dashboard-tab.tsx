@@ -1,188 +1,363 @@
+"use client";
 
-'use client';
+import * as React from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Users,
+  IndianRupee,
+  Building,
+  Mail,
+  Phone,
+  User,
+  Loader2,
+} from "lucide-react";
+import type { Client, Company } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { CompanyCard } from "../companies/company-card";
 
-import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, IndianRupee, Building, Mail, Phone, User, Loader2 } from 'lucide-react';
-import type { Client, Company } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { CompanyCard } from '../companies/company-card';
-
-const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+  }).format(amount);
 
 interface DashboardTabProps {
-    selectedClient: Client;
-    selectedCompanyId: string | null;
+  selectedClient: Client;
+  selectedCompanyId: string | null;
 }
 
-export function DashboardTab({ selectedClient, selectedCompanyId }: DashboardTabProps) {
-     const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
-    const [stats, setStats] = React.useState({ totalSales: 0, totalPurchases: 0 });
-    const [companies, setCompanies] = React.useState<Company[]>([]);
-    const [isLoading, setIsLoading] = React.useState(true);
-    const { toast } = useToast();
-    const [exportOpen, setExportOpen] = React.useState(false);
-const [exportCompanyId, setExportCompanyId] = React.useState<string | "ALL">("ALL");
-const [exportTypes, setExportTypes] = React.useState<Record<string, boolean>>({
-  sales: true,
-  purchases: true,
-  receipts: true,
-  payments: true,
-  journals: true,
-});
-const allTypes = ["sales", "purchases", "receipts", "payments", "journals"] as const;
-
-React.useEffect(() => {
-  // Preselect currently viewed company when opening dialog
-  if (selectedCompanyId) setExportCompanyId(selectedCompanyId);
-  else setExportCompanyId("ALL");
-}, [selectedCompanyId]);
+type Stats = {
+  totalSales: number;
+  totalPurchases: number;
+  totalUsers: number;        // <-- add
+};
 
 
-    React.useEffect(() => {
-        async function fetchStatsAndCompanies() {
-            if (!selectedClient._id) return;
-            setIsLoading(true);
-            try {
-                const token = localStorage.getItem("token");
-                if (!token) throw new Error("Authentication token not found.");
-                
-                const buildRequest = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-                
-                let salesUrl, purchasesUrl;
+export function DashboardTab({
+  selectedClient,
+  selectedCompanyId,
+}: DashboardTabProps) {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
+  const [stats, setStats] = React.useState({
+    totalSales: 0,
+    totalPurchases: 0,
+    totalUsers: 0, 
+  });
+  const [companies, setCompanies] = React.useState<Company[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const { toast } = useToast();
+  const [exportOpen, setExportOpen] = React.useState(false);
+  const [exportCompanyId, setExportCompanyId] = React.useState<string | "ALL">(
+    "ALL"
+  );
+  const [exportTypes, setExportTypes] = React.useState<Record<string, boolean>>(
+    {
+      sales: true,
+      purchases: true,
+      receipts: true,
+      payments: true,
+      journals: true,
+    }
+  );
+  const allTypes = [
+    "sales",
+    "purchases",
+    "receipts",
+    "payments",
+    "journals",
+  ] as const;
 
-                if (selectedCompanyId) {
-                    salesUrl = `${baseURL}/api/sales?companyId=${selectedCompanyId}`;
-                    purchasesUrl = `${baseURL}/api/purchase?companyId=${selectedCompanyId}`;
-                } else {
-                    salesUrl = `${baseURL}/api/sales/by-client/${selectedClient._id}`;
-                    purchasesUrl = `${baseURL}/api/purchase/by-client/${selectedClient._id}`;
-                }
-                
-                const [salesRes, purchasesRes, companiesRes] = await Promise.all([
-                    buildRequest(salesUrl),
-                    buildRequest(purchasesUrl),
-                    buildRequest(`${baseURL}/api/companies/by-client/${selectedClient._id}`),
-                ]);
+  React.useEffect(() => {
+    // Preselect currently viewed company when opening dialog
+    if (selectedCompanyId) setExportCompanyId(selectedCompanyId);
+    else setExportCompanyId("ALL");
+  }, [selectedCompanyId]);
 
-                const salesData = await salesRes.json();
-                const purchasesData = await purchasesRes.json();
-                const companiesData = await companiesRes.json();
+  React.useEffect(() => {
+    async function fetchStatsAndCompanies() {
+      if (!selectedClient._id) return;
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("Authentication token not found.");
+        const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-                const totalSales = (salesData.entries || salesData || []).reduce((acc: number, item: any) => acc + item.amount, 0);
-                const totalPurchases = (purchasesData || []).reduce((acc: number, item: any) => acc + item.amount, 0);
-                
-                setStats({ totalSales, totalPurchases });
-                setCompanies(Array.isArray(companiesData) ? companiesData : []);
+        const toArray = (x: any) => {
+          if (Array.isArray(x)) return x;
+          if (Array.isArray(x?.entries)) return x.entries;
+          if (Array.isArray(x?.data)) return x.data;
+          if (Array.isArray(x?.docs)) return x.docs;
+          if (Array.isArray(x?.items)) return x.items;
+          return [];
+        };
 
-            } catch (error) {
-                toast({ variant: "destructive", title: "Failed to load data", description: "Could not fetch client's financial summary." });
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        fetchStatsAndCompanies();
-    }, [selectedClient, selectedCompanyId, toast]);
+        const mustOk = async (res: Response, label: string) => {
+          if (!res.ok) {
+            const txt = await res.text().catch(() => "");
+            throw new Error(
+              `${label} API ${res.status} ${res.statusText} – ${txt}`
+            );
+          }
+        };
 
-    const kpiData = [
-        { title: 'Total Sales', value: formatCurrency(stats.totalSales || 0), icon: IndianRupee },
-        { title: 'Total Purchases', value: formatCurrency(stats.totalPurchases || 0), icon: IndianRupee },
-        { title: 'Company Users', value: (selectedClient.users || 0).toString(), icon: Users },
-        { title: 'Companies', value: (companies.length || 0).toString(), icon: Building },
-    ];
+        const idOf = (v: any) =>
+          typeof v === "string" ? v : v?._id || v?.id || v?.$oid || "";
 
-    if (isLoading) {
-        return (
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {Array.from({length: 4}).map((_, i) => (
-                    <Card key={i}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                             <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
-                             <div className="h-6 w-6 bg-muted rounded-md animate-pulse" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-8 w-1/2 bg-muted rounded animate-pulse" />
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        )
+        const filterByCompany = (arr: any[], companyId?: string | null) =>
+          !companyId
+            ? arr
+            : arr.filter(
+                (r) => idOf(r.company?._id ?? r.company) === companyId
+              );
+
+        const extractAmount = (row: any): number => {
+          const candidates = [
+            row.amount,
+            row.total,
+            row.totalAmount,
+            row.grandTotal,
+            row.finalAmount,
+            row.netAmount,
+            row?.amount?.total,
+            row?.totals?.total,
+            row?.summary?.grandTotal,
+          ];
+          for (const c of candidates) {
+            const n = Number(c);
+            if (Number.isFinite(n)) return n;
+          }
+          if (Array.isArray(row.items)) {
+            return row.items.reduce((s: number, it: any) => {
+              const price = Number(
+                it.total ?? it.amount ?? it.rate ?? it.price ?? 0
+              );
+              const qty = Number(it.qty ?? it.quantity ?? 1);
+              const guess = Number.isFinite(price * qty) ? price * qty : 0;
+              return s + guess;
+            }, 0);
+          }
+          return 0;
+        };
+
+        const sumAmount = (arr: any[]) =>
+          arr.reduce((a, e) => a + extractAmount(e), 0);
+
+        const base = process.env.NEXT_PUBLIC_BASE_URL || "";
+        const byCompany = !!selectedCompanyId;
+
+        const salesUrl = byCompany
+          ? `${base}/api/sales?companyId=${selectedCompanyId}`
+          : `${base}/api/sales/by-client/${selectedClient._id}`;
+        const purchasesUrl = byCompany
+          ? `${base}/api/purchase?companyId=${selectedCompanyId}`
+          : `${base}/api/purchase/by-client/${selectedClient._id}`;
+        const companiesUrl = `${base}/api/companies/by-client/${selectedClient._id}`;
+        const usersUrl = byCompany
+          ? `${base}/api/users/by-client/${selectedClient._id}?companyId=${selectedCompanyId}`
+          : `${base}/api/users/by-client/${selectedClient._id}`;
+
+        const [salesRes, purchasesRes, companiesRes, usersRes] =
+          await Promise.all([
+            fetch(salesUrl, auth),
+            fetch(purchasesUrl, auth),
+            fetch(companiesUrl, auth),
+            fetch(usersUrl, auth),
+          ]);
+
+        await Promise.all([
+          mustOk(salesRes, "Sales"),
+          mustOk(purchasesRes, "Purchases"),
+          mustOk(companiesRes, "Companies"),
+          mustOk(usersRes, "Users"),
+        ]);
+
+        const [salesData, purchasesData, companiesData, usersData] =
+          await Promise.all([
+            salesRes.json(),
+            purchasesRes.json(),
+            companiesRes.json(),
+            usersRes.json(),
+          ]);
+
+        const salesArr = toArray(salesData);
+        const purchasesArr = toArray(purchasesData);
+        const companiesArr = toArray(companiesData);
+        const usersArr = toArray(usersData);
+
+        // extra client-side filter safeguard
+        const salesFiltered = filterByCompany(salesArr, selectedCompanyId);
+        const purchasesFiltered = filterByCompany(
+          purchasesArr,
+          selectedCompanyId
+        );
+        const usersFiltered = !selectedCompanyId
+          ? usersArr
+          : usersArr.filter(
+              (u: any) =>
+                Array.isArray(u.companies) &&
+                u.companies.some((c: any) => idOf(c) === selectedCompanyId)
+            );
+
+        setStats({
+          totalSales: sumAmount(salesFiltered),
+          totalPurchases: sumAmount(purchasesFiltered),
+          // add totalUsers to the shape
+          // @ts-ignore add this field to your stats state type
+          totalUsers: usersFiltered.length,
+        });
+        setCompanies(companiesArr);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Failed to load data",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Could not fetch client's financial summary.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    return (
-        <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {kpiData.map(kpi => (
-                    <Card key={kpi.title}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                            <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{kpi.value}</div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-            
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    fetchStatsAndCompanies();
+  }, [selectedClient._id, selectedCompanyId, toast]);
 
-                 <Card className="lg:col-span-1">
-                    <CardHeader>
-                        <CardTitle>Client Details</CardTitle>
-                        <CardDescription>Primary contact information.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center gap-4">
-                            <User className="h-5 w-5 text-muted-foreground" />
-                            <span>{selectedClient.contactName}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Mail className="h-5 w-5 text-muted-foreground" />
-                            <a href={`mailto:${selectedClient.email}`} className="hover:underline">{selectedClient.email}</a>
-                        </div>
-                         <div className="flex items-center gap-4">
-                            <Phone className="h-5 w-5 text-muted-foreground" />
-                            <span>{selectedClient.phone}</span>
-                        </div>
-                    </CardContent>
-                </Card>
-                <div className="lg:col-span-2">
-                    {companies.length > 0 ? (
-                        <Carousel
-                            opts={{
-                                align: "start",
-                            }}
-                            className="w-full"
-                        >
-                            <CarouselContent>
-                                {companies.map((company) => (
-                                    <CarouselItem key={company._id} className="md:basis-1/1 lg:basis-1/1">
-                                        <div className="p-1">
-                                            <CompanyCard company={company} onDelete={() => {}} />
-                                        </div>
-                                    </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                            <CarouselPrevious className='sm:ml-4 ml-[40px]' />
-                            <CarouselNext className='sm:mr-4 mr-[40px]'/>
-                        </Carousel>
-                    ) : (
-                        <Card>
-                             <CardHeader>
-                                <CardTitle>No Companies Found</CardTitle>
-                                <CardDescription>This client does not have any companies assigned yet.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex items-center justify-center p-12">
-                                <Building className="h-16 w-16 text-muted-foreground" />
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-               
+  const kpiData = [
+    {
+      title: "Total Sales",
+      value: formatCurrency(stats.totalSales || 0),
+      icon: IndianRupee,
+    },
+    {
+      title: "Total Purchases",
+      value: formatCurrency(stats.totalPurchases || 0),
+      icon: IndianRupee,
+    },
+    {
+    title: "Total Users",
+    value: String(stats.totalUsers || 0),   // <-- use stats, not selectedClient
+    icon: Users,
+  },
+    {
+      title: "Companies",
+      value: (companies.length || 0).toString(),
+      icon: Building,
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
+              <div className="h-6 w-6 bg-muted rounded-md animate-pulse" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 w-1/2 bg-muted rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {kpiData.map((kpi) => (
+          <Card key={kpi.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+              <kpi.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpi.value}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Client Details</CardTitle>
+            <CardDescription>Primary contact information.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <User className="h-5 w-5 text-muted-foreground" />
+              <span>{selectedClient.contactName}</span>
             </div>
+            <div className="flex items-center gap-4">
+              <Mail className="h-5 w-5 text-muted-foreground" />
+              <a
+                href={`mailto:${selectedClient.email}`}
+                className="hover:underline"
+              >
+                {selectedClient.email}
+              </a>
+            </div>
+            <div className="flex items-center gap-4">
+              <Phone className="h-5 w-5 text-muted-foreground" />
+              <span>{selectedClient.phone}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="lg:col-span-2">
+          {companies.length > 0 ? (
+            <Carousel
+              opts={{
+                align: "start",
+              }}
+              className="w-full"
+            >
+              <CarouselContent>
+                {companies.map((company) => (
+                  <CarouselItem
+                    key={company._id}
+                    className="md:basis-1/1 lg:basis-1/1"
+                  >
+                    <div className="p-1">
+                      <CompanyCard company={company} onDelete={() => {}} />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="sm:ml-4 ml-[40px]" />
+              <CarouselNext className="sm:mr-4 mr-[40px]" />
+            </Carousel>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>No Companies Found</CardTitle>
+                <CardDescription>
+                  This client does not have any companies assigned yet.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center p-12">
+                <Building className="h-16 w-16 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          )}
         </div>
-    )
+      </div>
+    </div>
+  );
 }
