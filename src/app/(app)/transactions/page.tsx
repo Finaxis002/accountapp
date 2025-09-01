@@ -808,7 +808,7 @@ export default function TransactionsPage() {
                       New Transaction
                     </Button>
                   </DialogTrigger>
-                  <DialogContent wide className="w-[95vw] !max-w-[1200px] grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 sm:max-w-[1400px]"  style={{ maxWidth: 1200, width: '95vw', maxHeight: "90vh" }}>
+                  <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 ]"  style={{ maxWidth: 1000, width: '125vw' }}>
                     <DialogHeader className="p-6">
                       <DialogTitle>
                         {transactionToEdit

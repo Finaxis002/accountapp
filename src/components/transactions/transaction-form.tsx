@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -203,6 +205,8 @@ const formSchema = z
     paymentMethod: z.string().optional(),
     taxAmount: z.coerce.number().min(0).optional(), // <-- NEW (derived)
     invoiceTotal: z.coerce.number().min(0).optional(),
+    subTotal: z.coerce.number().min(0).optional(),
+    dontSendInvoice: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -891,6 +895,7 @@ export function TransactionForm({
   </table>`;
   }
 
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
@@ -955,23 +960,7 @@ export function TransactionForm({
       const receiptAmount = Number(
         values.totalAmount ?? values.subTotal ?? values.invoiceTotal ?? 0
       );
-      // --- Build payload ---
-      // const payload: any = {
-      //   type: values.type,
-      //   company: values.company,
-      //   party: values.party,
-      //   date: values.date,
-      //   description: values.description,
-      //   referenceNumber: values.referenceNumber,
-      //   narration: values.narration,
-      //   products: productLines,
-      //   services: serviceLines,
-      //   totalAmount: uiInvoiceTotal,
-      //   subTotal: uiSubTotal,
-      //   taxAmount: uiTax,
-      //   paymentMethod: values.paymentMethod,
-      //   invoiceTotal: uiInvoiceTotal,
-      // };
+
       // --- Build payload ---
       let payload: any;
 
@@ -1018,7 +1007,6 @@ export function TransactionForm({
       }
 
       // Clean up fields not needed by the server
-      // (We already mapped items into products/services)
       delete (payload as any).items;
       delete (payload as any).gstRate;
 
@@ -1031,10 +1019,8 @@ export function TransactionForm({
       if (values.type === "journal") {
         payload.debitAccount = values.fromAccount;
         payload.creditAccount = values.toAccount;
-        // journal's "amount" is just the entered main amount
         payload.amount = Number(values.totalAmount ?? 0);
 
-        // remove fields that don't apply to journal
         delete payload.fromAccount;
         delete payload.toAccount;
         delete payload.party;
@@ -1057,17 +1043,11 @@ export function TransactionForm({
         body: JSON.stringify(payload),
       });
 
-      console.log("Request payload:", payload);
-
       const data = await res.json();
 
       if (!res.ok) {
-        console.error("Backend error details:", data);
         throw new Error(
-          data.message ||
-            `Failed to ${transactionToEdit ? "update" : "create"} ${
-              values.type
-            } entry.`
+          data.message || `Failed to submit ${values.type} entry.`
         );
       }
 
@@ -1084,132 +1064,115 @@ export function TransactionForm({
 
       // 🔽 SEND INVOICE PDF BY EMAIL (Sales only)
       if (values.type === "sales") {
-        const saved = data?.entry || data?.sale || {};
-
-        console.log("Saved transaction:", saved);
-
-        const savedCompanyId = String(
-          typeof saved.company === "object"
-            ? saved.company?._id
-            : saved.company || values.company
-        );
-        const savedPartyId = String(
-          typeof saved.party === "object"
-            ? saved.party?._id
-            : saved.party || values.party
-        );
-
-        const companyDoc = companies.find(
-          (c) => String(c._id) === savedCompanyId
-        );
-        const partyDoc = parties.find((p) => String(p._id) === savedPartyId);
-
-        if (partyDoc?.email) {
-          let pdfDoc;
-          try {
-            // Enrich the saved data with product/service names before generating PDF
-            const enrichedTransaction = enrichTransactionWithNames(
-              saved,
-              products,
-              services
-            );
-
-            pdfDoc = await generatePdfForTemplate1(
-              enrichedTransaction, // ← Use enriched data instead of raw saved data
-              companyDoc as any,
-              partyDoc as any,
-              serviceNameById
-            );
-          } catch (error) {
-            console.error(
-              "Template 3 failed, falling back to Template 1:",
-              error
-            );
-
-            // Also enrich for fallback template
-            const enrichedTransaction = enrichTransactionWithNames(
-              saved,
-              products,
-              services
-            );
-
-            pdfDoc = generatePdfForTemplate3(
-              enrichedTransaction, // ← Use enriched data instead of raw saved data
-              companyDoc as any,
-              partyDoc as any,
-              serviceNameById
-            );
-          }
-
-          const pdfInstance = await pdfDoc;
-          const pdfBase64 = pdfInstance.output("datauristring").split(",")[1];
-
-          // 3) subject + message (as you requested)
-          // ...inside if (values.type === "sales") { ... }
-          const subject = `Invoice From ${
-            companyDoc?.businessName ?? "Your Company"
-          }`;
-
-          const bodyHtml = buildInvoiceEmailHTML({
-            companyName: companyDoc?.businessName ?? "Your Company",
-            partyName: partyDoc?.name ?? "Customer",
-            supportEmail: companyDoc?.emailId ?? "",
-            supportPhone: companyDoc?.mobileNumber ?? "",
-            // logoUrl: companyDoc?.logoUrl ?? null, // if you have one
+        if (values.dontSendInvoice) {
+          toast({
+            title: "Invoice will not be sent",
+            description: "You have selected not to send the invoice.",
           });
-
-          const fileName = `${
-            saved.invoiceNumber ?? saved.referenceNumber ?? "invoice"
-          }.pdf`;
-
-          const emailRes = await fetch(
-            `${baseURL}/api/integrations/gmail/send-invoice`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                to: partyDoc.email,
-                subject,
-                html: bodyHtml, // ✅ send HTML
-                // message: bodyText,           // (optional) keep for fallback if you want
-                fileName,
-                pdfBase64,
-                companyId: savedCompanyId,
-                sendAs: "companyOwner",
-              }),
-            }
+        } else {
+          const saved = data?.entry || data?.sale || {};
+          const savedCompanyId = String(
+            saved.company?._id || saved.company || values.company
+          );
+          const savedPartyId = String(
+            saved.party?._id || saved.party || values.party
           );
 
-          if (!emailRes.ok) {
-            const eData = await emailRes.json().catch(() => ({}));
-            console.error("Email API error:", {
-              status: emailRes.status,
-              statusText: emailRes.statusText,
-              data: eData,
+          const companyDoc = companies.find(
+            (c) => String(c._id) === savedCompanyId
+          );
+          const partyDoc = parties.find((p) => String(p._id) === savedPartyId);
+
+          if (partyDoc?.email) {
+            let pdfDoc;
+            try {
+              const enrichedTransaction = enrichTransactionWithNames(
+                saved,
+                products,
+                services
+              );
+              pdfDoc = generatePdfForTemplate1(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById // This is the missing argument
+              );
+            } catch (error) {
+              console.error(
+                "Template 3 failed, falling back to Template 1:",
+                error
+              );
+              const enrichedTransaction = enrichTransactionWithNames(
+                saved,
+                products,
+                services
+              );
+              pdfDoc = generatePdfForTemplate3(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById // This is the missing argument
+              );
+            }
+
+            const pdfInstance = await pdfDoc;
+            const pdfBase64 = pdfInstance.output("datauristring").split(",")[1];
+
+            const subject = `Invoice From ${
+              companyDoc?.businessName ?? "Your Company"
+            }`;
+            const bodyHtml = buildInvoiceEmailHTML({
+              companyName: companyDoc?.businessName ?? "Your Company",
+              partyName: partyDoc?.name ?? "Customer",
+              supportEmail: companyDoc?.emailId ?? "",
+              supportPhone: companyDoc?.mobileNumber ?? "",
             });
-            toast({
-              variant: "destructive",
-              title: "Invoice email not sent",
-              description:
-                eData.message ||
-                "Couldn't send the invoice email. Please reconnect Gmail and try again.",
-            });
+
+            const fileName = `${
+              saved.invoiceNumber ?? saved.referenceNumber ?? "invoice"
+            }.pdf`;
+
+            const emailRes = await fetch(
+              `${baseURL}/api/integrations/gmail/send-invoice`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  to: partyDoc.email,
+                  subject,
+                  html: bodyHtml,
+                  fileName,
+                  pdfBase64,
+                  companyId: savedCompanyId,
+                  sendAs: "companyOwner",
+                }),
+              }
+            );
+
+            if (!emailRes.ok) {
+              const eData = await emailRes.json().catch(() => ({}));
+              toast({
+                variant: "destructive",
+                title: "Invoice email not sent",
+                description: eData.message || "Failed to send invoice email.",
+              });
+            } else {
+              toast({
+                title: "Invoice emailed",
+                description: `Sent to ${partyDoc.email}`,
+              });
+            }
           } else {
             toast({
-              title: "Invoice emailed",
-              description: `Sent to ${partyDoc.email}`,
+              variant: "destructive",
+              title: "No customer email",
+              description:
+                "The selected customer does not have an email address.",
             });
           }
-        } else {
-          toast({
-            variant: "destructive",
-            title: "No customer email",
-            description:
-              "The selected customer does not have an email address.",
-          });
         }
       }
 
@@ -1700,234 +1663,294 @@ export function TransactionForm({
 
               {item.itemType === "product" ? (
                 <>
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.product`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product</FormLabel>
-                        <Combobox
-                          options={productOptions}
-                          value={field.value || ""}
-                          onChange={(value) => field.onChange(value)}
-                          placeholder="Select or create a product..."
-                          searchPlaceholder="Search products..."
-                          noResultsText="No product found."
-                          creatable
-                          // Change the onCreate prop in the Combobox component:
-                          onCreate={async (name) => {
-                            // ⬇️ CHANGE this block
-                            setCreatingProductForIndex(index); // remember which row
-                            handleTriggerCreateProduct(name); // opens dialog
-                            return ""; // return empty for now; we'll set after dialog
-                          }}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* ONE ROW WITH 7 FIELDS (compact) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-2 items-end">
-                    {/* Quantity */}
+                  {/* Product Selection */}
+                  <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/50">
                     <FormField
                       control={form.control}
-                      name={`items.${index}.quantity`}
+                      name={`items.${index}.product`}
                       render={({ field }) => (
-                        <FormItem className="lg:col-span-1">
-                          <FormLabel className="text-xs">Quantity</FormLabel>
-                          <FormControl>
-                            <Input
-                              className="h-8 text-xs px-2 max-w-[84px] tabular-nums"
-                              type="number"
-                              placeholder="1"
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? ""
-                                    : e.target.valueAsNumber
-                                )
-                              }
-                            />
-                          </FormControl>
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4 mr-2 text-blue-500"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Product Selection
+                          </FormLabel>
+                          <Combobox
+                            options={productOptions}
+                            value={field.value || ""}
+                            onChange={(value) => field.onChange(value)}
+                            placeholder="Select or create a product..."
+                            searchPlaceholder="Search products..."
+                            noResultsText="No product found."
+                            creatable
+                            onCreate={async (name) => {
+                              setCreatingProductForIndex(index);
+                              handleTriggerCreateProduct(name);
+                              return "";
+                            }}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    {/* Unit */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.unitType`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-1">
-                          <FormLabel className="text-xs">Unit</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {unitTypes.map((u) => (
-                                <SelectItem key={u} value={u}>
-                                  {u}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Price/Unit */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.pricePerUnit`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-2">
-                          <FormLabel className="text-xs">Price/Unit</FormLabel>
-                          <FormControl>
-                            <Input
-                              className="h-8 text-xs px-2 tabular-nums text-right"
-                              type="number"
-                              placeholder="0.00"
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? ""
-                                    : e.target.valueAsNumber
-                                )
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Amount */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.amount`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-2">
-                          <FormLabel className="text-xs">Amount</FormLabel>
-                          <FormControl>
-                            <Input
-                              className="h-8 text-xs px-2 tabular-nums text-right bg-muted"
-                              type="number"
-                              readOnly
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {gstEnabled && (
-                      <>
-                        {/* GST % (Item) */}
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.gstPct`}
-                          render={({ field }) => (
-                            <FormItem className="lg:col-span-1 lg:col-span-2">
-                              {" "}
-                              {/* Adjusted column span */}
-                              <FormLabel className="text-xs">
-                                GST % (Item)
-                              </FormLabel>
-                              <Select
-                                disabled={!gstEnabled}
-                                value={String(field.value ?? 18)}
-                                onValueChange={(v) => field.onChange(Number(v))}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-8 text-xs px-2 tabular-nums text-right bg-muted">
-                                    <SelectValue placeholder="GST %" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {GST_OPTIONS.map((opt) => (
-                                    <SelectItem
-                                      key={opt.value}
-                                      value={opt.value}
-                                    >
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Line Tax */}
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.lineTax`}
-                          render={({ field }) => (
-                            <FormItem className="lg:col-span-1">
-                              {" "}
-                              {/* Adjusted column span */}
-                              <FormLabel className="text-xs">
-                                Line Tax
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  className="h-8 text-xs px-2 tabular-nums text-right bg-muted"
-                                  type="number"
-                                  readOnly
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Line Total */}
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.lineTotal`}
-                          render={({ field }) => (
-                            <FormItem className="lg:col-span-2">
-                              <FormLabel className="text-xs">
-                                Line Total
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  className="h-8 text-xs px-2 tabular-nums text-right bg-muted"
-                                  type="number"
-                                  readOnly
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </>
-                    )}
                   </div>
+
+                  {/* Product Details - Compact Grid */}
+                 {/* Product Details - Single Row Layout */}
+<div className="flex flex-wrap items-end gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+  {/* Quantity */}
+  <div className="min-w-[80px] flex-1">
+    <FormField
+      control={form.control}
+      name={`items.${index}.quantity`}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+            Qty
+          </FormLabel>
+          <FormControl>
+            <Input
+              className="h-9 text-sm px-2 tabular-nums bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              type="number"
+              min="0"
+              placeholder="1"
+              {...field}
+              onChange={(e) =>
+                field.onChange(
+                  e.target.value === ""
+                    ? ""
+                    : e.target.valueAsNumber
+                )
+              }
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </div>
+
+  {/* Unit */}
+  <div className="min-w-[100px] flex-1">
+    <FormField
+      control={form.control}
+      name={`items.${index}.unitType`}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+            Unit
+          </FormLabel>
+          <Select
+            onValueChange={field.onChange}
+            value={field.value}
+          >
+            <FormControl>
+              <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
+                <SelectValue placeholder="Unit" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {unitTypes.map((u) => (
+                <SelectItem
+                  key={u}
+                  value={u}
+                  className="text-sm"
+                >
+                  {u}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </div>
+
+  {/* Price/Unit */}
+  <div className="min-w-[120px] flex-1">
+    <FormField
+      control={form.control}
+      name={`items.${index}.pricePerUnit`}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+            Price/Unit
+          </FormLabel>
+          <FormControl>
+            <Input
+              className="h-9 text-sm px-2 tabular-nums text-right bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              {...field}
+              onChange={(e) =>
+                field.onChange(
+                  e.target.value === ""
+                    ? ""
+                    : e.target.valueAsNumber
+                )
+              }
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </div>
+
+  {/* Amount */}
+  <div className="min-w-[120px] flex-1">
+    <FormField
+      control={form.control}
+      name={`items.${index}.amount`}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+            Amount
+          </FormLabel>
+          <FormControl>
+            <Input
+              className="h-9 text-sm px-2 tabular-nums text-right bg-gray-100 dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 font-medium"
+              type="number"
+              readOnly
+              {...field}
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </div>
+
+  {/* GST % */}
+  {gstEnabled && (
+    <>
+      <div className="min-w-[100px] flex-1">
+        <FormField
+          control={form.control}
+          name={`items.${index}.gstPct`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                GST %
+              </FormLabel>
+              <Select
+                disabled={!gstEnabled}
+                value={String(field.value ?? 18)}
+                onValueChange={(v) =>
+                  field.onChange(Number(v))
+                }
+              >
+                <FormControl>
+                  <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
+                    <SelectValue placeholder="GST %" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {GST_OPTIONS.map((opt) => (
+                    <SelectItem
+                      key={opt.value}
+                      value={opt.value}
+                      className="text-sm"
+                    >
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Line Tax */}
+      <div className="min-w-[100px] flex-1">
+        <FormField
+          control={form.control}
+          name={`items.${index}.lineTax`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Tax
+              </FormLabel>
+              <FormControl>
+                <Input
+                  className="h-9 text-sm px-2 tabular-nums text-right bg-gray-100 dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 font-medium"
+                  type="number"
+                  readOnly
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Line Total */}
+      <div className="min-w-[120px] flex-1">
+        <FormField
+          control={form.control}
+          name={`items.${index}.lineTotal`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Total
+              </FormLabel>
+              <FormControl>
+                <Input
+                  className="h-9 text-sm px-2 tabular-nums text-right bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800/50 font-medium text-blue-700 dark:text-blue-300"
+                  type="number"
+                  readOnly
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    </>
+  )}
+</div>
                 </>
               ) : (
-                <div className="space-y-4">
+                /* Service Card */
+                <div className="space-y-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800/50">
+                  {/* Service Selection */}
                   <FormField
                     control={form.control}
                     name={`items.${index}.service`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Service</FormLabel>
+                        <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 mr-2 text-green-500"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          Service Selection
+                        </FormLabel>
                         <Combobox
                           options={serviceOptions}
                           value={field.value || ""}
@@ -1947,172 +1970,179 @@ export function TransactionForm({
                               return "";
                             }
 
-                            // remember which row triggered this (optional now)
                             setCreatingServiceForIndex(index);
-
-                            // create the service via API (your function already adds it to `services` and toasts)
                             const newServiceId =
                               await handleTriggerCreateService(name);
 
                             if (newServiceId) {
-                              // ✅ immediately set the RHF value for THIS row
                               form.setValue(
                                 `items.${index}.service`,
                                 newServiceId,
-                                {
-                                  shouldValidate: true,
-                                  shouldDirty: true,
-                                }
+                                { shouldValidate: true, shouldDirty: true }
                               );
                               form.setValue(
                                 `items.${index}.itemType`,
                                 "service",
-                                {
-                                  shouldValidate: false,
-                                }
+                                { shouldValidate: false }
                               );
-
-                              // If your Combobox expects the onCreate return to set selection, you can return the id:
                               return newServiceId;
-
-                              // If your Combobox expects an option object instead, use:
-                              // return { value: newServiceId, label: name };
                             }
 
                             return "";
                           }}
                         />
-
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-4 items-end">
+                  {/* Service Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                     {/* Amount */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.amount`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-2 md:col-span-2">
-                          <FormLabel className="text-xs">Amount</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="0.00"
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? ""
-                                    : e.target.valueAsNumber
-                                )
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="md:col-span-3">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.amount`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Amount
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value === ""
+                                      ? ""
+                                      : e.target.valueAsNumber
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     {/* Description */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.description`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-3 md:col-span-2">
-                          <FormLabel className="text-xs">Description</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Brief service description"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="md:col-span-4">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.description`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Description
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                placeholder="Service description"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                    {/* GST % (Item) */}
                     {gstEnabled && (
                       <>
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.gstPct`}
-                          render={({ field }) => (
-                            <FormItem className="lg:col-span-2 md:col-span-2">
-                              <FormLabel className="text-xs">
-                                GST % (Item)
-                              </FormLabel>
-                              <Select
-                                disabled={!gstEnabled}
-                                value={String(field.value ?? 18)}
-                                onValueChange={(v) => field.onChange(Number(v))}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select GST %" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {GST_OPTIONS.map((opt) => (
-                                    <SelectItem
-                                      key={opt.value}
-                                      value={opt.value}
-                                    >
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {/* GST % */}
+                        <div className="md:col-span-2">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.gstPct`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  GST %
+                                </FormLabel>
+                                <Select
+                                  disabled={!gstEnabled}
+                                  value={String(field.value ?? 18)}
+                                  onValueChange={(v) =>
+                                    field.onChange(Number(v))
+                                  }
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-green-500">
+                                      <SelectValue placeholder="GST %" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {GST_OPTIONS.map((opt) => (
+                                      <SelectItem
+                                        key={opt.value}
+                                        value={opt.value}
+                                        className="text-sm"
+                                      >
+                                        {opt.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
                         {/* Line Tax */}
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.lineTax`}
-                          render={({ field }) => (
-                            <FormItem className="lg:col-span-2 md:col-span-1">
-                              <FormLabel className="text-xs">
-                                Line Tax
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  readOnly
-                                  className="bg-muted"
-                                  value={field.value ?? 0}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <div className="md:col-span-1">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.lineTax`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  Tax
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    className="h-9 px-1 text-sm text-right bg-gray-100 dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 font-medium"
+                                    type="number"
+                                    readOnly
+                                    value={field.value ?? 0}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
                         {/* Line Total */}
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.lineTotal`}
-                          render={({ field }) => (
-                            <FormItem className="lg:col-span-2 md:col-span-1">
-                              <FormLabel className="text-xs">
-                                Line Total
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  readOnly
-                                  className="bg-muted"
-                                  value={field.value ?? 0}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <div className="md:col-span-2">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.lineTotal`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  Total
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    className="h-9 text-sm text-right bg-green-50 dark:bg-green-900/30 border-green-100 dark:border-green-800/50 font-medium text-green-700 dark:text-green-300"
+                                    type="number"
+                                    readOnly
+                                    value={field.value ?? 0}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </>
                     )}
                   </div>
@@ -2181,9 +2211,7 @@ export function TransactionForm({
           {/* GST row only when enabled */}
           {gstEnabled && (
             <div className="flex items-center justify-between">
-              <FormLabel className="font-medium">
-                GST ({String(form.getValues("gstRate") ?? STANDARD_GST)}%)
-              </FormLabel>
+              <FormLabel className="font-medium">GST</FormLabel>
               <FormField
                 control={form.control}
                 name="taxAmount"
@@ -2207,7 +2235,7 @@ export function TransactionForm({
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel className="text-lg font-bold">
+                  <FormLabel className="font-bold">
                     Invoice Total{gstEnabled ? " (GST incl.)" : ""}
                   </FormLabel>
                   <Input
@@ -2217,6 +2245,31 @@ export function TransactionForm({
                     value={field.value ?? 0}
                     onChange={field.onChange}
                   />
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dontSendInvoice"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value || false}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="cursor-pointer">
+                    Don't Send Invoice
+                  </FormLabel>
+                  <FormDescription className="text-xs text-muted-foreground">
+                    Check this if you don't want to email the invoice to the
+                    customer
+                  </FormDescription>
                 </div>
                 <FormMessage />
               </FormItem>
@@ -2433,7 +2486,7 @@ export function TransactionForm({
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-          <ScrollArea className="flex-1 overflow-y-auto">
+          <ScrollArea className="flex-1 overflow-y-hidden">
             <div className="p-6 space-y-6">
               <Tabs
                 value={type}
