@@ -274,6 +274,10 @@ export function TransactionForm({
   const [services, setServices] = React.useState<Service[]>([]);
   const [balance, setBalance] = React.useState<number | null>(null);
 
+  const [partyBalances, setPartyBalances] = React.useState<
+    Record<string, number>
+  >({});
+
   // which line (items[index]) is creating a product/service right now?
   const [creatingProductForIndex, setCreatingProductForIndex] = React.useState<
     number | null
@@ -284,7 +288,6 @@ export function TransactionForm({
 
   const [isLoading, setIsLoading] = React.useState(true);
   const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer"];
-
 
   const { selectedCompanyId } = useCompany();
   const { permissions: userCaps } = useUserPermissions();
@@ -359,6 +362,11 @@ export function TransactionForm({
   });
 
   const watchedItems = useWatch({ control: form.control, name: "items" });
+  const receiptAmountWatch = useWatch({
+    control: form.control,
+    name: "totalAmount",
+  });
+
   const type = form.watch("type");
 
   // Derived flags for current tab
@@ -383,49 +391,6 @@ export function TransactionForm({
       }
     }
   }, [type, replace, form]);
-
-  // const gstRate = useWatch({ control: form.control, name: "gstRate" });
-
-  // React.useEffect(() => {
-  //   if (!watchedItems || !["sales", "purchases"].includes(type)) return;
-
-  //   let subTotal = 0;
-
-  //   watchedItems.forEach((it, idx) => {
-  //     if (it?.itemType === "product") {
-  //       const q = Number(it.quantity) || 0;
-  //       const p = Number(it.pricePerUnit) || 0;
-  //       const amt = +(q * p).toFixed(2);
-  //       subTotal += amt;
-
-  //       const current = Number(form.getValues(`items.${idx}.amount`)) || 0;
-  //       if (current !== amt) {
-  //         form.setValue(`items.${idx}.amount`, amt, { shouldValidate: false });
-  //       }
-  //     } else if (it?.itemType === "service") {
-  //       const amt = Number(it.amount) || 0;
-  //       subTotal += amt;
-  //     }
-  //   });
-
-  //   const currentSubtotal = Number(form.getValues("totalAmount")) || 0;
-  //   if (currentSubtotal !== subTotal) {
-  //     form.setValue("totalAmount", subTotal, { shouldValidate: true });
-  //   }
-
-  //   // 🔑 only apply GST if company has GSTIN
-  //   const rate = gstEnabled ? Number(gstRate ?? STANDARD_GST) : 0;
-  //   const tax = +((subTotal * rate) / 100).toFixed(2);
-  //   const invoiceTotal = +(subTotal + tax).toFixed(2);
-
-  //   // write tax & total back
-  //   if ((Number(form.getValues("taxAmount")) || 0) !== tax) {
-  //     form.setValue("taxAmount", tax, { shouldValidate: false });
-  //   }
-  //   if ((Number(form.getValues("invoiceTotal")) || 0) !== invoiceTotal) {
-  //     form.setValue("invoiceTotal", invoiceTotal, { shouldValidate: false });
-  //   }
-  // }, [watchedItems, type, gstRate, gstEnabled, form]);
 
   // ⬇️ DROP-IN REPLACEMENT: per-line GST computation
   React.useEffect(() => {
@@ -490,6 +455,48 @@ export function TransactionForm({
     }
   }, [watchedItems, type, gstEnabled, form]);
 
+  // Try a bulk endpoint first; if not available, fall back to per-party calls
+  const loadPartyBalances = React.useCallback(
+    async (list: Party[]) => {
+      const token = localStorage.getItem("token");
+      if (!token || !Array.isArray(list) || list.length === 0) return;
+
+      // 1) Try bulk endpoint: GET /api/parties/balances -> { balances: { [partyId]: number } }
+      try {
+        const bulk = await fetch(`${baseURL}/api/parties/balances`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (bulk.ok) {
+          const data = await bulk.json();
+          const map = (data && (data.balances as Record<string, number>)) || {};
+          setPartyBalances(map);
+          return; // done
+        }
+      } catch {
+        // ignore and fall back
+      }
+
+      // 2) Fallback: GET /api/parties/:id/balance for each party
+      // (kept simple; you can add throttling if your list is huge)
+      const entries = await Promise.all(
+        list.map(async (p) => {
+          try {
+            const r = await fetch(`${baseURL}/api/parties/${p._id}/balance`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!r.ok) return [p._id, 0] as const;
+            const d = await r.json();
+            return [p._id, Number(d?.balance ?? 0)] as const;
+          } catch {
+            return [p._id, 0] as const;
+          }
+        })
+      );
+      setPartyBalances(Object.fromEntries(entries));
+    },
+    [baseURL]
+  );
+
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -535,6 +542,24 @@ export function TransactionForm({
       setParties(
         Array.isArray(partiesData) ? partiesData : partiesData.parties || []
       );
+
+      const list: Party[] = Array.isArray(partiesData)
+        ? partiesData
+        : partiesData.parties || [];
+
+      const listHasInlineBalance =
+        Array.isArray(list) &&
+        list.some((p: any) => typeof p?.balance === "number");
+
+      if (!listHasInlineBalance) {
+        // fetch balances if not already present on party objects
+        loadPartyBalances(list);
+      } else {
+        // use inline balances directly to build the map for quick lookup
+        const map: Record<string, number> = {};
+        list.forEach((p: any) => (map[p._id] = Number(p.balance || 0)));
+        setPartyBalances(map);
+      }
       setProducts(
         Array.isArray(productsData) ? productsData : productsData.products || []
       );
@@ -744,152 +769,6 @@ export function TransactionForm({
     }
   }
 
-
-  
-  //   async function onSubmit(values: z.infer<typeof formSchema>) {
-  //     setIsSubmitting(true);
-  //     try {
-  //       const token = localStorage.getItem("token");
-  //       if (!token) throw new Error("Authentication token not found.");
-
-  //       const endpointMap: Record<string, string> = {
-  //         sales: `/api/sales`,
-  //         purchases: `/api/purchase`,
-  //         receipt: `/api/receipts`,
-  //         payment: `/api/payments`,
-  //         journal: `/api/journals`,
-  //       };
-
-  //       // in onSubmit(...)
-  //       const method = transactionToEdit ? "PUT" : "POST";
-  //       let endpoint = endpointMap[values.type];
-
-  //       if (transactionToEdit) {
-  //         // use the original type’s endpoint and append the id
-  //         const editType = transactionToEdit.type; // "sales" here
-  //         endpoint = `${endpointMap[editType]}/${transactionToEdit._id}`;
-  //       }
-
-  //       const productLines =
-  //         values.items
-  //           ?.filter((i) => i.itemType === "product")
-  //           .map((i) => ({
-  //             product: i.product, // ObjectId
-  //             quantity: i.quantity,
-  //             unitType: i.unitType,
-  //             pricePerUnit: i.pricePerUnit,
-  //             amount: i.amount, // optional if backend recomputes
-  //             description: i.description ?? "",
-  //           })) ?? [];
-
-  //       const serviceLines =
-  //         values.items
-  //           ?.filter((i) => i.itemType === "service")
-  //           .map((i) => ({
-  //             service: i.service, // This should be the ID, which you already set
-  //             amount: i.amount,
-  //             description: i.description ?? "",
-  //           })) ?? [];
-  //       const payload: any = { ...values };
-  //       payload.products = productLines;
-  //       payload.services = serviceLines;
-  //       payload.amount = values.totalAmount; // if your model also stores amount
-  //       payload.totalAmount = values.totalAmount;
-  //       if (values.description) payload.description = values.description;
-  //       if (values.narration) payload.narration = values.narration;
-
-  //       if (values.type === "purchases" || values.type === "payment") {
-  //         payload.vendor = values.party;
-  //         delete payload.party;
-  //       }
-  //       if (values.type === "journal") {
-  //         payload.debitAccount = values.fromAccount;
-  //         payload.creditAccount = values.toAccount;
-  //         if (values.description) payload.narration = values.description;
-  //         payload.amount = values.totalAmount;
-  //         delete payload.fromAccount;
-  //         delete payload.toAccount;
-  //         delete payload.party;
-  //         delete payload.items;
-  //         delete payload.referenceNumber;
-  //       }
-
-  //       payload.gstRate = values.gstRate ?? STANDARD_GST;
-  // payload.taxAmount = values.taxAmount ?? 0;
-  // payload.invoiceTotal = values.invoiceTotal ?? values.totalAmount; // fallback
-
-  //       const res = await fetch(`${baseURL}${endpoint}`, {
-  //         method,
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //         body: JSON.stringify(payload),
-  //       });
-
-  //       console.log("Request payload:", payload); // Add this for debugging
-
-  //       const data = await res.json();
-  //       const inv = data?.entry?.invoiceNumber;
-  //       toast({
-  //         title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
-  //         description: inv
-  //           ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
-  //           : `Your ${values.type} entry has been recorded.`,
-  //       });
-
-  //       if (!res.ok) {
-  //         console.error("Backend error details:", data);
-  //         throw new Error(
-  //           data.message ||
-  //             `Failed to ${transactionToEdit ? "update" : "create"} ${
-  //               values.type
-  //             } entry.`
-  //         );
-  //       }
-
-  //       // If it's a sale and was successful, update the stock
-  //       if (values.type === "sales" && values.items) {
-  //         const stockItems = values.items
-  //           .filter(
-  //             (i) =>
-  //               i.itemType === "product" && i.product && (i.quantity ?? 0) > 0
-  //           )
-  //           .map((i) => ({
-  //             product: i.product!,
-  //             quantity: Number(i.quantity) || 0,
-  //           }));
-
-  //         if (stockItems.length) {
-  //           await updateStock(token, stockItems);
-  //         }
-  //       }
-
-  //       // UI feedback
-  //       const suffix =
-  //         !transactionToEdit && values.type === "sales" && payload.invoiceNumber
-  //           ? ` (Invoice #${payload.invoiceNumber})`
-  //           : "";
-
-  //       //send invoice on whatsapp directly
-
-  //       toast({
-  //         title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
-  //         description: `Your ${values.type} entry has been successfully recorded.`,
-  //       });
-  //       onFormSubmit();
-  //     } catch (error) {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Submission Failed",
-  //         description:
-  //           error instanceof Error ? error.message : "An unknown error occurred.",
-  //       });
-  //     } finally {
-  //       setIsSubmitting(false);
-  //     }
-  //   }
-
   // Add this helper function
   const enrichTransactionWithNames = (
     transaction: any,
@@ -1073,28 +952,70 @@ export function TransactionForm({
       const uiInvoiceTotal = gstEnabled
         ? Number(values.invoiceTotal ?? uiSubTotal)
         : uiSubTotal;
-
-      // const effectiveGstPct = gstEnabled
-      //   ? Number(values.gstRate ?? STANDARD_GST)
-      //   : 0;
-
+      const receiptAmount = Number(
+        values.totalAmount ?? values.subTotal ?? values.invoiceTotal ?? 0
+      );
       // --- Build payload ---
-      const payload: any = {
-        type: values.type,
-        company: values.company,
-        party: values.party,
-        date: values.date,
-        description: values.description,
-        referenceNumber: values.referenceNumber,
-        narration: values.narration,
-        products: productLines,
-        services: serviceLines,
-        totalAmount: uiInvoiceTotal,
-        subTotal: uiSubTotal,
-        taxAmount: uiTax,
-        paymentMethod: values.paymentMethod,
-        invoiceTotal: uiInvoiceTotal,
-      };
+      // const payload: any = {
+      //   type: values.type,
+      //   company: values.company,
+      //   party: values.party,
+      //   date: values.date,
+      //   description: values.description,
+      //   referenceNumber: values.referenceNumber,
+      //   narration: values.narration,
+      //   products: productLines,
+      //   services: serviceLines,
+      //   totalAmount: uiInvoiceTotal,
+      //   subTotal: uiSubTotal,
+      //   taxAmount: uiTax,
+      //   paymentMethod: values.paymentMethod,
+      //   invoiceTotal: uiInvoiceTotal,
+      // };
+      // --- Build payload ---
+      let payload: any;
+
+      if (values.type === "receipt") {
+        // ✅ validate on client to avoid 400 from API
+        if (!(receiptAmount > 0)) {
+          setIsSubmitting(false);
+          toast({
+            variant: "destructive",
+            title: "Amount required",
+            description: "Enter a receipt amount greater than 0.",
+          });
+          return;
+        }
+
+        // ✅ send the exact shape your backend expects
+        payload = {
+          type: "receipt",
+          company: values.company,
+          party: values.party,
+          date: values.date,
+          amount: receiptAmount, // <-- important
+          description: values.description,
+          referenceNumber: values.referenceNumber,
+        };
+      } else {
+        // (unchanged for sales/purchases/payment/journal except for the block below)
+        payload = {
+          type: values.type,
+          company: values.company,
+          party: values.party,
+          date: values.date,
+          description: values.description,
+          referenceNumber: values.referenceNumber,
+          narration: values.narration,
+          products: productLines,
+          services: serviceLines,
+          totalAmount: uiInvoiceTotal,
+          subTotal: uiSubTotal,
+          taxAmount: uiTax,
+          paymentMethod: values.paymentMethod,
+          invoiceTotal: uiInvoiceTotal,
+        };
+      }
 
       // Clean up fields not needed by the server
       // (We already mapped items into products/services)
@@ -1358,42 +1279,52 @@ export function TransactionForm({
     setIsPartyDialogOpen(false);
   };
 
+  // remaining balance to display live in receipt tab
+  const remainingAfterReceipt =
+    balance != null && type === "receipt"
+      ? Math.max(0, Number(balance) - Number(receiptAmountWatch || 0))
+      : null;
+
   const handlePartyChange = async (partyId: string) => {
-  if (!partyId) return;
+    if (!partyId) return;
 
-  try {
-    const token = localStorage.getItem("token");  // Get the token from localStorage or wherever it's stored
-    if (!token) {
-      throw new Error("Authentication token not found.");
-    }
+    try {
+      const token = localStorage.getItem("token"); // Get the token from localStorage or wherever it's stored
+      if (!token) {
+        throw new Error("Authentication token not found.");
+      }
 
-    const response = await fetch(`${baseURL}/api/parties/${partyId}/balance`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,  // Include the token in the Authorization header
-      },
-    });
-    const data = await response.json();
+      const response = await fetch(
+        `${baseURL}/api/parties/${partyId}/balance`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`, // Include the token in the Authorization header
+          },
+        }
+      );
+      const data = await response.json();
 
-    if (response.ok) {
-      setBalance(data.balance); // Set the balance in state
-    } else {
+      if (response.ok) {
+        setBalance(data.balance); // Set the balance in state
+        form.setValue("totalAmount", 0, { shouldValidate: true }); // reset amount on new party
+      } else {
+        setBalance(null);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not fetch balance.",
+        });
+      }
+    } catch (error) {
       setBalance(null);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not fetch balance.",
+        description: "Failed to fetch balance.",
       });
     }
-  } catch (error) {
-    setBalance(null);
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Failed to fetch balance.",
-    });
-  }
-};
+  };
 
   const handleTriggerCreateProduct = (name: string) => {
     setNewEntityName(name); // Store the name in state
@@ -1479,19 +1410,54 @@ export function TransactionForm({
     setIsServiceDialogOpen(false);
   };
 
+  // const getPartyOptions = () => {
+  //   if (type === "sales" || type === "receipt") {
+  //     return parties.map((p) => ({
+  //       value: p._id,
+  //       label: String(p.name || ""),
+  //     }));
+  //   }
+  //   if (type === "purchases" || type === "payment") {
+  //     return vendors.map((v) => ({
+  //       value: v._id,
+  //       label: String(v.vendorName || ""),
+  //     }));
+  //   }
+  //   return [];
+  // };
+
   const getPartyOptions = () => {
     if (type === "sales" || type === "receipt") {
-      return parties.map((p) => ({
+      // customers
+      const source = parties;
+
+      // For RECEIPT only → filter to balance > 0
+      const filtered =
+        type === "receipt"
+          ? source.filter((p: any) => {
+              // prefer inline balance if present; else use the fetched map
+              const b =
+                typeof p?.balance === "number"
+                  ? p.balance
+                  : partyBalances[p._id] ?? 0;
+              return Number(b) > 0;
+            })
+          : source;
+
+      return filtered.map((p) => ({
         value: p._id,
         label: String(p.name || ""),
       }));
     }
+
     if (type === "purchases" || type === "payment") {
+      // vendors (unchanged)
       return vendors.map((v) => ({
         value: v._id,
         label: String(v.vendorName || ""),
       }));
     }
+
     return [];
   };
 
@@ -1652,10 +1618,10 @@ export function TransactionForm({
               options={partyOptions}
               value={field.value || ""}
               // onChange={field.onChange}
-               onChange={(value) => {
-          field.onChange(value); 
-          handlePartyChange(value); // Fetch balance when party is selected
-        }}
+              onChange={(value) => {
+                field.onChange(value);
+                handlePartyChange(value); // Fetch balance when party is selected
+              }}
               placeholder="Select or create..."
               searchPlaceholder="Search..."
               noResultsText="No results found."
@@ -1679,16 +1645,16 @@ export function TransactionForm({
 
             <FormMessage />
             {/* Display balance if available */}
-      {balance !== null && (
-        <div className="text-red-500 text-sm mt-2">
-          Balance: ₹{balance.toFixed(2)}
-        </div>
-      )}
+            {balance !== null && (
+              <div className="text-red-500 text-sm mt-2">
+                Balance: ₹{balance.toFixed(2)}
+              </div>
+            )}
           </FormItem>
         )}
       />
 
- <FormField
+      <FormField
         control={form.control}
         name="paymentMethod"
         render={({ field }) => (
@@ -1712,7 +1678,6 @@ export function TransactionForm({
           </FormItem>
         )}
       />
-   
 
       <Separator />
 
@@ -2022,117 +1987,7 @@ export function TransactionForm({
                       </FormItem>
                     )}
                   />
-                  {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.amount`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Amount</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="0.00"
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? ""
-                                    : e.target.valueAsNumber
-                                )
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.description`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Brief service description"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div> */}
-                  {/* gst row */}
-                  {/* <div className="grid grid-cols-3 md:grid-cols-3">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.gstPct`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>GST % (Item)</FormLabel>
-                          <Select
-                            disabled={!gstEnabled}
-                            value={String(field.value ?? 18)}
-                            onValueChange={(v) => field.onChange(Number(v))}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select GST %" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {GST_OPTIONS.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.lineTax`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Line Tax</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              readOnly
-                              className="bg-muted"
-                              value={field.value ?? 0}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.lineTotal`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Line Total</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              readOnly
-                              className="bg-muted"
-                              value={field.value ?? 0}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div> */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-4 items-end">
                     {/* Amount */}
                     <FormField
@@ -2179,78 +2034,87 @@ export function TransactionForm({
                     />
 
                     {/* GST % (Item) */}
-                    {gstEnabled && (<>
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.gstPct`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-2 md:col-span-2">
-                          <FormLabel className="text-xs">
-                            GST % (Item)
-                          </FormLabel>
-                          <Select
-                            disabled={!gstEnabled}
-                            value={String(field.value ?? 18)}
-                            onValueChange={(v) => field.onChange(Number(v))}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="Select GST %" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {GST_OPTIONS.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {gstEnabled && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.gstPct`}
+                          render={({ field }) => (
+                            <FormItem className="lg:col-span-2 md:col-span-2">
+                              <FormLabel className="text-xs">
+                                GST % (Item)
+                              </FormLabel>
+                              <Select
+                                disabled={!gstEnabled}
+                                value={String(field.value ?? 18)}
+                                onValueChange={(v) => field.onChange(Number(v))}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select GST %" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {GST_OPTIONS.map((opt) => (
+                                    <SelectItem
+                                      key={opt.value}
+                                      value={opt.value}
+                                    >
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                    {/* Line Tax */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.lineTax`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-2 md:col-span-1">
-                          <FormLabel className="text-xs">Line Tax</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              readOnly
-                              className="bg-muted"
-                              value={field.value ?? 0}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        {/* Line Tax */}
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.lineTax`}
+                          render={({ field }) => (
+                            <FormItem className="lg:col-span-2 md:col-span-1">
+                              <FormLabel className="text-xs">
+                                Line Tax
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  readOnly
+                                  className="bg-muted"
+                                  value={field.value ?? 0}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                    {/* Line Total */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.lineTotal`}
-                      render={({ field }) => (
-                        <FormItem className="lg:col-span-2 md:col-span-1">
-                          <FormLabel className="text-xs">Line Total</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              readOnly
-                              className="bg-muted"
-                              value={field.value ?? 0}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    </>)}
+                        {/* Line Total */}
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.lineTotal`}
+                          render={({ field }) => (
+                            <FormItem className="lg:col-span-2 md:col-span-1">
+                              <FormLabel className="text-xs">
+                                Line Total
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  readOnly
+                                  className="bg-muted"
+                                  value={field.value ?? 0}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -2291,31 +2155,6 @@ export function TransactionForm({
 
       <Separator />
 
-      {/* Total Amount */}
-      {/* <div className="flex justify-end">
-        <div className="w-full max-w-xs space-y-2">
-          <FormField
-            control={form.control}
-            name="totalAmount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-lg font-bold">
-                  Total Amount
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    className="text-lg font-bold h-12 text-right bg-muted"
-                    {...field}
-                    readOnly
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      </div> */}
       {/* Totals */}
       <div className="flex justify-end">
         <div className="w-full max-w-sm space-y-3">
@@ -2465,7 +2304,11 @@ export function TransactionForm({
               <Combobox
                 options={partyOptions}
                 value={field.value || ""}
-                onChange={field.onChange}
+                // onChange={field.onChange}
+                onChange={(value) => {
+                  field.onChange(value);
+                  handlePartyChange(value); // <-- fetch and setBalance
+                }}
                 placeholder="Select or create..."
                 searchPlaceholder="Search..."
                 noResultsText="No results found."
@@ -2487,6 +2330,14 @@ export function TransactionForm({
                 }}
               />
               <FormMessage />
+              {balance != null && type === "receipt" && (
+                <div className="mt-2 text-xs text-red-600">
+                  Balance: ₹{Number(balance).toFixed(2)}
+                  {Number(receiptAmountWatch || 0) > 0 && (
+                    <> → After receipt: ₹{remainingAfterReceipt?.toFixed(2)}</>
+                  )}
+                </div>
+              )}
             </FormItem>
           )}
         />
@@ -2496,8 +2347,41 @@ export function TransactionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Amount</FormLabel>
-              <FormControl>
+              {/* <FormControl>
                 <Input type="number" placeholder="0.00" {...field} />
+              </FormControl> */}
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const raw =
+                      e.target.value === "" ? "" : e.target.valueAsNumber;
+
+                    if (type === "receipt" && balance != null && raw !== "") {
+                      // prevent over-payment
+                      const max = Number(balance);
+                      const safe = Math.max(0, Math.min(Number(raw) || 0, max));
+                      if (safe !== raw) {
+                        toast({
+                          variant: "destructive",
+                          title: "Amount exceeds balance",
+                          description: `You can receive at most ₹${max.toFixed(
+                            2
+                          )} for this customer.`,
+                        });
+                      }
+                      field.onChange(safe);
+                    } else {
+                      field.onChange(raw);
+                    }
+                  }}
+                  // optional: show a visual max hint
+                  {...(type === "receipt" && balance != null
+                    ? { max: Number(balance) }
+                    : {})}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -2773,7 +2657,7 @@ export function TransactionForm({
         <DialogContent
           wide
           className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "
-          style={{ maxWidth: '1200px' }}
+          style={{ maxWidth: "1200px" }}
         >
           <DialogHeader className="p-6">
             <DialogTitle>
@@ -2812,17 +2696,6 @@ export function TransactionForm({
           />
         </DialogContent>
       </Dialog>
-      {/* <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Create New Service</DialogTitle>
-            <DialogDescription>
-              Fill in the form to add a new service.
-            </DialogDescription>
-          </DialogHeader>
-          <ServiceForm onSuccess={handleServiceCreated} />
-        </DialogContent>
-      </Dialog> */}
     </>
   );
 }
