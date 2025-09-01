@@ -35,11 +35,12 @@ import { DashboardTab } from "@/components/analytics/dashboard-tab";
 import { TransactionsTab } from "@/components/analytics/transactions-tab";
 import { CompaniesTab } from "@/components/analytics/companies-tab";
 import { UsersTab } from "@/components/analytics/users-tab";
+import ProfitAndLossTab from "@/components/analytics/profit-and-loss";
+import BalanceSheetTab from "@/components/analytics/balance-sheet";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function AnalyticsDashboardPage() {
-
-  const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = React.useState<string>("");
   const [isClientsLoading, setIsClientsLoading] = React.useState(true);
@@ -278,10 +279,10 @@ export default function AnalyticsDashboardPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem asChild>
-                      <Link href="/reports/profit-loss">Profit & Loss</Link>
+                      <span className="hidden xs:inline">Profit & Loss</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/reports/balance-sheet">Balance Sheet</Link>
+                      <span className="hidden xs:inline">Balance Sheet</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -289,7 +290,7 @@ export default function AnalyticsDashboardPage() {
             </div>
 
             {/* Action buttons - stacked on mobile */}
-            <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
+            {/* <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
               <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 <UserPlus className="mr-2 h-4 w-4" />
                 <span className="hidden xs:inline">Add User</span>
@@ -300,7 +301,7 @@ export default function AnalyticsDashboardPage() {
                 <span className="hidden xs:inline">Client Settings</span>
                 <span className="xs:hidden">Settings</span>
               </Button>
-            </div>
+            </div> */}
           </div>
 
           {/* Tab contents */}
@@ -327,7 +328,21 @@ export default function AnalyticsDashboardPage() {
           </TabsContent>
 
           <TabsContent value="users" className="mt-6">
-            <UsersTab selectedClient={selectedClient} />
+            <UsersTab
+              selectedClient={selectedClient}
+              selectedCompanyId={selectedCompanyId}
+              companyMap={companyMap}
+            /> 
+          </TabsContent>
+
+          <TabsContent value="profitandloss" className="mt-6">
+            <ProfitAndLossTab
+            /> 
+          </TabsContent>
+
+           <TabsContent value="balancesheet" className="mt-6">
+            <BalanceSheetTab
+            /> 
           </TabsContent>
         </Tabs>
       )}
