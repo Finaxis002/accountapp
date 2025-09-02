@@ -19,10 +19,8 @@ const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
   );
 };
 
-const hasGSTForInvoice = (tx: Transaction, company?: Company | null) => {
-  const pct = Number((tx as any)?.gstPercentage ?? 0);
-  return pct > 0 && !!getCompanyGSTIN(company)?.trim();
-};
+
+
 
 // derive subtotal, tax, final using tx + company context
 const deriveTotals = (
@@ -31,26 +29,21 @@ const deriveTotals = (
   serviceNameById?: Map<string, string>
 ) => {
   const lines = getUnifiedLines(tx, serviceNameById);
-  const subtotal =
-    lines.reduce(
-      (sum: number, item: any) => sum + (Number(item.amount) || 0),
-      0
-    ) ||
-    (tx as any).amount ||
-    0;
+  
+  const subtotal = lines.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const totalTax = lines.reduce((sum: number, item: any) => sum + (Number(item.lineTax) || 0), 0);
+  const invoiceTotal = lines.reduce((sum: number, item: any) => sum + (Number(item.lineTotal) || 0), 0);
 
-  const gstPct = Number((tx as any)?.gstPercentage ?? 0);
-  const gstEnabled = gstPct > 0 && !!getCompanyGSTIN(company)?.trim();
+  const gstEnabled = totalTax > 0 && !!getCompanyGSTIN(company)?.trim();
 
-  const invoiceTotal = Number((tx as any)?.totalAmount ?? subtotal);
-
-  let tax = 0;
-  if (gstEnabled) {
-    const delta = +(invoiceTotal - subtotal).toFixed(2);
-    tax = delta >= 0.01 ? delta : +((subtotal * gstPct) / 100).toFixed(2);
-  }
-
-  return { lines, subtotal, tax, invoiceTotal, gstPct, gstEnabled };
+  return { 
+    lines, 
+    subtotal, 
+    tax: totalTax, 
+    invoiceTotal, 
+    gstPct: 0, // This will be handled per item now
+    gstEnabled 
+  };
 };
 
 const formatCurrency = (amount: number) => {
@@ -75,6 +68,8 @@ const getItemsBody = (
         1,
         transaction.description || "Item",
         formatCurrency((transaction as any).amount ?? 0),
+        "0%",
+        formatCurrency(0),
         formatCurrency((transaction as any).amount ?? 0),
       ],
     ];
@@ -85,7 +80,9 @@ const getItemsBody = (
     item.quantity || 1,
     `${item.name}\n${item.description || ""}`,
     formatCurrency(Number(item.pricePerUnit || item.amount)),
-    formatCurrency(Number(item.amount || 0)),
+    `${item.gstPercentage || 0}%`,
+    formatCurrency(item.lineTax || 0),
+    formatCurrency(item.lineTotal || item.amount || 0),
   ]);
 };
 
@@ -171,41 +168,45 @@ export const generatePdfForTemplate1 = (
   });
 
   // Table
-  autoTable(doc, {
-    startY: 65,
-    head: [["S.No.", "QTY", "DESCRIPTION", "PRICE", "TOTAL"]],
-    body: getItemsBody(transaction, serviceNameById),
-    theme: "striped",
-    headStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0] },
-    bodyStyles: { fillColor: [255, 255, 255] },
-    didDrawPage: (data) => {
-      if (data.pageNumber === 1 && data.cursor) data.cursor.y += 5;
-    },
-  });
+autoTable(doc, {
+  startY: 65,
+  head: [
+    ["S.No.", "QTY", "DESCRIPTION", "PRICE", "GST %", "TAX", "TOTAL (Incl. GST)"]
+  ],
+  body: getItemsBody(transaction, serviceNameById),
+  theme: "striped",
+  headStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0] },
+  bodyStyles: { fillColor: [255, 255, 255] },
+  didDrawPage: (data) => {
+    if (data.pageNumber === 1 && data.cursor) data.cursor.y += 5;
+  },
+});
+
+
 
   const finalY = (doc as any).lastAutoTable.finalY;
 
-  // Totals
-  let currentY = finalY + 10;
-  doc.setFontSize(10);
-  doc.text("Sub Total", 140, currentY, { align: "right" });
-  doc.text(formatCurrency(subtotal), 200, currentY, { align: "right" });
 
-  if (gstEnabled) {
-    currentY += 7;
-    doc.text(`GST (${gstPct}%)`, 140, currentY, { align: "right" });
-    doc.text(formatCurrency(tax), 200, currentY, { align: "right" });
-  }
+// In generatePdfForTemplate1 function:
+let currentY = finalY + 10;
+doc.setFontSize(10);
+doc.text("Sub Total", 140, currentY, { align: "right" });
+doc.text(formatCurrency(subtotal), 200, currentY, { align: "right" });
 
-  currentY += 5;
-  doc.setDrawColor(0);
-  doc.line(120, currentY, 200, currentY);
-
+if (tax > 0) {
   currentY += 7;
-  doc.setFont("helvetica", "bold");
-  doc.text("GRAND TOTAL", 150, currentY, { align: "right" });
-  doc.text(formatCurrency(invoiceTotal), 200, currentY, { align: "right" });
+  doc.text("GST Total", 140, currentY, { align: "right" });
+  doc.text(formatCurrency(tax), 200, currentY, { align: "right" });
+}
 
+currentY += 5;
+doc.setDrawColor(0);
+doc.line(120, currentY, 200, currentY);
+
+currentY += 7;
+doc.setFont("helvetica", "bold");
+doc.text("GRAND TOTAL", 150, currentY, { align: "right" });
+doc.text(formatCurrency(invoiceTotal), 200, currentY, { align: "right" });
   // Footer
   currentY = doc.internal.pageSize.getHeight() - 40;
   doc.setFontSize(10);
@@ -237,24 +238,34 @@ const getItemsBodyTemplate2 = (
   serviceNameById?: Map<string, string>
 ) => {
   const lines = getUnifiedLines(transaction, serviceNameById);
+  
   if (lines.length === 0) {
     const amt = Number((transaction as any).amount ?? 0);
+    const gstPct = Number((transaction as any)?.gstPercentage ?? 0);
+    const tax = (amt * gstPct) / 100;
+    const total = amt + tax;
+    
     return [
       [
         "1",
         transaction.description || "Item",
         1,
+        `${gstPct}%`,
         formatCurrency(amt),
-        formatCurrency(amt),
+        formatCurrency(tax),
+        formatCurrency(total),
       ],
     ];
   }
+
   return lines.map((item: any, index: number) => [
     (index + 1).toString(),
-    item.name,
+    `${item.name}${item.description ? ' - ' + item.description : ''}`,
     item.quantity || 1,
+    `${item.gstPercentage || 0}%`,
     formatCurrency(Number(item.pricePerUnit || item.amount)),
-    formatCurrency(Number(item.amount || 0)),
+    formatCurrency(item.lineTax || 0),
+    formatCurrency(item.lineTotal || item.amount || 0),
   ]);
 };
 
@@ -285,7 +296,6 @@ export const generatePdfForTemplate2 = (
   }
 
   doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
   doc.setFont("helvetica", "bold");
   doc.text(
     `Invoice ${invNo(transaction)}`,
@@ -328,30 +338,42 @@ export const generatePdfForTemplate2 = (
   doc.text(partyAddress, 20, 89);
 
   const body = getItemsBodyTemplate2(transaction, serviceNameById);
-  if (gstEnabled) {
-    body.push(["", "", "", `GST (${gstPct}%)`, formatCurrency(tax)]);
-  }
 
   autoTable(doc, {
     startY: 100,
-    head: [["S.No.", "Item Description", "Qty", "Rate", "Sub-total"]],
+    head: [["S.No.", "Item Description", "Qty", "GST%", "Rate", "Tax", "Total"]],
     body: body,
-    foot: [["", "", "", "Total", formatCurrency(invoiceTotal)]],
     theme: "grid",
     headStyles: { fillColor: [238, 238, 238], textColor: [0, 0, 0] },
-    footStyles: {
-      fillColor: [238, 238, 238],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-    },
+    bodyStyles: { fillColor: [255, 255, 255] },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 20;
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Add totals section
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text("Sub Total", 140, finalY, { align: "right" });
+  doc.text(formatCurrency(subtotal), 200, finalY, { align: "right" });
+
+  if (gstEnabled) {
+    doc.text(`GST Total`, 140, finalY + 7, { align: "right" });
+    doc.text(formatCurrency(tax), 200, finalY + 7, { align: "right" });
+  }
+
+  doc.setDrawColor(0);
+  doc.line(120, finalY + 12, 200, finalY + 12);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("GRAND TOTAL", 150, finalY + 19, { align: "right" });
+  doc.text(formatCurrency(invoiceTotal), 200, finalY + 19, { align: "right" });
+
   doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
   doc.text(
     "Thank you for your business! Payment is expected within 31 days.",
     20,
-    finalY
+    finalY + 30
   );
 
   return doc;
@@ -363,7 +385,7 @@ export const generatePdfForTemplate3 = async (
   party: Party | null | undefined,
   serviceNameById: Map<string, string> | undefined
 ): Promise<jsPDF> => {
-  // ------ local helpers (kept inside this function so you can paste safely) ------
+  // ------ local helpers ------
   const _getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
     const x = c as any;
     return (
@@ -383,31 +405,15 @@ export const generatePdfForTemplate3 = async (
     co?: Company | null,
     svcNameById?: Map<string, string>
   ) => {
-    // use your existing utility to unify lines
     const lines = getUnifiedLines(tx, svcNameById);
 
-    const subtotal =
-      lines.reduce(
-        (sum: number, it: any) => sum + (Number(it.amount) || 0),
-        0
-      ) ||
-      (tx as any).amount ||
-      0;
+    const subtotal = lines.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
+    const totalTax = lines.reduce((sum: number, it: any) => sum + (Number(it.lineTax) || 0), 0);
+    const invoiceTotal = lines.reduce((sum: number, it: any) => sum + (Number(it.lineTotal) || 0), 0);
 
-    const gstPct = Number((tx as any)?.gstPercentage ?? 0);
-    const gstEnabled = gstPct > 0 && !!_getCompanyGSTIN(co)?.trim();
+    const gstEnabled = totalTax > 0 && !!_getCompanyGSTIN(co)?.trim();
 
-    // server stores GST-inclusive total as totalAmount
-    const invoiceTotal = Number((tx as any)?.totalAmount ?? subtotal);
-
-    // prefer (invoiceTotal - subtotal) to preserve rounding, else compute %
-    let tax = 0;
-    if (gstEnabled) {
-      const delta = +(invoiceTotal - subtotal).toFixed(2);
-      tax = delta >= 0.01 ? delta : +((subtotal * gstPct) / 100).toFixed(2);
-    }
-
-    return { lines, subtotal, tax, invoiceTotal, gstPct, gstEnabled };
+    return { lines, subtotal, tax: totalTax, invoiceTotal, gstPct: 0, gstEnabled };
   };
   // -------------------------------------------------------------------------------
 
@@ -422,30 +428,26 @@ export const generatePdfForTemplate3 = async (
   const TEXT: [number, number, number] = [41, 48, 66];
   const MUTED: [number, number, number] = [110, 119, 137];
 
-  const { lines, subtotal, tax, invoiceTotal, gstPct, gstEnabled } =
+  const { lines, subtotal, tax, invoiceTotal, gstEnabled } =
     _deriveTotals(transaction, company, serviceNameById);
   const companyGSTIN = _getCompanyGSTIN(company);
 
   const money = (n: number) => `Rs. ${Number(n || 0).toLocaleString("en-IN")}`;
 
-  // Data scaffold (items rendered from `lines`, not from here)
+  // Data scaffold
   const invoiceData = {
     companyWebsite: "WWW.COMPANYWEBSITE.COM",
     invoiceTo: {
       name: party?.name || "ANDREAS DAVID",
       address:
         party?.address && party?.city
-          ? `${party.address}, ${party.city}, ${party.state || ""}`.replace(
-              /,\s*$/,
-              ""
-            )
+          ? `${party.address}, ${party.city}, ${party.state || ""}`.replace(/,\s*$/, "")
           : "123 STREET, CANADA",
     },
     invoiceNumber: invNo(transaction),
     date: transaction.date
       ? new Intl.DateTimeFormat("en-GB").format(new Date(transaction.date))
       : "01 / 10 / 2024",
-    items: [] as any[], // leave empty; we’ll render from `lines`
     terms: [
       "Lorem ipsum dolor sit asu sud",
       "amet, consectetur adipiscing elit,",
@@ -460,29 +462,47 @@ export const generatePdfForTemplate3 = async (
   };
 
   // Convert unified lines into rows for the table
-  const itemsForTable = lines.map((l: any) => ({
+  const itemsForTable = lines.map((l: any, index: number) => ({
+    sno: (index + 1).toString(),
     description: `${l.name}${l.description ? " — " + l.description : ""}`,
-    price: Number(l.pricePerUnit || l.amount || 0),
-    quantity: l.itemType === "service" ? 1 : Number(l.quantity || 1),
-    total: Number(l.amount || 0),
+    quantity: l.quantity || 1,
+    pricePerUnit: Number(l.pricePerUnit || l.amount || 0),
+    amount: Number(l.amount || 0),
+    gstPercentage: l.gstPercentage || 0,
+    lineTax: Number(l.lineTax || 0),
+    lineTotal: Number(l.lineTotal || l.amount || 0),
   }));
+
   if (itemsForTable.length === 0) {
+    const amount = Number((transaction as any).amount ?? 0);
+    const gstPct = Number((transaction as any)?.gstPercentage ?? 0);
+    const lineTax = (amount * gstPct) / 100;
+    const lineTotal = amount + lineTax;
+    
     itemsForTable.push({
+      sno: "1",
       description: transaction.description || "Item",
-      price: Number((transaction as any).amount ?? 0),
       quantity: 1,
-      total: Number((transaction as any).amount ?? 0),
+      pricePerUnit: amount,
+      amount: amount,
+      gstPercentage: gstPct,
+      lineTax: lineTax,
+      lineTotal: lineTotal,
     });
   }
 
   const fetchAsDataURL = async (url: string) => {
-    const res = await fetch(url, { mode: "cors" });
-    const blob = await res.blob();
-    return await new Promise<string>((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result as string);
-      r.readAsDataURL(blob);
-    });
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      const blob = await res.blob();
+      return await new Promise<string>((resolve) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.readAsDataURL(blob);
+      });
+    } catch {
+      return "";
+    }
   };
 
   // Base font
@@ -505,7 +525,7 @@ export const generatePdfForTemplate3 = async (
   doc.setFillColor(...NAVY);
   doc.rect(stripX, stripY, stripW, stripH, "F");
 
-  // “INVOICE” (actually business name here) in gold, spaced
+  // Business name in gold, spaced
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(...GOLD);
@@ -522,21 +542,20 @@ export const generatePdfForTemplate3 = async (
   const logoTopY = stripY - 3;
 
   try {
-    const logoUrl =
-      "https://i.pinimg.com/736x/71/b3/e4/71b3e4159892bb319292ab3b76900930.jpg";
+    const logoUrl = "https://i.pinimg.com/736x/71/b3/e4/71b3e4159892bb319292ab3b76900930.jpg";
     const dataURL = await fetchAsDataURL(logoUrl);
-    const props = doc.getImageProperties(dataURL);
-    const scale = Math.min(maxLogoW / props.width, maxLogoH / props.height);
-    const w = props.width * scale;
-    const h = props.height * scale;
-    const x = logoBoxX + 6;
-    const y = logoTopY;
-    doc.addImage(dataURL, "JPEG", x, y, w, h);
+    if (dataURL) {
+      const props = doc.getImageProperties(dataURL);
+      const scale = Math.min(maxLogoW / props.width, maxLogoH / props.height);
+      const w = props.width * scale;
+      const h = props.height * scale;
+      const x = logoBoxX + 6;
+      const y = logoTopY;
+      doc.addImage(dataURL, "JPEG", x, y, w, h);
+    }
   } catch {
     // vector fallback
-    const x = logoBoxX + 5,
-      y = logoTopY,
-      s = 20;
+    const x = logoBoxX + 5, y = logoTopY, s = 20;
     doc.setFillColor(...NAVY);
     doc.roundedRect(x, y, s, s, 3, 3, "F");
     doc.setFillColor(...GOLD);
@@ -547,7 +566,7 @@ export const generatePdfForTemplate3 = async (
     doc.line(x + 10, y + 14, x + 16, y + 8);
   }
 
-  // Optionally show company GSTIN under the strip
+  // Show company GSTIN under the strip
   if (companyGSTIN) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -577,24 +596,36 @@ export const generatePdfForTemplate3 = async (
   doc.setTextColor(...TEXT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.8);
-  doc.text(`INVOICE NO. ${invoiceData.invoiceNumber}`, pw - m, headY, {
-    align: "right",
-  });
+  doc.text(`INVOICE NO. ${invoiceData.invoiceNumber}`, pw - m, headY, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.text(`DATE  ${invoiceData.date}`, pw - m, headY + 7, { align: "right" });
 
-  // Table head
+  // Table head - Adjusted column positions
   let y = headY + 28;
   doc.setDrawColor(225, 225, 225);
   doc.line(m, y - 10, pw - m, y - 10);
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...NAVY);
-  doc.setFontSize(13.5);
-  doc.text("DESCRIPTION", m, y);
-  doc.text("PRICE", 140, y, { align: "right" });
-  doc.text("QTY.", 160, y, { align: "right" });
-  doc.text("TOTAL", pw - m, y, { align: "right" });
+  doc.setFontSize(10.5); // Smaller font to fit all columns
+  
+  // Column positions (adjust these based on your page width)
+  const colSNo = m;
+  const colItem = colSNo + 20;
+  const colQty = colItem + 40; // Right-aligned columns
+  const colPrice = pw - m - 110;
+  const colAmount = pw - m - 80;
+  const colGST = pw - m - 50;
+  const colTax = pw - m - 30;
+  const colTotal = pw - m;
+
+  doc.text("S.No.", colSNo, y);
+  doc.text("ITEM", colItem, y);
+  doc.text("QTY", colQty, y, { align: "right" });
+  doc.text("PRICE", colAmount, y, { align: "right" });
+  doc.text("GST%", colGST, y, { align: "right" });
+  doc.text("TAX", colTax, y, { align: "right" });
+  doc.text("TOTAL", colTotal, y, { align: "right" });
 
   // Rows
   y += 9;
@@ -602,70 +633,56 @@ export const generatePdfForTemplate3 = async (
   doc.setTextColor(...TEXT);
   doc.setLineWidth(0.3);
   doc.setDrawColor(...GOLD);
+  doc.setFontSize(9);
 
-  itemsForTable.forEach(
-    (it: {
-      description: string | string[];
-      price: number;
-      quantity: any;
-      total: number;
-    }) => {
-      // description (left)
-      doc.setFontSize(10);
-      doc.text(it.description, m, y);
-
-      // numbers (right columns)
-      doc.setFontSize(10);
-      doc.text(money(it.price), 140, y, { align: "right" });
-      doc.text(String(it.quantity), 160, y, { align: "right" });
-      doc.text(money(it.total), pw - m, y, { align: "right" });
-
-      // row divider
-      doc.line(m, y + 3.2, pw - m, y + 3.2);
-
-      y += 14; // row height
+  itemsForTable.forEach((it: any) => {
+    // S.No.
+    doc.text(it.sno, colSNo, y);
+    
+    // Item Description (truncate if too long)
+    const maxDescWidth = colQty - colItem - 5;
+    let description = it.description;
+    if (doc.getTextWidth(description) > maxDescWidth) {
+      description = description.substring(0, 30) + "...";
     }
-  );
+    doc.text(description, colItem, y);
+    
+    // Right-aligned columns
+    doc.text(String(it.quantity), colQty, y, { align: "right" });
+    doc.text(money(it.pricePerUnit), colAmount, y, { align: "right" });
+    doc.text(`${it.gstPercentage}%`, colGST, y, { align: "right" });
+    doc.text(money(it.lineTax), colTax, y, { align: "right" });
+    doc.text(money(it.lineTotal), colTotal, y, { align: "right" });
 
-  // Terms (left) & Totals (right)
+    // row divider
+    doc.line(m, y + 3.2, pw - m, y + 3.2);
+    y += 14; // row height
+  });
+
+  // Totals section
   y += 6;
-
-  // (Optional terms block left — currently commented)
-  // doc.setFont("helvetica", "bold");
-  // doc.setTextColor(...TEXT);
-  // doc.setFontSize(10.5);
-  // doc.text("Terms and conditions", m, y);
-  // doc.setFont("helvetica", "normal");
-  // doc.setFontSize(9);
-  // doc.setTextColor(...MUTED);
-  // invoiceData.terms.forEach((line, i) => {
-  //   doc.text(line, m, y + 6 + i * 5.8);
-  // });
-
-  // Totals block (right aligned) — GST only if enabled
   const totalsTop = y;
+
   doc.setTextColor(...TEXT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
-  doc.text("SUBTOTAL", 140, totalsTop, { align: "right" });
-  doc.text(money(subtotal), pw - m, totalsTop, { align: "right" });
+  
+  // Align totals to the right side columns
+  doc.text("SUBTOTAL", colTax, totalsTop, { align: "right" });
+  doc.text(money(subtotal), colTotal, totalsTop, { align: "right" });
 
   let lineOffset = 10;
   if (gstEnabled) {
-    doc.text(`GST (${gstPct}%)`, 140, totalsTop + lineOffset, {
-      align: "right",
-    });
-    doc.text(money(tax), pw - m, totalsTop + lineOffset, { align: "right" });
+    doc.text("GST TOTAL", colTax, totalsTop + lineOffset, { align: "right" });
+    doc.text(money(tax), colTotal, totalsTop + lineOffset, { align: "right" });
     lineOffset += 14;
   }
 
   doc.setFontSize(12.5);
-  doc.text("GRAND TOTAL", 140, totalsTop + lineOffset, { align: "right" });
-  doc.text(money(invoiceTotal), pw - m, totalsTop + lineOffset, {
-    align: "right",
-  });
+  doc.text("GRAND TOTAL", colTax, totalsTop + lineOffset, { align: "right" });
+  doc.text(money(invoiceTotal), colTotal, totalsTop + lineOffset, { align: "right" });
 
-  // subtle divider above footer
+  // Footer
   const afterTotals = Math.max(totalsTop + lineOffset + 6, y + 30);
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.2);
@@ -698,7 +715,7 @@ export const generatePdfForTemplate3 = async (
   const fit = (s: string) => {
     let t = s;
     while (doc.getTextWidth(t) > maxTextW && t.length > 1) t = t.slice(0, -1);
-    return t.length < s.length ? t.trimEnd() + "" : t;
+    return t.length < s.length ? t.trimEnd() + "..." : t;
   };
 
   footerVals.forEach((val, i) => {
