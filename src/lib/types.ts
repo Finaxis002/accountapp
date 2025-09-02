@@ -149,6 +149,7 @@ export type ClientPermissions = {
 export type Invoice = {
   id: string;
   invoiceNumber: string;
+  companyName: string;
   customerName: string;
   customerEmail: string;
   invoiceDate: Date;
