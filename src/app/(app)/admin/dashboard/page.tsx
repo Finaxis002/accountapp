@@ -9,6 +9,9 @@ import { Users, Building, Database, FileText, Loader2 } from 'lucide-react';
 import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
+
+const CACHE_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
+
 export default function AdminDashboardPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = React.useState<Client[]>([]);

@@ -56,7 +56,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { AlertTriangle, CheckCircle2, Link2, Mail } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { permissions, isLoading } = usePermissions();           // client (master) perms
