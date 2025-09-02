@@ -100,7 +100,7 @@ export function UserPermissionsProvider({ children }: { children: React.ReactNod
       }
 
       const data = await res.json();
-      console.log("data of User Permissions : " , data)
+      // console.log("data of User Permissions : " , data)
       setPermissions({
         canCreateInventory: data.canCreateInventory,
         canCreateCustomers: data.canCreateCustomers,

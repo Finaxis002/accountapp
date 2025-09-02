@@ -182,7 +182,7 @@ function NotificationsTab() {
   const canUseEmailInvoices = !!permissions?.canSendInvoiceEmail; // disable if admin didn’t grant
   const emailPerm = permissions?.canSendInvoiceEmail === true;
 
-  console.log("emailPerm" , emailPerm)
+  // console.log("emailPerm" , emailPerm)
   const statusIcon = !emailPerm ? (
     <AlertCircle className="h-5 w-5 text-muted-foreground" />
   ) : isLinked ? (
