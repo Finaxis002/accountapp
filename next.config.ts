@@ -35,7 +35,6 @@ const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false, // Enable React Strict Mode only in development
-  swcMinify: true,
   typescript: {
     ignoreBuildErrors: false,
   },

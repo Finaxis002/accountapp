@@ -50,6 +50,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
+import dynamic from 'next/dynamic';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
