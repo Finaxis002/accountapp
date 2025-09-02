@@ -1,4 +1,3 @@
-
 // import type {NextConfig} from 'next';
 
 // const nextConfig: NextConfig = {
@@ -30,47 +29,46 @@
 
 // export default nextConfig;
 
+import type { NextConfig } from "next";
 
-
-
-
-
-
-import type { NextConfig } from 'next';
-
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: !isProd, // Enable React Strict Mode only in development
-  swcMinify: isProd, // Enable SWC minification in production for faster builds
-
+  reactStrictMode: false, // Enable React Strict Mode only in development
+  swcMinify: true,
   typescript: {
-    ignoreBuildErrors: !isProd, // Ignore TypeScript errors in development only
+    ignoreBuildErrors: false,
   },
 
   eslint: {
-    ignoreDuringBuilds: !isProd, // Ignore linting errors during production builds
+    ignoreDuringBuilds: true,
+  },
+
+   // Optimize webpack configuration
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.cache = {
+        type: 'memory',
+        maxGenerations: 1,
+      };
+    }
+    return config;
   },
 
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "placehold.co",
+        port: "",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'upload.wikimedia.org',
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
       },
     ],
-  },
-
-  experimental: {
-    serverComponentsExternalPackages: ['jspdf', 'jspdf-autotable', 'html2canvas'],
   },
 };
 
 export default nextConfig;
-

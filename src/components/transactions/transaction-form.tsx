@@ -759,6 +759,7 @@ export function TransactionForm({
       }
     } catch (error) {
       console.error("Stock update failed:", error);
+      
       toast({
         variant: "destructive",
         title: "Stock Update Failed",

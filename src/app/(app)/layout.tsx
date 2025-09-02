@@ -100,7 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     // clear everything
     localStorage.clear();
-    console.debug("Logout redirect →", role, slug);
+    // console.debug("Logout redirect →", role, slug);
 
     // 🔑 redirect logic
     if (role === "customer" && slug) {
@@ -212,14 +212,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const role = localStorage.getItem("role");
-  console.log("User role:", role);
+  // console.log("User role:", role);
 
   
 
   
 
   const roleLower = (currentUser?.role ?? "").toLowerCase();
-  console.log("current User :", currentUser);
+  // console.log("current User :", currentUser);
   const showAppSidebar = ["master", "client", "customer", "admin"].includes(
     roleLower
   );

@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
-import { loginMasterAdmin, loginCustomer } from "@/lib/auth";
+import { loginMasterAdmin } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentUser } from "@/lib/auth";  
 import {getCurrentUserNew as getSession, saveSession, scheduleAutoLogout } from "@/lib/authSession";
