@@ -240,28 +240,28 @@ export default function AnalyticsDashboardPage() {
                   className="flex items-center px-3 py-1.5 text-sm"
                 >
                   <LayoutGrid className="mr-2 h-4 w-4" />
-                  <span className="hidden xs:inline">Dashboard</span>
+                  <span className="xs:inline">Dashboard</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="transactions"
                   className="flex items-center px-3 py-1.5 text-sm"
                 >
                   <ArrowRightLeft className="mr-2 h-4 w-4" />
-                  <span className="hidden xs:inline">Transactions</span>
+                  <span className="xs:inline">Transactions</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="companies"
                   className="flex items-center px-3 py-1.5 text-sm"
                 >
                   <Building className="mr-2 h-4 w-4" />
-                  <span className="hidden xs:inline">Companies</span>
+                  <span className="xs:inline">Companies</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="users"
                   className="flex items-center px-3 py-1.5 text-sm"
                 >
                   <Users className="mr-2 h-4 w-4" />
-                  <span className="hidden xs:inline">Users</span>
+                  <span className="xs:inline">Users</span>
                 </TabsTrigger>
 
                 {/* Reports dropdown */}
@@ -273,16 +273,26 @@ export default function AnalyticsDashboardPage() {
                       className="flex items-center gap-1 px-3 py-1.5 text-sm font-normal text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
                     >
                       <FileBarChart2 className="h-4 w-4" />
-                      <span className="hidden xs:inline">Reports</span>
+                      <span className="xs:inline">Reports</span>
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem asChild>
-                      <span className="hidden xs:inline">Profit & Loss</span>
+                      <TabsTrigger
+                        value="profitandloss"
+                        className="flex items-center px-3 py-1.5 text-sm"
+                      >
+                        <span className="xs:inline">Profit & Loss</span>
+                      </TabsTrigger>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <span className="hidden xs:inline">Balance Sheet</span>
+                      <TabsTrigger
+                        value="balancesheet"
+                        className="flex items-center px-3 py-1.5 text-sm"
+                      >
+                        <span className="xs:inline">Balance Sheet</span>
+                      </TabsTrigger>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -332,17 +342,15 @@ export default function AnalyticsDashboardPage() {
               selectedClient={selectedClient}
               selectedCompanyId={selectedCompanyId}
               companyMap={companyMap}
-            /> 
+            />
           </TabsContent>
 
           <TabsContent value="profitandloss" className="mt-6">
-            <ProfitAndLossTab
-            /> 
+            <ProfitAndLossTab />
           </TabsContent>
 
-           <TabsContent value="balancesheet" className="mt-6">
-            <BalanceSheetTab
-            /> 
+          <TabsContent value="balancesheet" className="mt-6">
+            <BalanceSheetTab />
           </TabsContent>
         </Tabs>
       )}

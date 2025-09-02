@@ -47,6 +47,7 @@ import { jwtDecode } from "jwt-decode"; // 🆕
 
 type Decoded = { exp: number; id: string; role: string }; // 🆕
 
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dateString, setDateString] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -405,6 +406,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <main className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
                   {children}
                 </main>
+                
               </div>
             </div>
           </SidebarProvider>
