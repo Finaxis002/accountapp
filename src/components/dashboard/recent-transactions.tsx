@@ -212,16 +212,16 @@ export function RecentTransactions({
                 {transactions?.length > 0 ? (
                   transactions.map((tx: any) => {
                     const item = getItems(tx, serviceNameById);
-                    console.log(
-                      "getItems ->",
-                      tx._id,
-                      {
-                        products: tx.products,
-                        service: tx.service,
-                        services: tx.services,
-                      },
-                      item
-                    );
+                    // console.log(
+                    //   "getItems ->",
+                    //   tx._id,
+                    //   {
+                    //     products: tx.products,
+                    //     service: tx.service,
+                    //     services: tx.services,
+                    //   },
+                    //   item
+                    // );
                     const amt = getAmount(tx);
                     const clickable = item.items.length > 0; // click to view details if any items
 

@@ -445,9 +445,9 @@ export default function InventoryPage() {
     );
   }
 
-  console.log("userCaps?.canCreateInventory", userCaps?.canCreateInventory);
-  console.log("permissions?.canCreateProducts", permissions?.canCreateProducts);
-  console.log("userCaps?.canCreateSaleEntries", userCaps?.canCreateSaleEntries);
+  // console.log("userCaps?.canCreateInventory", userCaps?.canCreateInventory);
+  // console.log("permissions?.canCreateProducts", permissions?.canCreateProducts);
+  // console.log("userCaps?.canCreateSaleEntries", userCaps?.canCreateSaleEntries);
 
   return (
     <div className="space-y-6">

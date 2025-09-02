@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
     fetchClients();
   }, [toast]);
 
-  console.log("companies ," , companies)
+  // console.log("companies ," , companies)
 
   const totalClients = clients.length;
   const activeClients = clients.filter(c => c.status === 'Active').length;

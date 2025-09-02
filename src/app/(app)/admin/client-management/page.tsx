@@ -280,7 +280,7 @@ export default function ClientManagementPage() {
       );
       if (res.ok) {
         const data = await res.json();
-        console.log("Fetch PErmissions :", data);
+        // console.log("Fetch PErmissions :", data);
         setCurrentPermissions({
           maxCompanies: data.maxCompanies,
           maxUsers: data.maxUsers,

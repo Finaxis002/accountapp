@@ -337,9 +337,9 @@ export function TransactionsTab({
 
   const onDownloadInvoice = async (tx: any) => {
     try {
-      console.log("[onDownload] Transaction:", tx);
+      // console.log("[onDownload] Transaction:", tx);
       const invNo = await ensureInvoiceNumberFor(tx);
-      console.log("[onDownload] Got invoice number:", invNo);
+      // console.log("[onDownload] Got invoice number:", invNo);
       window.open(
         `/invoices/${tx._id}/download?invno=${encodeURIComponent(
           invNo
@@ -357,14 +357,14 @@ export function TransactionsTab({
 
   const onViewItems = (tx: Transaction) => {
     // e.g. open a modal / drawer to show tx items
-    console.log("[onViewItems]", tx);
+    // console.log("[onViewItems]", tx);
   };
 
-  console.log("[TransactionsTab] wiring columns", {
-    onPreview: typeof onPreview,
-    onDownloadInvoice: typeof onDownloadInvoice,
-    onViewItems: typeof onViewItems,
-  });
+  // console.log("[TransactionsTab] wiring columns", {
+  //   onPreview: typeof onPreview,
+  //   onDownloadInvoice: typeof onDownloadInvoice,
+  //   onViewItems: typeof onViewItems,
+  // });
 
   // OPTIONAL: if you want real names, hydrate `serviceMap` via an API call.
   const [serviceMap, setServiceMap] = React.useState<Map<string, string>>(
