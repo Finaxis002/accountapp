@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
 import React from 'react';
-import { loginMasterAdmin, loginCustomer } from '@/lib/auth';
+import { loginMasterAdmin} from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -52,38 +52,12 @@ export default function LoginPage() {
     }
   };
 
-  const handleCustomerLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const user = await loginCustomer(username, password);
-       if (user?.role === 'customer') {
-        router.push('/dashboard');
-         toast({
-          title: "Login Successful",
-          description: `Welcome back, ${user.name}!`,
-        });
-      } else {
-        throw new Error("Invalid customer credentials.");
-      }
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description:
-          error instanceof Error ? error.message : "Something went wrong.",
-      });
-    } finally {
-        setIsLoading(false);
-    }
-  }
+
 
   const handleFormSubmit = (e: React.FormEvent) => {
     if (loginType === 'admin') {
       handleAdminLogin(e);
-    } else {
-      handleCustomerLogin(e);
-    }
+    } 
   };
 
   return (
