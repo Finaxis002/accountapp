@@ -81,8 +81,11 @@ export default function DashboardPage() {
   const { selectedCompanyId } = useCompany();
   const [companyData, setCompanyData] = React.useState<any>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
+  const [party, setParty] = React.useState<any>(null); // Set party data here
+  const [company, setCompany] = React.useState<any>(null); // Set company data here
+   const [transaction, setTransaction] = React.useState<any>(null); 
 
-    const { permissions: userCaps} = useUserPermissions();
+  const { permissions: userCaps } = useUserPermissions();
   const selectedCompany = React.useMemo(
     () =>
       selectedCompanyId
@@ -281,7 +284,13 @@ export default function DashboardPage() {
                     Fill in the details below to record a new financial event.
                   </DialogDescription>
                 </DialogHeader>
-                <TransactionForm onFormSubmit={handleTransactionFormSubmit} />
+                <TransactionForm
+                  onFormSubmit={handleTransactionFormSubmit}
+                  serviceNameById={serviceNameById}
+                  transaction={transaction}
+                  party={party}
+                  company={company}
+                />
               </DialogContent>
             </Dialog>
           </div>

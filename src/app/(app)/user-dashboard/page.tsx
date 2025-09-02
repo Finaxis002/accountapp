@@ -1,26 +1,42 @@
-'use client';
+"use client";
 
 import * as React from "react";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { useCompany } from "@/contexts/company-context";
 import {
-  IndianRupee, CreditCard, Users, Building, PlusCircle, Settings
+  IndianRupee,
+  CreditCard,
+  Users,
+  Building,
+  PlusCircle,
+  Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import type { Transaction, Company } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { ProductStock } from "@/components/dashboard/product-stock";
 import Link from "next/link";
 
 const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount);
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
+    amount
+  );
 
 const toArray = (data: any) => {
   if (Array.isArray(data)) return data;
@@ -39,12 +55,17 @@ const getAmount = (
   row: any
 ) => {
   switch (type) {
-    case "sales": return num(row?.amount ?? row?.totalAmount);
-    case "purchases": return num(row?.totalAmount ?? row?.amount);
+    case "sales":
+      return num(row?.amount ?? row?.totalAmount);
+    case "purchases":
+      return num(row?.totalAmount ?? row?.amount);
     case "receipt":
-    case "payment": return num(row?.amount ?? row?.totalAmount);
-    case "journal": return 0;
-    default: return 0;
+    case "payment":
+      return num(row?.amount ?? row?.totalAmount);
+    case "journal":
+      return 0;
+    default:
+      return 0;
   }
 };
 
@@ -53,10 +74,18 @@ export default function UserDashboardPage() {
   const { selectedCompanyId } = useCompany();
   const [companyData, setCompanyData] = React.useState<any>(null);
   const [companies, setCompanies] = React.useState<Company[]>([]);
-  const [recentTransactions, setRecentTransactions] = React.useState<Transaction[]>([]);
-  const [serviceNameById, setServiceNameById] = React.useState<Map<string, string>>(new Map());
+  const [recentTransactions, setRecentTransactions] = React.useState<
+    Transaction[]
+  >([]);
+  const [serviceNameById, setServiceNameById] = React.useState<
+    Map<string, string>
+  >(new Map());
+  const [party, setParty] = React.useState<any>(null); // Set party data here
+  const [company, setCompany] = React.useState<any>(null); // Set company data here
+  const [transaction, setTransaction] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isTransactionFormOpen, setIsTransactionFormOpen] = React.useState(false);
+  const [isTransactionFormOpen, setIsTransactionFormOpen] =
+    React.useState(false);
   const { toast } = useToast();
 
   // read role once (LS is fine for client-only)
@@ -67,7 +96,10 @@ export default function UserDashboardPage() {
   const isAdmin = role === "admin" || role === "master";
 
   const selectedCompany = React.useMemo(
-    () => selectedCompanyId ? companies.find(c => c._id === selectedCompanyId) || null : null,
+    () =>
+      selectedCompanyId
+        ? companies.find((c) => c._id === selectedCompanyId) || null
+        : null,
     [companies, selectedCompanyId]
   );
 
@@ -79,7 +111,9 @@ export default function UserDashboardPage() {
 
       const authHeaders = { Authorization: `Bearer ${token}` };
 
-      const queryParam = selectedCompanyId ? `?companyId=${selectedCompanyId}` : "";
+      const queryParam = selectedCompanyId
+        ? `?companyId=${selectedCompanyId}`
+        : "";
 
       // Helper: safe JSON fetch that never throws on 401/403, returns {} instead
       const safeGet = async (url: string) => {
@@ -94,8 +128,13 @@ export default function UserDashboardPage() {
 
       // Core fetches allowed for user
       const [
-        rawSales, rawPurchases, rawReceipts, rawPayments, rawJournals,
-        companiesData, servicesJson
+        rawSales,
+        rawPurchases,
+        rawReceipts,
+        rawPayments,
+        rawJournals,
+        companiesData,
+        servicesJson,
       ] = await Promise.all([
         safeGet(`${baseURL}/api/sales${queryParam}`),
         safeGet(`${baseURL}/api/purchase${queryParam}`),
@@ -103,26 +142,33 @@ export default function UserDashboardPage() {
         safeGet(`${baseURL}/api/payments${queryParam}`),
         safeGet(`${baseURL}/api/journals${queryParam}`),
         safeGet(`${baseURL}/api/companies/my`),
-        safeGet(`${baseURL}/api/services`)
+        safeGet(`${baseURL}/api/services`),
       ]);
 
       // Only admins can see the users count; for normal user we skip the call entirely
       let usersCount = 0;
       if (isAdmin) {
         const usersJson = await safeGet(`${baseURL}/api/users`);
-        usersCount = Array.isArray(usersJson) ? usersJson.length : (usersJson?.length || 0);
+        usersCount = Array.isArray(usersJson)
+          ? usersJson.length
+          : usersJson?.length || 0;
       }
 
       // Services map (optional)
-      const servicesArr = Array.isArray(servicesJson) ? servicesJson : servicesJson?.services || [];
+      const servicesArr = Array.isArray(servicesJson)
+        ? servicesJson
+        : servicesJson?.services || [];
       const sMap = new Map<string, string>();
       for (const s of servicesArr) {
-        if (s?._id) sMap.set(String(s._id), s.serviceName || s.name || "Service");
+        if (s?._id)
+          sMap.set(String(s._id), s.serviceName || s.name || "Service");
       }
       setServiceNameById(sMap);
 
       // Companies
-      const comps = Array.isArray(companiesData) ? companiesData : (companiesData?.data || []);
+      const comps = Array.isArray(companiesData)
+        ? companiesData
+        : companiesData?.data || [];
       setCompanies(comps);
 
       // Normalize arrays
@@ -148,21 +194,32 @@ export default function UserDashboardPage() {
       setRecentTransactions(allTransactions.slice(0, 5));
 
       // KPIs
-      const totalSales = salesArr.reduce((acc: number, row: any) => acc + getAmount("sales", row), 0);
-      const totalPurchases = purchasesArr.reduce((acc: number, row: any) => acc + getAmount("purchases", row), 0);
-      const companiesCount = selectedCompanyId ? 1 : (Array.isArray(comps) ? comps.length : 0);
+      const totalSales = salesArr.reduce(
+        (acc: number, row: any) => acc + getAmount("sales", row),
+        0
+      );
+      const totalPurchases = purchasesArr.reduce(
+        (acc: number, row: any) => acc + getAmount("purchases", row),
+        0
+      );
+      const companiesCount = selectedCompanyId
+        ? 1
+        : Array.isArray(comps)
+        ? comps.length
+        : 0;
 
       setCompanyData({
         totalSales,
         totalPurchases,
-        users: usersCount,       // 0 for non-admin
+        users: usersCount, // 0 for non-admin
         companies: companiesCount,
       });
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to load dashboard data",
-        description: error instanceof Error ? error.message : "Something went wrong.",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
       });
       setCompanyData(null);
     } finally {
@@ -186,7 +243,9 @@ export default function UserDashboardPage() {
       title: "Total Sales",
       value: formatCurrency(companyData?.totalSales || 0),
       icon: IndianRupee,
-      description: selectedCompanyId ? "For selected company" : "Across all companies",
+      description: selectedCompanyId
+        ? "For selected company"
+        : "Across all companies",
       show: true,
     },
     {
@@ -210,7 +269,7 @@ export default function UserDashboardPage() {
       icon: Building,
       show: true,
     },
-  ].filter(k => k.show);
+  ].filter((k) => k.show);
 
   return (
     <div className="space-y-6">
@@ -233,7 +292,10 @@ export default function UserDashboardPage() {
             </Button>
 
             {isAdmin && (
-              <Dialog open={isTransactionFormOpen} onOpenChange={setIsTransactionFormOpen}>
+              <Dialog
+                open={isTransactionFormOpen}
+                onOpenChange={setIsTransactionFormOpen}
+              >
                 <DialogTrigger asChild>
                   <Button>
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -247,7 +309,13 @@ export default function UserDashboardPage() {
                       Fill in the details below to record a new financial event.
                     </DialogDescription>
                   </DialogHeader>
-                  <TransactionForm onFormSubmit={handleTransactionFormSubmit} />
+                  <TransactionForm
+                    onFormSubmit={handleTransactionFormSubmit}
+                    serviceNameById={serviceNameById}
+                    transaction={transaction}
+                    party={party}
+                    company={company}
+                  />
                 </DialogContent>
               </Dialog>
             )}
@@ -284,13 +352,17 @@ export default function UserDashboardPage() {
             {kpis.map((kpi) => (
               <Card key={kpi.key}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {kpi.title}
+                  </CardTitle>
                   <kpi.icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{kpi.value}</div>
                   {"description" in kpi && kpi.description ? (
-                    <p className="text-xs text-muted-foreground">{kpi.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {kpi.description}
+                    </p>
                   ) : null}
                 </CardContent>
               </Card>
