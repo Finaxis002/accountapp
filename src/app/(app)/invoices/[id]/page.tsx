@@ -200,18 +200,21 @@ import {
 import { Download, Printer, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { IssueInvoiceNumberButton } from "@/components/invoices/IssueInvoiceNumberButton";
+import { NextPageContext } from 'next';
 
 // small helper to extract an id from string/object
 const idOf = (v: any) =>
   typeof v === "string" ? v : v?._id || v?.$oid || v?.id || "";
 
+interface PageProps {
+  params: { id: string };
+  searchParams: { invno?: string; companyId?: string };
+}
+
 export default function InvoiceDetailPage({
   params,
   searchParams,
-}: {
-  params: { id: string };
-  searchParams: { invno?: string; companyId?: string };
-}) {
+}: PageProps) {
   // ---- demo data fallback (replace with real fetch) ----
   let invoice = invoices.find((inv) => inv.id === params.id);
   if (!invoice && params.id === "inv_4") {
