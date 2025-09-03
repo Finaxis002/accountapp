@@ -57,6 +57,9 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import dynamic from "next/dynamic";
+
+
 
 export default function ProfilePage() {
   const { permissions, isLoading } = usePermissions();           // client (master) perms
