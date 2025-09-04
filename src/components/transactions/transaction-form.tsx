@@ -961,15 +961,15 @@ export function TransactionForm({
 
       if (values.type === "receipt") {
         // ✅ validate on client to avoid 400 from API
-        if (!(receiptAmount > 0)) {
-          setIsSubmitting(false);
-          toast({
-            variant: "destructive",
-            title: "Amount required",
-            description: "Enter a receipt amount greater than 0.",
-          });
-          return;
-        }
+        // if (!(receiptAmount > 0)) {
+        //   setIsSubmitting(false);
+        //   toast({
+        //     variant: "destructive",
+        //     title: "Amount required",
+        //     description: "Enter a receipt amount greater than 0.",
+        //   });
+        //   return;
+        // }
 
         // ✅ send the exact shape your backend expects
         payload = {
@@ -1238,10 +1238,10 @@ export function TransactionForm({
   };
 
   // remaining balance to display live in receipt tab
-  const remainingAfterReceipt =
-    balance != null && type === "receipt"
-      ? Math.max(0, Number(balance) - Number(receiptAmountWatch || 0))
-      : null;
+  // const remainingAfterReceipt =
+  //   balance != null && type === "receipt"
+  //     ? Math.max(0, Number(balance) - Number(receiptAmountWatch || 0))
+  //     : null;
 
   const handlePartyChange = async (partyId: string) => {
     if (!partyId) return;
@@ -2354,9 +2354,9 @@ export function TransactionForm({
               {balance != null && type === "receipt" && (
                 <div className="mt-2 text-xs text-red-600">
                   Balance: ₹{Number(balance).toFixed(2)}
-                  {Number(receiptAmountWatch || 0) > 0 && (
+                  {/* {Number(receiptAmountWatch || 0) > 0 && (
                     <> → After receipt: ₹{remainingAfterReceipt?.toFixed(2)}</>
-                  )}
+                  )} */}
                 </div>
               )}
             </FormItem>
