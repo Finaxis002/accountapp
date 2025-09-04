@@ -1370,27 +1370,16 @@ export function TransactionForm({
 
   const getPartyOptions = () => {
     if (type === "sales" || type === "receipt") {
-      // customers
-      const source = parties;
+    // All parties (customers) – no filter for balance
+    const source = parties;
 
-      // For RECEIPT only → filter to balance > 0
-      const filtered =
-        type === "receipt"
-          ? source.filter((p: any) => {
-              // prefer inline balance if present; else use the fetched map
-              const b =
-                typeof p?.balance === "number"
-                  ? p.balance
-                  : partyBalances[p._id] ?? 0;
-              return Number(b) > 0;
-            })
-          : source;
+    // For RECEIPT, show all customers regardless of balance
+    return source.map((p) => ({
+      value: p._id,
+      label: String(p.name || ""),
+    }));
+  }
 
-      return filtered.map((p) => ({
-        value: p._id,
-        label: String(p.name || ""),
-      }));
-    }
 
     if (type === "purchases" || type === "payment") {
       // vendors (unchanged)
@@ -2379,10 +2368,10 @@ export function TransactionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Amount</FormLabel>
-              {/* <FormControl>
-                <Input type="number" placeholder="0.00" {...field} />
-              </FormControl> */}
               <FormControl>
+                <Input type="number" placeholder="0.00" {...field} />
+              </FormControl>
+              {/* <FormControl>
                 <Input
                   type="number"
                   placeholder="0.00"
@@ -2414,7 +2403,7 @@ export function TransactionForm({
                     ? { max: Number(balance) }
                     : {})}
                 />
-              </FormControl>
+              </FormControl> */}
               <FormMessage />
             </FormItem>
           )}
