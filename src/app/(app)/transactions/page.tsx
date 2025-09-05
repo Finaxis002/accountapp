@@ -809,7 +809,7 @@ export default function TransactionsPage() {
                       New Transaction
                     </Button>
                   </DialogTrigger>
-                  <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 ]"  style={{ maxWidth: 1000, width: '125vw' }}>
+                  <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "  style={{ maxWidth: 1000, width: '125vw' }}>
                     <DialogHeader className="p-6">
                       <DialogTitle>
                         {transactionToEdit

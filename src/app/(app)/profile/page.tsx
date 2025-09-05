@@ -57,7 +57,6 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import dynamic from "next/dynamic";
 
 
 

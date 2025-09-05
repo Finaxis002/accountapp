@@ -99,7 +99,7 @@ export function ProductSettings() {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
-      const res = await fetch(`http://localhost:5000/api/products`, {
+      const res = await fetch(`${baseURL}/api/products`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to fetch products.");
