@@ -9,14 +9,12 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { DataTable } from "@/components/transactions/data-table";
-// import { columns } from "@/components/transactions/columns";
 import { columns as makeTxColumns } from "@/components/transactions/columns";
 
 import type { Client, Transaction } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Package, Server } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { env } from "process";
 import { ExportTransactions } from "./export-transaction";
 import { issueInvoiceNumber } from "@/lib/invoices";
 import {
@@ -58,7 +56,6 @@ export function TransactionsTab({
   const [purchases, setPurchases] = React.useState<Transaction[]>([]);
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
-
   const [journals, setJournals] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
@@ -66,37 +63,26 @@ export function TransactionsTab({
   const [isItemsDialogOpen, setIsItemsDialogOpen] = React.useState(false);
   const [itemsToView, setItemsToView] = React.useState<any[]>([]);
   const [productsList, setProductsList] = React.useState<any[]>([]);
-   const [servicesList, setServicesList] = React.useState<any[]>([]);
+  const [servicesList, setServicesList] = React.useState<any[]>([]);
 
   const productNameById = React.useMemo(() => {
     const m = new Map<string, string>();
     for (const p of productsList) {
-      // Ensure we're using the correct ID and name fields
       m.set(String(p._id), p.name || "(unnamed product)");
     }
     return m;
   }, [productsList]);
 
-
-    const serviceNameById = React.useMemo(() => {
-      const m = new Map<string, string>();
-      for (const s of servicesList) m.set(String(s._id), s.serviceName);
-      return m;
-    }, [servicesList]);
-  
-
-
+  const serviceNameById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of servicesList) m.set(String(s._id), s.serviceName);
+    return m;
+  }, [servicesList]);
 
   const handleViewItems = (tx: any) => {
     const prods = (tx.products || []).map((p: any) => {
-      // Debug: Log the product ID and name lookup
       const productName =
         productNameById.get(p.product) || p.product?.name || "(product)";
-      // console.log("Product lookup:", {
-      //   id: p.product,
-      //   foundName: productNameById.get(p.product),
-      //   productObj: p.product,
-      // });
 
       return {
         itemType: "product" as const,
@@ -109,7 +95,6 @@ export function TransactionsTab({
       };
     });
 
-    // inside handleViewItems
     const svcArr = Array.isArray(tx.services)
       ? tx.services
       : Array.isArray(tx.service)
@@ -117,7 +102,6 @@ export function TransactionsTab({
       : [];
 
     const svcs = svcArr.map((s: any) => {
-      // id can be raw ObjectId or populated doc; also support legacy s.serviceName
       const id =
         typeof s.service === "object"
           ? s.service._id
@@ -126,8 +110,6 @@ export function TransactionsTab({
               ? s.serviceName._id
               : s.serviceName);
 
-
-      // Now you can safely use the .get() method on serviceNameById, which is a Map
       const name =
         (id && serviceNameById.get(String(id))) ||
         (typeof s.service === "object" && s.service.serviceName) ||
@@ -149,7 +131,6 @@ export function TransactionsTab({
     setIsItemsDialogOpen(true);
   };
 
-  // put these above useEffect
   const idOf = (v: any) =>
     typeof v === "string" ? v : v?._id || v?.$oid || v?.id || "";
 
@@ -164,30 +145,71 @@ export function TransactionsTab({
 
         const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-        // helper: coerce any API shape to an array
-        const toArray = (x: any) => {
-          if (Array.isArray(x)) return x;
-          if (Array.isArray(x?.entries)) return x.entries;
-          if (Array.isArray(x?.data)) return x.data;
-          if (Array.isArray(x?.docs)) return x.docs;
-          if (Array.isArray(x?.results)) return x.results;
-          if (Array.isArray(x?.items)) return x.items;
+        // Response parsing utilities (same as in TransactionsPage)
+        const parseResponse = (data: any, possibleArrayKeys: string[] = []) => {
+          if (Array.isArray(data)) return data;
+
+          // Check for common success patterns
+          if (data?.success && Array.isArray(data?.data)) return data.data;
+          if (data?.success && Array.isArray(data?.entries))
+            return data.entries;
+
+          // Check for specific keys
+          for (const key of possibleArrayKeys) {
+            if (Array.isArray(data?.[key])) return data[key];
+          }
+
+          // Fallback: check any array in the response
+          for (const key in data) {
+            if (Array.isArray(data[key])) {
+              console.warn(`Found array in unexpected key: ${key}`);
+              return data[key];
+            }
+          }
+
+          console.warn("No array data found in response:", data);
           return [];
         };
 
-        const mustOk = async (res: Response, label: string) => {
-          if (!res.ok) {
-            const txt = await res.text().catch(() => "");
-            throw new Error(
-              `${label} API ${res.status} ${res.statusText} – ${txt}`
-            );
+        const parseSalesResponse = (data: any) => {
+          return parseResponse(data, ["salesEntries", "sales", "entries"]);
+        };
+
+        const parsePurchasesResponse = (data: any) => {
+          return parseResponse(data, [
+            "purchaseEntries",
+            "purchases",
+            "entries",
+          ]);
+        };
+
+        const parseReceiptsResponse = (data: any) => {
+          return parseResponse(data, ["receiptEntries", "receipts", "entries"]);
+        };
+
+        const parsePaymentsResponse = (data: any) => {
+          return parseResponse(data, ["paymentEntries", "payments", "entries"]);
+        };
+
+        const parseJournalsResponse = (data: any) => {
+          // Check for the correct nested structure of the data
+          if (data?.success && Array.isArray(data?.data?.data)) {
+            return data?.data?.data; // Access the nested 'data' array
           }
+          return []; // Default return if data is malformed
+        };
+
+        const parseProductsResponse = (data: any) => {
+          return parseResponse(data, ["products", "items", "data"]);
+        };
+
+        const parseServicesResponse = (data: any) => {
+          return parseResponse(data, ["services", "data"]);
         };
 
         const base = process.env.NEXT_PUBLIC_BASE_URL || "";
         const byCompany = !!selectedCompanyId;
 
-        // 🔁 Use PLURAL resource names consistently (adjust if your BE is truly singular)
         const salesUrl = byCompany
           ? `${base}/api/sales?companyId=${selectedCompanyId}`
           : `${base}/api/sales/by-client/${selectedClient._id}`;
@@ -203,23 +225,45 @@ export function TransactionsTab({
         const journalsUrl = byCompany
           ? `${base}/api/journals?companyId=${selectedCompanyId}`
           : `${base}/api/journals/by-client/${selectedClient._id}`;
+        const productsUrl = `${base}/api/products`;
+        const servicesUrl = `${base}/api/services`;
 
-        const [salesRes, purchasesRes, receiptsRes, paymentsRes, journalsRes] =
-          await Promise.all([
-            fetch(salesUrl, auth),
-            fetch(purchasesUrl, auth),
-            fetch(receiptsUrl, auth),
-            fetch(paymentsUrl, auth),
-            fetch(journalsUrl, auth),
-          ]);
+        const [
+          salesRes,
+          purchasesRes,
+          receiptsRes,
+          paymentsRes,
+          journalsRes,
+          productsRes,
+          servicesRes,
+        ] = await Promise.all([
+          fetch(salesUrl, auth),
+          fetch(purchasesUrl, auth),
+          fetch(receiptsUrl, auth),
+          fetch(paymentsUrl, auth),
+          fetch(journalsUrl, auth),
+          fetch(productsUrl, auth),
+          fetch(servicesUrl, auth),
+        ]);
 
-        // Fail fast with a clear message if any call failed
+        // Check response statuses
+        const mustOk = async (res: Response, label: string) => {
+          if (!res.ok) {
+            const txt = await res.text().catch(() => "");
+            throw new Error(
+              `${label} API ${res.status} ${res.statusText} – ${txt}`
+            );
+          }
+        };
+
         await Promise.all([
           mustOk(salesRes, "Sales"),
           mustOk(purchasesRes, "Purchases"),
           mustOk(receiptsRes, "Receipts"),
           mustOk(paymentsRes, "Payments"),
           mustOk(journalsRes, "Journals"),
+          mustOk(productsRes, "Products"),
+          mustOk(servicesRes, "Services"),
         ]);
 
         const [
@@ -228,38 +272,59 @@ export function TransactionsTab({
           receiptsData,
           paymentsData,
           journalsData,
+          productsData,
+          servicesData,
         ] = await Promise.all([
           salesRes.json(),
           purchasesRes.json(),
           receiptsRes.json(),
           paymentsRes.json(),
           journalsRes.json(),
+          productsRes.json(),
+          servicesRes.json(),
         ]);
 
-        const salesArr = toArray(salesData).map((s: any) => ({
+        // Parse the responses using the same logic as TransactionsPage
+        const salesArr = parseSalesResponse(salesData).map((s: any) => ({
           ...s,
           type: "sales",
         }));
-        const purchasesArr = toArray(purchasesData).map((p: any) => ({
-          ...p,
-          type: "purchases",
-        }));
-        const receiptsArr = toArray(receiptsData).map((r: any) => ({
-          ...r,
-          type: "receipt",
-        }));
-        const paymentsArr = toArray(paymentsData).map((p: any) => ({
-          ...p,
-          type: "payment",
-        }));
-        const journalsArr = toArray(journalsData).map((j: any) => ({
-          ...j,
-          description: j.narration,
-          type: "journal",
-        }));
+        const purchasesArr = parsePurchasesResponse(purchasesData).map(
+          (p: any) => ({
+            ...p,
+            type: "purchases",
+          })
+        );
+        const receiptsArr = parseReceiptsResponse(receiptsData).map(
+          (r: any) => ({
+            ...r,
+            type: "receipt",
+          })
+        );
+        const paymentsArr = parsePaymentsResponse(paymentsData).map(
+          (p: any) => ({
+            ...p,
+            type: "payment",
+          })
+        );
 
-        const idOf = (v: any) =>
-          typeof v === "string" ? v : v?._id || v?.$oid || v?.id || "";
+        // CRITICAL: Process journals data properly like in TransactionsPage
+        const journalsArr = parseJournalsResponse(journalsData).map(
+          (j: any) => ({
+            ...j,
+            description: j.narration || j.description,
+            type: "journal",
+            // Add empty arrays for missing properties that columns might expect
+            products: j.products || [],
+            services: j.services || [],
+            invoiceNumber: j.invoiceNumber || "",
+            party: j.party || "",
+          })
+        );
+
+        const productsList = parseProductsResponse(productsData);
+        const servicesList = parseServicesResponse(servicesData);
+
         const filterByCompany = <T extends { company?: any }>(
           arr: T[],
           companyId?: string | null
@@ -278,6 +343,9 @@ export function TransactionsTab({
         setJournals(filterByCompany(journalsArr, selectedCompanyId));
         setProductsList(productsList);
         setServicesList(servicesList);
+
+        console.log("Journals Data:", journalsArr);
+        console.log("Receipt Data :", receiptsArr);
       } catch (error) {
         toast({
           variant: "destructive",
@@ -293,12 +361,10 @@ export function TransactionsTab({
     fetchTransactions();
   }, [selectedClient?._id, selectedCompanyId, toast]);
 
-  // put below your other useState hooks
   const [invNoByTxId, setInvNoByTxId] = React.useState<Record<string, string>>(
     {}
   );
 
-  // ensure number exists for a transaction row
   async function ensureInvoiceNumberFor(tx: any): Promise<string> {
     const existing = tx.invoiceNumber || invNoByTxId[tx._id];
     if (existing) return existing;
@@ -329,7 +395,7 @@ export function TransactionsTab({
     } catch (e: any) {
       toast({
         variant: "destructive",
-        title: "Couldn’t issue invoice number",
+        title: "Couldn't issue invoice number",
         description: e?.message || "Try again.",
       });
     }
@@ -337,9 +403,7 @@ export function TransactionsTab({
 
   const onDownloadInvoice = async (tx: any) => {
     try {
-      // console.log("[onDownload] Transaction:", tx);
       const invNo = await ensureInvoiceNumberFor(tx);
-      // console.log("[onDownload] Got invoice number:", invNo);
       window.open(
         `/invoices/${tx._id}/download?invno=${encodeURIComponent(
           invNo
@@ -349,28 +413,11 @@ export function TransactionsTab({
     } catch (e: any) {
       toast({
         variant: "destructive",
-        title: "Couldn’t issue invoice number",
+        title: "Couldn't issue invoice number",
         description: e?.message || "Try again.",
       });
     }
   };
-
-  const onViewItems = (tx: Transaction) => {
-    // e.g. open a modal / drawer to show tx items
-    // console.log("[onViewItems]", tx);
-  };
-
-  // console.log("[TransactionsTab] wiring columns", {
-  //   onPreview: typeof onPreview,
-  //   onDownloadInvoice: typeof onDownloadInvoice,
-  //   onViewItems: typeof onViewItems,
-  // });
-
-  // OPTIONAL: if you want real names, hydrate `serviceMap` via an API call.
-  const [serviceMap, setServiceMap] = React.useState<Map<string, string>>(
-    new Map()
-  );
-
 
   const tableColumns = React.useMemo(
     () =>
@@ -380,10 +427,10 @@ export function TransactionsTab({
         onEdit: handleAction,
         onDelete: handleAction,
         companyMap,
-        serviceNameById: serviceMap, // <-- pass the Map as serviceNameById
-        onSendInvoice: () => {}, // <-- add a dummy function if not used
+        serviceNameById,
+        onSendInvoice: () => {},
       }),
-    [onPreview, onViewItems, handleAction, companyMap, serviceMap]
+    [onPreview, handleViewItems, handleAction, companyMap, serviceNameById]
   );
 
   const allTransactions = React.useMemo(
@@ -452,7 +499,7 @@ export function TransactionsTab({
           <DialogHeader>
             <DialogTitle>Item Details</DialogTitle>
             <DialogDescription>
-              A detailed list of all items in this transaction..
+              A detailed list of all items in this transaction.
             </DialogDescription>
           </DialogHeader>
 
@@ -473,8 +520,8 @@ export function TransactionsTab({
                   const qty =
                     !isService &&
                     item.quantity !== undefined &&
-                    item.quantity !== null && // Add null check
-                    !isNaN(Number(item.quantity)) // Ensure it's a valid number
+                    item.quantity !== null &&
+                    !isNaN(Number(item.quantity))
                       ? item.quantity
                       : "—";
                   const rate = !isService
