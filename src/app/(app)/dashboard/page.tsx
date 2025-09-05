@@ -36,6 +36,10 @@ import { TransactionForm } from "@/components/transactions/transaction-form";
 import { ProductStock } from "@/components/dashboard/product-stock";
 import Link from "next/link";
 
+
+const CACHE_KEY = "company_dashboard_data"; // Key to store the cache
+const CACHE_EXPIRY = 5 * 60 * 1000; // Cache expiry time in milliseconds (5 minutes)
+
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
     amount
@@ -105,114 +109,124 @@ export default function DashboardPage() {
   const [isTransactionFormOpen, setIsTransactionFormOpen] =
     React.useState(false);
 
-  const fetchCompanyDashboard = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Authentication token not found.");
+const fetchCompanyDashboard = React.useCallback(async () => {
+  setIsLoading(true);
 
-      const buildRequest = (url: string) =>
-        fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
-      // when "All" is selected, omit companyId
-      const queryParam = selectedCompanyId
-        ? `?companyId=${selectedCompanyId}`
-        : "";
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication token not found.");
 
-      const [
-        salesRes,
-        purchasesRes,
-        receiptsRes,
-        paymentsRes,
-        journalsRes,
-        usersRes,
-        companiesRes,
-        servicesRes,
-      ] = await Promise.all([
-        buildRequest(`${baseURL}/api/sales${queryParam}`),
-        buildRequest(`${baseURL}/api/purchase${queryParam}`),
-        buildRequest(`${baseURL}/api/receipts${queryParam}`),
-        buildRequest(`${baseURL}/api/payments${queryParam}`),
-        buildRequest(`${baseURL}/api/journals${queryParam}`),
-        buildRequest(`${baseURL}/api/users`),
-        buildRequest(`${baseURL}/api/companies/my`),
-        buildRequest(`${baseURL}/api/services`),
-      ]);
+    const buildRequest = (url: string) =>
+      fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
-      const rawSales = await salesRes.json();
-      const rawPurchases = await purchasesRes.json();
-      const rawReceipts = await receiptsRes.json();
-      const rawPayments = await paymentsRes.json();
-      const rawJournals = await journalsRes.json();
-      const usersData = await usersRes.json();
-      const companiesData = await companiesRes.json();
+    // when "All" is selected, omit companyId
+    const queryParam = selectedCompanyId
+      ? `?companyId=${selectedCompanyId}`
+      : "";
 
-      const servicesJson = await servicesRes.json();
+    const [
+      salesRes,
+      purchasesRes,
+      receiptsRes,
+      paymentsRes,
+      journalsRes,
+      usersRes,
+      companiesRes,
+      servicesRes,
+    ] = await Promise.all([
+      buildRequest(`${baseURL}/api/sales${queryParam}`),
+      buildRequest(`${baseURL}/api/purchase${queryParam}`),
+      buildRequest(`${baseURL}/api/receipts${queryParam}`),
+      buildRequest(`${baseURL}/api/payments${queryParam}`),
+      buildRequest(`${baseURL}/api/journals${queryParam}`),
+      buildRequest(`${baseURL}/api/users`),
+      buildRequest(`${baseURL}/api/companies/my`),
+      buildRequest(`${baseURL}/api/services`),
+    ]);
 
-      const servicesArr = Array.isArray(servicesJson)
-        ? servicesJson
-        : servicesJson.services || [];
-      const sMap = new Map<string, string>();
-      for (const s of servicesArr) {
-        if (s?._id)
-          sMap.set(String(s._id), s.serviceName || s.name || "Service");
-      }
-      setServiceNameById(sMap);
+    const rawSales = await salesRes.json();
+    const rawPurchases = await purchasesRes.json();
+    const rawReceipts = await receiptsRes.json();
+    const rawPayments = await paymentsRes.json();
+    const rawJournals = await journalsRes.json();
+    const usersData = await usersRes.json();
+    const companiesData = await companiesRes.json();
 
-      setCompanies(Array.isArray(companiesData) ? companiesData : []);
+    const servicesJson = await servicesRes.json();
 
-      // normalize to arrays regardless of shape
-      const salesArr = toArray(rawSales);
-      const purchasesArr = toArray(rawPurchases);
-      const receiptsArr = toArray(rawReceipts);
-      const paymentsArr = toArray(rawPayments);
-      const journalsArr = toArray(rawJournals);
-
-      // recent transactions (combined)
-      const allTransactions = [
-        ...salesArr.map((s: any) => ({ ...s, type: "sales" })),
-        ...purchasesArr.map((p: any) => ({ ...p, type: "purchases" })),
-        ...receiptsArr.map((r: any) => ({ ...r, type: "receipt" })),
-        ...paymentsArr.map((p: any) => ({ ...p, type: "payment" })),
-        ...journalsArr.map((j: any) => ({
-          ...j,
-          description: j?.narration ?? j?.description ?? "",
-          type: "journal",
-        })),
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      setRecentTransactions(allTransactions.slice(0, 5));
-
-      // KPI totals from normalized arrays
-      const totalSales = salesArr.reduce(
-        (acc: number, row: any) => acc + getAmount("sales", row),
-        0
-      );
-      const totalPurchases = purchasesArr.reduce(
-        (acc: number, row: any) => acc + getAmount("purchases", row),
-        0
-      );
-
-      const companiesCount = selectedCompanyId ? 1 : companiesData?.length || 0;
-
-      setCompanyData({
-        totalSales,
-        totalPurchases,
-        users: usersData?.length || 0,
-        companies: companiesCount,
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to load dashboard data",
-        description:
-          error instanceof Error ? error.message : "Something went wrong.",
-      });
-      setCompanyData(null);
-    } finally {
-      setIsLoading(false);
+    const servicesArr = Array.isArray(servicesJson)
+      ? servicesJson
+      : servicesJson.services || [];
+    const sMap = new Map<string, string>();
+    for (const s of servicesArr) {
+      if (s?._id) sMap.set(String(s._id), s.serviceName || s.name || "Service");
     }
-  }, [selectedCompanyId, toast, baseURL]);
+    setServiceNameById(sMap);
+
+    setCompanies(Array.isArray(companiesData) ? companiesData : []);
+
+    // normalize to arrays regardless of shape
+    const salesArr = toArray(rawSales);
+    const purchasesArr = toArray(rawPurchases);
+    const receiptsArr = toArray(rawReceipts);
+    const paymentsArr = toArray(rawPayments);
+    const journalsArr = toArray(rawJournals);
+
+    // recent transactions (combined)
+    const allTransactions = [
+      ...salesArr.map((s: any) => ({ ...s, type: "sales" })),
+      ...purchasesArr.map((p: any) => ({ ...p, type: "purchases" })),
+      ...receiptsArr.map((r: any) => ({ ...r, type: "receipt" })),
+      ...paymentsArr.map((p: any) => ({ ...p, type: "payment" })),
+      ...journalsArr.map((j: any) => ({
+        ...j,
+        description: j?.narration ?? j?.description ?? "",
+        type: "journal",
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    setRecentTransactions(allTransactions.slice(0, 5));
+
+    // KPI totals from normalized arrays
+    const totalSales = salesArr.reduce(
+      (acc: number, row: any) => acc + getAmount("sales", row),
+      0
+    );
+    const totalPurchases = purchasesArr.reduce(
+      (acc: number, row: any) => acc + getAmount("purchases", row),
+      0
+    );
+
+    const companiesCount = selectedCompanyId ? 1 : companiesData?.length || 0;
+
+    setCompanyData({
+      totalSales,
+      totalPurchases,
+      users: usersData?.length || 0,
+      companies: companiesCount,
+    });
+
+    // Store data in cache with timestamp
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      totalSales,
+      totalPurchases,
+      users: usersData?.length || 0,
+      companies: companiesCount,
+    }));
+
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Failed to load dashboard data",
+      description:
+        error instanceof Error ? error.message : "Something went wrong.",
+    });
+    setCompanyData(null);
+  } finally {
+    setIsLoading(false);
+  }
+}, [selectedCompanyId, toast, baseURL]);
 
   React.useEffect(() => {
     fetchCompanyDashboard();
@@ -277,7 +291,7 @@ export default function DashboardPage() {
                   New Transaction
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+              <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "  style={{ maxWidth: 1000, width: '125vw' }}>
                 <DialogHeader className="p-6">
                   <DialogTitle>Create a New Transaction</DialogTitle>
                   <DialogDescription>
