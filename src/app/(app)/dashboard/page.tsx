@@ -108,6 +108,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [isTransactionFormOpen, setIsTransactionFormOpen] =
     React.useState(false);
+    
 
 const fetchCompanyDashboard = React.useCallback(async () => {
   setIsLoading(true);
