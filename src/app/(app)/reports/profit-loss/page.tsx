@@ -9,7 +9,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
-import { Download } from "lucide-react";
+import { BarChart3, Calendar, Clock, Download } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useCompany } from "@/contexts/company-context";
 import { useReceipts } from "@/hooks/useReceipts";
@@ -93,8 +93,45 @@ export default function ProfitLossPage() {
 
   const netIncome = totalRevenue - totalExpenses;
 
+
+function ComingSoonBanner() {
   return (
-    <div className="space-y-6">
+    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 p-6 border border-border shadow-sm mb-6">
+      <div className="flex flex-col items-center text-center">
+        {/* Icon */}
+        <div className="mb-4 p-3 bg-primary/10 rounded-full">
+          <BarChart3 className="h-8 w-8 text-primary" />
+        </div>
+        
+        {/* Title */}
+        <h3 className="text-xl font-semibold text-foreground mb-2">
+          Advanced Analytics Coming Soon
+        </h3>
+        
+        {/* Description */}
+        <p className="text-muted-foreground max-w-md mb-4">
+          We're enhancing your Profit & Loss with interactive charts, 
+          historical comparisons, and detailed financial insights.
+        </p>
+        
+        {/* Badge */}
+        <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+          <Clock className="h-3.5 w-3.5" />
+          Coming Soon
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  return (
+    <>
+ 
+<div className="flex align-middle justify-center items-center h-full">
+     <ComingSoonBanner />
+ </div>
+
+    {/* <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Profit &amp; Loss Statement</h2>
@@ -108,7 +145,7 @@ export default function ProfitLossPage() {
         </Button>
       </div>
 
-      {/* Date controls */}
+      
       <div className="flex gap-3">
         <input type="date" className="border rounded px-3 py-2" value={from} onChange={(e) => setFrom(e.target.value)} />
         <input type="date" className="border rounded px-3 py-2" value={to} onChange={(e) => setTo(e.target.value)} />
@@ -129,7 +166,7 @@ export default function ProfitLossPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Revenue */}
+             
               <TableRow className="font-semibold bg-secondary/50">
                 <TableCell>Revenue</TableCell>
                 <TableCell />
@@ -159,7 +196,7 @@ export default function ProfitLossPage() {
                 <TableCell className="text-right">{INR(totalRevenue)}</TableCell>
               </TableRow>
 
-              {/* Expenses */}
+              
               <TableRow className="font-semibold bg-secondary/50">
                 <TableCell>Expenses</TableCell>
                 <TableCell />
@@ -203,6 +240,7 @@ export default function ProfitLossPage() {
           </div>
         </CardFooter>
       </Card>
-    </div>
+    </div> */}
+    </>
   );
 }

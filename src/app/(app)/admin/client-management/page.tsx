@@ -1008,8 +1008,8 @@ export default function ClientManagementPage() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : viewMode === "list" ? (
-            <div className="overflow-x-auto">
-              <Table className="border-separate border-spacing-y-2">
+            <div className="overflow-x-auto p-4">
+              <Table className="border-separate border-spacing-y-2 p-4">
                 <TableHeader className="[&_tr]:border-b-0">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[300px]">Contact</TableHead>
