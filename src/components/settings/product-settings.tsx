@@ -181,6 +181,8 @@ export function ProductSettings() {
     );
   }
 
+  const role = localStorage.getItem("role");
+
   return (
     <>
       {companies.length === 0 ? (
@@ -267,12 +269,17 @@ export function ProductSettings() {
             <CardHeader>
               <div className="flex flex-col items-center text-center space-y-3 lg:flex-row lg:items-center lg:justify-between lg:text-left lg:space-y-0">
                 <div>
-                  <CardTitle  className="text-xl font-semibold">Manage Products & Services</CardTitle>
+                  <CardTitle className="text-xl font-semibold">
+                    Manage Products & Services
+                  </CardTitle>
                   <CardDescription className="max-w-md">
                     A list of all your products or services.
                   </CardDescription>
                 </div>
-                <Button onClick={() => handleOpenForm()} className="w-full sm:w-auto lg:w-auto">
+                <Button
+                  onClick={() => handleOpenForm()}
+                  className="w-full sm:w-auto lg:w-auto"
+                >
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                 </Button>
               </div>
@@ -289,7 +296,9 @@ export function ProductSettings() {
                       <TableHead>Item Name</TableHead>
                       <TableHead>Stock</TableHead>
                       <TableHead>Created At</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      {role !== "user" ? (
+                        <TableHead className="text-right">Actions</TableHead>
+                      ) : null}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -322,28 +331,32 @@ export function ProductSettings() {
                             new Date(product.createdAt!)
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem
-                                onClick={() => handleOpenForm(product)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleOpenDeleteDialog(product)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                        {role !== "user" ? (
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenForm(product)}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleOpenDeleteDialog(product)
+                                  }
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        ) : null}
                       </TableRow>
                     ))}
                   </TableBody>

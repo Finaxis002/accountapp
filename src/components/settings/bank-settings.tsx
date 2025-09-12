@@ -1,0 +1,348 @@
+"use client";
+
+import * as React from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Loader2,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  PlusCircle,
+  Package,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { BankDetailsForm } from "../bankdetails/bankdetail-form";
+import { Badge } from "../ui/badge";
+
+interface BankDetail {
+  _id: string;
+  client: string;
+  company: string; // This should be the company ID
+  bankName: string;
+  managerName: string;
+  contactNumber: string;
+  email: string;
+  city: string;
+  ifscCode?: string;
+  branchAddress?: string;
+}
+
+export function BankSettings() {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
+  const [bankDetails, setBankDetails] = React.useState<BankDetail[]>([]);
+    const [filteredBankDetails, setFilteredBankDetails] = React.useState<BankDetail[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
+  const [selectedBankDetail, setSelectedBankDetail] =
+    React.useState<BankDetail | null>(null);
+    
+  const [bankDetailToDelete, setBankDetailToDelete] =
+    React.useState<BankDetail | null>(null);
+  const { toast } = useToast();
+
+ // Function to get user's company ID from token
+  const getUserCompanyId = () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return null;
+      
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.companyId || null;
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      return null;
+    }
+  };
+
+
+// In your BankSettings component, update the fetchBankDetails function:
+ // Fetch bank details
+  const fetchBankDetails = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      
+      const res = await fetch(`${baseURL}/api/bank-details`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!res.ok) throw new Error("Failed to fetch bank details.");
+      
+      const data = await res.json();
+      const allBankDetails = data.data || data || [];
+      
+      // Get user's company ID and filter bank details
+      const userCompanyId = getUserCompanyId();
+      
+      if (userCompanyId) {
+        // Filter bank details to show only those from the user's company
+        const userBankDetails = allBankDetails.filter(
+          (detail: BankDetail) => detail.company === userCompanyId
+        );
+        setBankDetails(userBankDetails);
+        setFilteredBankDetails(userBankDetails);
+      } else {
+        // If no company ID found, show all (fallback)
+        setBankDetails(allBankDetails);
+        setFilteredBankDetails(allBankDetails);
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to load bank details",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [baseURL, toast]);
+
+  React.useEffect(() => {
+    fetchBankDetails();
+  }, [fetchBankDetails]);
+
+  // Open form for creating or editing a bank detail
+  const handleOpenForm = (bankDetail: BankDetail | null = null) => {
+    setSelectedBankDetail(bankDetail);
+    setIsFormOpen(true);
+  };
+
+  // Open delete confirmation dialog
+  const handleOpenDeleteDialog = (bankDetail: BankDetail) => {
+    setBankDetailToDelete(bankDetail);
+    setIsAlertOpen(true);
+  };
+
+  // Form submission success handler
+  const handleFormSuccess = () => {
+    setIsFormOpen(false);
+    fetchBankDetails();
+    const action = selectedBankDetail ? "updated" : "created";
+    toast({
+      title: `Bank Detail ${action} successfully`,
+      description: `The bank detail has been ${action}.`,
+    });
+    setSelectedBankDetail(null);
+  };
+
+  // Delete bank detail
+  const handleDeleteBankDetail = async () => {
+    if (!bankDetailToDelete) return;
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      const res = await fetch(
+        `${baseURL}/api/bank-details/${bankDetailToDelete._id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) throw new Error("Failed to delete bank detail.");
+      toast({
+        title: "Bank Detail Deleted",
+        description: "The bank detail has been successfully removed.",
+      });
+      fetchBankDetails();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsAlertOpen(false);
+      setBankDetailToDelete(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col items-center text-center space-y-3 lg:flex-row lg:items-center lg:justify-between lg:text-left lg:space-y-0">
+            <div>
+              <CardTitle className="text-xl font-semibold">
+                Manage Bank Details
+              </CardTitle>
+              <CardDescription className="max-w-md">
+                A list of all your bank details.
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => handleOpenForm()}
+              className="w-full sm:w-auto lg:w-auto"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Bank Details
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+           {filteredBankDetails.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bank Name</TableHead>
+                  <TableHead>Manager Name</TableHead>
+                  <TableHead>Contact Number</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bankDetails.map((bankDetail) => (
+                  <TableRow key={bankDetail._id}>
+                    <TableCell>{bankDetail.bankName}</TableCell>
+                    <TableCell>{bankDetail.managerName}</TableCell>
+                    <TableCell>{bankDetail.contactNumber}</TableCell>
+                    <TableCell>{bankDetail.email}</TableCell>
+                    <TableCell>{bankDetail.branchAddress}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenForm(bankDetail)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenDeleteDialog(bankDetail)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+              <Package className="h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">
+                No Bank Details Found
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Get started by adding your first bank detail.
+              </p>
+              <Button className="mt-6" onClick={() => handleOpenForm()}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Bank Details
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bank Detail Form Modal */}
+      <div>
+        <Dialog
+          open={isFormOpen}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedBankDetail(null);
+            setIsFormOpen(isOpen);
+          }}
+        >
+          <DialogContent className="sm:max-w-[60vw]">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedBankDetail
+                  ? "Edit Bank Detail"
+                  : "Create New Bank Detail"}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedBankDetail
+                  ? "Update the details for this bank."
+                  : "Fill in the form to add a new bank detail."}
+              </DialogDescription>
+            </DialogHeader>
+
+            <BankDetailsForm
+                bankDetail={selectedBankDetail || undefined}
+              onSuccess={handleFormSuccess}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Deletion Confirmation Dialog */}
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              bank detail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteBankDetail}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
