@@ -14,6 +14,7 @@ import {
   DollarSign,
   Clock,
   Loader2,
+  HistoryIcon,
 } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentUser } from "@/lib/auth";
@@ -44,14 +45,16 @@ import { PermissionProvider } from "@/contexts/permission-context";
 import { UserPermissionsProvider } from "@/contexts/user-permissions-context";
 import axios from "axios"; // 🆕
 import { jwtDecode } from "jwt-decode"; // 🆕
+import Notification from "@/components/notifications/Notification";
+import HistoryPage from "./admin/history/page";
 
 type Decoded = { exp: number; id: string; role: string }; // 🆕
-
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dateString, setDateString] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showHistoryPage, setShowHistoryPage] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -90,6 +93,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setCurrentUser(user);
     setIsLoading(false);
   }, [router, pathname, isAuthRoute]);
+
+ // Handle click on History Icon
+  const handleHistoryClick = () => {
+    if (role === "master") {
+      // Navigate to /admin/history if the user is a master
+      router.push("/admin/history");
+    }
+  };
+
+  const handleCloseHistoryPage = () => {
+    setShowHistoryPage(false); // Hide the history page when needed (e.g., close button)
+  };
 
   const handleLogout = () => {
     // read BEFORE clearing
@@ -215,17 +230,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const role = localStorage.getItem("role");
   // console.log("User role:", role);
 
-  
-
-  
-
   const roleLower = (currentUser?.role ?? "").toLowerCase();
   // console.log("current User :", currentUser);
   const showAppSidebar = ["master", "client", "customer", "admin"].includes(
     roleLower
   );
-
-  
 
   // 🆕 Effect 1: Initial guard on protected pages + set date/user
   // useEffect(() => {
@@ -264,7 +273,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // }, [router, pathname, isAuthRoute, ensureValidToken]);
 
   // 🆕 Effect 2: Schedule auto-logout exactly when token expires
-  
 
   return (
     <CompanyProvider>
@@ -309,72 +317,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <Search className="h-5 w-5" />
                     </Button>
                     <ThemeToggle />
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="relative"
-                        >
-                          <Bell className="h-5 w-5" />
-                          <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-red-500"></span>
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent>
-                        <SheetHeader>
-                          <SheetTitle>Notifications</SheetTitle>
-                          <SheetDescription>
-                            You have 3 unread messages.
-                          </SheetDescription>
-                        </SheetHeader>
-                        <div className="py-4">
-                          <div className="space-y-4">
-                            <div className="flex items-start gap-4">
-                              <div className="bg-primary/10 p-2 rounded-full">
-                                <FileText className="h-5 w-5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium">
-                                  New invoice #INV-2024-003
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Created for Data Systems Ltd.
-                                </p>
-                              </div>
-                            </div>
-                            <Separator />
-                            <div className="flex items-start gap-4">
-                              <div className="bg-green-500/10 p-2 rounded-full">
-                                <DollarSign className="h-5 w-5 text-green-500" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium">
-                                  Payment Received
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Rs5,000.00 from Client Innovations LLC.
-                                </p>
-                              </div>
-                            </div>
-                            <Separator />
-                            <div className="flex items-start gap-4">
-                              <div className="bg-orange-500/10 p-2 rounded-full">
-                                <Clock className="h-5 w-5 text-orange-500" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium">
-                                  Reminder: Invoice Due
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Invoice #INV-2024-002 is due tomorrow.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </SheetContent>
-                    </Sheet>
+                    {role !== "user" && role !== "master" && <Notification />}
 
+                    {role === "master" && (
+                      <div
+                        onClick={handleHistoryClick}
+                        className="cursor-pointer"
+                      >
+                        <HistoryIcon className="h-6 w-6" /> {/* History Icon */}
+                      </div>
+                    )}
+
+                   
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -406,7 +360,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <main className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
                   {children}
                 </main>
-                
               </div>
             </div>
           </SidebarProvider>
