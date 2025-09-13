@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PlusCircle, Users, Loader2, LayoutGrid, List, Check, Copy } from "lucide-react";
+import {
+  PlusCircle,
+  Users,
+  Loader2,
+  LayoutGrid,
+  List,
+  Check,
+  Copy,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -38,14 +46,15 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [viewMode, setViewMode] = useState<"list" | "card">("list");
-   const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "card">("card");
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
+  const userLoginUrl = `${
+    typeof window !== "undefined" ? window.location.origin : ""
+  }/user-login`;
 
-   const userLoginUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/user-login`;
-
-   const copyToClipboard = async () => {
+  const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(userLoginUrl);
       setCopied(true);
@@ -197,44 +206,44 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-    <Card className="bg-blue-50 dark:bg-gray-900 border-blue-200 dark:border-gray-900">
-  <CardContent className="p-4">
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-      <div className="flex-1">
-        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-          User Login URL
-        </h3>
-        <p className="text-xs text-blue-600 dark:text-blue-300 break-all bg-blue-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-          {userLoginUrl}
-        </p>
-      </div>
-      <Button
-        size="sm"
-        variant="outline"
-        className="bg-white dark:bg-gray-800 hover:bg-blue-500 dark:hover:bg-gray-600 text-blue-700 dark:text-blue-200 border-blue-300 dark:border-gray-600"
-        onClick={copyToClipboard}
-      >
-        {copied ? (
-          <Check className="h-4 w-4 mr-1" />
-        ) : (
-          <Copy className="h-4 w-4 mr-1" />
-        )}
-        {copied ? "Copied!" : "Copy URL"}
-      </Button>
-    </div>
-  </CardContent>
-</Card>
+      <Card className="bg-blue-50 dark:bg-gray-900 border-blue-200 dark:border-gray-900">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                User Login URL
+              </h3>
+              <p className="text-xs text-blue-600 dark:text-blue-300 break-all bg-blue-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                {userLoginUrl}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-white dark:bg-gray-800 hover:bg-blue-500 dark:hover:bg-gray-600 text-blue-700 dark:text-blue-200 border-blue-300 dark:border-gray-600"
+              onClick={copyToClipboard}
+            >
+              {copied ? (
+                <Check className="h-4 w-4 mr-1" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {copied ? "Copied!" : "Copy URL"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-       {isLoading ? (
-              // Full-page loader while first fetch is in-flight
-              <div className="h-[80vh] w-full flex items-center justify-center">
-                <Card className="w-full max-w-md mx-auto">
-                  <CardContent className="p-8 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              </div>
-            ) : companies.length === 0 ? (
+      {isLoading ? (
+        // Full-page loader while first fetch is in-flight
+        <div className="h-[80vh] w-full flex items-center justify-center">
+          <Card className="w-full max-w-md mx-auto">
+            <CardContent className="p-8 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </div>
+      ) : companies.length === 0 ? (
         <div className="h-[80vh] w-full flex align-middle items-center justify-center">
           <Card className="w-full max-w-md mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-lg overflow-hidden">
             <CardContent className="p-6">
@@ -344,7 +353,7 @@ export default function UsersPage() {
           </div>
 
           <Card>
-            <CardContent className={viewMode === "list" ? "p-0" : "p-6"}>
+            <CardContent className={viewMode === "card" ? "p-0" : "p-6"}>
               {isLoading ? (
                 <div className="flex justify-center items-center h-64">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -358,15 +367,14 @@ export default function UsersPage() {
                     companyMap={companyMap}
                   />
                 ) : (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {users.map((user) => (
-                      <UserCard
-                        key={user._id}
-                        user={user}
-                        onEdit={() => handleOpenForm(user)}
-                        onDelete={() => openDeleteDialog(user)}
-                      />
-                    ))}
+                  <div className="">
+                    {}
+                    <UserCard
+                      users={users}
+                      onEdit={handleOpenForm}
+                      onDelete={openDeleteDialog}
+                      companyMap={companyMap}
+                    />
                   </div>
                 )
               ) : (

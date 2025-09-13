@@ -104,20 +104,18 @@ const GST_OPTIONS = [
 
 type StockItemInput = { product: string; quantity: number };
 
-// ⬇️ Place this just above PRODUCT_DEFAULT
-type ItemWithGST = {
-  itemType: "product" | "service";
-  product?: string;
-  service?: string;
-  quantity?: number;
-  unitType?: (typeof unitTypes)[number];
-  pricePerUnit?: number;
-  description?: string;
-  amount: number; // base excl. GST
-  gstPercentage?: number; // per-line GST %
-  lineTax?: number; // amount * gstPercentage/100
-  lineTotal?: number; // amount + lineTax
-};
+interface BankDetail {
+  _id: string;
+  client: string;
+  company: string | Company; // Can be string ID or Company object
+  bankName: string;
+  managerName: string;
+  contactNumber: string;
+  email?: string;
+  city: string;
+  ifscCode?: string;
+  branchAddress?: string;
+}
 
 const PRODUCT_DEFAULT = {
   itemType: "product" as const,
@@ -125,6 +123,7 @@ const PRODUCT_DEFAULT = {
   quantity: 1,
   pricePerUnit: 0,
   unitType: "Piece" as const,
+  otherUnit: "",
   amount: 0,
   gstPercentage: STANDARD_GST, // NEW
   lineTax: 0, // NEW
@@ -138,6 +137,7 @@ const itemSchema = z
     service: z.string().optional(),
     quantity: z.coerce.number().optional(),
     unitType: z.enum(unitTypes).optional(),
+    otherUnit: z.string().optional(),
     pricePerUnit: z.coerce.number().optional(),
     description: z.string().optional(),
     amount: z.coerce.number(),
@@ -169,6 +169,14 @@ const itemSchema = z
           message: "Price/Unit must be ≥ 0",
         });
       }
+      // NEW: Validation for otherUnit
+      if (data.unitType === "Other" && !data.otherUnit) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["otherUnit"],
+          message: "Please specify the unit type",
+        });
+      }
     }
   });
 
@@ -193,6 +201,7 @@ const formSchema = z
     invoiceTotal: z.coerce.number().min(0).optional(),
     subTotal: z.coerce.number().min(0).optional(),
     dontSendInvoice: z.boolean().optional(),
+    bank: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -263,6 +272,7 @@ export function TransactionForm({
   const [products, setProducts] = React.useState<Product[]>([]);
   const [services, setServices] = React.useState<Service[]>([]);
   const [balance, setBalance] = React.useState<number | null>(null);
+  const [banks, setBanks] = React.useState<any[]>([]);
 
   const [partyBalances, setPartyBalances] = React.useState<
     Record<string, number>
@@ -488,6 +498,92 @@ export function TransactionForm({
     [baseURL]
   );
 
+  // Wrap fetchBanks in useCallback to prevent infinite re-renders
+  const fetchBanks = React.useCallback(
+    async (companyId: string) => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("Authentication token not found.");
+
+        const res = await fetch(
+          `${baseURL}/api/bank-details?companyId=${companyId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log("Fetch Bank Response :", data);
+
+          // Check the actual structure of the response
+          let banksData = data;
+
+          // Handle different response structures
+          if (data && data.banks) {
+            banksData = data.banks; // If response has { banks: [...] }
+          } else if (Array.isArray(data)) {
+            banksData = data; // If response is directly an array
+          } else {
+            banksData = []; // Fallback to empty array
+          }
+
+          console.log("Processed Banks Data:", banksData);
+
+          // Filter banks by company ID - check different possible structures
+          const filteredBanks = banksData.filter((bank: any) => {
+            // Handle different possible structures for company reference
+            const bankCompanyId =
+              bank.company?._id || // Object with _id
+              bank.company || // Direct string ID
+              bank.companyId; // Alternative field name
+
+            console.log(
+              `Bank: ${bank.bankName}, Company ID: ${bankCompanyId}, Target: ${companyId}`
+            );
+
+            return bankCompanyId === companyId;
+          });
+
+          console.log("Filtered Banks:", filteredBanks);
+          setBanks(filteredBanks);
+        } else {
+          throw new Error("Failed to fetch banks.");
+        }
+      } catch (error) {
+        console.error("Error fetching banks:", error);
+        setBanks([]);
+        toast({
+          variant: "destructive",
+          title: "Error fetching banks",
+          description:
+            error instanceof Error ? error.message : "Something went wrong.",
+        });
+      }
+    },
+    [baseURL, toast]
+  ); // Add dependencies
+
+  // Use useEffect to fetch banks when the selected company in the FORM changes
+  React.useEffect(() => {
+    if (selectedCompanyIdWatch) {
+      console.log(
+        "Fetching banks for selected company in form:",
+        selectedCompanyIdWatch
+      );
+      fetchBanks(selectedCompanyIdWatch);
+    } else {
+      setBanks([]); // Clear banks if no company is selected in the form
+    }
+  }, [selectedCompanyIdWatch, fetchBanks]); // Use selectedCompanyIdWatch instead of selectedCompanyId
+
+  // Add another useEffect to log banks after they update
+  React.useEffect(() => {
+    console.log("Banks state updated:", banks);
+  }, [banks]);
+
+  console.log("selectedCompanyId :", selectedCompanyId);
+
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -593,6 +689,7 @@ export function TransactionForm({
           : String(p.product || ""),
       quantity: p.quantity ?? 1,
       unitType: p.unitType ?? "Piece",
+      otherUnit: p.otherUnit ?? " ",
       pricePerUnit: p.pricePerUnit ?? 0,
       description: p.description ?? "",
       amount:
@@ -617,39 +714,38 @@ export function TransactionForm({
       return raw ? String(raw) : "";
     };
 
-   const toServiceItem = (s: any) => ({
-  itemType: "service" as const,
-  service: toServiceId(s),
-  description: s.description ?? "",
-  amount: Number(s.amount || 0),
-  gstPercentage: s.gstPercentage ?? 18, // Ensure GST is included for services
-  lineTax: s.lineTax ?? 0, // Ensure lineTax is set for services
-  lineTotal: s.lineTotal ?? s.amount, // Ensure lineTotal is set correctly for services
-});
+    const toServiceItem = (s: any) => ({
+      itemType: "service" as const,
+      service: toServiceId(s),
+      description: s.description ?? "",
+      amount: Number(s.amount || 0),
+      gstPercentage: s.gstPercentage ?? 18, // Ensure GST is included for services
+      lineTax: s.lineTax ?? 0, // Ensure lineTax is set for services
+      lineTotal: s.lineTotal ?? s.amount, // Ensure lineTotal is set correctly for services
+    });
 
-
-   const toUnifiedItem = (i: any) => ({
-  itemType:
-    (i.itemType as "product" | "service") ??
-    (i.product || i.productId ? "product" : "service"),
-  product:
-    typeof i.product === "object"
-      ? String(i.product._id)
-      : String(i.product || ""),
-  service: toServiceId(i),
-  quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
-  unitType: i.unitType ?? "Piece",
-  pricePerUnit: i.pricePerUnit ?? undefined,
-  description: i.description ?? "",
-  amount:
-    typeof i.amount === "number"
-      ? i.amount
-      : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
-  gstPercentage: i.gstPercentage ?? 18, // Ensure GST is set for both products and services
-  lineTax: i.lineTax ?? 0, // Ensure lineTax is set
-  lineTotal: i.lineTotal ?? i.amount, // Ensure lineTotal is set correctly
-});
-
+    const toUnifiedItem = (i: any) => ({
+      itemType:
+        (i.itemType as "product" | "service") ??
+        (i.product || i.productId ? "product" : "service"),
+      product:
+        typeof i.product === "object"
+          ? String(i.product._id)
+          : String(i.product || ""),
+      service: toServiceId(i),
+      quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
+      unitType: i.unitType ?? "Piece",
+      otherUnit: i.otherUnit ?? " ",
+      pricePerUnit: i.pricePerUnit ?? undefined,
+      description: i.description ?? "",
+      amount:
+        typeof i.amount === "number"
+          ? i.amount
+          : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
+      gstPercentage: i.gstPercentage ?? 18, // Ensure GST is set for both products and services
+      lineTax: i.lineTax ?? 0, // Ensure lineTax is set
+      lineTotal: i.lineTotal ?? i.amount, // Ensure lineTotal is set correctly
+    });
 
     // ---------- choose source ----------
     let itemsToSet: any[] = [];
@@ -692,6 +788,7 @@ export function TransactionForm({
           quantity: 1,
           pricePerUnit: 0,
           unitType: "Piece",
+          otherUnit: " ",
           amount: 0,
           description: "",
         },
@@ -759,7 +856,7 @@ export function TransactionForm({
       }
     } catch (error) {
       console.error("Stock update failed:", error);
-      
+
       toast({
         variant: "destructive",
         title: "Stock Update Failed",
@@ -921,6 +1018,7 @@ export function TransactionForm({
             product: i.product, // ObjectId
             quantity: i.quantity,
             unitType: i.unitType,
+            otherUnit: i.otherUnit,
             pricePerUnit: i.pricePerUnit,
             amount:
               typeof i.amount === "number"
@@ -998,6 +1096,7 @@ export function TransactionForm({
           taxAmount: uiTax,
           paymentMethod: values.paymentMethod,
           invoiceTotal: uiInvoiceTotal,
+          bank: values.bank,
         };
       }
 
@@ -1368,6 +1467,11 @@ export function TransactionForm({
     setIsServiceDialogOpen(false);
   };
 
+  const paymentMethod = useWatch({
+    control: form.control,
+    name: "paymentMethod",
+  });
+
   const getPartyOptions = () => {
     if (type === "sales" || type === "receipt") {
       // customers
@@ -1621,6 +1725,44 @@ export function TransactionForm({
         )}
       />
 
+      {paymentMethod !== "Cash" && (
+        <FormField
+          control={form.control}
+          name="bank"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Bank</FormLabel>
+              {banks && banks.length > 0 ? (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a bank" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {banks.map((bank) => (
+                      <SelectItem key={bank._id} value={bank._id}>
+                        {bank.bankName}{" "}
+                        {bank.company?.businessName
+                          ? `(${bank.company.businessName})`
+                          : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm text-muted-foreground p-2 bg-muted rounded-md">
+                  {selectedCompanyIdWatch
+                    ? "No banks available for the selected company"
+                    : "Select a company first"}
+                </div>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
       <Separator />
 
       {/* Items Array */}
@@ -1756,8 +1898,33 @@ export function TransactionForm({
                       />
                     </div>
 
+                    {/* Other Unit Input - Only show when "Other" is selected */}
+                    {form.watch(`items.${index}.unitType`) === "Other" && (
+                      <div className="max-w-[80px] flex-1">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.otherUnit`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                Specify Unit
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="h-9 text-sm px-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  placeholder="e.g., Bundle, Set, etc."
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+
                     {/* Price/Unit */}
-                    <div className="min-w-[120px] flex-1">
+                    <div className="min-w-[90px] flex-1">
                       <FormField
                         control={form.control}
                         name={`items.${index}.pricePerUnit`}
