@@ -318,6 +318,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // 🆕 Effect 2: Schedule auto-logout exactly when token expires
 
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
@@ -378,6 +379,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     matches.forEach((m) => {
       const start = m.index!;
       const end = start + m[0].length;
+
 
       if (start > lastIndex) {
         frag.appendChild(document.createTextNode(text.slice(lastIndex, start)));
