@@ -904,7 +904,7 @@ export default function TransactionsPage() {
           </Dialog>
 
           <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="sm:max-w-4xl">
               <DialogHeader>
                 <DialogTitle>Item Details</DialogTitle>
                 <DialogDescription>
@@ -912,7 +912,7 @@ export default function TransactionsPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4">
+              <div className="mt-4 max-h-[80vh] overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

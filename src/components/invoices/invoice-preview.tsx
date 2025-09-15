@@ -16,13 +16,27 @@ import {
   generatePdfForTemplate1,
   generatePdfForTemplate2,
   generatePdfForTemplate3,
+  generatePdfForTemplate4,
+  generatePdfForTemplate5,
+  generatePdfForTemplate6,
+  generatePdfForTemplate7,
 } from "@/lib/pdf-templates";
+import jsPDF from "jspdf";
+
+type TemplateKey =
+  | "template1"
+  | "template2"
+  | "template3"
+  | "template4"
+  | "template5"
+  | "template6"
+  | "template7";
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
   company: Company | null;
   party: Party | null;
-   serviceNameById?: Map<string, string>;
+  serviceNameById?: Map<string, string>;
 }
 
 export function InvoicePreview({
@@ -31,11 +45,13 @@ export function InvoicePreview({
   party,
   serviceNameById,
 }: InvoicePreviewProps) {
-  const [selectedTemplate, setSelectedTemplate] = React.useState("template1");
+  const [selectedTemplate, setSelectedTemplate] =
+    React.useState<TemplateKey>("template1");
+
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-React.useEffect(() => {
+  React.useEffect(() => {
     let objectUrl: string | null = null;
 
     const generatePdf = async () => {
@@ -46,12 +62,84 @@ React.useEffect(() => {
       setIsLoading(true);
       try {
         // ✅ forward serviceNameById to the PDF generators
-        const docPromise =
-          selectedTemplate === "template1"
-            ? Promise.resolve(generatePdfForTemplate1(transaction, company, party, serviceNameById))
-            : selectedTemplate === "template2"
-            ? Promise.resolve(generatePdfForTemplate2(transaction, company, party, serviceNameById))
-            : generatePdfForTemplate3(transaction, company, party, serviceNameById);
+        let docPromise: Promise<jsPDF>;
+
+        switch (selectedTemplate) {
+          case "template1":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate1(
+                transaction,
+                company,
+                party,
+                serviceNameById
+              )
+            );
+            break;
+          case "template2":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate2(
+                transaction,
+                company,
+                party,
+                serviceNameById
+              )
+            );
+            break;
+          case "template3":
+            docPromise = generatePdfForTemplate3(
+              transaction,
+              company,
+              party,
+              serviceNameById
+            );
+            break;
+          case "template4":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate4(
+                transaction,
+                company,
+                party,
+                serviceNameById
+              )
+            );
+            break;
+          case "template5":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate5(
+                transaction,
+                company,
+                party,
+                serviceNameById
+              )
+            );
+            break;
+          case "template6":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate6(
+                transaction,
+                company,
+                party,
+                serviceNameById
+              )
+            );
+          case "template7":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate7(
+                transaction,
+                company,
+                party,
+                serviceNameById
+              )
+            );
+            break;
+          default:
+            docPromise = generatePdfForTemplate3(
+              transaction,
+              company,
+              party,
+              serviceNameById
+            );
+        }
 
         const doc = await docPromise;
         const pdfBlob = doc.output("blob");
@@ -66,7 +154,9 @@ React.useEffect(() => {
     };
 
     generatePdf();
-    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [selectedTemplate, transaction, company, party, serviceNameById]);
 
   const handleDownload = () => {
@@ -79,6 +169,11 @@ React.useEffect(() => {
       document.body.removeChild(link);
     }
   };
+
+  // add a small adapter so types match Select's signature
+  const handleTemplateChange = React.useCallback((v: string) => {
+    setSelectedTemplate(v as TemplateKey);
+  }, []);
 
   return (
     <>
@@ -112,7 +207,7 @@ React.useEffect(() => {
           </div>
         </div>
         <div className="w-full sm:w-48">
-          <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+          <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select a template" />
             </SelectTrigger>
@@ -120,6 +215,10 @@ React.useEffect(() => {
               <SelectItem value="template1">Professional</SelectItem>
               <SelectItem value="template2">Creative</SelectItem>
               <SelectItem value="template3">Modern</SelectItem>
+              <SelectItem value="template4">Minimal</SelectItem>
+              <SelectItem value="template5">Refined</SelectItem>
+              <SelectItem value="template6">Standard</SelectItem>
+              {/* <SelectItem value="template7">Prestige</SelectItem> */}
             </SelectContent>
           </Select>
         </div>
