@@ -477,7 +477,7 @@ export default function ClientManagementPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 ">
+    <div className="space-y-6 max-w-7xl mx-auto  px-3 sm:px-4 md:px-6 ">
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -490,7 +490,7 @@ export default function ClientManagementPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md bg-secondary p-1 self-end md:self-auto">
+          <div className="hidden sm:flex items-center gap-1 rounded-md bg-secondary p-1">
             <Button
               variant={viewMode === "card" ? "primary" : "ghost"}
               size="sm"
