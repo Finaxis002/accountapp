@@ -324,7 +324,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={handleHistoryClick}
                         className="cursor-pointer"
                       >
-                        <HistoryIcon className="h-6 w-6" /> {/* History Icon */}
+                        <HistoryIcon className="h-5 w-5" /> {/* History Icon */}
                       </div>
                     )}
 

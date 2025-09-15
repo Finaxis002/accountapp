@@ -21,6 +21,8 @@ import {
   CheckCircle,
   Info,
   XCircle,
+  Check,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -66,6 +68,21 @@ const HistoryPage = () => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  
+
+  const [copied, setCopied] = useState(false);
+  const name = selectedClient?.contactName || "—";
+  const phone = selectedClient?.phone || "—";
+
+  const handleCopy = async () => {
+    if (!selectedClient?.phone) return;
+    try {
+      await navigator.clipboard.writeText(selectedClient.phone);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {}
+  };
+
   // Fetch the list of clients
   // Fetch the list of clients
   useEffect(() => {
@@ -73,8 +90,17 @@ const HistoryPage = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${baseURL}/api/clients`);
-        setClients(response.data);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("Authentication token not found.");
+        }
+        const res = await fetch(`${baseURL}/api/clients`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        setClients(data);
       } catch (error) {
         console.error("Error fetching clients", error);
         setError("Failed to load clients. Please try again later.");
@@ -120,7 +146,7 @@ const HistoryPage = () => {
       setNotifications(apiNotifications);
     } catch (error) {
       console.error("Error fetching notifications", error);
-      setError("Failed to load notifications. Please try again later.");
+      setError("No Notifications found for this client");
     } finally {
       setNotificationsLoading(false);
     }
@@ -129,11 +155,13 @@ const HistoryPage = () => {
   // Mark all notifications as read
   const markAllAsRead = async () => {
     if (!selectedClient) return;
-    
+
     try {
       // Update local state first for immediate UI feedback
-      setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
-      
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, read: true }))
+      );
+
       // Make API call to mark all as read
       await axios.patch(
         `${baseURL}/api/notifications/master/${selectedClient._id}/mark-all-read`,
@@ -151,10 +179,14 @@ const HistoryPage = () => {
     }
   };
 
-  const handleClientClick = (client: Client) => {
-    setSelectedClient(client);
-    fetchNotifications(client._id);
-  };
+ const handleClientClick = (client: Client) => {
+  setSelectedClient(client);
+  setError(null);
+  setNotifications([]);        // ⬅️ wipe old client’s list right away
+  setNotificationsLoading(true);
+  fetchNotifications(client._id);
+};
+
 
   const getNotificationColor = (type: string | undefined) => {
     switch (type) {
@@ -203,31 +235,31 @@ const HistoryPage = () => {
   // Helper functions for the new notification UI
   const getNotificationIcon = (type: string) => {
     const iconClass = "h-5 w-5";
-    
-    switch(type) {
-      case 'success':
+
+    switch (type) {
+      case "success":
         return <CheckCircle className={`${iconClass} text-green-600`} />;
-      case 'warning':
+      case "warning":
         return <AlertTriangle className={`${iconClass} text-amber-600`} />;
-      case 'error':
+      case "error":
         return <XCircle className={`${iconClass} text-red-600`} />;
-      case 'info':
+      case "info":
       default:
         return <Info className={`${iconClass} text-blue-600`} />;
     }
   };
 
   const getNotificationIconBg = (type: string) => {
-    switch(type) {
-      case 'success':
-        return 'bg-green-100';
-      case 'warning':
-        return 'bg-amber-100';
-      case 'error':
-        return 'bg-red-100';
-      case 'info':
+    switch (type) {
+      case "success":
+        return "bg-green-100";
+      case "warning":
+        return "bg-amber-100";
+      case "error":
+        return "bg-red-100";
+      case "info":
       default:
-        return 'bg-blue-100';
+        return "bg-blue-100";
     }
   };
 
@@ -236,12 +268,18 @@ const HistoryPage = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">Client History</h1>
-            <p className="text-slate-600 mt-2">View client details and notification history</p>
+            <h1 className="text-3xl font-bold text-slate-800">
+              Client History
+            </h1>
+            <p className="text-slate-600 mt-2">
+              View client details and notification history
+            </p>
           </div>
           <div className="flex items-center space-x-2 bg-white py-2 px-4 rounded-lg shadow-sm">
             <Bell className="h-5 w-5 text-blue-500" />
-            <span className="text-sm font-medium">{clients.length} Clients</span>
+            <span className="text-sm font-medium">
+              {clients.length} Clients
+            </span>
           </div>
         </div>
 
@@ -271,7 +309,9 @@ const HistoryPage = () => {
                     <div className="flex-shrink-0">
                       <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
                         <span className="text-blue-700 font-bold">
-                          {getInitials(client.contactName || client.clientUsername)}
+                          {getInitials(
+                            client.contactName || client.clientUsername
+                          )}
                         </span>
                       </div>
                     </div>
@@ -309,7 +349,10 @@ const HistoryPage = () => {
           </div>
         )}
 
-        <Sheet open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
+        <Sheet
+          open={!!selectedClient}
+          onOpenChange={() => setSelectedClient(null)}
+        >
           <SheetContent className="w-full sm:max-w-lg lg:max-w-xl overflow-y-auto">
             {selectedClient && (
               <>
@@ -317,12 +360,16 @@ const HistoryPage = () => {
                   <div className="flex items-center space-x-4">
                     <div className="h-14 w-14 rounded-lg bg-blue-100 flex items-center justify-center">
                       <span className="text-blue-700 font-bold text-xl">
-                        {getInitials(selectedClient.contactName || selectedClient.clientUsername)}
+                        {getInitials(
+                          selectedClient.contactName ||
+                            selectedClient.clientUsername
+                        )}
                       </span>
                     </div>
                     <div>
                       <SheetTitle className="text-2xl text-slate-800">
-                        {selectedClient.businessName || selectedClient.clientUsername}
+                        {selectedClient.businessName ||
+                          selectedClient.clientUsername}
                       </SheetTitle>
                       <SheetDescription className="flex items-center mt-1">
                         <Mail className="h-4 w-4 mr-1" />
@@ -330,13 +377,63 @@ const HistoryPage = () => {
                       </SheetDescription>
                     </div>
                   </div>
-                  <div className="flex items-center mt-4 text-slate-700">
-                    <User className="h-4 w-4 mr-2" />
-                    <span>{selectedClient.contactName}</span>
-                  </div>
-                  <div className="flex items-center mt-2 text-slate-700">
-                    <Phone className="h-4 w-4 mr-2" />
-                    <span>{selectedClient.phone}</span>
+
+                  <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                    {/* Contact name */}
+                    <div className="flex min-w-0 items-center">
+                      <User
+                        className="mr-2 h-4 w-4 text-slate-500"
+                        aria-hidden="true"
+                      />
+                      <span
+                        className="truncate text-sm font-medium"
+                        title={name}
+                      >
+                        {name}
+                      </span>
+                    </div>
+
+                    {/* Divider */}
+                    <span
+                      className="hidden h-4 w-px bg-slate-400 md:inline-block"
+                      aria-hidden="true"
+                    />
+
+                    {/* Phone with tel link + copy */}
+                    <div className="flex items-center gap-2">
+                      <Phone
+                        className="h-4 w-4 text-slate-500"
+                        aria-hidden="true"
+                      />
+                      {selectedClient?.phone ? (
+                        <a
+                          href={`tel:${phone.replace(/\s+/g, "")}`}
+                          className="text-sm underline-offset-2 hover:underline"
+                        >
+                          {phone}
+                        </a>
+                      ) : (
+                        <span className="text-sm">{phone}</span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleCopy}
+                        className="inline-flex items-center rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 active:scale-[0.98] transition"
+                        title={copied ? "Copied!" : "Copy phone"}
+                        aria-label={
+                          copied ? "Phone copied" : "Copy phone number"
+                        }
+                        disabled={!selectedClient?.phone}
+                      >
+                        {copied ? (
+                          <Check className="mr-1 h-3.5 w-3.5" />
+                        ) : (
+                          <Copy className="mr-1 h-3.5 w-3.5" />
+                        )}
+                        {copied ? "Copied" : "Copy"}
+                      </button>
+                    </div>
                   </div>
                 </SheetHeader>
 
@@ -347,7 +444,7 @@ const HistoryPage = () => {
                       Notification History
                     </h3>
                     {notifications.length > 0 && (
-                      <button 
+                      <button
                         className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
                         onClick={markAllAsRead}
                       >
@@ -361,7 +458,9 @@ const HistoryPage = () => {
                     <div className="flex justify-center items-center py-12">
                       <div className="text-center">
                         <Loader2 className="animate-spin h-8 w-8 text-blue-500 mx-auto" />
-                        <p className="text-slate-600 mt-4">Loading notifications...</p>
+                        <p className="text-slate-600 mt-4">
+                          Loading notifications...
+                        </p>
                       </div>
                     </div>
                   ) : notifications.length === 0 ? (
@@ -369,38 +468,58 @@ const HistoryPage = () => {
                       <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-slate-200 mb-4">
                         <Bell className="h-8 w-8 text-slate-400" />
                       </div>
-                      <h4 className="font-medium text-slate-700 mb-1">No notifications yet</h4>
-                      <p className="text-slate-500 text-sm">Notifications for this client will appear here</p>
+                      <h4 className="font-medium text-slate-700 mb-1">
+                        No notifications yet
+                      </h4>
+                      <p className="text-slate-500 text-sm">
+                        Notifications for this client will appear here
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {notifications.map((notification) => (
                         <div
                           key={notification._id}
-                          className={`relative p-4 rounded-xl shadow-sm transition-all hover:shadow-md ${notification.read ? 'bg-white' : 'bg-blue-50'} border border-slate-200`}
+                          className={`relative p-4 rounded-xl shadow-sm transition-all hover:shadow-md ${
+                            notification.read ? "bg-white" : "bg-blue-50"
+                          } border border-slate-200`}
                         >
                           {/* {!notification.read && (
                             <div className="absolute top-4 right-4 h-2.5 w-2.5 rounded-full bg-blue-500"></div>
                           )} */}
-                          
+
                           <div className="flex items-start">
-                            <div className={`flex-shrink-0 h-10 w-10 rounded-lg flex items-center justify-center ${getNotificationIconBg(notification.type)}`}>
+                            <div
+                              className={`flex-shrink-0 h-10 w-10 text-sm rounded-lg flex items-center justify-center ${getNotificationIconBg(
+                                notification.type
+                              )}`}
+                            >
                               {getNotificationIcon(notification.type)}
                             </div>
                             <div className="ml-3 flex-1 min-w-0">
                               <div className="flex items-baseline justify-between">
-                                <h4 className="font-semibold text-slate-800">{notification.title}</h4>
+                                <h4 className="font-semibold text-slate-800">
+                                  {notification.title}
+                                </h4>
                                 <span className="text-xs text-slate-500 whitespace-nowrap">
                                   {formatTime(notification.createdAt)}
                                 </span>
                               </div>
-                              <p className="text-slate-700 mt-1 text-sm">{notification.message}</p>
+                              <p className="text-slate-700 mt-1 text-sm">
+                                {notification.message}
+                              </p>
                               <div className="mt-2 flex items-center text-xs text-slate-500">
-                                <span>{formatDate(notification.createdAt)}</span>
+                                <span>
+                                  {formatDate(notification.createdAt)}
+                                </span>
                                 {notification.triggeredBy && (
                                   <>
                                     <span className="mx-2">•</span>
-                                    <span>By: {notification.triggeredBy.userName || notification.triggeredBy.email}</span>
+                                    <span>
+                                      By:{" "}
+                                      {notification.triggeredBy.userName ||
+                                        notification.triggeredBy.email}
+                                    </span>
                                   </>
                                 )}
                               </div>
