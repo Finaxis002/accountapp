@@ -113,3 +113,11 @@ body {
 [data-radix-select-item-indicator] {
   display: none !important;
 }
+
+mark {
+  background-color: yellow; /* ya koi bhi highlight color */
+  color: inherit;           /* text ka color same rahe */
+  font-weight: bold;        /* optional */
+  padding: 0 2px;           /* thoda gap de */
+  border-radius: 2px;       /* rounded look */
+}
