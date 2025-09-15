@@ -7,10 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Download } from "lucide-react";
-
-
-type TxType = "sales" | "purchases" | "receipts" | "payments" | "journals";
-
+import { toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 type Props = {
   /** Required to build client-wide endpoints */
   selectedClientId: string;
@@ -25,14 +23,28 @@ type Props = {
 const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000").replace(/\/+$/, "");
 
 export function ExportTransactions({ selectedClientId, companyMap, defaultCompanyId, onExported }: Props) {
+  const stringifyId = (v: any): string => {
+    if (!v) return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "object") {
+      if (v.$oid) return String(v.$oid);
+      if (v._id) return stringifyId(v._id);
+      if (v.id) return stringifyId(v.id);
+    }
+    try { return String(v); } catch { return ""; }
+  };
+
   const [open, setOpen] = React.useState(false);
   const [companyId, setCompanyId] = React.useState<string | "ALL">("ALL");
   const [types, setTypes] = React.useState<Record<TxType, boolean>>({
     sales: true, purchases: true, receipts: true, payments: true, journals: true,
   });
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+  type TxType = "sales" | "purchases" | "receipts" | "payments" | "journals";
   const allTypes: TxType[] = ["sales", "purchases", "receipts", "payments", "journals"];
   const [busy, setBusy] = React.useState(false);
-
+  const [clients, setClients] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
   React.useEffect(() => {
     setCompanyId(defaultCompanyId ?? "ALL");
   }, [defaultCompanyId]);
@@ -45,7 +57,7 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
 
   const safe = (v: any) => (v ?? "").toString().replace(/"/g, '""');
   const toCSV = (rows: any[]) => {
-    const headers = ["type","date","company","party","amount","reference","description","_id"];
+    const headers = ["type", "date", "company", "party", "amount", "reference", "description", "_id"];
     const lines = [
       headers.join(","),
       ...rows.map(r => headers.map(h => `"${safe(r[h])}"`).join(",")),
@@ -53,19 +65,71 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
     return lines.join("\n");
   };
 
+  const fetchClients = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Authentication token not found.");
+      }
+
+      const res = await fetch(`${baseURL}/api/clients`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const text = await res.text(); // 👈 always read as text first
+      console.log("👉 raw /api/clients response:", text);
+
+      let data;
+      try {
+        data = JSON.parse(text); // 👈 try parse JSON
+      } catch (err) {
+        throw new Error("Response is not valid JSON.");
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to fetch clients.");
+      }
 
 
+      setClients(data);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong.",
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        }
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [baseURL]);
+  // Call fetchClients on component mount or whenever needed
+  React.useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  const clientsById = React.useMemo(
+    () => new Map(clients.map((c: any) => [
+      stringifyId(c._id),
+      c.name || c.clientUsername || c.contactName || c.slug || "(no name)"
+    ])),
+    [clients]
+  );
 
   const handleExport = async () => {
+
+
     // ---------------- helpers ----------------
     const idOf = (v: any) => (typeof v === "string" ? v : v?.$oid || v?._id || v?.id || "");
-    const fmtDate = (d: any) => {
-      if (!d) return "";
-      const dt = typeof d === "string" ? new Date(d) : new Date(d.$date || d);
-      return Number.isNaN(dt.getTime()) ? "" : dt.toISOString().slice(0, 10);
-    };
-
-    const HEADERS = [
+    const HEADERS: string[] = [
       "party",
       "date",
       "amount",
@@ -75,16 +139,114 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       "company",
       "gstin",
       "client",
-    ] as const;
+    ];
+    const first = (...vals: any[]) => vals.find(v => {
+      if (v === null || v === undefined) return false;
+      if (typeof v === "string") return v.trim().length > 0;
+      return true;
+    }) ?? "";
 
+    const nameOf = (obj: any) => first(
+      obj?.name, obj?.businessName, obj?.fullName, obj?.displayName, obj?.title, obj?.partyName, obj?.customerName, obj?.vendorName
+    );
+
+    const gstinOf = (obj: any) => first(
+      obj?.gstin, obj?.GSTIN, obj?.gstNumber, obj?.gst_no, obj?.gstNo, obj?.gstinNumber, obj?.gst
+    );
+
+    const fmtDate = (d: any) => {
+      if (!d) return "";
+      const dt = typeof d === "string" ? new Date(d) : new Date(d.$date || d);
+      return Number.isNaN(dt.getTime()) ? "" : dt.toISOString().slice(0, 10);
+    };
+
+    const itemsArrayOf = (t: any) =>
+      (Array.isArray(t.items) && t.items) ||
+      (Array.isArray(t.lineItems) && t.lineItems) ||
+      (Array.isArray(t.products) && t.products) ||
+      [];
+
+    const productsListOf = (t: any) => {
+      const items = itemsArrayOf(t);
+      if (!items.length) {
+        return first(
+          nameOf(t.product),
+          t.productName,
+          idOf(t.product)
+        );
+      }
+      return items.map((it: any) =>
+        first(nameOf(it?.product), it?.productName, idOf(it?.product))
+      ).filter(Boolean).join(", ");
+    };
+
+    const descriptionOf = (t: any) => first(
+      t.description,
+      t.notes,
+      t.note,
+      t.narration,
+      t.remark,
+      t.remarks,
+      t.invoiceNote,
+      t.memo,
+      itemsArrayOf(t)?.[0]?.description
+    );
+
+    const invoiceTypeOf = (t: any, fallback: string) => first(
+      t.invoiceType,
+      t.voucherType,
+      t.voucher,
+      t.entryType,
+      t.type,
+      fallback
+    );
+
+    const amountOf = (t: any) => first(
+      t.totalAmount, t.grandTotal, t.netAmount, t.amount, t.value, t.total
+    );
     // ---- type-aware mapping ----
     const normalizeByType = (t: any, txType: TxType) => {
+      const companyName = first(
+        t.company?.businessName,
+        nameOf(t.company),
+        companyMap.get(idOf(t.company)),
+        idOf(t.company)
+      );
+
+      const partyName = first(
+        nameOf(t.party),
+        t.partyName,
+        t.customerName,
+        t.vendorName,
+        idOf(t.party)
+      );
+
+      // Prefer party GSTIN, fallback to on-doc or company GSTIN
+      const gstin = first(
+        gstinOf(t.party),
+        t.partyGstin,
+        t.gstin,
+        gstinOf(t.company)
+      );
+
+      const clientName = first(
+        t.clientName,
+        t.client?.name,
+        nameOf(t.client),
+        clientsById.get(stringifyId(t.client)),
+        clientsById.get(stringifyId(t.clientId)),
+        clientsById.get(selectedClientId),
+        stringifyId(t.client || t.clientId)
+      );
+
+
+
       const base: any = {
-        party: t.party?.name || t.partyName || t.customerName || t.vendorName || idOf(t.party) || "",
-        date: fmtDate(t.date || t.createdAt),
-        company: t.company?.businessName || companyMap.get(idOf(t.company)) || idOf(t.company) || "",
-        gstin: t.gstin || "",
-        client: idOf(t.client) || selectedClientId || "",
+        party: partyName,
+        date: fmtDate(first(t.date, t.createdAt, t.invoiceDate, t.voucherDate)),
+        company: companyName,
+        gstin,
+        client: clientName,
         amount: "",
         product: "",
         description: "",
@@ -92,47 +254,39 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       };
 
       if (txType === "sales") {
-        const products = Array.isArray(t.items)
-          ? t.items.map((it: any) => it?.product?.name || it?.productName || idOf(it?.product))
-              .filter(Boolean).join(", ")
-          : t.product?.name || t.productName || idOf(t.product) || "";
-        base.amount = typeof t.totalAmount === "number" ? t.totalAmount : t.amount ?? "";
-        base.product = products;
-        base.description = t.description ?? (t.items?.[0]?.description || "");
-        base["invoice type"] = t.invoiceType ?? "";
+        base.amount = amountOf(t);
+        base.product = productsListOf(t);
+        base.description = descriptionOf(t);
+        base["invoice type"] = invoiceTypeOf(t, "Sales");
         return base;
       }
 
       if (txType === "purchases") {
-        const products = Array.isArray(t.items)
-          ? t.items.map((it: any) => it?.product?.name || it?.productName || idOf(it?.product))
-              .filter(Boolean).join(", ")
-          : t.product?.name || t.productName || idOf(t.product) || "";
-        base.amount = t.totalAmount ?? t.amount ?? t.netAmount ?? t.grandTotal ?? "";
-        base.product = products;
-        base.description = t.description ?? (t.items?.[0]?.description || "");
-        base["invoice type"] = t.invoiceType ?? t.voucherType ?? t.type ?? "";
+        base.amount = amountOf(t);
+        base.product = productsListOf(t);
+        base.description = descriptionOf(t);
+        base["invoice type"] = invoiceTypeOf(t, "Purchase");
         return base;
       }
 
       if (txType === "receipts") {
-        base.amount = t.amount ?? t.value ?? t.total ?? "";
-        base.description = t.description ?? t.narration ?? t.notes ?? "";
-        base["invoice type"] = t.type ?? "Receipt";
+        base.amount = amountOf(t);
+        base.description = descriptionOf(t);
+        base["invoice type"] = invoiceTypeOf(t, "Receipt");
         return base;
       }
 
       if (txType === "payments") {
-        base.amount = t.amount ?? t.value ?? t.total ?? "";
-        base.description = t.description ?? t.narration ?? t.notes ?? "";
-        base["invoice type"] = t.type ?? "Payment";
+        base.amount = amountOf(t);
+        base.description = descriptionOf(t);
+        base["invoice type"] = invoiceTypeOf(t, "Payment");
         return base;
       }
 
       // journals
-      base.amount = t.amount ?? t.value ?? t.total ?? "";
-      base.description = t.description ?? t.narration ?? t.notes ?? "";
-      base["invoice type"] = t.type ?? "Journal";
+      base.amount = amountOf(t);
+      base.description = descriptionOf(t);
+      base["invoice type"] = invoiceTypeOf(t, "Journal");
       return base;
     };
 
@@ -142,7 +296,7 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
 
-      const chosen = (["sales","purchases","receipts","payments","journals"] as TxType[])
+      const chosen = (["sales", "purchases", "receipts", "payments", "journals"] as TxType[])
         .filter(t => types[t]);
       if (!chosen.length) throw new Error("Choose at least one transaction type.");
 
@@ -179,15 +333,24 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
 
       datasets.forEach((data, i) => {
         const txType = urls[i].t;
-        const list = Array.isArray(data) ? data : (data?.entries ?? []);
+
+        const list = Array.isArray(data)
+          ? data
+          : (data?.entries ?? data?.data ?? []);
         const filtered = byCompany
           ? list.filter((it: any) => {
-              const cid = idOf(it.company?._id || it.company);
-              return cid && cid === companyId;
-            })
+            const cid = idOf(it.company?._id || it.company);
+            return cid && cid === companyId;
+          })
           : list;
-        filtered.forEach((it: any) => byType[txType].push(normalizeByType(it, txType)));
+
+        filtered.forEach((it: any) => {
+          byType[txType].push(normalizeByType(it, txType));
+        })
       });
+      for (const t of chosen) {
+        byType[t] = await Promise.all(byType[t]); // resolve promises -> plain objects
+      }
 
       // make at least one row total; if absolutely none, error
       const totalRows = chosen.reduce((n, t) => n + byType[t].length, 0);
@@ -195,7 +358,6 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
 
       // Dynamically import xlsx only when needed
       const XLSX = await import("xlsx");
-      
       const wb = XLSX.utils.book_new();
 
       const sheetName = (t: TxType) =>
@@ -204,12 +366,11 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       chosen.forEach((t) => {
         const rows = byType[t];
         if (rows.length === 0) {
-          // create header-only sheet if user selected it but there are no rows
-          const ws = XLSX.utils.aoa_to_sheet([HEADERS as unknown as string[]]);
+          const ws = XLSX.utils.aoa_to_sheet([HEADERS]);
           XLSX.utils.book_append_sheet(wb, ws, sheetName(t));
           return;
         }
-        const ws = XLSX.utils.json_to_sheet(rows, { header: HEADERS as unknown as string[] });
+        const ws = XLSX.utils.json_to_sheet(rows, { header: HEADERS });
         XLSX.utils.book_append_sheet(wb, ws, sheetName(t));
       });
 
@@ -221,7 +382,7 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
 
       const a = document.createElement("a");
       const fnameCompany = byCompany ? (companyMap.get(companyId) || companyId) : "all-companies";
-      const filename = `transactions_${fnameCompany}_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const filename = `transactions_${fnameCompany}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       const url = URL.createObjectURL(blob);
       a.href = url;
       a.setAttribute("download", filename);
@@ -298,7 +459,7 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
           <DialogFooter className="mt-4">
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
             <Button onClick={handleExport} disabled={busy}>
-              {busy ? "Exporting…" : "Export CSV"}
+              {busy ? "Exporting…" : "Export XLSX"}
             </Button>
           </DialogFooter>
         </DialogContent>

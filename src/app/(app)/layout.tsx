@@ -18,6 +18,7 @@ import {
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import type { User } from "@/lib/types";
+
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -44,7 +45,7 @@ import { PermissionProvider } from "@/contexts/permission-context";
 import { UserPermissionsProvider } from "@/contexts/user-permissions-context";
 import axios from "axios"; // 🆕
 import { jwtDecode } from "jwt-decode"; // 🆕
-
+import { ChangeEvent, ReactNode, ReactElement } from "react";
 type Decoded = { exp: number; id: string; role: string }; // 🆕
 
 
@@ -52,16 +53,59 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dateString, setDateString] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const contentRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-
+  const [searchTerm, setSearchTerm] = useState(""); // Store search term
+  const [highlightCount, setHighlightCount] = useState(0); // Tracks the number of highlighted words
+  const [currentHighlightIndex, setCurrentHighlightIndex] = useState(0); // Tracks current highlight index
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/user-login" ||
     pathname.startsWith("/client-login/") ||
     pathname.startsWith("/user-login/");
+  // Re-run on searchTerm/route change (SSR guard bhi)
+ useEffect(() => {
+  if (typeof window === "undefined") return;
+  const root = contentRef.current;
+  if (!root) return;
 
+  clearHighlights(root);
+
+  const term = searchTerm.trim();
+  if (!term) return;
+
+  applyHighlights(root, term);
+}, [searchTerm, currentHighlightIndex]); // ⬅ include currentHighlightIndex
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown" && currentHighlightIndex < highlightCount - 1) {
+       
+        setCurrentHighlightIndex(currentHighlightIndex + 1);
+        scrollToHighlight(currentHighlightIndex + 1);
+      }
+
+      if (event.key === "ArrowUp" && currentHighlightIndex > 0) {
+      
+        setCurrentHighlightIndex(currentHighlightIndex - 1);
+        scrollToHighlight(currentHighlightIndex - 1);
+      }
+
+      if (event.key === "Enter") {
+       
+        console.log("Enter key pressed on the highlighted word", currentHighlightIndex);
+        
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentHighlightIndex, highlightCount]);
   useEffect(() => {
     if (isAuthRoute) {
       // skip auth checks completely on auth pages
@@ -215,17 +259,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const role = localStorage.getItem("role");
   // console.log("User role:", role);
 
-  
-
-  
-
   const roleLower = (currentUser?.role ?? "").toLowerCase();
   // console.log("current User :", currentUser);
   const showAppSidebar = ["master", "client", "customer", "admin"].includes(
     roleLower
   );
-
-  
 
   // 🆕 Effect 1: Initial guard on protected pages + set date/user
   // useEffect(() => {
@@ -264,14 +302,125 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // }, [router, pathname, isAuthRoute, ensureValidToken]);
 
   // 🆕 Effect 2: Schedule auto-logout exactly when token expires
-  
 
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+  // Escape regex special chars
+ const escapeReg = (s: string) =>
+  s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+
+  // const clearHighlights = (root: HTMLElement) => {
+  //   const marks = root.querySelectorAll("mark.__hl");
+  //   marks.forEach((m) => {
+  //     const parent = m.parentNode;
+  //     if (parent) {
+  //       parent.replaceChild(document.createTextNode(m.textContent || ""), m);
+  //     }
+  //   });
+  // };
+
+  const clearHighlights = (root: HTMLElement) => {
+  const marks = root.querySelectorAll("mark.__hl");
+  marks.forEach((m) => {
+    const parent = m.parentNode;
+    if (parent) {
+     
+      parent.replaceChild(document.createTextNode(m.textContent || ""), m);
+      parent.normalize(); 
+    }
+  });
+};
+
+
+ const applyHighlights = (root: HTMLElement, term: string) => {
+  if (!term) return;
+  const safeTerm = escapeReg(term);
+  const rx = new RegExp(safeTerm, "gi");
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const skipTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "MARK", "INPUT", "TEXTAREA"]);
+
+  let nodes: Text[] = [];
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const textNode = node as Text;
+    const el = textNode.parentElement;
+    if (!el || skipTags.has(el.tagName)) continue;
+    if (textNode.nodeValue?.trim()) nodes.push(textNode);
+  }
+
+  let count = 0;
+  nodes.forEach((textNode) => {
+    const text = textNode.nodeValue || "";
+    const matches = [...text.matchAll(rx)];
+    if (matches.length === 0) return;
+
+    const frag = document.createDocumentFragment();
+    let lastIndex = 0;
+
+    matches.forEach((m) => {
+      const start = m.index!;
+      const end = start + m[0].length;
+
+      if (start > lastIndex) {
+        frag.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+      }
+
+      const mark = document.createElement("mark");
+      mark.className = "__hl";
+
+      if (count === currentHighlightIndex) {
+        mark.style.backgroundColor = "orange";
+      } else {
+        mark.style.backgroundColor = "yellow";
+      }
+
+      mark.textContent = m[0];
+      frag.appendChild(mark);
+
+      lastIndex = end;
+      count++; 
+    });
+
+    if (lastIndex < text.length) {
+      frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    textNode.replaceWith(frag);
+  });
+
+  setHighlightCount(count);
+};
+
+ const handleNextHighlight = () => {
+  if (currentHighlightIndex < highlightCount - 1) {
+    setCurrentHighlightIndex((prev) => prev + 1);
+    scrollToHighlight(currentHighlightIndex + 1);
+  }
+};
+
+const handlePreviousHighlight = () => {
+  if (currentHighlightIndex > 0) {
+    setCurrentHighlightIndex((prev) => prev - 1);
+    scrollToHighlight(currentHighlightIndex - 1);
+  }
+};
+
+const scrollToHighlight = (index: number) => {
+  const marks = contentRef.current?.querySelectorAll("mark.__hl");
+  if (marks && marks[index]) {
+    marks[index].scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+};
   return (
     <CompanyProvider>
       <PermissionProvider>
         <UserPermissionsProvider>
           <SidebarProvider>
-            <div className="flex min-h-screen bg-background text-foreground ">
+            <div className="flex min-h-screen bg-background text-foreground">
               {showAppSidebar ? <AppSidebar /> : <UserSidebar />}
               <div className="flex-1 flex flex-col w-full">
                 <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 z-20">
@@ -284,38 +433,53 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           ? "Master!"
                           : currentUser?.name?.split(" ")[0]}
                       </h1>
-                      <p className="text-sm text-muted-foreground">
-                        {dateString}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{dateString}</p>
                     </div>
                     {(currentUser?.role === "customer" ||
                       currentUser?.role === "user" ||
                       currentUser?.role === "admin" ||
                       currentUser?.role === "manager") && (
-                      <div className="hidden md:block">
-                        <CompanySwitcher />
-                      </div>
-                    )}
+                        <div className="hidden md:block">
+                          <CompanySwitcher />
+                        </div>
+                      )}
                   </div>
                   <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
                     <div className="relative w-full max-w-md hidden md:block">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search..."
-                        className="pl-9 bg-background"
+                        className="pl-9 bg-background pr-10"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
                       />
+
+                      {/* Clear button */}
+                      {searchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchTerm("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:underline"
+                        >
+                          &#x2716;
+                        </button>
+                      )}
+
+                      {/* Highlight count */}
+                      {highlightCount > 0 && (
+                        <span className="absolute  right-12 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          {currentHighlightIndex}/{highlightCount}
+                        </span>
+                      )}
                     </div>
                     <Button variant="ghost" size="icon" className="md:hidden">
                       <Search className="h-5 w-5" />
                     </Button>
+
                     <ThemeToggle />
                     <Sheet>
                       <SheetTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="relative"
-                        >
+                        <Button variant="ghost" size="icon" className="relative">
                           <Bell className="h-5 w-5" />
                           <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-red-500"></span>
                         </Button>
@@ -377,19 +541,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="flex items-center gap-2 p-1 md:p-2 h-auto"
-                        >
+                        <Button variant="ghost" className="flex items-center gap-2 p-1 md:p-2 h-auto">
                           <UserNav />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => router.push("/profile")}
-                        >
+                        <DropdownMenuItem onClick={() => router.push("/profile")}>
                           Profile
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleSettingsClick}>
@@ -403,10 +562,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </DropdownMenu>
                   </div>
                 </header>
-                <main className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
+                <main ref={contentRef} className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
                   {children}
                 </main>
-                
               </div>
             </div>
           </SidebarProvider>
