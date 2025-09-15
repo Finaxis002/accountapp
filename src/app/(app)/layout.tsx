@@ -62,6 +62,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [highlightCount, setHighlightCount] = useState(0); // Tracks the number of highlighted words
   const [currentHighlightIndex, setCurrentHighlightIndex] = useState(0); // Tracks current highlight index
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
+  const contentRef=useRef()
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/user-login" ||
