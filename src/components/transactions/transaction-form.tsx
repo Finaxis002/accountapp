@@ -366,8 +366,14 @@ export function TransactionForm({
     control: form.control,
     name: "totalAmount",
   });
-
   const type = form.watch("type");
+
+  // right after your existing watches
+  const afterReceiptBalance = React.useMemo(() => {
+    if (type !== "receipt" || balance == null) return null;
+    const amt = Number(receiptAmountWatch || 0);
+    return Math.max(0, Number(balance) - (Number.isFinite(amt) ? amt : 0));
+  }, [type, balance, receiptAmountWatch]);
 
   // Derived flags for current tab
   const partyCreatable = React.useMemo(() => {
@@ -1474,16 +1480,15 @@ export function TransactionForm({
 
   const getPartyOptions = () => {
     if (type === "sales" || type === "receipt") {
-    // All parties (customers) – no filter for balance
-    const source = parties;
+      // All parties (customers) – no filter for balance
+      const source = parties;
 
-    // For RECEIPT, show all customers regardless of balance
-    return source.map((p) => ({
-      value: p._id,
-      label: String(p.name || ""),
-    }));
-  }
-
+      // For RECEIPT, show all customers regardless of balance
+      return source.map((p) => ({
+        value: p._id,
+        label: String(p.name || ""),
+      }));
+    }
 
     if (type === "purchases" || type === "payment") {
       // vendors (unchanged)
@@ -1685,6 +1690,7 @@ export function TransactionForm({
                 Balance: ₹{balance.toFixed(2)}
               </div>
             )}
+            
           </FormItem>
         )}
       />
@@ -2520,10 +2526,16 @@ export function TransactionForm({
               <FormMessage />
               {balance != null && type === "receipt" && (
                 <div className="mt-2 text-xs text-red-600">
-                  Balance: ₹{Number(balance).toFixed(2)}
-                  {/* {Number(receiptAmountWatch || 0) > 0 && (
-                    <> → After receipt: ₹{remainingAfterReceipt?.toFixed(2)}</>
-                  )} */}
+                  {/* Balance: ₹{Number(balance).toFixed(2)} */}
+                  {balance !== null && type === "receipt" ? (
+              <div className="text-red-500 text-sm mt-2">
+                Balance: ₹{(afterReceiptBalance ?? balance).toFixed(2)}
+              </div>
+            ) : balance !== null ? (
+              <div className="text-red-500 text-sm mt-2">
+                Balance: ₹{balance.toFixed(2)}
+              </div>
+            ) : null}
                 </div>
               )}
             </FormItem>
