@@ -380,6 +380,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const start = m.index!;
       const end = start + m[0].length;
 
+
       if (start > lastIndex) {
         frag.appendChild(document.createTextNode(text.slice(lastIndex, start)));
       }
