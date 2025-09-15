@@ -19,18 +19,18 @@ export default function UserLoginPage() {
   const [isLoading, setIsLoading] = React.useState(false);
 
   // ✅ Guard: if already logged in, redirect based on role
-React.useEffect(() => {
-  const u = getCurrentUser();
-  if (!u) return;
+  React.useEffect(() => {
+    const u = getCurrentUser();
+    if (!u) return;
 
-  if (u.role === "master") {
-    router.replace("/admin/dashboard");
-  } else if (u.role === "admin" || u.role === "customer") {
-    router.replace("/dashboard");
-  } else {
-    router.replace("/user-dashboard");
-  }
-}, [router]);
+    if (u.role === "master") {
+      router.replace("/admin/dashboard");
+    } else if (u.role === "admin" || u.role === "customer") {
+      router.replace("/dashboard");
+    } else {
+      router.replace("/user-dashboard");
+    }
+  }, [router]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +38,36 @@ React.useEffect(() => {
     try {
       const user = await loginUser(userId, password);
 
-      // optional: if you want tenant-level information from user.companies or createdByClient,
-      // you can persist it here as needed (e.g. localStorage.setItem("createdByClient", ...))
+      // Save the complete user object with all properties including _id
+      localStorage.setItem("user", JSON.stringify({
+        _id: user._id, // Save the MongoDB ObjectId
+        id: user._id, // Also save as id for compatibility
+        userName: user.userName,
+        userId: user.userId,
+        contactNumber: user.contactNumber,
+        address: user.address,
+        role: user.role,
+        permissions: user.permissions || [],
+        companies: user.companies || [],
+        createdByClient: user.createdByClient,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }));
+
+      // Save individual properties for easy access
+      localStorage.setItem("_id", user._id);
+      localStorage.setItem("userId", user.userId);
+      localStorage.setItem("userName", user.userName || "");
+      localStorage.setItem("role", user.role);
+      
+      // Save companies and createdByClient if they exist
+      if (user.companies && user.companies.length > 0) {
+        localStorage.setItem("companies", JSON.stringify(user.companies));
+      }
+      
+      if (user.createdByClient) {
+        localStorage.setItem("createdByClient", user.createdByClient);
+      }
 
       // Redirect based on role
       if (user.role === "master") {
@@ -86,6 +114,7 @@ React.useEffect(() => {
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 disabled={isLoading}
+                placeholder="Enter your user ID"
               />
             </div>
 
@@ -100,6 +129,7 @@ React.useEffect(() => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pr-10"
                   disabled={isLoading}
+                  placeholder="Enter your password"
                 />
                 <button
                   type="button"

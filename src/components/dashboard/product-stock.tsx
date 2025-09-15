@@ -217,6 +217,9 @@ export function ProductStock() {
     return null;
   }
 
+
+  const role = localStorage.getItem("role");
+
   return (
     <>
       <Card>
@@ -302,7 +305,9 @@ export function ProductStock() {
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead>Stock</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                     {role !== "user" ? (
+      <TableHead className="text-right">Actions</TableHead>
+    ) : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -331,8 +336,7 @@ export function ProductStock() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {permissions?.canCreateProducts &&
-                          product.type !== "service" && (
+                        {role !== "user" ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -341,7 +345,7 @@ export function ProductStock() {
                               <Edit className="h-4 w-4 mr-2" />
                               Edit Stock
                             </Button>
-                          )}
+                            ) : null}
                       </TableCell>
                     </TableRow>
                   ))}
