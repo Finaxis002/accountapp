@@ -366,8 +366,14 @@ export function TransactionForm({
     control: form.control,
     name: "totalAmount",
   });
-
   const type = form.watch("type");
+
+  // right after your existing watches
+  const afterReceiptBalance = React.useMemo(() => {
+    if (type !== "receipt" || balance == null) return null;
+    const amt = Number(receiptAmountWatch || 0);
+    return Math.max(0, Number(balance) - (Number.isFinite(amt) ? amt : 0));
+  }, [type, balance, receiptAmountWatch]);
 
   // Derived flags for current tab
   const partyCreatable = React.useMemo(() => {
@@ -1059,15 +1065,15 @@ export function TransactionForm({
 
       if (values.type === "receipt") {
         // ✅ validate on client to avoid 400 from API
-        if (!(receiptAmount > 0)) {
-          setIsSubmitting(false);
-          toast({
-            variant: "destructive",
-            title: "Amount required",
-            description: "Enter a receipt amount greater than 0.",
-          });
-          return;
-        }
+        // if (!(receiptAmount > 0)) {
+        //   setIsSubmitting(false);
+        //   toast({
+        //     variant: "destructive",
+        //     title: "Amount required",
+        //     description: "Enter a receipt amount greater than 0.",
+        //   });
+        //   return;
+        // }
 
         // ✅ send the exact shape your backend expects
         payload = {
@@ -1337,10 +1343,10 @@ export function TransactionForm({
   };
 
   // remaining balance to display live in receipt tab
-  const remainingAfterReceipt =
-    balance != null && type === "receipt"
-      ? Math.max(0, Number(balance) - Number(receiptAmountWatch || 0))
-      : null;
+  // const remainingAfterReceipt =
+  //   balance != null && type === "receipt"
+  //     ? Math.max(0, Number(balance) - Number(receiptAmountWatch || 0))
+  //     : null;
 
   const handlePartyChange = async (partyId: string) => {
     if (!partyId) return;
@@ -1474,23 +1480,11 @@ export function TransactionForm({
 
   const getPartyOptions = () => {
     if (type === "sales" || type === "receipt") {
-      // customers
+      // All parties (customers) – no filter for balance
       const source = parties;
 
-      // For RECEIPT only → filter to balance > 0
-      const filtered =
-        type === "receipt"
-          ? source.filter((p: any) => {
-              // prefer inline balance if present; else use the fetched map
-              const b =
-                typeof p?.balance === "number"
-                  ? p.balance
-                  : partyBalances[p._id] ?? 0;
-              return Number(b) > 0;
-            })
-          : source;
-
-      return filtered.map((p) => ({
+      // For RECEIPT, show all customers regardless of balance
+      return source.map((p) => ({
         value: p._id,
         label: String(p.name || ""),
       }));
@@ -1696,6 +1690,7 @@ export function TransactionForm({
                 Balance: ₹{balance.toFixed(2)}
               </div>
             )}
+            
           </FormItem>
         )}
       />
@@ -2531,10 +2526,16 @@ export function TransactionForm({
               <FormMessage />
               {balance != null && type === "receipt" && (
                 <div className="mt-2 text-xs text-red-600">
-                  Balance: ₹{Number(balance).toFixed(2)}
-                  {Number(receiptAmountWatch || 0) > 0 && (
-                    <> → After receipt: ₹{remainingAfterReceipt?.toFixed(2)}</>
-                  )}
+                  {/* Balance: ₹{Number(balance).toFixed(2)} */}
+                  {balance !== null && type === "receipt" ? (
+              <div className="text-red-500 text-sm mt-2">
+                Balance: ₹{(afterReceiptBalance ?? balance).toFixed(2)}
+              </div>
+            ) : balance !== null ? (
+              <div className="text-red-500 text-sm mt-2">
+                Balance: ₹{balance.toFixed(2)}
+              </div>
+            ) : null}
                 </div>
               )}
             </FormItem>
@@ -2546,10 +2547,10 @@ export function TransactionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Amount</FormLabel>
-              {/* <FormControl>
-                <Input type="number" placeholder="0.00" {...field} />
-              </FormControl> */}
               <FormControl>
+                <Input type="number" placeholder="0.00" {...field} />
+              </FormControl>
+              {/* <FormControl>
                 <Input
                   type="number"
                   placeholder="0.00"
@@ -2581,7 +2582,7 @@ export function TransactionForm({
                     ? { max: Number(balance) }
                     : {})}
                 />
-              </FormControl>
+              </FormControl> */}
               <FormMessage />
             </FormItem>
           )}
