@@ -71,6 +71,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/xlsx": "^0.0.35",
     "genkit-cli": "^1.14.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
