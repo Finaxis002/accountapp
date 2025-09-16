@@ -135,7 +135,7 @@ export default function ProfilePage() {
 
      {
     value: "templates",
-    label: "Templates",
+    label: "Invoices",
     component: <TemplateSettings />,
   },
 

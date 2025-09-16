@@ -13,7 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Building, Users, Package, Mail, MessageSquare, Contact, Store } from "lucide-react";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,17 @@ import type { Client } from "@/lib/types";
 import { Separator } from "../ui/separator";
 import { Switch } from "../ui/switch";
 import { ScrollArea } from "../ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { ClientValidityCard } from "../admin/settings/ClientValidityCard";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../ui/dialog";
+import { Label } from "../ui/label";
 const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 interface ClientFormProps {
@@ -62,12 +73,36 @@ const updateClientSchema = baseSchema;
 type CreateClientForm = z.infer<typeof createClientSchema>;
 type UpdateClientForm = z.infer<typeof updateClientSchema>;
 
+type AllowedPermissions = {
+  maxCompanies?: number;
+  maxUsers?: number;
+  maxInventories?: number;
+  canSendInvoiceEmail?: boolean;
+  canSendInvoiceWhatsapp?: boolean;
+  canCreateUsers?: boolean;
+  canCreateCustomers?: boolean;
+  canCreateVendors?: boolean;
+  canCreateProducts?: boolean;
+  canCreateCompanies?: boolean;
+  canUpdateCompanies?: boolean;
+};
+
 export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [eyeOpen, setEyeOpen] = React.useState(false);
   const [authToken, setAuthToken] = React.useState<string | null>(null);
+
+  // Permissions management state
+  const [currentPermissions, setCurrentPermissions] = React.useState<Partial<AllowedPermissions>>({});
+  const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
+  const [permissionsLoaded, setPermissionsLoaded] = React.useState(false);
+
+  // Password reset state
+  const [newPassword, setNewPassword] = React.useState("");
+  const [isSubmittingPassword, setIsSubmittingPassword] = React.useState(false);
+  const [eyeOpenPassword, setEyeOpenPassword] = React.useState(false);
 
   React.useEffect(() => {
     setAuthToken(localStorage.getItem("token"));
@@ -263,7 +298,7 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
         { shouldFocus: true }
       );
 
-      // 👉 show suggestions immediately (even if the live checker didn’t run)
+      // 👉 show suggestions immediately (even if the live checker didn't run)
       setUsernameAvailable(false);
       setUsernameSuggestions(localSuggestions(base, tried));
       return true;
@@ -289,6 +324,194 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
 
     return false;
   }
+
+  // Load permissions function
+  const loadPermissions = async () => {
+    if (!client || permissionsLoaded) return;
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      const res = await fetch(
+        `${baseURL}/api/clients/${client._id}/permissions`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentPermissions({
+          maxCompanies: data.maxCompanies,
+          maxUsers: data.maxUsers,
+          maxInventories: data.maxInventories,
+          canSendInvoiceEmail: data.canSendInvoiceEmail,
+          canSendInvoiceWhatsapp: data.canSendInvoiceWhatsapp,
+          canCreateUsers: data.canCreateUsers,
+          canCreateCustomers: data.canCreateCustomers,
+          canCreateVendors: data.canCreateVendors,
+          canCreateProducts: data.canCreateProducts,
+          canCreateCompanies: data.canCreateCompanies,
+          canUpdateCompanies: data.canUpdateCompanies,
+        });
+      } else {
+        // Fallback to client data if permissions are not explicitly set
+        setCurrentPermissions({
+          maxCompanies: client.maxCompanies || 5,
+          maxUsers: client.maxUsers || 10,
+          maxInventories: client.maxInventories || 50,
+          canSendInvoiceEmail: client.canSendInvoiceEmail || false,
+          canSendInvoiceWhatsapp: client.canSendInvoiceWhatsapp || false,
+          canCreateUsers: client.canCreateUsers || true,
+          canCreateCustomers: client.canCreateCustomers || true,
+          canCreateVendors: client.canCreateVendors || true,
+          canCreateProducts: client.canCreateProducts || true,
+          canCreateCompanies: client.canCreateCompanies || false,
+          canUpdateCompanies: client.canUpdateCompanies || false,
+        });
+      }
+    } catch (error) {
+      // Fallback in case of network error etc.
+      setCurrentPermissions({
+        maxCompanies: client.maxCompanies || 5,
+        maxUsers: client.maxUsers || 10,
+        maxInventories: client.maxInventories || 50,
+        canSendInvoiceEmail: client.canSendInvoiceEmail || false,
+        canSendInvoiceWhatsapp: client.canSendInvoiceWhatsapp || false,
+        canCreateUsers: client.canCreateUsers || true,
+        canCreateCustomers: client.canCreateCustomers || true,
+        canCreateVendors: client.canCreateVendors || true,
+        canCreateProducts: client.canCreateProducts || true,
+        canCreateCompanies: client.canCreateCompanies || false,
+        canUpdateCompanies: client.canUpdateCompanies || false,
+      });
+    }
+    setPermissionsLoaded(true);
+  };
+
+  const handlePermissionChange = (
+    field: keyof AllowedPermissions,
+    value: any
+  ) => {
+    setCurrentPermissions((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const {
+    maxCompanies,
+    maxUsers,
+    maxInventories,
+    canSendInvoiceEmail,
+    canSendInvoiceWhatsapp,
+    canCreateUsers,
+    canCreateCustomers,
+    canCreateVendors,
+    canCreateProducts,
+    canCreateCompanies,
+    canUpdateCompanies,
+  } = currentPermissions as AllowedPermissions;
+
+  const payload: AllowedPermissions = {
+    maxCompanies,
+    maxUsers,
+    maxInventories,
+    canSendInvoiceEmail,
+    canSendInvoiceWhatsapp,
+    canCreateUsers,
+    canCreateCustomers,
+    canCreateVendors,
+    canCreateProducts,
+    canCreateCompanies,
+    canUpdateCompanies,
+  };
+
+  const handleSavePermissions = async () => {
+    if (!client) return;
+    setIsSavingPermissions(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      const res = await fetch(
+        `${baseURL}/api/clients/${client._id}/permissions`,
+
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update permissions.");
+      }
+
+      toast({
+        title: "Permissions Updated",
+        description: `Permissions for ${client.contactName} have been saved.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsSavingPermissions(false);
+    }
+  };
+
+  // Password reset function
+  const handleResetPassword = async () => {
+    if (!client || !newPassword) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "New password cannot be empty.",
+      });
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(
+        `${baseURL}/api/clients/reset-password/${client._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ newpassword: newPassword }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to reset password.");
+      }
+
+      toast({
+        title: "Password Reset Successful",
+        description: `Password for ${client.contactName} has been updated.`,
+      });
+
+      setNewPassword("");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Password Reset Failed",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
 
   function addToDate(
     d: Date,
@@ -378,6 +601,605 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
 }
 
 
+  const [selectedTab, setSelectedTab] = React.useState("general");
+
+  React.useEffect(() => {
+    if (client && selectedTab === "permissions" && !permissionsLoaded) {
+      loadPermissions();
+    }
+  }, [client, selectedTab, permissionsLoaded]);
+
+  if (client) {
+    // Edit mode with tabs
+    return (
+      <div className="flex flex-col h-full">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="flex-1 flex flex-col">
+          <TabsList className="grid w-full grid-cols-4 mx-6 mt-6">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="permissions">Manage Permissions</TabsTrigger>
+            <TabsTrigger value="validity">Validity Management</TabsTrigger>
+            <TabsTrigger value="password">Reset Password</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="flex-1 mt-0">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
+                <ScrollArea className="flex-1">
+                  <div className="space-y-6 px-6 pb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+              <FormField
+                control={form.control}
+                name="contactName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="clientUsername"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          placeholder="e.g. johndoe"
+                          {...field}
+                          disabled={!!client}
+                          onChange={(e) => {
+                            // force lowercase and strip spaces as user types
+                            const val = e.target.value
+                              .toLowerCase()
+                              .replace(/\s+/g, "");
+                            field.onChange(val);
+                          }}
+                        />
+                        {!client && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                            {checkingUsername && <span>checking…</span>}
+                            {usernameAvailable === true &&
+                              !checkingUsername && (
+                                <span className="text-green-600">
+                                  available ✓
+                                </span>
+                              )}
+                            {usernameAvailable === false &&
+                              !checkingUsername && (
+                                <span className="text-red-600">taken ✗</span>
+                              )}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+
+                    {!client && usernameSuggestions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {usernameSuggestions.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() =>
+                              form.setValue("clientUsername", s, {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                              })
+                            }
+                            className="text-xs rounded-full border px-3 py-1 hover:bg-muted"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {!client &&
+                      usernameAvailable === true &&
+                      !checkingUsername && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Nice! This username is available.
+                        </p>
+                      )}
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {!client && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={eyeOpen ? "text" : "password"}
+                          placeholder="••••••••"
+                          {...field}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEyeOpen((prev) => !prev)}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                        >
+                          {eyeOpen ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="contact@company.com"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1 (555) 123-4567" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <Separator />
+
+            <div>
+              <h3 className="text-base font-medium mb-4">
+                Permissions & Limits
+              </h3>
+              <div className="space-y-4">
+                {!client && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-base font-medium mb-4">
+                        Account Validity
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                        <FormField
+                          control={form.control}
+                          name={"validityAmount" as any}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Duration</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  placeholder="e.g. 30"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={"validityUnit" as any}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unit</FormLabel>
+                              <FormControl>
+                                <select
+                                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                                  {...field}
+                                >
+                                  <option value="days">Days</option>
+                                  <option value="months">Months</option>
+                                  <option value="years">Years</option>
+                                </select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="sm:col-span-3">
+                          {expiryPreview && (
+                            <p className="text-xs text-muted-foreground">
+                              This account will expire on{" "}
+                              <span className="font-medium">
+                                {expiryPreview}
+                              </span>
+                              .
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="maxCompanies"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Companies</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="maxUsers"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Users</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="canSendInvoiceEmail"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Send Invoice via Email</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Allow this client to send invoices to their customers
+                          via email.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canSendInvoiceWhatsapp"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Send Invoice via WhatsApp</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Allow this client to send invoices via WhatsApp
+                          integration.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+                <div className="flex justify-end p-6 border-t bg-background">
+                  <Button
+                    type="submit"
+                    disabled={
+                      !authToken || // <-- block if no token yet
+                      isSubmitting ||
+                      checkingUsername ||
+                      (!client && usernameAvailable === false)
+                    }
+                  >
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </TabsContent>
+
+          <TabsContent value="permissions" className="flex-1 mt-0">
+            <ScrollArea className="flex-1">
+              <div className="space-y-6 px-6 py-6">
+                <div>
+                  <h3 className="text-lg font-medium">Manage Permissions</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Modify usage limits and feature access for this client.
+                  </p>
+                </div>
+
+                <div className="grid gap-6 py-4">
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="maxCompanies" className="flex items-center gap-3">
+                        <Building className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Max Companies</span>
+                      </Label>
+                      <Input
+                        id="maxCompanies"
+                        type="number"
+                        value={currentPermissions.maxCompanies || ""}
+                        onChange={(e) =>
+                          handlePermissionChange(
+                            "maxCompanies",
+                            Number(e.target.value)
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxUsers" className="flex items-center gap-3">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Max Users</span>
+                      </Label>
+                      <Input
+                        id="maxUsers"
+                        type="number"
+                        value={currentPermissions.maxUsers || ""}
+                        onChange={(e) =>
+                          handlePermissionChange(
+                            "maxUsers",
+                            Number(e.target.value)
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxInventories" className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Max Inventories</span>
+                      </Label>
+                      <Input
+                        id="maxInventories"
+                        type="number"
+                        value={currentPermissions.maxInventories || ""}
+                        onChange={(e) =>
+                          handlePermissionChange(
+                            "maxInventories",
+                            Number(e.target.value)
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canSendInvoiceEmail" className="font-medium">
+                          Send Invoice via Email
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canSendInvoiceEmail"
+                        checked={currentPermissions.canSendInvoiceEmail}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canSendInvoiceEmail", val)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canSendInvoiceWhatsapp" className="font-medium">
+                          Send Invoice via WhatsApp
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canSendInvoiceWhatsapp"
+                        checked={currentPermissions.canSendInvoiceWhatsapp}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canSendInvoiceWhatsapp", val)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canCreateUsers" className="font-medium">
+                          Create Users
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canCreateUsers"
+                        checked={currentPermissions.canCreateUsers}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canCreateUsers", val)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Contact className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canCreateCustomers" className="font-medium">
+                          Create Customers
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canCreateCustomers"
+                        checked={currentPermissions.canCreateCustomers}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canCreateCustomers", val)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Store className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canCreateVendors" className="font-medium">
+                          Create Vendors
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canCreateVendors"
+                        checked={currentPermissions.canCreateVendors}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canCreateVendors", val)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canCreateProducts" className="font-medium">
+                          Create Products
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canCreateProducts"
+                        checked={currentPermissions.canCreateProducts}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canCreateProducts", val)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Building className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canCreateCompanies" className="font-medium">
+                          Create Companies
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canCreateCompanies"
+                        checked={currentPermissions.canCreateCompanies}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canCreateCompanies", val)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <Label htmlFor="canUpdateCompanies" className="font-medium">
+                          Update Companies
+                        </Label>
+                      </div>
+                      <Switch
+                        id="canUpdateCompanies"
+                        checked={currentPermissions.canUpdateCompanies}
+                        onCheckedChange={(val) =>
+                          handlePermissionChange("canUpdateCompanies", val)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <Button
+                    onClick={handleSavePermissions}
+                    disabled={isSavingPermissions}
+                  >
+                    {isSavingPermissions && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="validity" className="flex-1 mt-0">
+            <div className="h-full p-6">
+              <ClientValidityCard
+                clientId={client._id}
+                onChanged={() => {
+                  // Optional: refresh data if needed
+                }}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="password" className="flex-1 mt-0">
+            <div className="h-full p-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Reset Password</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Set a new password for {client.contactName}. They will be notified of this change.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="new-password"
+                        type={eyeOpenPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEyeOpenPassword((prev) => !prev)}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                      >
+                        {eyeOpenPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleResetPassword}
+                    disabled={isSubmittingPassword || !newPassword.trim()}
+                    className="w-full"
+                  >
+                    {isSubmittingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Reset Password
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+      </div>
+    );
+  }
+
+  // Create mode - original form
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="contents">

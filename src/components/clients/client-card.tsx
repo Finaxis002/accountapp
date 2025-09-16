@@ -15,6 +15,8 @@ import {
   MoreVertical,
   Globe,
   Copy,
+  Delete,
+  Trash2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
@@ -149,7 +151,11 @@ export function ClientCard({
           <Edit className="mr-2 h-4 w-4" /> Edit
         </Button>
 
-        <DropdownMenu>
+         <Button  variant="secondary" size="sm"  onClick={() => onDelete(client._id)}>
+          <Trash2 className="mr-2 h-4 w-4" /> Delete
+        </Button>
+
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="w-8 h-8">
               <MoreVertical className="h-4 w-4" />
@@ -170,7 +176,7 @@ export function ClientCard({
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu> */}
       </CardFooter>
     </Card>
   );
