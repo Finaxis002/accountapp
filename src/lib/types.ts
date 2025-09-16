@@ -50,7 +50,7 @@ export type Transaction = {
   description?: string;
    amount: number; // Fallback for old transactions, new ones use totalAmount
   totalAmount?: number;
-  items?: Item[];
+  items?: any[];
   quantity?: number;
   pricePerUnit?: number;
   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
