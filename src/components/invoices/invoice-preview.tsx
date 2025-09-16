@@ -51,6 +51,7 @@ export function InvoicePreview({
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
+
   React.useEffect(() => {
     let objectUrl: string | null = null;
 
@@ -158,6 +159,8 @@ export function InvoicePreview({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [selectedTemplate, transaction, company, party, serviceNameById]);
+
+  
 
   const handleDownload = () => {
     if (pdfUrl) {
