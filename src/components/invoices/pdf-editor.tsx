@@ -791,7 +791,7 @@ export function PDFEditor({ pdfBlob, onSave, onExport }: PDFEditorProps) {
                       console.log('📋 Canvas Objects:', objects.map((obj, i) => ({
                         index: i,
                         type: obj.type,
-                        text: obj.text || 'N/A',
+                        // text: obj.text || 'N/A',
                         left: obj.left,
                         top: obj.top,
                         visible: obj.visible
