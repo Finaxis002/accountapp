@@ -1841,7 +1841,7 @@ export const generatePdfForTemplate6 = async (
 
   // Preload logo once (using a different, more abstract icon example)
   const logoUrl =
-    "https://upload.wikimedia.org/wikipedia/commons/e/e0/Placeholder_for_a_screenshot.svg"; // Abstract placeholder
+    "https://template.canva.com/EAE1YAgPM_U/1/0/400w-R-Meu_EcnME.jpg"; // Abstract placeholder
   const logoDataURL = await fetchAsDataURL(logoUrl);
 
   // Base font
@@ -1874,11 +1874,13 @@ export const generatePdfForTemplate6 = async (
   // ---------- painters ----------
 
   const drawHeaderSection = () => {
+    
     // Top company name and "INVOICE"
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(...ACCENT_GOLD);
-    doc.text(invoiceData.company.name.toUpperCase(), m, m + 8);
+    doc.text(invoiceData.company.name.toUpperCase(), m, m + 0, { align: "left" });
+
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
@@ -1887,7 +1889,7 @@ export const generatePdfForTemplate6 = async (
     doc.setFont("helvetica", "bold");
     doc.setFontSize(24);
     doc.setTextColor(...DARK_TEXT);
-    doc.text("INVOICE", pw - m, m + 12, { align: "right" });
+    doc.text("INVOICE", pw - m, m + 0, { align: "right" });
 
     // Hairline divider under header
     doc.setDrawColor(...DIVIDER_LINE);
@@ -2260,7 +2262,7 @@ export const generatePdfForTemplate7 = async (
 
   // Preload logo (using a more modern, abstract icon example)
   const logoUrl =
-    "https://upload.wikimedia.org/wikipedia/commons/4/47/Placeholder_logo.png"; // Modern abstract placeholder
+    "https://template.canva.com/EAE1YAgPM_U/1/0/400w-R-Meu_EcnME.jpg"; // Modern abstract placeholder
   const logoDataURL = await fetchAsDataURL(logoUrl);
 
   // Base font
@@ -2297,16 +2299,17 @@ export const generatePdfForTemplate7 = async (
     doc.setFillColor(...BG_LIGHT);
     doc.rect(0, 0, pw, headerBlockH + 10, "F"); // Light background across the top
 
-    // Company Logo
-    // if (logoDataURL) {
-    //   doc.addImage(logoDataURL, "PNG", m, m + 2, 25, 12);
-    // }
+   const logoUrl = "https://template.canva.com/EAE1YAgPM_U/1/0/400w-R-Meu_EcnME.jpg"; // Replace with your logo URL
+
+  // // Add the logo image to the PDF (adjust x, y, width, height as needed)
+  // doc.addImage(logoUrl, "JPEG", m, m + 5, 30, 20); // x, y, width, height
+
 
     // Company Name
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.setTextColor(...PRIMARY_BLUE);
-    doc.text(invoiceData.company.name.toUpperCase(), m + 30, m + 10);
+    doc.text(invoiceData.company.name.toUpperCase(), m + 0, m + 10);
 
     // "INVOICE" title
     doc.setFont("helvetica", "bold");

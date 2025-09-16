@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Edit } from "lucide-react";
 import type { Company, Party, Transaction } from "@/lib/types";
 import { DialogFooter } from "../ui/dialog";
 import {
@@ -22,6 +22,7 @@ import {
   generatePdfForTemplate7,
 } from "@/lib/pdf-templates";
 import jsPDF from "jspdf";
+import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 
 type TemplateKey =
   | "template1"
@@ -37,6 +38,9 @@ interface InvoicePreviewProps {
   company: Company | null;
   party: Party | null;
   serviceNameById?: Map<string, string>;
+  editMode?: boolean;
+  onSave?: (updatedTransaction: Transaction) => void;
+  onCancel?: () => void;
 }
 
 export function InvoicePreview({
@@ -44,13 +48,17 @@ export function InvoicePreview({
   company,
   party,
   serviceNameById,
+  editMode = false,
+  onSave,
+  onCancel,
 }: InvoicePreviewProps) {
   const [selectedTemplate, setSelectedTemplate] =
     React.useState<TemplateKey>("template1");
 
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-
+  // Use the editMode prop instead of internal state
+  const [pdfBlob, setPdfBlob] = React.useState<Blob | null>(null);
 
   React.useEffect(() => {
     let objectUrl: string | null = null;
@@ -123,6 +131,7 @@ export function InvoicePreview({
                 serviceNameById
               )
             );
+            break;
           case "template7":
             docPromise = Promise.resolve(
               generatePdfForTemplate7(
@@ -146,6 +155,7 @@ export function InvoicePreview({
         const pdfBlob = doc.output("blob");
         objectUrl = URL.createObjectURL(pdfBlob);
         setPdfUrl(objectUrl);
+        setPdfBlob(pdfBlob);
       } catch (err) {
         console.error(err);
         setPdfUrl(null);
@@ -159,8 +169,6 @@ export function InvoicePreview({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [selectedTemplate, transaction, company, party, serviceNameById]);
-
-  
 
   const handleDownload = () => {
     if (pdfUrl) {
@@ -177,6 +185,21 @@ export function InvoicePreview({
   const handleTemplateChange = React.useCallback((v: string) => {
     setSelectedTemplate(v as TemplateKey);
   }, []);
+
+  // If in edit mode, render the enhanced editor
+  if (editMode) {
+    console.log('🎨 Edit mode active, PDF blob available:', !!pdfBlob, 'Loading:', isLoading);
+    return (
+      <EnhancedInvoicePreview
+        transaction={transaction}
+        company={company}
+        party={party}
+        serviceNameById={serviceNameById}
+        initialPdfBlob={pdfBlob}
+        onExitEditMode={onCancel}
+      />
+    );
+  }
 
   return (
     <>
@@ -221,10 +244,11 @@ export function InvoicePreview({
               <SelectItem value="template4">Minimal</SelectItem>
               <SelectItem value="template5">Refined</SelectItem>
               <SelectItem value="template6">Standard</SelectItem>
-              {/* <SelectItem value="template7">Prestige</SelectItem> */}
+              <SelectItem value="template7">Prestige</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {/* Edit button removed - now controlled by parent component */}
         <Button onClick={handleDownload} disabled={isLoading || !pdfUrl}>
           <Download className="mr-2 h-4 w-4" />
           Download PDF

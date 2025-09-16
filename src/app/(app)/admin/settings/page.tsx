@@ -1,4 +1,6 @@
 
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,10 +8,27 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { UserCircle, Bell, Save, Users } from "lucide-react";
+import { UserCircle, Bell, Save, Users, X } from "lucide-react";
 import { ClientsValidityManager } from "@/components/admin/settings/ClientsValidityManager";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { ClientForm } from "@/components/clients/client-form";
+import { useState } from "react";
+// import { Client } from "@/lib/types";
 
 export default function SettingsPage() {
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+
+  const handleClientClick = (client: any) => {
+    setSelectedClient(client);
+    setIsClientDialogOpen(true);
+  };
+
+  const handleClientFormSubmit = () => {
+    setIsClientDialogOpen(false);
+    setSelectedClient(null);
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -68,7 +87,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Add the Client Validity Manager Card here */}
-      <ClientsValidityManager />
+      <ClientsValidityManager onClientClick={handleClientClick} />
 
        <Card>
         <CardHeader>
@@ -106,6 +125,41 @@ export default function SettingsPage() {
             </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
+        <DialogContent
+                 className="
+             max-w-4xl ,
+             max-h-[90vh] overflow-y-auto overflow-x-hidden     
+              min-h-[90vh] 
+             grid-rows-[auto,1fr,auto]
+             p-0 rounded-xl
+           "
+               >
+          <DialogHeader className="p-4 sm:p-6 sticky top-0 z-10 bg-background border-b flex flex-row items-center justify-between">
+            <div>
+              <DialogTitle className="text-lg sm:text-xl lg:text-2xl">
+                {selectedClient ? "Edit Client" : "Add New Client"}
+              </DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
+                {selectedClient
+                  ? `Update the details for ${selectedClient.contactName}.`
+                  : "Fill in the form below to add a new client."}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </DialogHeader>
+
+          <ClientForm
+            client={selectedClient || undefined}
+            onFormSubmit={handleClientFormSubmit}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
     
 

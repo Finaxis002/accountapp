@@ -28,6 +28,7 @@ import {
   generatePdfForTemplate4,
   generatePdfForTemplate5,
   generatePdfForTemplate6,
+  generatePdfForTemplate7
 } from "@/lib/pdf-templates";
 import jsPDF from "jspdf";
 import type { Company, Party, Transaction } from "@/lib/types";
@@ -39,6 +40,7 @@ const templateOptions = [
   { value: "template4", label: "Minimal", color: "bg-green-500" },
   { value: "template5", label: "Refined", color: "bg-amber-600" },
   { value: "template6", label: "Standard", color: "bg-indigo-600" },
+  { value: "template7", label: "Prestige", color: "bg-teal-600" },
 ];
 
 // Dummy data for preview
@@ -107,7 +109,8 @@ type TemplateKey =
   | "template3"
   | "template4"
   | "template5"
-  | "template6";
+  | "template6"
+  | "template7";
 
 export function TemplateSettings() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -225,6 +228,16 @@ export function TemplateSettings() {
           case "template6":
             docPromise = Promise.resolve(
               generatePdfForTemplate6(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames
+              )
+            );
+            break;
+             case "template7":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate7(
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,

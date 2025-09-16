@@ -74,6 +74,7 @@ export default function TransactionsPage() {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isItemsDialogOpen, setIsItemsDialogOpen] = React.useState(false);
+  const [isEditMode, setIsEditMode] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] =
     React.useState<Transaction | null>(null);
   const [transactionToEdit, setTransactionToEdit] =
@@ -555,6 +556,51 @@ export default function TransactionsPage() {
     }
   };
 
+  async function handleUpdateTransaction(updatedTransaction: Transaction) {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const endpointMap: Record<string, string> = {
+        sales: `/api/sales/${updatedTransaction._id}`,
+        purchases: `/api/purchase/${updatedTransaction._id}`,
+        receipt: `/api/receipts/${updatedTransaction._id}`,
+        payment: `/api/payments/${updatedTransaction._id}`,
+        journal: `/api/journals/${updatedTransaction._id}`,
+      };
+
+      const endpoint = endpointMap[updatedTransaction.type];
+      if (!endpoint) throw new Error(`Invalid transaction type: ${updatedTransaction.type}`);
+
+      const res = await fetch(`${baseURL}${endpoint}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedTransaction),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update transaction.");
+      }
+
+      toast({
+        title: "Transaction Updated",
+        description: "The transaction has been successfully updated.",
+      });
+
+      fetchTransactions(); // Refresh the list
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+    }
+  }
+
   async function handleSendInvoice(tx: Transaction) {
     try {
       const token = localStorage.getItem("token") || "";
@@ -875,14 +921,28 @@ export default function TransactionsPage() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+          <Dialog open={isPreviewOpen} onOpenChange={(open) => {
+            setIsPreviewOpen(open);
+            if (!open) setIsEditMode(false);
+          }}>
             <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col">
               <DialogHeader className="p-6 pb-0">
-                <DialogTitle>Invoice Preview</DialogTitle>
-                <DialogDescription>
-                  This is a preview of the invoice. You can change the template
-                  and download it as a PDF.
-                </DialogDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DialogTitle>Invoice Preview</DialogTitle>
+                    <DialogDescription>
+                      This is a preview of the invoice. You can change the template
+                      and download it as a PDF.
+                    </DialogDescription>
+                  </div>
+                  {/* <Button
+                    variant="outline"
+                    onClick={() => setIsEditMode(true)}
+                    disabled={!transactionToPreview}
+                  >
+                    Edit Invoice
+                  </Button> */}
+                </div>
               </DialogHeader>
               <InvoicePreview
                 transaction={transactionToPreview}
@@ -899,6 +959,18 @@ export default function TransactionsPage() {
                   ) || null
                 }
                 serviceNameById={serviceNameById} // ✅ pass it
+                editMode={isEditMode}
+                onSave={(updatedTransaction) => {
+                  // Handle save logic here
+                  console.log('Saving updated transaction:', updatedTransaction);
+                  setIsEditMode(false);
+                  setIsPreviewOpen(false);
+                  // You would typically call an API to update the transaction
+                  // fetchTransactions(); // Refresh the list
+                }}
+                onCancel={() => {
+                  setIsEditMode(false);
+                }}
               />
             </DialogContent>
           </Dialog>

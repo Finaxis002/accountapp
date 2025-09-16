@@ -315,28 +315,28 @@ export function ClientValidityCard({
     setExactDate("");
   }
   return (
-    <Card className="overflow-hidden border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+    <Card className="overflow-hidden border-blue-100 dark:border-blue-800/70 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-900 shadow-md dark:shadow-lg dark:shadow-blue-900/20">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-600" />
+            <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Account Validity
           </CardTitle>
 
           {loading ? (
-            <Badge variant="outline" className="animate-pulse">
+            <Badge variant="outline" className="animate-pulse bg-transparent dark:bg-gray-800">
               Loading…
             </Badge>
           ) : status === "active" ? (
-            <Badge className="bg-emerald-600 hover:bg-emerald-600">
+            <Badge className="bg-emerald-600 hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-700 dark:text-white">
               Active
             </Badge>
           ) : status === "expired" ? (
-            <Badge className="bg-red-600 hover:bg-red-600">Expired</Badge>
+            <Badge className="bg-red-600 hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-700 dark:text-white">Expired</Badge>
           ) : status === "disabled" ? (
-            <Badge className="bg-gray-600 hover:bg-gray-600">Disabled</Badge>
+            <Badge className="bg-gray-600 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-700 dark:text-white">Disabled</Badge>
           ) : (
-            <Badge className="bg-slate-600 hover:bg-slate-600 capitalize">
+            <Badge className="bg-slate-600 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-700 dark:text-white capitalize">
               {status}
             </Badge>
           )}
@@ -346,21 +346,21 @@ export function ClientValidityCard({
       <CardContent className="space-y-6">
         {/* Top stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-white/70 p-4 border border-white/60 shadow-sm">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+          <div className="rounded-xl bg-white/70 dark:bg-gray-800 p-4 border border-white/60 dark:border-gray-700 shadow-sm dark:shadow-md dark:shadow-black/30">
+            <div className="flex items-center gap-2 text-muted-foreground dark:text-gray-300 mb-1">
               <CalendarDays className="h-4 w-4" />
               <span>Expires On</span>
             </div>
-            <div className="text-sm font-semibold">
+            <div className="text-sm font-semibold dark:text-white">
               {loading ? "—" : fmtDate(expiresAtDate)}
             </div>
           </div>
-          <div className="rounded-xl bg-white/70 p-4 border border-white/60 shadow-sm">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+          <div className="rounded-xl bg-white/70 dark:bg-gray-800 p-4 border border-white/60 dark:border-gray-700 shadow-sm dark:shadow-md dark:shadow-black/30">
+            <div className="flex items-center gap-2 text-muted-foreground dark:text-gray-300 mb-1">
               <Clock8 className="h-4 w-4" />
               <span>Days Left</span>
             </div>
-            <div className="text-lg font-semibold items-center">
+            <div className="text-lg font-semibold items-center dark:text-white">
               {loading
                 ? "—"
                 : expiresAtDate
@@ -370,23 +370,23 @@ export function ClientValidityCard({
                 : "—"}
             </div>
           </div>
-          <div className="rounded-xl bg-white/70 p-4 border border-white/60 shadow-sm">
+          <div className="rounded-xl bg-white/70 dark:bg-gray-800 p-4 border border-white/60 dark:border-gray-700 shadow-sm dark:shadow-md dark:shadow-black/30">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <Label className="text-muted-foreground">Account Status</Label>
+                <Label className="text-muted-foreground dark:text-gray-300">Account Status</Label>
                 <div className="flex items-center gap-2">
-                  {uiEnabled ? ( // <— was: validity?.isActive
-                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  {uiEnabled ? (
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <ShieldOff className="h-4 w-4 text-gray-500" />
+                    <ShieldOff className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   )}
-                  <span className="font-medium text-sm">
+                  <span className="font-medium text-sm dark:text-white">
                     {uiEnabled ? "Enabled" : "Disabled"}
                   </span>
                 </div>
               </div>
               <Switch
-                checked={uiEnabled} // <— was: {!isDisabled}
+                checked={uiEnabled}
                 onCheckedChange={(v) => setDraft((d) => ({ ...d, enabled: v }))}
                 disabled={loading || saving}
               />
@@ -394,16 +394,16 @@ export function ClientValidityCard({
           </div>
         </div>
 
-        <Separator />
+        <Separator className="dark:bg-gray-700" />
 
         {/* Extend form */}
         <div className="space-y-3">
-          <Label className="text-sm text-muted-foreground">
+          <Label className="text-sm text-muted-foreground dark:text-gray-300">
             Extend Validity
           </Label>
           <div className="grid grid-cols-1 sm:grid-cols-[140px_160px_1fr_auto] gap-3 items-end">
             <div>
-              <Label htmlFor="v-amount">Duration</Label>
+              <Label htmlFor="v-amount" className="dark:text-gray-300">Duration</Label>
               <Input
                 id="v-amount"
                 type="number"
@@ -411,20 +411,21 @@ export function ClientValidityCard({
                 value={amount}
                 onChange={(e) => {
                   setAmount(Number(e.target.value));
-                  setExtendDirty(true); // <-- mark as dirty
+                  setExtendDirty(true);
                 }}
+                className="dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <Label htmlFor="v-unit">Unit</Label>
+              <Label htmlFor="v-unit" className="dark:text-gray-300">Unit</Label>
               <select
                 id="v-unit"
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 value={unit}
                 onChange={(e) => {
                   setUnit(e.target.value as Unit);
-                  setExtendDirty(true); // <-- mark as dirty
+                  setExtendDirty(true);
                 }}
               >
                 <option value="days">Days</option>
@@ -433,9 +434,9 @@ export function ClientValidityCard({
               </select>
             </div>
 
-            <div className="self-center text-sm text-muted-foreground">
+            <div className="self-center text-sm text-muted-foreground dark:text-gray-300">
               → New expiry:{" "}
-              <span className="font-medium">{fmtDate(previewDate)}</span>
+              <span className="font-medium dark:text-white">{fmtDate(previewDate)}</span>
             </div>
 
             <Button
@@ -444,9 +445,10 @@ export function ClientValidityCard({
                   ...d,
                   extend: { amount: Number(amount), unit },
                 }));
-                setExtendDirty(false); // <-- it's staged now
+                setExtendDirty(false);
               }}
               disabled={loading || saving}
+              className="dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
             >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -458,29 +460,31 @@ export function ClientValidityCard({
 
         {/* Exact date setter */}
         <div className="space-y-3">
-          <Label className="text-sm text-muted-foreground">
+          <Label className="text-sm text-muted-foreground dark:text-gray-300">
             Set Exact Expiry
           </Label>
           <div className="grid grid-cols-1 sm:grid-cols-[240px_auto] gap-3 items-end">
             <div>
-              <Label htmlFor="v-date">Expiry date</Label>
+              <Label htmlFor="v-date" className="dark:text-gray-300">Expiry date</Label>
               <Input
                 id="v-date"
                 type="date"
                 value={exactDate}
                 onChange={(e) => {
                   setExactDate(e.target.value);
-                  setExactDirty(true); // <-- mark as dirty
+                  setExactDirty(true);
                 }}
+                className="dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:focus:ring-blue-500"
               />
             </div>
             <Button
               variant="outline"
               onClick={() => {
                 setDraft((d) => ({ ...d, exactDate }));
-                setExactDirty(false); // <-- it's staged now
+                setExactDirty(false);
               }}
               disabled={!exactDate || loading || saving}
+              className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
             >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -490,43 +494,53 @@ export function ClientValidityCard({
           </div>
         </div>
 
-        <Separator />
+        <Separator className="dark:bg-gray-700" />
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={resetDraft} disabled={saving}>
+          <Button 
+            variant="outline" 
+            onClick={resetDraft} 
+            disabled={saving}
+            className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!hasPending || saving}>
+          <Button 
+            onClick={handleSave} 
+            disabled={!hasPending || saving}
+            className="dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
+          >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Save changes
           </Button>
         </div>
 
         <AlertDialog open={warnUnsavedOpen} onOpenChange={setWarnUnsavedOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="dark:bg-gray-900 dark:border-gray-700">
             <AlertDialogHeader>
-              <AlertDialogTitle>Discard unstaged changes?</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogTitle className="dark:text-white">Discard unstaged changes?</AlertDialogTitle>
+              <AlertDialogDescription className="dark:text-gray-300">
                 {extendDirty && exactDirty
-                  ? "You changed Extend and Exact Expiry inputs but didn’t click their buttons."
+                  ? "You changed Extend and Exact Expiry inputs but didn't click their buttons."
                   : extendDirty
-                  ? "You changed the Extend inputs but didn’t click the Extend button."
-                  : "You picked an Exact Expiry date but didn’t click Save Exact Date."}{" "}
-                These changes aren’t staged and will be discarded if you
+                  ? "You changed the Extend inputs but didn't click the Extend button."
+                  : "You picked an Exact Expiry date but didn't click Save Exact Date."}{" "}
+                These changes aren't staged and will be discarded if you
                 continue.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Go back</AlertDialogCancel>
+              <AlertDialogCancel className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white">Go back</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
                   setWarnUnsavedOpen(false);
-                  // discard the dirty parts only (don’t clear staged draft)
+                  // discard the dirty parts only (don't clear staged draft)
                   setExtendDirty(false);
                   setExactDirty(false);
                   await commitChanges();
                   setExactDate("");
                 }}
+                className="dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
               >
                 Discard & Save
               </AlertDialogAction>
