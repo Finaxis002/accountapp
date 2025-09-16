@@ -91,6 +91,7 @@ const HistoryPage = () => {
       setError(null);
       try {
         const token = localStorage.getItem("token");
+        console.log("Token:", token); 
         if (!token) {
           throw new Error("Authentication token not found.");
         }
@@ -186,24 +187,6 @@ const HistoryPage = () => {
   setNotificationsLoading(true);
   fetchNotifications(client._id);
 };
-
-
-  const getNotificationColor = (type: string | undefined) => {
-    switch (type) {
-      case "success":
-        return "border-l-green-500 bg-green-50";
-      case "warning":
-        return "border-l-yellow-500 bg-yellow-50";
-      case "error":
-        return "border-l-red-500 bg-red-50";
-      case "sales":
-        return "border-l-purple-500 bg-purple-50";
-      case "create":
-        return "border-l-blue-500 bg-blue-50";
-      default:
-        return "border-l-blue-500 bg-blue-50";
-    }
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
