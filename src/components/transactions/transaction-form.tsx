@@ -62,8 +62,13 @@ import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
 import {
-  generatePdfForTemplate3,
   generatePdfForTemplate1,
+  generatePdfForTemplate2,
+  generatePdfForTemplate3,
+  generatePdfForTemplate4,
+  generatePdfForTemplate5,
+  generatePdfForTemplate6,
+  generatePdfForTemplate7,
 } from "@/lib/pdf-templates";
 import { getUnifiedLines } from "@/lib/getUnifiedLines";
 
@@ -862,12 +867,13 @@ export function TransactionForm({
       }
     } catch (error) {
       console.error("Stock update failed:", error);
-
+  
+      const errorMessage = error instanceof Error ? error.message : "Failed to update stock levels.";
+  
       toast({
         variant: "destructive",
         title: "Stock Update Failed",
-        description:
-          "Transaction was saved, but failed to update inventory stock levels.",
+        description: `Transaction was saved, but ${errorMessage}`,
       });
     }
   }
@@ -1163,6 +1169,16 @@ export function TransactionForm({
       }
 
       // 🔽 SEND INVOICE PDF BY EMAIL (Sales only)
+
+      const templateRes = await fetch(`${baseURL}/api/settings/default-template`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const templateData = await templateRes.json();
+     
+
       if (values.type === "sales") {
         if (values.dontSendInvoice) {
           toast({
@@ -1184,35 +1200,76 @@ export function TransactionForm({
           const partyDoc = parties.find((p) => String(p._id) === savedPartyId);
 
           if (partyDoc?.email) {
+            const enrichedTransaction = enrichTransactionWithNames(
+              saved,
+              products,
+              services
+            );
             let pdfDoc;
-            try {
-              const enrichedTransaction = enrichTransactionWithNames(
-                saved,
-                products,
-                services
-              );
-              pdfDoc = generatePdfForTemplate1(
-                enrichedTransaction,
-                companyDoc as any,
-                partyDoc as any,
-                serviceNameById // This is the missing argument
-              );
-            } catch (error) {
-              console.error(
-                "Template 3 failed, falling back to Template 1:",
-                error
-              );
-              const enrichedTransaction = enrichTransactionWithNames(
-                saved,
-                products,
-                services
-              );
-              pdfDoc = generatePdfForTemplate3(
-                enrichedTransaction,
-                companyDoc as any,
-                partyDoc as any,
-                serviceNameById // This is the missing argument
-              );
+            switch (templateData.defaultTemplate) {
+              case "template1":
+                pdfDoc = generatePdfForTemplate1(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template2":
+                pdfDoc = generatePdfForTemplate2(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template3":
+                pdfDoc = generatePdfForTemplate3(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template4":
+                pdfDoc = generatePdfForTemplate4(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template5":
+                pdfDoc = generatePdfForTemplate5(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template6":
+                pdfDoc = generatePdfForTemplate6(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template7":
+                pdfDoc = generatePdfForTemplate7(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              default:
+                pdfDoc = generatePdfForTemplate1(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
             }
 
             const pdfInstance = await pdfDoc;
@@ -1690,7 +1747,6 @@ export function TransactionForm({
                 Balance: ₹{balance.toFixed(2)}
               </div>
             )}
-            
           </FormItem>
         )}
       />
@@ -2528,14 +2584,14 @@ export function TransactionForm({
                 <div className="mt-2 text-xs text-red-600">
                   {/* Balance: ₹{Number(balance).toFixed(2)} */}
                   {balance !== null && type === "receipt" ? (
-              <div className="text-red-500 text-sm mt-2">
-                Balance: ₹{(afterReceiptBalance ?? balance).toFixed(2)}
-              </div>
-            ) : balance !== null ? (
-              <div className="text-red-500 text-sm mt-2">
-                Balance: ₹{balance.toFixed(2)}
-              </div>
-            ) : null}
+                    <div className="text-red-500 text-sm mt-2">
+                      Balance: ₹{(afterReceiptBalance ?? balance).toFixed(2)}
+                    </div>
+                  ) : balance !== null ? (
+                    <div className="text-red-500 text-sm mt-2">
+                      Balance: ₹{balance.toFixed(2)}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </FormItem>

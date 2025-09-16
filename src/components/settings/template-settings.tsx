@@ -121,18 +121,33 @@ export function TemplateSettings() {
     React.useState<TemplateKey>("template1");
   const { toast } = useToast();
 
-  // Load current template setting
+  // Fix the useEffect to properly set both states
   React.useEffect(() => {
     const loadTemplateSetting = async () => {
       setIsLoading(true);
       try {
+        const token = localStorage.getItem("token");
+        console.log("Token :", token)
         const response = await fetch(
-          `${baseURL}/api/settings/default-template`
+          `${baseURL}/api/settings/default-template`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
+
         if (response.ok) {
           const data = await response.json();
           const template = data.defaultTemplate || "template1";
           setSelectedTemplate(template as TemplateKey);
+          setFetchedTemplate(template as TemplateKey);
+        } else if (response.status === 404) {
+          // If no template found, use default template1
+          setSelectedTemplate("template1");
+          setFetchedTemplate("template1");
+        } else {
+          throw new Error("Failed to fetch template");
         }
       } catch (error) {
         console.error("Failed to load template setting:", error);
@@ -147,7 +162,7 @@ export function TemplateSettings() {
     };
 
     loadTemplateSetting();
-  }, [toast]);
+  }, [toast, baseURL]);
 
   // Generate PDF preview when template changes
   React.useEffect(() => {
@@ -250,35 +265,6 @@ export function TemplateSettings() {
     };
   }, [selectedTemplate, toast]);
 
-  // Load current template setting
-  React.useEffect(() => {
-    const loadTemplateSetting = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `${baseURL}/api/settings/default-template`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          const template = data.defaultTemplate || "template1";
-          setSelectedTemplate(template as TemplateKey);
-          setFetchedTemplate(template as TemplateKey); // Store the fetched template
-        }
-      } catch (error) {
-        console.error("Failed to load template setting:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load template settings",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTemplateSetting();
-  }, [toast, baseURL]);
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -342,50 +328,54 @@ export function TemplateSettings() {
             Choose your preferred invoice template
           </CardDescription>
         </CardHeader>
-       <CardContent className="space-y-6">
-  {/* Display current template from DB */}
-  <div className="p-3 bg-muted rounded-lg">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">Current Template:</span>
-        <Badge variant="secondary" className="capitalize">
-          {templateOptions.find(t => t.value === fetchedTemplate)?.label || "Not set"}
-        </Badge>
-      </div>
-      <Check className="h-4 w-4 text-green-500" />
-    </div>
-  </div>
+        <CardContent className="space-y-6">
+          {/* Display current template from DB */}
+          <div className="p-3 bg-muted rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Current Template:</span>
+                <Badge variant="secondary" className="capitalize">
+                  {templateOptions.find((t) => t.value === fetchedTemplate)
+                    ?.label || "Not set"}
+                </Badge>
+              </div>
+              <Check className="h-4 w-4 text-green-500" />
+            </div>
+          </div>
 
-  <div className="space-y-2">
-    <Label htmlFor="template">Change Default Invoice Template</Label>
-    <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
-      <SelectTrigger id="template" className="w-full">
-        <SelectValue placeholder="Select a template" />
-      </SelectTrigger>
-      <SelectContent>
-        {templateOptions.map((template) => (
-          <SelectItem key={template.value} value={template.value}>
-            {template.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
+          <div className="space-y-2">
+            <Label htmlFor="template">Change Default Invoice Template</Label>
+            <Select
+              value={selectedTemplate}
+              onValueChange={handleTemplateChange}
+            >
+              <SelectTrigger id="template" className="w-full">
+                <SelectValue placeholder="Select a template" />
+              </SelectTrigger>
+              <SelectContent>
+                {templateOptions.map((template) => (
+                  <SelectItem key={template.value} value={template.value}>
+                    {template.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-  <Button onClick={handleSave} disabled={isSaving} className="w-full">
-    {isSaving ? (
-      <>
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Saving...
-      </>
-    ) : (
-      <>
-        <Save className="mr-2 h-4 w-4" />
-        Update Template
-      </>
-    )}
-  </Button>
-</CardContent>
+          <Button onClick={handleSave} disabled={isSaving} className="w-full">
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Update Template
+              </>
+            )}
+          </Button>
+        </CardContent>
       </Card>
 
       <Card>
