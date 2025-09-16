@@ -107,7 +107,7 @@ export const generatePdfForTemplate1 = (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById: Map<string, string> | undefined
+  serviceNameById?: Map<string, string>
 ): jsPDF => {
   const doc = new jsPDF();
   const { subtotal, tax, invoiceTotal } = deriveTotals(
@@ -328,7 +328,7 @@ export const generatePdfForTemplate2 = (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById: Map<string, string> | undefined
+  serviceNameById?: Map<string, string>
 ): jsPDF => {
   const doc = new jsPDF();
 
@@ -507,7 +507,7 @@ export const generatePdfForTemplate3 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById: Map<string, string> | undefined
+  serviceNameById?: Map<string, string>
 ): Promise<jsPDF> => {
   // ------ local helpers ------
   const _getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -942,7 +942,7 @@ export const generatePdfForTemplate4 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById: Map<string, string> | undefined
+  serviceNameById?: Map<string, string>
 ): Promise<jsPDF> => {
   // --- helpers (same as your other templates) ---
   const _getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -1278,7 +1278,7 @@ export const generatePdfForTemplate5 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById: Map<string, string> | undefined
+  serviceNameById?: Map<string, string>
 ): Promise<jsPDF> => {
   // ------ local helpers (re-used or slightly modified) ------
   const _getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -1707,7 +1707,7 @@ export const generatePdfForTemplate6 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById: Map<string, string> | undefined
+  serviceNameById?: Map<string, string>
 ): Promise<jsPDF> => {
   // ------ local helpers ------
   const _getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -2129,7 +2129,7 @@ export const generatePdfForTemplate7 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById: Map<string, string> | undefined
+  serviceNameById?: Map<string, string>
 ): Promise<jsPDF> => {
   // ------ local helpers ------
   const _getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
