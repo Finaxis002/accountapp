@@ -1757,7 +1757,7 @@ export function TransactionForm({
 
             <FormMessage />
             {/* Display balance if available */}
-            {balance > 0 && (
+            {balance != null && balance > 0 && (
               <div className="text-red-500 text-sm mt-2">
                 Balance: ₹{balance.toFixed(2)}
               </div>
