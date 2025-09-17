@@ -71,7 +71,11 @@ import {
   generatePdfForTemplate7,
 } from "@/lib/pdf-templates";
 import { getUnifiedLines } from "@/lib/getUnifiedLines";
+
 import QuillEditor from "@/components/ui/quill-editor";
+
+import WhatsAppMessage from './WhatsAppMessage'
+
 
 // reads gstin from various possible shapes/keys
 const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -280,7 +284,7 @@ export function TransactionForm({
   const [services, setServices] = React.useState<Service[]>([]);
   const [balance, setBalance] = React.useState<number | null>(null);
   const [banks, setBanks] = React.useState<any[]>([]);
-
+  
   const [partyBalances, setPartyBalances] = React.useState<
     Record<string, number>
   >({});
