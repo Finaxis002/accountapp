@@ -8,6 +8,7 @@ import { ClientStatusChart } from '@/components/dashboard/client-status-chart';
 import { Users, Building, Database, FileText, Loader2 } from 'lucide-react';
 import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import UpdateNotification from '@/components/notifications/UpdateNotification';
 
 
 const CACHE_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
@@ -158,6 +159,9 @@ export default function AdminDashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Update Notifications */}
+      <UpdateNotification />
 
       {/* <div className="sm:grid gap-6 sm:grid-cols-5 flex flex-col">
         <Card className="lg:col-span-3">
