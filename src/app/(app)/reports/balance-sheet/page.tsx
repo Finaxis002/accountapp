@@ -11,42 +11,58 @@ export default function BalanceSheetPage() {
   const totalLiabilitiesAndEquity = balanceSheetData.liabilities.total + balanceSheetData.equity.total;
 
   // Coming Soon Banner Component
-function ComingSoonBanner() {
-  return (
-    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 p-6 border border-border shadow-sm mb-6">
-      <div className="flex flex-col items-center text-center">
-        {/* Icon */}
-        <div className="mb-4 p-3 bg-primary/10 rounded-full">
-          <BarChart3 className="h-8 w-8 text-primary" />
-        </div>
-        
-        {/* Title */}
-        <h3 className="text-xl font-semibold text-foreground mb-2">
-          Advanced Analytics Coming Soon
-        </h3>
-        
-        {/* Description */}
-        <p className="text-muted-foreground max-w-md mb-4">
-          We're enhancing your balance sheet with interactive charts, 
-          historical comparisons, and detailed financial insights.
-        </p>
-        
-        {/* Badge */}
-        <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-          <Clock className="h-3.5 w-3.5" />
-           Coming Soon
-        </div>
-      </div>
-    </div>
-  );
-}
+  function ComingSoonBanner() {
+    return (
+     <div className="relative ml-[15%] mt-[-5%]  w-full max-w-2xl mx-auto overflow-hidden rounded-2xl border border-border/50 dark:bg-gray-900 bg-white shadow-lg">   {/* Mirror/Reflection Effect */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-white/10 opacity-20"></div>
 
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent"></div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center text-center p-8">
+          {/* Animated Icon */}
+          <div className="mb-6 p-4 bg-gradient-to-r from-primary/20 to-primary/10 rounded-2xl backdrop-blur-md border border-primary/20 shadow-lg">
+            <div className="relative">
+              <BarChart3 className="h-12 w-12 text-primary" />
+              {/* Pulsing effect */}
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-75"></div>
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary/10 to-primary/5 text-primary px-4 py-2 rounded-full text-3xl font-medium border border-primary/20 backdrop-blur-sm mb-4">
+            <Clock className="h-6 w-6" />
+            Coming Soon
+          </div>
+
+          {/* Title with gradient text */}
+          <h3 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mb-4">
+            Advanced Analytics Coming Soon
+          </h3>
+
+          {/* Description */}
+          <p className="text-lg text-muted-foreground max-w-md mb-6 leading-relaxed">
+            We're enhancing your Profit & Loss with interactive charts,
+            historical comparisons, and detailed financial insights.
+          </p>
+
+          {/* Animated Badge */}
+          
+        </div>
+
+        {/* Shine/Highlight Effect */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-60"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full blur-xl"></div>
+      </div>
+    );
+  }
   return (
     <>
- <div className="flex align-middle justify-center items-center h-full">
-     <ComingSoonBanner />
- </div>
-    {/* <div className="space-y-6">
+ <div className="flex justify-center items-center fixed w-full h-full z-10 bg-gray/30 backdrop-blur-sm rounded-lg p-0">
+        <ComingSoonBanner />
+      </div>
+    <div className="space-y-6">
        <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Balance Sheet</h2>
@@ -116,7 +132,7 @@ function ComingSoonBanner() {
             </div>
         </CardFooter>
       </Card>
-    </div> */}
+    </div>
         </>
   );
 }
