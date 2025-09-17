@@ -62,14 +62,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [highlightCount, setHighlightCount] = useState(0); // Tracks the number of highlighted words
   const [currentHighlightIndex, setCurrentHighlightIndex] = useState(0); // Tracks current highlight index
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
-  const contentRef=useRef()
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/user-login" ||
     pathname.startsWith("/client-login/") ||
     pathname.startsWith("/user-login/");
   // Re-run on searchTerm/route change (SSR guard bhi)
- useEffect(() => {
+useEffect(() => {
   if (typeof window === "undefined") return;
   const root = contentRef.current;
   if (!root) return;
@@ -77,10 +78,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   clearHighlights(root);
 
   const term = searchTerm.trim();
-  if (!term) return;
+  if (!term) {
+    setHighlightCount(0);       // 🔑 reset
+    setCurrentHighlightIndex(0); // 🔑 reset
+    return;
+  }
 
   applyHighlights(root, term);
-}, [searchTerm, currentHighlightIndex]); // ⬅ include currentHighlightIndex
+}, [searchTerm, currentHighlightIndex]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -470,7 +475,7 @@ const scrollToHighlight = (index: number) => {
                         onChange={handleSearchChange}
                       />
 
-                      {/* Clear button */}
+                      {/* Clear button add*/}
                       {searchTerm && (
                         <button
                           type="button"
@@ -483,9 +488,9 @@ const scrollToHighlight = (index: number) => {
 
                       {/* Highlight count */}
                       {highlightCount > 0 && (
-                        <span className="absolute  right-12 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          {currentHighlightIndex}/{highlightCount}
-                        </span>
+                        <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+  {highlightCount > 0 ? currentHighlightIndex + 1 : 0}/{highlightCount}
+</span>
                       )}
                     </div>
                     <Button variant="ghost" size="icon" className="md:hidden">

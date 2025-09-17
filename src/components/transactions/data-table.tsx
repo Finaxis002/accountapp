@@ -95,29 +95,57 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell: Cell<TData, TValue>) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+      {table.getRowModel().rows?.length ? (
+        table.getRowModel().rows.map((row) => (
+          <TableRow
+            key={row.id}
+            className="hidden sm:table-row"
+            data-state={row.getIsSelected() && "selected"}
+          >
+            {row.getVisibleCells().map((cell: Cell<TData, TValue>) => (
+              <TableCell key={cell.id}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))
+      ) : (
+        <TableRow>
+          <TableCell colSpan={columns.length} className="h-24 text-center">
+            No results.
+          </TableCell>
+        </TableRow>
+      )}
+    </TableBody>
+  </Table>
+</div>
+
+{/* ✅ Mobile Card View outside table but inside Card */}
+<div className="sm:hidden mt-4">
+  {table.getRowModel().rows?.length ? (
+    table.getRowModel().rows.map((row) => (
+      <div
+        key={row.id}
+        className="border rounded-lg p-4 mb-2 shadow-sm bg-white"
+      >
+        {row.getVisibleCells().map((cell) => (
+          <div key={cell.id} className="flex justify-between py-1">
+            <span className="font-semibold text-gray-600">
+              {typeof cell.column.columnDef.header === "string"
+                ? cell.column.columnDef.header
+                : cell.column.columnDef.id}
+            </span>
+            <span>
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </span>
+          </div>
+        ))}
       </div>
+    ))
+  ) : (
+    <div className="text-center text-gray-500 py-4">No results.</div>
+  )}
+</div>
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
         <div className="text-sm text-muted-foreground flex-1">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}

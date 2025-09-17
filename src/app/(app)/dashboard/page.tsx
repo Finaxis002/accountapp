@@ -266,7 +266,7 @@ const fetchCompanyDashboard = React.useCallback(async () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
@@ -276,7 +276,7 @@ const fetchCompanyDashboard = React.useCallback(async () => {
           </p>
         </div>
         {companies.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-row sm:flex-row items-center gap-2 mt-4 sm:mt-0">
             <Button variant="outline" asChild>
               <Link href="/profile">
                 <Settings className="mr-2 h-4 w-4" /> Go to Settings

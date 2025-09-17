@@ -69,7 +69,7 @@ type Validity = {
     | "unknown"
     | "disabled";
   expiresAt?: string | null;
-  startAt?: string | null; // <— add this
+  startAt?: string | null;
 };
 
 export function ClientsValidityManager() {
@@ -376,7 +376,40 @@ export function ClientsValidityManager() {
               </Select>
             </div>
           </div>
-
+  {/* Mobile View Cards */}
+    <div className="space-y-4 md:hidden"> {/* Mobile View Cards */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Loading clients...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Users className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+          <h3 className="font-semibold text-lg mb-1">No clients found</h3>
+          <p className="text-muted-foreground text-sm">Try adjusting your search or filters</p>
+        </div>
+      ) : (
+        filtered.map((c) => {
+          const v = validityByClient[c._id];
+          return (
+            <Card key={c._id} className="border p-4 mb-4">
+              <CardHeader className="flex justify-between items-center">
+                <div className="text-lg font-medium">{c.clientUsername}</div>
+                <StatusBadge validity={v} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm mb-2">{c.contactName}</div>
+                <div className="text-sm mb-2">{fmt(v?.expiresAt)}</div>
+                <Button size="sm" onClick={() => handleManage(c)} className="w-3/4 mx-auto">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Manage
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })
+      )}
+    </div>
           {/* Stats Summary */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-blue-50 rounded-lg p-3 text-center">
@@ -447,7 +480,7 @@ export function ClientsValidityManager() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow>
