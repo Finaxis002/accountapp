@@ -40,43 +40,44 @@ export type Item = {
 
 export type Transaction = {
    _id: string;
-  invoiceNumber?: string | null;
-  invoiceYearYY?: number | null;
-  date: Date;
-  party?: {
-    email: boolean; _id: string; name: string 
-} | string;
-  vendor?: { _id: string; vendorName: string } | string;
-  description?: string;
-   amount: number; // Fallback for old transactions, new ones use totalAmount
-  totalAmount?: number;
-  items?: any[];
-  quantity?: number;
-  pricePerUnit?: number;
-  type: "sales" | "purchases" | "receipt" | "payment" | "journal";
-  unitType?:
-    | "Kg"
-    | "Litre"
-    | "Piece"
-    | "Box"
-    | "Meter"
-    | "Dozen"
-    | "Pack"
-    | "Other";
+   invoiceNumber?: string | null;
+   invoiceYearYY?: number | null;
+   date: Date;
+   party?: {
+     email: boolean; _id: string; name: string
+   } | string;
+   vendor?: { _id: string; vendorName: string } | string;
+   description?: string;
+    amount: number; // Fallback for old transactions, new ones use totalAmount
+   totalAmount?: number;
+   items?: any[];
+   quantity?: number;
+   pricePerUnit?: number;
+   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
+   unitType?:
+     | "Kg"
+     | "Litre"
+     | "Piece"
+     | "Box"
+     | "Meter"
+     | "Dozen"
+     | "Pack"
+     | "Other";
 
-  category?: string;
-  product?: Product;
-  company?: {
-    businessName: any; _id: string; companyName: string 
-};
-  voucher?: string;
-  // For Journal Entries
-  debitAccount?: string;
-  creditAccount?: string;
-  narration?: string;
-  // For Receipts/Payments
-  referenceNumber?: string;
-};
+   category?: string;
+   product?: Product;
+   company?: {
+     businessName: any; _id: string; companyName: string
+   };
+   voucher?: string;
+   // For Journal Entries
+   debitAccount?: string;
+   creditAccount?: string;
+   narration?: string;
+   // For Receipts/Payments
+   referenceNumber?: string;
+   notes?: string;
+ };
 
 export type Kpi = {
   title: string;

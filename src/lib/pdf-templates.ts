@@ -4,7 +4,6 @@ import autoTable from "jspdf-autotable";
 // import { getUnifiedLines } from "./utils";
 import { getUnifiedLines } from "./getUnifiedLines";
 
-
 // read a GSTIN off a company no matter the key
 const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
   const x = c as any;
@@ -60,6 +59,224 @@ const formatCurrency = (amount: number) => {
     maximumFractionDigits: 2,
   }).format(amount);
   return `Rs ${formatted}`;
+};
+
+const renderNotes = (
+  pdfDoc: jsPDF,
+  notes: string,
+  startX: number,
+  startY: number,
+  maxWidth: number,
+  pageWidth: number,
+  pageHeight: number
+) => {
+  if (!notes || typeof window === "undefined") return startY;
+
+  const parser = new DOMParser();
+  const docHTML = parser.parseFromString(notes, "text/html");
+  const elements = Array.from(docHTML.body.children);
+
+  let currentY = startY;
+
+  let listCounter = 1;
+  for (let el of elements) {
+    let bgColor: [number, number, number] | null = null; // Background color
+    if (el.tagName === "P") {
+      let text = el.textContent?.trim() || "";
+      if (!text) continue;
+
+      let align: "left" | "center" | "right" = "left";
+      let fontSize = 10;
+      let bold = false;
+      let textColor: [number, number, number] = [0, 0, 0]; // Default black
+
+      if (el.classList.contains("ql-align-center")) align = "center";
+      if (el.classList.contains("ql-align-right")) align = "right";
+      if (el.classList.contains("ql-size-large")) fontSize = 14;
+      if (el.classList.contains("ql-size-small")) fontSize = 8;
+
+      // Check for strong and underline tags
+      const strongEl = el.querySelector("strong");
+      const underlineEl = el.querySelector("u");
+      if (strongEl) {
+        bold = true;
+        text = strongEl.textContent?.trim() || text;
+        // Check for color in strong element
+        const style = strongEl.getAttribute("style");
+        if (style) {
+          const colorMatch = style.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          if (colorMatch) {
+            textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+          }
+        }
+      }
+      const isUnderlined = !!underlineEl;
+      if (isUnderlined && !strongEl) {
+        text = underlineEl.textContent?.trim() || text;
+      }
+
+      // Check for color and background in paragraph itself
+      const paraStyle = el.getAttribute("style");
+      if (paraStyle) {
+        const colorMatch = paraStyle.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (colorMatch) {
+          textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+        }
+        const bgMatch = paraStyle.match(/background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (bgMatch) {
+          bgColor = [parseInt(bgMatch[1]), parseInt(bgMatch[2]), parseInt(bgMatch[3])];
+        }
+      }
+
+      pdfDoc.setFontSize(fontSize);
+      pdfDoc.setFont("helvetica", bold ? "bold" : "normal");
+      pdfDoc.setTextColor(...textColor);
+
+      const lines = pdfDoc.splitTextToSize(text, maxWidth);
+      const lineHeight = fontSize * 0.4 + 2;
+      const totalHeight = lines.length * lineHeight;
+
+      // Draw background if needed
+      if (bgColor) {
+        let bgX = startX;
+        let bgWidth = maxWidth;
+        if (align === "center") {
+          bgX = startX + maxWidth / 2 - maxWidth / 2;
+        } else if (align === "right") {
+          bgX = startX;
+        }
+        pdfDoc.setFillColor(...bgColor);
+        pdfDoc.rect(bgX - 2, currentY - fontSize * 0.3, bgWidth + 4, totalHeight + 2, "F");
+      }
+
+      for (let line of lines) {
+        let x = startX;
+        if (align === "center") x = startX + maxWidth / 2;
+        else if (align === "right") x = startX + maxWidth;
+        pdfDoc.text(line, x, currentY, { align });
+
+        // Draw underline if needed
+        if (isUnderlined) {
+          const textWidth = pdfDoc.getTextWidth(line);
+          let underlineX = x;
+          if (align === "center") underlineX = x - textWidth / 2;
+          else if (align === "right") underlineX = x - textWidth;
+          pdfDoc.setLineWidth(0.5);
+          pdfDoc.setDrawColor(...textColor); // Use same color for underline
+          pdfDoc.line(underlineX, currentY + 1, underlineX + textWidth, currentY + 1);
+          pdfDoc.setDrawColor(0, 0, 0); // Reset to black
+        }
+
+        currentY += lineHeight;
+      }
+
+      // Reset text color to black for next elements
+      pdfDoc.setTextColor(0, 0, 0);
+      currentY += 5; // paragraph spacing
+    } else if (el.tagName === "OL") {
+      const listItems = el.querySelectorAll("li");
+      listItems.forEach((li, index) => {
+        let text = li.textContent?.trim() || "";
+        if (!text) return;
+
+        let align: "left" | "center" | "right" = "left";
+        let fontSize = 10;
+        let bold = false;
+        let textColor: [number, number, number] = [0, 0, 0]; // Default black
+
+        if (li.classList.contains("ql-align-center")) align = "center";
+        if (li.classList.contains("ql-align-right")) align = "right";
+        if (li.classList.contains("ql-size-large")) fontSize = 14;
+        if (li.classList.contains("ql-size-small")) fontSize = 8;
+
+        // Check for strong and underline tags
+        const strongEl = li.querySelector("strong");
+        const underlineEl = li.querySelector("u");
+        if (strongEl) {
+          bold = true;
+          text = strongEl.textContent?.trim() || text;
+          // Check for color in strong element
+          const style = strongEl.getAttribute("style");
+          if (style) {
+            const colorMatch = style.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (colorMatch) {
+              textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+            }
+          }
+        }
+        const isUnderlined = !!underlineEl;
+        if (isUnderlined && !strongEl) {
+          text = underlineEl.textContent?.trim() || text;
+        }
+
+        // Check for color and background in list item itself
+        const liStyle = li.getAttribute("style");
+        if (liStyle) {
+          if (!strongEl) {
+            const colorMatch = liStyle.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (colorMatch) {
+              textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+            }
+          }
+          const bgMatch = liStyle.match(/background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          if (bgMatch) {
+            bgColor = [parseInt(bgMatch[1]), parseInt(bgMatch[2]), parseInt(bgMatch[3])];
+          }
+        }
+
+        pdfDoc.setFontSize(fontSize);
+        pdfDoc.setFont("helvetica", bold ? "bold" : "normal");
+        pdfDoc.setTextColor(...textColor);
+
+        const listText = `${listCounter}. ${text}`;
+        const lines = pdfDoc.splitTextToSize(listText, maxWidth);
+        const lineHeight = fontSize * 0.4 + 2;
+        const totalHeight = lines.length * lineHeight;
+
+        // Draw background if needed
+        if (bgColor) {
+          let bgX = startX;
+          let bgWidth = maxWidth;
+          if (align === "center") {
+            bgX = startX + maxWidth / 2 - maxWidth / 2;
+          } else if (align === "right") {
+            bgX = startX;
+          }
+          pdfDoc.setFillColor(...bgColor);
+          pdfDoc.rect(bgX - 2, currentY - fontSize * 0.3, bgWidth + 4, totalHeight + 2, "F");
+        }
+
+        for (let line of lines) {
+          let x = startX;
+          if (align === "center") x = startX + maxWidth / 2;
+          else if (align === "right") x = startX + maxWidth;
+          pdfDoc.text(line, x, currentY, { align });
+
+          // Draw underline if needed
+          if (isUnderlined) {
+            const textWidth = pdfDoc.getTextWidth(line);
+            let underlineX = x;
+            if (align === "center") underlineX = x - textWidth / 2;
+            else if (align === "right") underlineX = x - textWidth;
+            pdfDoc.setLineWidth(0.5);
+            pdfDoc.setDrawColor(...textColor); // Use same color for underline
+            pdfDoc.line(underlineX, currentY + 1, underlineX + textWidth, currentY + 1);
+            pdfDoc.setDrawColor(0, 0, 0); // Reset to black
+          }
+
+          currentY += lineHeight;
+        }
+
+        // Reset text color to black for next elements
+        pdfDoc.setTextColor(0, 0, 0);
+        currentY += 3; // list item spacing
+        listCounter++;
+      });
+      currentY += 5; // list spacing
+    }
+  }
+
+  return currentY;
 };
 
 const getItemsBody = (
@@ -183,12 +400,16 @@ export const generatePdfForTemplate1 = (
     doc.setFont("helvetica", "normal");
     doc.text("Please make payments to the provided account.", 15, y + 5);
 
-    doc.setFont("helvetica", "bold");
-    doc.text("Terms and Conditions", pageW - 15, y, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.text("Payment is due within 30 days.", pageW - 15, y + 5, {
-      align: "right",
-    });
+    // Render notes instead of hardcoded terms
+    renderNotes(
+      doc,
+      transaction.notes || "",
+      pageW - 15 - 60,
+      y,
+      60,
+      pageW,
+      pageH
+    );
   };
 
   // Build full rows, then chunk into pages of 8
@@ -410,13 +631,8 @@ export const generatePdfForTemplate2 = (
 
   const drawFooter = (pageNum: number, totalPages: number) => {
     const y = pageH - footerOffset;
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      "Thank you for your business! Payment is expected within 31 days.",
-      20,
-      y
-    );
+    // Render notes instead of hardcoded thank you
+    renderNotes(doc, transaction.notes || "", 20, y, pageW - 40, pageW, pageH);
     // Optional page numbering
     doc.text(`Page ${pageNum} of ${totalPages}`, rightX, y, { align: "right" });
   };
@@ -1207,12 +1423,16 @@ export const generatePdfForTemplate4 = async (
 
   const drawFooter = (pageNum: number, total: number) => {
     const footerY = ph - m - 20;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...SECONDARY);
-    doc.text("Thank you for your business!", pw / 2, footerY, {
-      align: "center",
-    });
+    // Render notes instead of hardcoded thank you
+    const notesEndY = renderNotes(
+      doc,
+      transaction.notes || "",
+      m,
+      footerY,
+      pw - 2 * m,
+      pw,
+      ph
+    );
 
     const contact = [
       company?.address || "",
@@ -1221,9 +1441,12 @@ export const generatePdfForTemplate4 = async (
     ]
       .filter(Boolean)
       .join(" • ");
-    doc.text(contact || "", pw / 2, footerY + 6, { align: "center" });
-    doc.text(`Page ${pageNum} of ${total}`, pw / 2, footerY + 12, {
-      align: "center",
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...SECONDARY);
+    doc.text(contact || "", m, notesEndY + 6);
+    doc.text(`Page ${pageNum} of ${total}`, pw - m, notesEndY + 6, {
+      align: "right",
     });
   };
 
@@ -1271,8 +1494,6 @@ export const generatePdfForTemplate4 = async (
 
   return doc;
 };
-
-
 
 export const generatePdfForTemplate5 = async (
   transaction: Transaction,
@@ -1379,7 +1600,6 @@ export const generatePdfForTemplate5 = async (
       email: party?.email || "",
       gstin: _getCompanyGSTIN(party) || "",
     },
-  
   };
 
   // Convert to table rows
@@ -1432,13 +1652,13 @@ export const generatePdfForTemplate5 = async (
   const contentW = pw - 2 * m;
 
   // Columns for the new table style (more relative positioning)
-   // Columns for the new table style (more relative positioning)
+  // Columns for the new table style (more relative positioning)
   const colSNo = contentX + 2;
   const colItem = colSNo + 20; // Start item description after S.No.
-  const colQty = colItem  + 38; // Approx 65% across
-  const colRate =  colQty + 20; // Approx 75% across
-  const colGST = colRate  + 30; // Approx 85% across
-  const colTax = colRate  + 60; // Approx 92% across
+  const colQty = colItem + 38; // Approx 65% across
+  const colRate = colQty + 20; // Approx 75% across
+  const colGST = colRate + 30; // Approx 85% across
+  const colTax = colRate + 60; // Approx 92% across
   const colTotal = pw - m - 2;
 
   const footerSectionH = 20;
@@ -1451,7 +1671,6 @@ export const generatePdfForTemplate5 = async (
     let currentX = m;
     let currentY = m;
 
-
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.setTextColor(...PRIMARY_DARK);
@@ -1463,7 +1682,6 @@ export const generatePdfForTemplate5 = async (
     const companyInfoY = currentY + 12;
     doc.text(invoiceData.company.address, currentX, companyInfoY);
     doc.text(invoiceData.company.email, currentX, companyInfoY + 4);
-
 
     // Right: "INVOICE" Title
     doc.setFont("helvetica", "bold");
@@ -1491,7 +1709,6 @@ export const generatePdfForTemplate5 = async (
     doc.setTextColor(...LIGHT_TEXT);
     doc.text(`Invoice No: ${invoiceData.invoiceNumber}`, m, currentY + 7);
     doc.text(`Date: ${invoiceData.date}`, m, currentY + 12);
-  
 
     // Right Block: Bill To
     const rightColX = pw - m;
@@ -1514,11 +1731,16 @@ export const generatePdfForTemplate5 = async (
         align: "right",
       });
     if (invoiceData.invoiceTo.gstin)
-      doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, rightColX, currentY + 22, {
-        align: "right",
-      });
+      doc.text(
+        `GSTIN: ${invoiceData.invoiceTo.gstin}`,
+        rightColX,
+        currentY + 22,
+        {
+          align: "right",
+        }
+      );
 
-      // Horizontal divider for clarity
+    // Horizontal divider for clarity
     doc.setDrawColor(...BORDER_GRAY);
     doc.setLineWidth(0.3);
     doc.line(m, currentY + 40, pw - m, currentY + 40);
@@ -1603,10 +1825,22 @@ export const generatePdfForTemplate5 = async (
     yTotals += 10;
     // Grand Total Line - Prominent with accent color background
     doc.setFillColor(...ACCENT_TEAL);
-    doc.rect(totalsBoxX - 2, yTotals - 6, totalsBoxWidth + 4 + (pw - m - totalsBoxX), 10, "F"); // Background for total
+    doc.rect(
+      totalsBoxX - 2,
+      yTotals - 6,
+      totalsBoxWidth + 4 + (pw - m - totalsBoxX),
+      10,
+      "F"
+    ); // Background for total
     doc.setDrawColor(...ACCENT_TEAL); // Border same as fill
     doc.setLineWidth(0.5);
-    doc.rect(totalsBoxX - 2, yTotals - 6, totalsBoxWidth + 4 + (pw - m - totalsBoxX), 10, "S");
+    doc.rect(
+      totalsBoxX - 2,
+      yTotals - 6,
+      totalsBoxWidth + 4 + (pw - m - totalsBoxX),
+      10,
+      "S"
+    );
 
     doc.setFontSize(12);
     doc.setTextColor(...WHITE); // White text on teal background
@@ -1621,36 +1855,44 @@ export const generatePdfForTemplate5 = async (
     doc.setLineWidth(0.5);
     doc.line(m, footerSectionY, pw - m, footerSectionY);
 
+    // Render notes instead of hardcoded thank you
+    const notesEndY = renderNotes(
+      doc,
+      transaction.notes || "",
+      m,
+      footerSectionY + 7,
+      pw - 2 * m,
+      pw,
+      ph
+    );
+
+    // Company contact details in footer
+    const contact = [
+      invoiceData.company.address || "",
+      invoiceData.company.email || "",
+      invoiceData.company.phone || "",
+    ]
+      .filter(Boolean)
+      .join(" • ");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...LIGHT_TEXT);
-
-    doc.text(`Thank you for your business!`, m, footerSectionY + 7);
-  
-
-    // Company contact details in footer
-    const contactInfoY = footerSectionY + 7;
-    doc.text(
-      `${invoiceData.company.phone} | ${invoiceData.company.email}`,
-      pw - m,
-      contactInfoY,
-      { align: "right" }
-    );
-    doc.text(invoiceData.company.address, pw - m, contactInfoY + 5, {
-        align: "right"
+    doc.text(contact || "", m, notesEndY + 6);
+    const pageCount = doc.getNumberOfPages();
+    doc.text(`Page ${pageCount} of ${pageCount}`, pw - m, notesEndY + 6, {
+      align: "right",
     });
 
-    // Page number
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(7);
-      doc.setTextColor(...LIGHT_TEXT);
-      doc.text(`Page ${i} of ${pageCount}`, pw / 2, ph - m + 5, {
-        align: "center",
-      });
-    }
+    // // Page number
+    // for (let i = 1; i <= pageCount; i++) {
+    //   doc.setPage(i);
+    //   doc.setFont("helvetica", "italic");
+    //   doc.setFontSize(7);
+    //   doc.setTextColor(...LIGHT_TEXT);
+    //   doc.text(`Page ${i} of ${pageCount}`, pw / 1, ph - m + 5, {
+    //     align: "center",
+    //   });
+    // }
     doc.setPage(pageCount); // Reset to the last page
   };
 
@@ -1686,7 +1928,8 @@ export const generatePdfForTemplate5 = async (
   const bottomSafeY = ph - footerSectionH - m - totalsBlockHeight - 5; // Extra padding
 
   // Check if there's enough space for totals on the current page
-  if (lastRowY + totalsBlockHeight + 10 <= bottomSafeY) { // Added 10 for spacing before totals
+  if (lastRowY + totalsBlockHeight + 10 <= bottomSafeY) {
+    // Added 10 for spacing before totals
     drawTotals(lastRowY);
   } else {
     // Not enough space, add a new page
@@ -1695,10 +1938,12 @@ export const generatePdfForTemplate5 = async (
     drawDetailBlocks();
     // Reset lastRowY if content starts from top of new page, or just place totals
     // For totals, we can place them relative to the bottom of the page
-    const totalsStartOnNewPageY = Math.max(tableStartY, ph - footerSectionH - m - totalsBlockHeight - 5);
+    const totalsStartOnNewPageY = Math.max(
+      tableStartY,
+      ph - footerSectionH - m - totalsBlockHeight - 5
+    );
     drawTotals(totalsStartOnNewPageY - 10); // Subtract 10 to move it up slightly
   }
-
 
   return doc;
 };
@@ -1713,13 +1958,13 @@ export const generatePdfForTemplate6 = async (
   const _getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
     const x = c as any;
     return (
-      x?.gstin ?? 
-      x?.gstIn ?? 
-      x?.gstNumber ?? 
-      x?.gst_no ?? 
-      x?.gst ?? 
-      x?.gstinNumber ?? 
-      x?.tax?.gstin ?? 
+      x?.gstin ??
+      x?.gstIn ??
+      x?.gstNumber ??
+      x?.gst_no ??
+      x?.gst ??
+      x?.gstinNumber ??
+      x?.tax?.gstin ??
       null
     );
   };
@@ -1874,13 +2119,13 @@ export const generatePdfForTemplate6 = async (
   // ---------- painters ----------
 
   const drawHeaderSection = () => {
-    
     // Top company name and "INVOICE"
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(...ACCENT_GOLD);
-    doc.text(invoiceData.company.name.toUpperCase(), m, m + 0, { align: "left" });
-
+    doc.text(invoiceData.company.name.toUpperCase(), m, m + 0, {
+      align: "left",
+    });
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
@@ -1945,9 +2190,14 @@ export const generatePdfForTemplate6 = async (
         align: "right",
       });
     if (invoiceData.invoiceTo.gstin)
-      doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, rightColX, detailBlockY + 32, {
-        align: "right",
-      });
+      doc.text(
+        `GSTIN: ${invoiceData.invoiceTo.gstin}`,
+        rightColX,
+        detailBlockY + 32,
+        {
+          align: "right",
+        }
+      );
   };
 
   const drawTableHead = (y: number): number => {
@@ -1976,7 +2226,12 @@ export const generatePdfForTemplate6 = async (
 
     doc.setDrawColor(...DIVIDER_LINE);
     doc.setLineWidth(0.2);
-    doc.line(tableX, y + TABLE_HEADER_HEIGHT, tableX + tableW, y + TABLE_HEADER_HEIGHT);
+    doc.line(
+      tableX,
+      y + TABLE_HEADER_HEIGHT,
+      tableX + tableW,
+      y + TABLE_HEADER_HEIGHT
+    );
 
     return y + TABLE_HEADER_HEIGHT + 2; // Small gap after header
   };
@@ -2042,7 +2297,7 @@ export const generatePdfForTemplate6 = async (
     doc.setFont("helvetica", "bold");
     doc.text("GRAND TOTAL", pw - m - 65, y, { align: "right" });
     doc.text(money(invoiceTotal), pw - m - 2, y, { align: "right" });
-    
+
     return y + 15; // Return the Y position after drawing totals
   };
 
@@ -2052,28 +2307,32 @@ export const generatePdfForTemplate6 = async (
     doc.setLineWidth(0.5);
     doc.line(m, footerSectionY, pw - m, footerSectionY);
 
+    // Render notes if present
+    const notesEndY = renderNotes(
+      doc,
+      transaction.notes || "",
+      m,
+      footerSectionY + 8,
+      pw - 2 * m,
+      pw,
+      ph
+    );
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...MUTED_INFO);
 
-    doc.text(invoiceData.company.address, m, footerSectionY + 8);
+    doc.text(invoiceData.company.address, m, notesEndY + 4);
     doc.text(
       `${invoiceData.company.email} | ${invoiceData.company.phone}`,
       m,
-      footerSectionY + 12
+      notesEndY + 8
     );
-
-    // Page number (if multiple pages)
     const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        pw - m,
-        ph - m + 5,
-        { align: "right" }
-      );
-    }
+    // Page number (if multiple pages)
+    doc.text(`Page ${pageCount} of ${pageCount}`, pw - m, notesEndY + 6, {
+      align: "right",
+    });
   };
 
   // ---------- paginate rows ----------
@@ -2091,7 +2350,7 @@ export const generatePdfForTemplate6 = async (
 
     drawHeaderSection();
     drawDetailBlocks();
-    
+
     let y = drawTableHead(tableStartY);
 
     rows.forEach((it, idx) => {
@@ -2124,8 +2383,6 @@ export const generatePdfForTemplate6 = async (
 
   return doc;
 };
-
-
 
 export const generatePdfForTemplate7 = async (
   transaction: Transaction,
@@ -2224,7 +2481,10 @@ export const generatePdfForTemplate7 = async (
       name: party?.name || "Client Name",
       address:
         party?.address && party?.city
-          ? `${party.address}, ${party.city}, ${party.state || ""}`.replace(/,\s*$/, "")
+          ? `${party.address}, ${party.city}, ${party.state || ""}`.replace(
+              /,\s*$/,
+              ""
+            )
           : "Client Address Not Available",
       email: party?.email || "",
       gstin: _getCompanyGSTIN(party) || "",
@@ -2299,11 +2559,11 @@ export const generatePdfForTemplate7 = async (
     doc.setFillColor(...BG_LIGHT);
     doc.rect(0, 0, pw, headerBlockH + 10, "F"); // Light background across the top
 
-   const logoUrl = "https://template.canva.com/EAE1YAgPM_U/1/0/400w-R-Meu_EcnME.jpg"; // Replace with your logo URL
+    const logoUrl =
+      "https://template.canva.com/EAE1YAgPM_U/1/0/400w-R-Meu_EcnME.jpg"; // Replace with your logo URL
 
-  // // Add the logo image to the PDF (adjust x, y, width, height as needed)
-  // doc.addImage(logoUrl, "JPEG", m, m + 5, 30, 20); // x, y, width, height
-
+    // // Add the logo image to the PDF (adjust x, y, width, height as needed)
+    // doc.addImage(logoUrl, "JPEG", m, m + 5, 30, 20); // x, y, width, height
 
     // Company Name
     doc.setFont("helvetica", "bold");
@@ -2360,9 +2620,14 @@ export const generatePdfForTemplate7 = async (
 
     doc.setTextColor(...TEXT_COLOR);
     doc.setFont("helvetica", "normal");
-    doc.text(invoiceData.invoiceNumber, infoBlockX + infoBlockWidth - 2, rightY, {
-      align: "right",
-    });
+    doc.text(
+      invoiceData.invoiceNumber,
+      infoBlockX + infoBlockWidth - 2,
+      rightY,
+      {
+        align: "right",
+      }
+    );
     doc.text(invoiceData.date, infoBlockX + infoBlockWidth - 2, rightY + 5, {
       align: "right",
     });
@@ -2383,7 +2648,11 @@ export const generatePdfForTemplate7 = async (
     if (invoiceData.invoiceTo.email)
       doc.text(invoiceData.invoiceTo.email, infoBlockX, rightY + 13);
     if (invoiceData.invoiceTo.gstin)
-      doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, infoBlockX, rightY + 17);
+      doc.text(
+        `GSTIN: ${invoiceData.invoiceTo.gstin}`,
+        infoBlockX,
+        rightY + 17
+      );
   };
 
   const drawTableHead = (): number => {
@@ -2417,7 +2686,12 @@ export const generatePdfForTemplate7 = async (
 
     doc.setDrawColor(...LIGHT_BORDER);
     doc.setLineWidth(0.2);
-    doc.line(tableX, y + TABLE_HEADER_HEIGHT, tableX + tableW, y + TABLE_HEADER_HEIGHT);
+    doc.line(
+      tableX,
+      y + TABLE_HEADER_HEIGHT,
+      tableX + tableW,
+      y + TABLE_HEADER_HEIGHT
+    );
 
     return y + TABLE_HEADER_HEIGHT; // No extra gap for the clean look
   };
@@ -2438,9 +2712,15 @@ export const generatePdfForTemplate7 = async (
     const maxDescWidth = colQty - colItem - 5;
     let description = it.description;
     const descLines = doc.splitTextToSize(description, maxDescWidth);
-    doc.text(descLines, colItem, y + ROW_H / 2 + 1 - (descLines.length - 1) * 2);
+    doc.text(
+      descLines,
+      colItem,
+      y + ROW_H / 2 + 1 - (descLines.length - 1) * 2
+    );
 
-    doc.text(String(it.quantity), colQty, y + ROW_H / 2 + 1, { align: "right" });
+    doc.text(String(it.quantity), colQty, y + ROW_H / 2 + 1, {
+      align: "right",
+    });
     doc.text(money(it.pricePerUnit), colRate, y + ROW_H / 2 + 1, {
       align: "right",
     });
@@ -2448,7 +2728,9 @@ export const generatePdfForTemplate7 = async (
       align: "right",
     });
     doc.text(money(it.lineTax), colTax, y + ROW_H / 2 + 1, { align: "right" });
-    doc.text(money(it.lineTotal), colTotal, y + ROW_H / 2 + 1, { align: "right" });
+    doc.text(money(it.lineTotal), colTotal, y + ROW_H / 2 + 1, {
+      align: "right",
+    });
 
     // Draw bottom border for the row
     doc.setDrawColor(...LIGHT_BORDER);
@@ -2467,7 +2749,9 @@ export const generatePdfForTemplate7 = async (
     doc.setFontSize(9);
     doc.text("SUBTOTAL", totalsBlockX, yTotals);
     doc.setFont("helvetica", "bold");
-    doc.text(money(subtotal), totalsBlockX + totalsBlockWidth, yTotals, { align: "right" });
+    doc.text(money(subtotal), totalsBlockX + totalsBlockWidth, yTotals, {
+      align: "right",
+    });
 
     if (gstEnabled) {
       yTotals += 6;
@@ -2475,7 +2759,9 @@ export const generatePdfForTemplate7 = async (
       doc.setFont("helvetica", "normal");
       doc.text("GST TOTAL", totalsBlockX, yTotals);
       doc.setFont("helvetica", "bold");
-      doc.text(money(tax), totalsBlockX + totalsBlockWidth, yTotals, { align: "right" });
+      doc.text(money(tax), totalsBlockX + totalsBlockWidth, yTotals, {
+        align: "right",
+      });
     }
 
     yTotals += 10; // Space before grand total
@@ -2488,9 +2774,14 @@ export const generatePdfForTemplate7 = async (
     doc.setTextColor(...WHITE);
     doc.setFont("helvetica", "bold");
     doc.text("GRAND TOTAL", totalsBlockX - 2, yTotals);
-    doc.text(money(invoiceTotal), totalsBlockX + totalsBlockWidth + 3, yTotals, {
-      align: "right",
-    });
+    doc.text(
+      money(invoiceTotal),
+      totalsBlockX + totalsBlockWidth + 3,
+      yTotals,
+      {
+        align: "right",
+      }
+    );
   };
 
   const drawFooterSection = () => {
@@ -2499,6 +2790,17 @@ export const generatePdfForTemplate7 = async (
     doc.setLineWidth(1);
     doc.line(m, footerSectionY, pw - m, footerSectionY);
 
+    // Render notes if present
+    const notesEndY = renderNotes(
+      doc,
+      transaction.notes || "",
+      m,
+      footerSectionY + 8,
+      pw - 2 * m,
+      pw,
+      ph
+    );
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...SECONDARY_GRAY);
@@ -2506,21 +2808,14 @@ export const generatePdfForTemplate7 = async (
     doc.text(
       `${invoiceData.company.address} | ${invoiceData.company.email} | ${invoiceData.company.phone}`,
       m,
-      footerSectionY + 8
+      notesEndY + 4
     );
 
-    // Page number
     const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        pw - m,
-        ph - m + 5,
-        { align: "right" }
-      );
-    }
-    doc.setPage(pageCount); // Reset to the last page
+    // Page number (if multiple pages)
+    doc.text(`Page ${pageCount} of ${pageCount}`, pw - m, notesEndY + 6, {
+      align: "right",
+    });
   };
 
   // ---------- paginate rows ----------
@@ -2569,29 +2864,74 @@ export const generatePdfForTemplate7 = async (
   return doc;
 };
 
-
 // @/lib/pdf-templates.ts
-export async function generatePdf(transaction: Transaction, company?: Company | null, party?: Party | null, serviceNameById?: Map<string, string>, template?: string) {
+export async function generatePdf(
+  transaction: Transaction,
+  company?: Company | null,
+  party?: Party | null,
+  serviceNameById?: Map<string, string>,
+  template?: string
+) {
   // Get default template from user settings if not provided
-  const defaultTemplate = template || await getUserDefaultTemplate();
+  const defaultTemplate = template || (await getUserDefaultTemplate());
 
   switch (defaultTemplate) {
     case "template1":
-      return generatePdfForTemplate1(transaction, company, party, serviceNameById);
+      return generatePdfForTemplate1(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
     case "template2":
-      return generatePdfForTemplate2(transaction, company, party, serviceNameById);
+      return generatePdfForTemplate2(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
     case "template3":
-      return await generatePdfForTemplate3(transaction, company, party, serviceNameById);
+      return await generatePdfForTemplate3(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
     case "template4":
-      return await generatePdfForTemplate4(transaction, company, party, serviceNameById);
+      return await generatePdfForTemplate4(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
     case "template5":
-      return await generatePdfForTemplate5(transaction, company, party, serviceNameById);
+      return await generatePdfForTemplate5(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
     case "template6":
-      return await generatePdfForTemplate6(transaction, company, party, serviceNameById);
+      return await generatePdfForTemplate6(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
     case "template7":
-      return await generatePdfForTemplate7(transaction, company, party, serviceNameById);
+      return await generatePdfForTemplate7(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
     default:
-      return generatePdfForTemplate1(transaction, company, party, serviceNameById);
+      return generatePdfForTemplate1(
+        transaction,
+        company,
+        party,
+        serviceNameById
+      );
   }
 }
 

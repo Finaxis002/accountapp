@@ -11,6 +11,7 @@ import {
   FileText,
   Package,
   Server,
+  Edit,
 } from "lucide-react";
 import {
   Dialog,
@@ -940,7 +941,8 @@ export default function TransactionsPage() {
                     onClick={() => setIsEditMode(true)}
                     disabled={!transactionToPreview}
                   >
-                    Edit Invoice
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit PDF
                   </Button> */}
                 </div>
               </DialogHeader>
