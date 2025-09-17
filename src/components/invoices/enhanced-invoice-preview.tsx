@@ -113,7 +113,7 @@ export function EnhancedInvoicePreview({
           />
         ) : (
           // PDF Editor Mode
-          <div className="h-full">
+          <div className="max-h-[60vh] overflow-auto">
             {pdfBlob ? (
               <PDFEditor
                 pdfBlob={pdfBlob}

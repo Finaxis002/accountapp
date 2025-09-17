@@ -190,14 +190,14 @@ export function InvoicePreview({
   if (editMode) {
     console.log('🎨 Edit mode active, PDF blob available:', !!pdfBlob, 'Loading:', isLoading);
     return (
-      <EnhancedInvoicePreview
+      <div className="max-h-[80vh] overflow-auto"><EnhancedInvoicePreview
         transaction={transaction}
         company={company}
         party={party}
         serviceNameById={serviceNameById}
         initialPdfBlob={pdfBlob}
         onExitEditMode={onCancel}
-      />
+      /></div>
     );
   }
 
@@ -231,6 +231,7 @@ export function InvoicePreview({
               Invoice Template
             </label>
           </div>
+          
         </div>
         <div className="w-full sm:w-48">
           <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
