@@ -4,6 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/transactions/data-table";
 import { columns } from "@/components/transactions/columns";
+import { TransactionsTable } from "@/components/transactions/TransactionsTable";
 import {
   PlusCircle,
   Loader2,
@@ -11,7 +12,6 @@ import {
   FileText,
   Package,
   Server,
-  Edit,
 } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +27,7 @@ import { useCompany } from "@/contexts/company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { Transaction, Company, Party, Vendor } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
+import { ChevronDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,7 +76,7 @@ export default function TransactionsPage() {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isItemsDialogOpen, setIsItemsDialogOpen] = React.useState(false);
-  const [isEditMode, setIsEditMode] = React.useState(false);
+   const [isEditMode, setIsEditMode] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] =
     React.useState<Transaction | null>(null);
   const [transactionToEdit, setTransactionToEdit] =
@@ -89,6 +90,14 @@ export default function TransactionsPage() {
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
   const [journals, setJournals] = React.useState<Transaction[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+    const [selectedTab, setSelectedTab] = React.useState("all");
+
+const handleTabChange = (tab: TabKey) => {
+  setActiveTab(tab);  // Type-safe now
+  setIsDropdownOpen(false);  // Close the dropdown when a tab is selected
+};
+
   const [companies, setCompanies] = React.useState<Company[]>([]);
   // top of component state
   const [productsList, setProductsList] = React.useState<any[]>([]);
@@ -471,11 +480,12 @@ export default function TransactionsPage() {
 
     // inside handleViewItems
     const svcArr = Array.isArray(tx.services)
-      ? tx.services
-      : Array.isArray(tx.service)
-      ? tx.service
-      : [];
-
+  ? tx.services
+  : Array.isArray(tx.service)
+  ? tx.service
+  : tx.services
+  ? [tx.services]
+  : [];
     const svcs = svcArr.map((s: any) => {
       // id can be raw ObjectId or populated doc; also support legacy s.serviceName
       const id =
@@ -556,8 +566,7 @@ export default function TransactionsPage() {
       setTransactionToDelete(null);
     }
   };
-
-  async function handleUpdateTransaction(updatedTransaction: Transaction) {
+   async function handleUpdateTransaction(updatedTransaction: Transaction) {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
@@ -856,7 +865,7 @@ export default function TransactionsPage() {
                       New Transaction
                     </Button>
                   </DialogTrigger>
-                  <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "  style={{ maxWidth: 1000, width: '125vw' }}>
+                  <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "  style={{ maxWidth: 1000, width: '100%' }}>
                     <DialogHeader className="p-6">
                       <DialogTitle>
                         {transactionToEdit
@@ -922,30 +931,28 @@ export default function TransactionsPage() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <Dialog open={isPreviewOpen} onOpenChange={(open) => {
+           <Dialog open={isPreviewOpen} onOpenChange={(open) => {
             setIsPreviewOpen(open);
             if (!open) setIsEditMode(false);
           }}>
             <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col">
               <DialogHeader className="p-6 pb-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <DialogTitle>Invoice Preview</DialogTitle>
-                    <DialogDescription>
-                      This is a preview of the invoice. You can change the template
-                      and download it as a PDF.
-                    </DialogDescription>
-                  </div>
-                  {/* <Button
-                    variant="outline"
-                    onClick={() => setIsEditMode(true)}
-                    disabled={!transactionToPreview}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit PDF
-                  </Button> */}
-                </div>
+               <DialogTitle>Invoice Preview</DialogTitle>
+                <DialogDescription>
+                  This is a preview of the invoice. You can change the template
+                  and download it as a PDF.
+                </DialogDescription>
               </DialogHeader>
+              {/* for mobile */}
+              {transactionToPreview && (
+  <InvoicePreview
+    transaction={transactionToPreview}
+    company={companies.find(c => c._id === transactionToPreview.company?._id) || null}
+    party={parties.find(p => p._id === (transactionToPreview as any)?.party?._id || transactionToPreview?.party === p._id) || null}
+    serviceNameById={serviceNameById}
+  />
+)}
+{/* for desktop */}
               <InvoicePreview
                 transaction={transactionToPreview}
                 company={
@@ -961,24 +968,12 @@ export default function TransactionsPage() {
                   ) || null
                 }
                 serviceNameById={serviceNameById} // ✅ pass it
-                editMode={isEditMode}
-                onSave={(updatedTransaction) => {
-                  // Handle save logic here
-                  console.log('Saving updated transaction:', updatedTransaction);
-                  setIsEditMode(false);
-                  setIsPreviewOpen(false);
-                  // You would typically call an API to update the transaction
-                  // fetchTransactions(); // Refresh the list
-                }}
-                onCancel={() => {
-                  setIsEditMode(false);
-                }}
               />
             </DialogContent>
           </Dialog>
 
           <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-            <DialogContent className="sm:max-w-4xl">
+            <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>Item Details</DialogTitle>
                 <DialogDescription>
@@ -986,9 +981,9 @@ export default function TransactionsPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4 max-h-[80vh] overflow-auto">
+              <div className="mt-4">
                 <Table>
-                  <TableHeader>
+                  <TableHeader >
                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead className="hidden sm:table-cell">
@@ -1068,7 +1063,8 @@ export default function TransactionsPage() {
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as TabKey)}
             >
-              <div className="overflow-x-auto pb-2">
+             {/* ✅ Desktop Tabs */}
+<div className="hidden sm:block overflow-x-auto pb-2">
                 <TabsList>
                   <TabsTrigger value="all">All</TabsTrigger>
                   {canSales && <TabsTrigger value="sales">Sales</TabsTrigger>}
@@ -1086,7 +1082,71 @@ export default function TransactionsPage() {
                   )}
                 </TabsList>
               </div>
+{/* ✅ Mobile Dropdown */}
+<div className="block sm:hidden relative">
+  <button
+    onClick={() => setIsDropdownOpen((prev) => !prev)}
+    className="flex items-center justify-between w-full px-3 py-2 border rounded-md bg-white shadow-sm"
+  >
+<span className="text-sm">
+  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+</span>
+    <ChevronDown className="ml-2 h-4 w-4" />
+  </button>
 
+  {isDropdownOpen && (
+    <div className="absolute mt-1 w-40 bg-white border rounded-md shadow-lg z-50">
+      <ul className="py-1">
+        <li
+          onClick={() => handleTabChange("all")}
+          className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+        >
+          All
+        </li>
+        {canSales && (
+          <li
+            onClick={() => handleTabChange("sales")}
+            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+          >
+            Sales
+          </li>
+        )}
+        {canPurchases && (
+          <li
+            onClick={() => handleTabChange("purchases")}
+            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+          >
+            Purchases
+          </li>
+        )}
+        {canReceipt && (
+          <li
+            onClick={() => handleTabChange("receipts")}
+            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+          >
+            Receipts
+          </li>
+        )}
+        {canPayment && (
+          <li
+            onClick={() => handleTabChange("payments")}
+            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+          >
+            Payments
+          </li>
+        )}
+        {canJournal && (
+          <li
+            onClick={() => handleTabChange("journals")}
+            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+          >
+            Journals
+          </li>
+        )}
+      </ul>
+    </div>
+  )}
+</div>
               <TabsContent value="all" className="mt-4">
                 {renderContent(allVisibleTransactions)}
               </TabsContent>
