@@ -75,7 +75,7 @@ export function DataTable<TData, TValue>({
         />
       </div>
       <div className="overflow-x-auto">
-        <Table>
+        <Table className="hidden sm:block">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

@@ -473,7 +473,7 @@ export default function InventoryPage() {
           </div>
         ))}
       </div>
-      <div>
+      <div className="hidden sm:block">
          <Table>
         <TableHeader>
           <TableRow>
