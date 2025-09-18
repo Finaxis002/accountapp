@@ -59,11 +59,55 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
+
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/user-login" ||
     pathname.startsWith("/client-login/") ||
     pathname.startsWith("/user-login/");
+
+  // Re-run on searchTerm/route change (SSR guard bhi)
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  const root = contentRef.current;
+  if (!root) return;
+
+  clearHighlights(root);
+
+  const term = searchTerm.trim();
+  if (!term) {
+    setHighlightCount(0);       // 🔑 reset
+    setCurrentHighlightIndex(0); // 🔑 reset
+    return;
+  }
+
+  applyHighlights(root, term);
+}, [searchTerm, currentHighlightIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown" && currentHighlightIndex < highlightCount - 1) {
+       
+        setCurrentHighlightIndex(currentHighlightIndex + 1);
+        scrollToHighlight(currentHighlightIndex + 1);
+      }
+
+      if (event.key === "ArrowUp" && currentHighlightIndex > 0) {
+      
+        setCurrentHighlightIndex(currentHighlightIndex - 1);
+        scrollToHighlight(currentHighlightIndex - 1);
+      }
+
+      if (event.key === "Enter") {
+       
+        console.log("Enter key pressed on the highlighted word", currentHighlightIndex);
+        
+      }
+    };
+
 
   useEffect(() => {
     if (isAuthRoute) {
@@ -312,6 +356,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         placeholder="Search..."
                         className="pl-9 bg-background"
                       />
+
+
+                      {/* Clear button add*/}
+                      {searchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchTerm("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:underline"
+                        >
+                          &#x2716;
+                        </button>
+                      )}
+
+                      {/* Highlight count */}
+                      {highlightCount > 0 && (
+                        <span className="absolute right-12 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+  {highlightCount > 0 ? currentHighlightIndex + 1 : 0}/{highlightCount}
+</span>
+                      )}
+
                     </div>
                     <Button variant="ghost" size="icon" className="md:hidden">
                       <Search className="h-5 w-5" />

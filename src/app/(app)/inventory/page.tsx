@@ -219,6 +219,7 @@ export default function InventoryPage() {
     });
   };
 
+
   // Delete handlers
   const confirmDeleteProduct = (p: Product) => {
     setProductToDelete(p);
@@ -304,58 +305,105 @@ export default function InventoryPage() {
       );
     }
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Product</TableHead>
-            <TableHead>Stock</TableHead>
-            <TableHead>Created At</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+
+
+      <div className="space-y-6">
+        {/* Table View for Larger Screens */}
+        <div className="hidden sm:block">
+          {/* Table Component */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.map((p) => (
+                <TableRow key={p._id}>
+                  <TableCell>
+                    <div className="font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      {p.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-bold text-lg">{p.stocks ?? 0}</span>
+                  </TableCell>
+                  <TableCell>
+                    {p.createdAt
+                      ? new Intl.DateTimeFormat("en-US").format(new Date(p.createdAt))
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => openEditProduct(p)}>
+                          <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => confirmDeleteProduct(p)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile View - Cards  product */}
+        <div className="sm:hidden">
           {products.map((p) => (
-            <TableRow key={p._id}>
-              <TableCell>
+            <div key={p._id} className="mb-4 bg-white shadow-md rounded-lg p-4">
+              <div className="flex justify-between items-center">
                 <div className="font-medium flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
                   {p.name}
                 </div>
-              </TableCell>
-              <TableCell>
-                <span className="font-bold text-lg">{p.stocks ?? 0}</span>
-              </TableCell>
-              <TableCell>
-                {p.createdAt
-                  ? new Intl.DateTimeFormat("en-US").format(
-                      new Date(p.createdAt)
-                    )
-                  : "—"}
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => openEditProduct(p)}>
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => confirmDeleteProduct(p)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
+                <div className="text-lg font-bold">{p.stocks ?? 0}</div>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm text-gray-500">
+                  {p.createdAt
+                    ? new Intl.DateTimeFormat("en-US").format(new Date(p.createdAt))
+                    : "—"}
+                </span>
+              </div>
+              <div className="mt-3 flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => openEditProduct(p)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => confirmDeleteProduct(p)}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
+        </div>
+      </div>
+
     );
   };
 
@@ -385,7 +433,48 @@ export default function InventoryPage() {
       );
     }
     return (
-      <Table>
+     <div className="space-y-6">
+      <div className="sm:hidden">
+        {services.map((s) => (
+          <div key={s._id} className="mb-4 bg-white shadow-md rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <div className="font-medium flex items-center gap-2">
+                <Server className="h-4 w-4 text-muted-foreground" />
+                {s.serviceName}
+                <Badge variant="outline">Service</Badge>
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-sm text-gray-500">
+                {s.createdAt
+                  ? new Intl.DateTimeFormat("en-US").format(new Date(s.createdAt))
+                  : "—"}
+              </span>
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => openEditService(s)}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={() => confirmDeleteService(s)}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+
+            </div>
+          </div>
+        ))}
+      </div>
+      <div>
+         <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Service</TableHead>
@@ -434,6 +523,8 @@ export default function InventoryPage() {
           ))}
         </TableBody>
       </Table>
+      </div>
+      </div>
     );
   };
 
@@ -531,19 +622,19 @@ export default function InventoryPage() {
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  Inventory Management
-                </h2>
-                <p className="text-muted-foreground">
-                  Track and manage your products and services.
-                </p>
-              </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            {/* Content Section */}
+            <div className="mb-4 sm:mb-0">
+              <h2 className="text-2xl font-bold tracking-tight">
+                Inventory Management
+              </h2>
+              <p className="text-muted-foreground">
+                Track and manage your products and services.
+              </p>
             </div>
-            {(permissions?.canCreateProducts ||
-              userCaps?.canCreateInventory) && (
+
+            {/* Buttons Section */}
+            {(permissions?.canCreateProducts || userCaps?.canCreateInventory) && (
               <div className="flex gap-2">
                 <Button variant="outline" onClick={openCreateProduct}>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -589,7 +680,7 @@ export default function InventoryPage() {
               setIsProductFormOpen(isOpen);
             }}
           >
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="w-full max-w-[95%] sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {productToEdit ? "Edit Product" : "Create New Product"}
@@ -615,7 +706,7 @@ export default function InventoryPage() {
               setIsServiceFormOpen(isOpen);
             }}
           >
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="w-full max-w-[95%] sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {serviceToEdit ? "Edit Service" : "Create New Service"}

@@ -224,13 +224,13 @@ export function ProductStock() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center sm:justify-between">
             <div>
               <CardTitle>Product & Service Stock</CardTitle>
               <CardDescription>Current inventory levels.</CardDescription>
             </div>
             {(permissions?.canCreateProducts || userCaps?.canCreateInventory) &&(
-              <div className="items-end flex gap-4">
+              <div className="flex flex-row sm:flex-row items-center gap-4 mt-4 sm:mt-0">
                 {/* Add Product */}
                 <Dialog
                   open={isAddProductOpen}
@@ -343,7 +343,8 @@ export function ProductStock() {
                               onClick={() => handleEditClick(product)}
                             >
                               <Edit className="h-4 w-4 mr-2" />
-                              Edit Stock
+  <span className="hidden sm:inline">Edit Stock</span>
+  <span className="sm:hidden">Edit</span>
                             </Button>
                             ) : null}
                       </TableCell>
