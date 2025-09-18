@@ -9,6 +9,7 @@ import { Users, Building, Database, FileText, Loader2 } from 'lucide-react';
 import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import UpdateNotification from '@/components/notifications/UpdateNotification';
+import UpdateNotificationBadge from '@/components/notifications/UpdateNotificationBadge';
 
 
 const CACHE_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
@@ -137,6 +138,7 @@ export default function AdminDashboardPage() {
             Overview of your accounting software platform
           </p>
         </div>
+        <UpdateNotificationBadge />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -161,7 +163,9 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Update Notifications */}
-      <UpdateNotification />
+      <div data-notification-section>
+        <UpdateNotification />
+      </div>
 
       {/* <div className="sm:grid gap-6 sm:grid-cols-5 flex flex-col">
         <Card className="lg:col-span-3">
