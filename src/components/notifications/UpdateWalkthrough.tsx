@@ -525,10 +525,11 @@ const UpdateWalkthrough = () => {
               </Button>
 
               {currentStep === totalSteps - 1 ? (
-                <Button onClick={handleComplete} className="bg-gradient-to-r from-red-500 to-red-600">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Remove Notification
-                </Button>
+                <Button  variant="outline" onClick={handleComplete} className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors duration-200"
+                      >
+                        <X className="h-3 w-3 mr-1.5" />
+                        Dismiss
+                      </Button>
               ) : (
                 <Button onClick={handleNext}>
                   Next
