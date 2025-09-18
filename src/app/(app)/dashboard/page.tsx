@@ -35,6 +35,7 @@ import {
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { ProductStock } from "@/components/dashboard/product-stock";
 import Link from "next/link";
+import UpdateWalkthrough from "@/components/notifications/UpdateWalkthrough";
 
 
 const CACHE_KEY = "company_dashboard_data"; // Key to store the cache
@@ -276,7 +277,11 @@ const fetchCompanyDashboard = React.useCallback(async () => {
           </p>
         </div>
         {companies.length > 0 && (
+
           <div className="flex flex-row sm:flex-row items-center gap-2 mt-4 sm:mt-0">
+
+            <UpdateWalkthrough />
+
             <Button variant="outline" asChild>
               <Link href="/profile">
                 <Settings className="mr-2 h-4 w-4" /> Go to Settings

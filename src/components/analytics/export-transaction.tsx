@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Download } from "lucide-react";
-import { toast } from "react-toastify";
-import 'react-toastify/dist/ReactToastify.css';
+import { useToast } from "@/hooks/use-toast";
 type Props = {
   /** Required to build client-wide endpoints */
   selectedClientId: string;
@@ -23,6 +22,7 @@ type Props = {
 const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000").replace(/\/+$/, "");
 
 export function ExportTransactions({ selectedClientId, companyMap, defaultCompanyId, onExported }: Props) {
+  const { toast } = useToast();
   const stringifyId = (v: any): string => {
     if (!v) return "";
     if (typeof v === "string") return v;
@@ -96,17 +96,11 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
 
       setClients(data);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Something went wrong.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        }
-      );
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

@@ -19,7 +19,6 @@ import {
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import type { User } from "@/lib/types";
-
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -58,17 +57,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showHistoryPage, setShowHistoryPage] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const [searchTerm, setSearchTerm] = useState(""); // Store search term
-  const [highlightCount, setHighlightCount] = useState(0); // Tracks the number of highlighted words
-  const [currentHighlightIndex, setCurrentHighlightIndex] = useState(0); // Tracks current highlight index
+
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
+
   const contentRef = useRef<HTMLDivElement | null>(null);
+
 
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/user-login" ||
     pathname.startsWith("/client-login/") ||
     pathname.startsWith("/user-login/");
+
   // Re-run on searchTerm/route change (SSR guard bhi)
 useEffect(() => {
   if (typeof window === "undefined") return;
@@ -108,12 +108,7 @@ useEffect(() => {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [currentHighlightIndex, highlightCount]);
+
   useEffect(() => {
     if (isAuthRoute) {
       // skip auth checks completely on auth pages
@@ -323,125 +318,12 @@ useEffect(() => {
 
   // 🆕 Effect 2: Schedule auto-logout exactly when token expires
 
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-  // Escape regex special chars
- const escapeReg = (s: string) =>
-  s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-
-  // const clearHighlights = (root: HTMLElement) => {
-  //   const marks = root.querySelectorAll("mark.__hl");
-  //   marks.forEach((m) => {
-  //     const parent = m.parentNode;
-  //     if (parent) {
-  //       parent.replaceChild(document.createTextNode(m.textContent || ""), m);
-  //     }
-  //   });
-  // };
-
-  const clearHighlights = (root: HTMLElement) => {
-  const marks = root.querySelectorAll("mark.__hl");
-  marks.forEach((m) => {
-    const parent = m.parentNode;
-    if (parent) {
-     
-      parent.replaceChild(document.createTextNode(m.textContent || ""), m);
-      parent.normalize(); 
-    }
-  });
-};
-
-
- const applyHighlights = (root: HTMLElement, term: string) => {
-  if (!term) return;
-  const safeTerm = escapeReg(term);
-  const rx = new RegExp(safeTerm, "gi");
-
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const skipTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "MARK", "INPUT", "TEXTAREA"]);
-
-  let nodes: Text[] = [];
-  let node: Node | null;
-  while ((node = walker.nextNode())) {
-    const textNode = node as Text;
-    const el = textNode.parentElement;
-    if (!el || skipTags.has(el.tagName)) continue;
-    if (textNode.nodeValue?.trim()) nodes.push(textNode);
-  }
-
-  let count = 0;
-  nodes.forEach((textNode) => {
-    const text = textNode.nodeValue || "";
-    const matches = [...text.matchAll(rx)];
-    if (matches.length === 0) return;
-
-    const frag = document.createDocumentFragment();
-    let lastIndex = 0;
-
-    matches.forEach((m) => {
-      const start = m.index!;
-      const end = start + m[0].length;
-
-
-      if (start > lastIndex) {
-        frag.appendChild(document.createTextNode(text.slice(lastIndex, start)));
-      }
-
-      const mark = document.createElement("mark");
-      mark.className = "__hl";
-
-      if (count === currentHighlightIndex) {
-        mark.style.backgroundColor = "orange";
-      } else {
-        mark.style.backgroundColor = "yellow";
-      }
-
-      mark.textContent = m[0];
-      frag.appendChild(mark);
-
-      lastIndex = end;
-      count++; 
-    });
-
-    if (lastIndex < text.length) {
-      frag.appendChild(document.createTextNode(text.slice(lastIndex)));
-    }
-
-    textNode.replaceWith(frag);
-  });
-
-  setHighlightCount(count);
-};
-
- const handleNextHighlight = () => {
-  if (currentHighlightIndex < highlightCount - 1) {
-    setCurrentHighlightIndex((prev) => prev + 1);
-    scrollToHighlight(currentHighlightIndex + 1);
-  }
-};
-
-const handlePreviousHighlight = () => {
-  if (currentHighlightIndex > 0) {
-    setCurrentHighlightIndex((prev) => prev - 1);
-    scrollToHighlight(currentHighlightIndex - 1);
-  }
-};
-
-const scrollToHighlight = (index: number) => {
-  const marks = contentRef.current?.querySelectorAll("mark.__hl");
-  if (marks && marks[index]) {
-    marks[index].scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-};
   return (
     <CompanyProvider>
       <PermissionProvider>
         <UserPermissionsProvider>
           <SidebarProvider>
-            <div className="flex min-h-screen bg-background text-foreground">
+            <div className="flex min-h-screen bg-background text-foreground ">
               {showAppSidebar ? <AppSidebar /> : <UserSidebar />}
               <div className="flex-1 flex flex-col w-full">
                 <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 z-20">
@@ -454,26 +336,27 @@ const scrollToHighlight = (index: number) => {
                           ? "Master!"
                           : currentUser?.name?.split(" ")[0]}
                       </h1>
-                      <p className="text-sm text-muted-foreground">{dateString}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {dateString}
+                      </p>
                     </div>
                     {(currentUser?.role === "customer" ||
                       currentUser?.role === "user" ||
                       currentUser?.role === "admin" ||
                       currentUser?.role === "manager") && (
-                        <div className="hidden md:block">
-                          <CompanySwitcher />
-                        </div>
-                      )}
+                      <div className="hidden md:block">
+                        <CompanySwitcher />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
                     <div className="relative w-full max-w-md hidden md:block">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search..."
-                        className="pl-9 bg-background pr-10"
-                        value={searchTerm}
-                        onChange={handleSearchChange}
+                        className="pl-9 bg-background"
                       />
+
 
                       {/* Clear button add*/}
                       {searchTerm && (
@@ -492,11 +375,11 @@ const scrollToHighlight = (index: number) => {
   {highlightCount > 0 ? currentHighlightIndex + 1 : 0}/{highlightCount}
 </span>
                       )}
+
                     </div>
                     <Button variant="ghost" size="icon" className="md:hidden">
                       <Search className="h-5 w-5" />
                     </Button>
-
                     <ThemeToggle />
                     {role !== "user" && role !== "master" && <Notification />}
 
@@ -505,21 +388,26 @@ const scrollToHighlight = (index: number) => {
                         onClick={handleHistoryClick}
                         className="cursor-pointer"
                       >
-                        <HistoryIcon className="h-6 w-6" /> {/* History Icon */}
+                        <HistoryIcon className="h-5 w-5" /> {/* History Icon */}
                       </div>
                     )}
 
                    
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="flex items-center gap-2 p-1 md:p-2 h-auto">
+                        <Button
+                          variant="ghost"
+                          className="flex items-center gap-2 p-1 md:p-2 h-auto"
+                        >
                           <UserNav />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => router.push("/profile")}>
+                        <DropdownMenuItem
+                          onClick={() => router.push("/profile")}
+                        >
                           Profile
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleSettingsClick}>
@@ -533,7 +421,7 @@ const scrollToHighlight = (index: number) => {
                     </DropdownMenu>
                   </div>
                 </header>
-                <main ref={contentRef} className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
+                <main className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
                   {children}
                 </main>
               </div>

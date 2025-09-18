@@ -13,7 +13,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
+ TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ import {
   Users,
   Calendar,
   Mail,
-  Phone,
+  Phone, 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ClientValidityCard } from "./ClientValidityCard";
@@ -72,7 +72,11 @@ type Validity = {
   startAt?: string | null;
 };
 
-export function ClientsValidityManager() {
+type ClientsValidityManagerProps = {
+  onClientClick?: (client: ClientLite) => void;
+};
+
+export function ClientsValidityManager({ onClientClick }: ClientsValidityManagerProps = {}) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL!;
   const { toast } = useToast();
 
@@ -85,13 +89,8 @@ export function ClientsValidityManager() {
   >({});
   const [isValidityLoading, setIsValidityLoading] = React.useState(false);
 
-  const [selectedClient, setSelectedClient] = React.useState<ClientLite | null>(
-    null
-  );
   const lower = (v: unknown) => (v ?? "").toString().toLowerCase();
   const hasText = (v: unknown, q: string) => lower(v).includes(q);
-
-  const [open, setOpen] = React.useState(false);
 
   function toValidity(raw: any): Validity {
     // Unwrap common API shapes
@@ -219,27 +218,27 @@ export function ClientsValidityManager() {
 
     const badgeConfig = {
       active: {
-        class: "bg-emerald-100 text-emerald-800 border-emerald-200",
-        icon: <div className="w-2 h-2 bg-emerald-500 rounded-full mr-1.5" />,
+        class: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800",
+        icon: <div className="w-2 h-2 bg-emerald-500 dark:bg-emerald-400 rounded-full mr-1.5" />,
       },
       expired: {
-        class: "bg-red-100 text-red-800 border-red-200",
+        class: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
         icon: <CalendarClock className="h-3.5 w-3.5 mr-1" />,
       },
       suspended: {
-        class: "bg-amber-100 text-amber-800 border-amber-200",
+        class: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
         icon: <Ban className="h-3.5 w-3.5 mr-1" />,
       },
       unlimited: {
-        class: "bg-blue-100 text-blue-800 border-blue-200",
+        class: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
         icon: <InfinityIcon className="h-3.5 w-3.5 mr-1" />,
       },
       unknown: {
-        class: "bg-gray-100 text-gray-800 border-gray-200",
-        icon: <div className="w-2 h-2 bg-gray-500 rounded-full mr-1.5" />,
+        class: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+        icon: <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full mr-1.5" />,
       },
       disabled: {
-        class: "bg-gray-100 text-gray-800 border-gray-200",
+        class: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
         icon: <Ban className="h-3.5 w-3.5 mr-1" />,
       },
     } as const;
@@ -270,62 +269,20 @@ export function ClientsValidityManager() {
   }
 
   const handleManage = (c: ClientLite) => {
-    setSelectedClient(c);
-    setOpen(true);
+    onClientClick?.(c);
   };
 
-  // refresh a single client's validity after saving in the dialog
-  const refreshOne = async (clientId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Authentication token not found.");
-
-      const r = await fetch(`${baseURL}/api/account/${clientId}/validity`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-
-      if (r.status === 404) {
-        setValidityByClient((prev) => ({
-          ...prev,
-          [clientId]: {
-            enabled: false,
-            status: "unknown",
-            expiresAt: null,
-            startAt: null,
-          },
-        }));
-        return;
-      }
-
-      if (!r.ok) {
-        const body = await r.text().catch(() => "");
-        throw new Error(`Refresh failed ${r.status}: ${body}`);
-      }
-
-      const json = await r.json(); // { ok, validity }
-      const v = toValidity(json);
-
-      setValidityByClient((prev) => ({ ...prev, [clientId]: v }));
-    } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Could not refresh validity",
-        description: e instanceof Error ? e.message : "Something went wrong.",
-      });
-    }
-  };
 
   return (
-    <Card className="border shadow-sm">
-      <CardHeader className="bg-muted/40 pb-4">
+    <Card className="border shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <CardHeader className="bg-muted/40 dark:bg-gray-800/50 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <CardTitle className="text-xl flex items-center gap-2">
+            <CardTitle className="text-xl flex items-center gap-2 dark:text-white">
               <Users className="h-5 w-5" />
               Client Validity Management
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="dark:text-gray-400">
               Manage account validity for all clients
             </CardDescription>
           </div>
@@ -338,6 +295,7 @@ export function ClientsValidityManager() {
                 setSearch("");
                 setStatusFilter("all");
               }}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
             >
               Clear Filters
             </Button>
@@ -350,10 +308,10 @@ export function ClientsValidityManager() {
           {/* Search and Filter Section */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
               <Input
                 placeholder="Search clients by name, email, or contact..."
-                className="pl-10"
+                className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -361,17 +319,17 @@ export function ClientsValidityManager() {
 
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px]">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className="w-[160px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                  <Filter className="h-4 w-4 mr-2 dark:text-gray-400" />
                   <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                  <SelectItem value="unlimited">Unlimited</SelectItem>
-                  <SelectItem value="unknown">Unknown</SelectItem>
+                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                  <SelectItem value="all" className="dark:focus:bg-gray-700 dark:text-white">All Statuses</SelectItem>
+                  <SelectItem value="active" className="dark:focus:bg-gray-700 dark:text-white">Active</SelectItem>
+                  <SelectItem value="expired" className="dark:focus:bg-gray-700 dark:text-white">Expired</SelectItem>
+                  <SelectItem value="suspended" className="dark:focus:bg-gray-700 dark:text-white">Suspended</SelectItem>
+                  <SelectItem value="unlimited" className="dark:focus:bg-gray-700 dark:text-white">Unlimited</SelectItem>
+                  <SelectItem value="unknown" className="dark:focus:bg-gray-700 dark:text-white">Unknown</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -412,44 +370,44 @@ export function ClientsValidityManager() {
     </div>
           {/* Stats Summary */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-blue-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-center border dark:border-blue-800/50">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {clients.length}
               </div>
-              <div className="text-xs text-blue-800">Total Clients</div>
+              <div className="text-xs text-blue-800 dark:text-blue-300">Total Clients</div>
             </div>
-            <div className="bg-emerald-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-emerald-600">
+            <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3 text-center border dark:border-emerald-800/50">
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {
                   clients.filter(
                     (c) => validityByClient[c._id]?.status === "active"
                   ).length
                 }
               </div>
-              <div className="text-xs text-emerald-800">Active</div>
+              <div className="text-xs text-emerald-800 dark:text-emerald-300">Active</div>
             </div>
-            <div className="bg-red-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-red-600">
+            <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-3 text-center border dark:border-red-800/50">
+              <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {
                   clients.filter(
                     (c) => validityByClient[c._id]?.status === "expired"
                   ).length
                 }
               </div>
-              <div className="text-xs text-red-800">Expired</div>
+              <div className="text-xs text-red-800 dark:text-red-300">Expired</div>
             </div>
-            <div className="bg-amber-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-amber-600">
+            <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3 text-center border dark:border-amber-800/50">
+              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                 {
                   clients.filter(
                     (c) => validityByClient[c._id]?.status === "suspended"
                   ).length
                 }
               </div>
-              <div className="text-xs text-amber-800">Disabled</div>
+              <div className="text-xs text-amber-800 dark:text-amber-300">Disabled</div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-gray-600">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border dark:border-gray-700">
+              <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                 {
                   clients.filter(
                     (c) =>
@@ -458,40 +416,42 @@ export function ClientsValidityManager() {
                   ).length
                 }
               </div>
-              <div className="text-xs text-gray-800">Unknown</div>
+              <div className="text-xs text-gray-800 dark:text-gray-300">Unknown</div>
             </div>
           </div>
 
           {/* Clients Table */}
-          <div className="rounded-lg border overflow-hidden">
+          <div className="rounded-lg border overflow-hidden dark:border-gray-700">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Loading clients...</p>
+              <div className="flex flex-col items-center justify-center py-12 dark:bg-gray-900">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground dark:text-gray-400 mb-4" />
+                <p className="text-muted-foreground dark:text-gray-400">Loading clients...</p>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-                <h3 className="font-semibold text-lg mb-1">No clients found</h3>
-                <p className="text-muted-foreground text-sm">
+              <div className="flex flex-col items-center justify-center py-12 text-center dark:bg-gray-900">
+                <Users className="h-12 w-12 text-muted-foreground dark:text-gray-600 mb-4 opacity-50" />
+                <h3 className="font-semibold text-lg mb-1 dark:text-white">No clients found</h3>
+                <p className="text-muted-foreground dark:text-gray-400 text-sm">
                   {search || statusFilter !== "all"
                     ? "Try adjusting your search or filters"
                     : "No clients available in the system"}
                 </p>
               </div>
             ) : (
+
               <div className="hidden md:block overflow-x-auto">
+
                 <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="font-semibold">Client</TableHead>
-                      <TableHead className="font-semibold">Contact</TableHead>
-                      <TableHead className="font-semibold">
+                  <TableHeader className="bg-muted/50 dark:bg-gray-800">
+                    <TableRow className="dark:border-gray-700">
+                      <TableHead className="font-semibold dark:text-white">Client</TableHead>
+                      <TableHead className="font-semibold dark:text-white">Contact</TableHead>
+                      <TableHead className="font-semibold dark:text-white">
                         Contact Info
                       </TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="font-semibold">Expires</TableHead>
-                      <TableHead className="font-semibold text-right">
+                      <TableHead className="font-semibold dark:text-white">Status</TableHead>
+                      <TableHead className="font-semibold dark:text-white">Expires</TableHead>
+                      <TableHead className="font-semibold text-right dark:text-white">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -500,35 +460,45 @@ export function ClientsValidityManager() {
                     {filtered.map((c) => {
                       const v = validityByClient[c._id];
                       return (
-                        <TableRow key={c._id} className="hover:bg-muted/30">
+                        <TableRow key={c._id} className="hover:bg-muted/30 dark:hover:bg-gray-800/50 dark:border-gray-700">
                           <TableCell className="font-medium">
-                            <div className="flex flex-col">
+                            <div
+                              className="flex flex-col cursor-pointer hover:text-primary dark:text-white dark:hover:text-blue-400"
+                              onClick={() => onClientClick?.(c)}
+                            >
                               <span>{c.clientUsername}</span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground dark:text-gray-400">
                                 {c.slug}
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>{c.contactName}</TableCell>
+                          <TableCell className="dark:text-white">
+                            <span
+                              className="cursor-pointer hover:text-primary dark:hover:text-blue-400"
+                              onClick={() => onClientClick?.(c)}
+                            >
+                              {c.contactName}
+                            </span>
+                          </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5 text-sm">
-                                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="truncate max-w-[160px]">
+                                <Mail className="h-3.5 w-3.5 text-muted-foreground dark:text-gray-400" />
+                                <span className="truncate max-w-[160px] dark:text-gray-300">
                                   {c.email}
                                 </span>
                               </div>
                               {c.phone && (
                                 <div className="flex items-center gap-1.5 text-sm">
-                                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span>{c.phone}</span>
+                                  <Phone className="h-3.5 w-3.5 text-muted-foreground dark:text-gray-400" />
+                                  <span className="dark:text-gray-300">{c.phone}</span>
                                 </div>
                               )}
                             </div>
                           </TableCell>
                           <TableCell>
                             {isValidityLoading && !v ? (
-                              <div className="flex items-center gap-2 text-muted-foreground">
+                              <div className="flex items-center gap-2 text-muted-foreground dark:text-gray-400">
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 <span className="text-sm">Loading…</span>
                               </div>
@@ -536,9 +506,9 @@ export function ClientsValidityManager() {
                               <StatusBadge validity={v} />
                             )}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          <TableCell className="whitespace-nowrap dark:text-gray-300">
                             <div className="flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground dark:text-gray-400" />
                               <span>{fmt(v?.expiresAt)}</span>
                             </div>
                           </TableCell>
@@ -546,10 +516,10 @@ export function ClientsValidityManager() {
                             <Button
                               size="sm"
                               onClick={() => handleManage(c)}
-                              className="gap-1.5"
+                              className="gap-1.5 dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
                             >
                               <ShieldCheck className="h-3.5 w-3.5" />
-                              Manage
+                              Edit Client
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -563,15 +533,15 @@ export function ClientsValidityManager() {
 
           {/* Pagination would go here */}
           {filtered.length > 0 && (
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-sm text-muted-foreground dark:text-gray-400">
               <div>
                 Showing {filtered.length} of {clients.length} clients
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>
+                <Button variant="outline" size="sm" disabled className="dark:border-gray-700 dark:text-gray-300">
                   Previous
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
                   Next
                 </Button>
               </div>
@@ -579,37 +549,6 @@ export function ClientsValidityManager() {
           )}
         </div>
 
-        {/* Manage Dialog */}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="border-b pb-4">
-              <DialogTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                Manage Client Validity
-              </DialogTitle>
-              <DialogDescription>
-                Configure access and expiry for{" "}
-                <span className="font-medium text-foreground">
-                  {selectedClient?.clientUsername}
-                </span>
-              </DialogDescription>
-            </DialogHeader>
-
-            {selectedClient ? (
-              <ClientValidityCard
-                clientId={selectedClient._id}
-                onChanged={() => {
-                  refreshOne(selectedClient._id);
-                  setOpen(false);
-                }}
-              />
-            ) : (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       </CardContent>
     </Card>
   );

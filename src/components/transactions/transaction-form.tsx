@@ -62,10 +62,20 @@ import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
 import {
-  generatePdfForTemplate3,
   generatePdfForTemplate1,
+  generatePdfForTemplate2,
+  generatePdfForTemplate3,
+  generatePdfForTemplate4,
+  generatePdfForTemplate5,
+  generatePdfForTemplate6,
+  generatePdfForTemplate7,
 } from "@/lib/pdf-templates";
 import { getUnifiedLines } from "@/lib/getUnifiedLines";
+
+import QuillEditor from "@/components/ui/quill-editor";
+
+import WhatsAppMessage from './WhatsAppMessage'
+
 
 // reads gstin from various possible shapes/keys
 const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -202,6 +212,7 @@ const formSchema = z
     subTotal: z.coerce.number().min(0).optional(),
     dontSendInvoice: z.boolean().optional(),
     bank: z.string().optional(),
+    notes: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -273,7 +284,7 @@ export function TransactionForm({
   const [services, setServices] = React.useState<Service[]>([]);
   const [balance, setBalance] = React.useState<number | null>(null);
   const [banks, setBanks] = React.useState<any[]>([]);
-
+  
   const [partyBalances, setPartyBalances] = React.useState<
     Record<string, number>
   >({});
@@ -287,6 +298,7 @@ export function TransactionForm({
   >(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
+  const [showNotes, setShowNotes] = React.useState(false);
   const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer"];
 
   const { selectedCompanyId } = useCompany();
@@ -311,6 +323,7 @@ export function TransactionForm({
       // gstRate: STANDARD_GST, // <-- NEW (Sales/Purchases will use this)
       taxAmount: 0, // <-- NEW
       invoiceTotal: 0,
+      notes: "",
     },
   });
 
@@ -366,8 +379,14 @@ export function TransactionForm({
     control: form.control,
     name: "totalAmount",
   });
-
   const type = form.watch("type");
+
+  // right after your existing watches
+  const afterReceiptBalance = React.useMemo(() => {
+    if (type !== "receipt" || balance == null) return null;
+    const amt = Number(receiptAmountWatch || 0);
+    return Math.max(0, Number(balance) - (Number.isFinite(amt) ? amt : 0));
+  }, [type, balance, receiptAmountWatch]);
 
   // Derived flags for current tab
   const partyCreatable = React.useMemo(() => {
@@ -514,7 +533,7 @@ export function TransactionForm({
 
         if (res.ok) {
           const data = await res.json();
-          console.log("Fetch Bank Response :", data);
+          // console.log("Fetch Bank Response :", data);
 
           // Check the actual structure of the response
           let banksData = data;
@@ -528,7 +547,7 @@ export function TransactionForm({
             banksData = []; // Fallback to empty array
           }
 
-          console.log("Processed Banks Data:", banksData);
+          // console.log("Processed Banks Data:", banksData);
 
           // Filter banks by company ID - check different possible structures
           const filteredBanks = banksData.filter((bank: any) => {
@@ -538,14 +557,14 @@ export function TransactionForm({
               bank.company || // Direct string ID
               bank.companyId; // Alternative field name
 
-            console.log(
-              `Bank: ${bank.bankName}, Company ID: ${bankCompanyId}, Target: ${companyId}`
-            );
+            // console.log(
+            //   `Bank: ${bank.bankName}, Company ID: ${bankCompanyId}, Target: ${companyId}`
+            // );
 
             return bankCompanyId === companyId;
           });
 
-          console.log("Filtered Banks:", filteredBanks);
+          // console.log("Filtered Banks:", filteredBanks);
           setBanks(filteredBanks);
         } else {
           throw new Error("Failed to fetch banks.");
@@ -567,10 +586,10 @@ export function TransactionForm({
   // Use useEffect to fetch banks when the selected company in the FORM changes
   React.useEffect(() => {
     if (selectedCompanyIdWatch) {
-      console.log(
-        "Fetching banks for selected company in form:",
-        selectedCompanyIdWatch
-      );
+      // console.log(
+      //   "Fetching banks for selected company in form:",
+      //   selectedCompanyIdWatch
+      // );
       fetchBanks(selectedCompanyIdWatch);
     } else {
       setBanks([]); // Clear banks if no company is selected in the form
@@ -578,11 +597,11 @@ export function TransactionForm({
   }, [selectedCompanyIdWatch, fetchBanks]); // Use selectedCompanyIdWatch instead of selectedCompanyId
 
   // Add another useEffect to log banks after they update
-  React.useEffect(() => {
-    console.log("Banks state updated:", banks);
-  }, [banks]);
+  // React.useEffect(() => {
+  //   console.log("Banks state updated:", banks);
+  // }, [banks]);
 
-  console.log("selectedCompanyId :", selectedCompanyId);
+  // console.log("selectedCompanyId :", selectedCompanyId);
 
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
@@ -826,7 +845,13 @@ export function TransactionForm({
       referenceNumber: (transactionToEdit as any).referenceNumber,
       fromAccount: (transactionToEdit as any).debitAccount,
       toAccount: (transactionToEdit as any).creditAccount,
+      notes: (transactionToEdit as any).notes || "",
     });
+
+    // Show notes section if there are existing notes
+    if ((transactionToEdit as any).notes && (transactionToEdit as any).notes.trim()) {
+      setShowNotes(true);
+    }
 
     replace(itemsToSet);
   }, [transactionToEdit, form, replace]);
@@ -856,12 +881,13 @@ export function TransactionForm({
       }
     } catch (error) {
       console.error("Stock update failed:", error);
-
+  
+      const errorMessage = error instanceof Error ? error.message : "Failed to update stock levels.";
+  
       toast({
         variant: "destructive",
         title: "Stock Update Failed",
-        description:
-          "Transaction was saved, but failed to update inventory stock levels.",
+        description: `Transaction was saved, but ${errorMessage}`,
       });
     }
   }
@@ -1097,6 +1123,7 @@ export function TransactionForm({
           paymentMethod: values.paymentMethod,
           invoiceTotal: uiInvoiceTotal,
           bank: values.bank,
+          notes: values.notes || "",
         };
       }
 
@@ -1157,6 +1184,16 @@ export function TransactionForm({
       }
 
       // 🔽 SEND INVOICE PDF BY EMAIL (Sales only)
+
+      const templateRes = await fetch(`${baseURL}/api/settings/default-template`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const templateData = await templateRes.json();
+     
+
       if (values.type === "sales") {
         if (values.dontSendInvoice) {
           toast({
@@ -1178,35 +1215,76 @@ export function TransactionForm({
           const partyDoc = parties.find((p) => String(p._id) === savedPartyId);
 
           if (partyDoc?.email) {
+            const enrichedTransaction = enrichTransactionWithNames(
+              saved,
+              products,
+              services
+            );
             let pdfDoc;
-            try {
-              const enrichedTransaction = enrichTransactionWithNames(
-                saved,
-                products,
-                services
-              );
-              pdfDoc = generatePdfForTemplate1(
-                enrichedTransaction,
-                companyDoc as any,
-                partyDoc as any,
-                serviceNameById // This is the missing argument
-              );
-            } catch (error) {
-              console.error(
-                "Template 3 failed, falling back to Template 1:",
-                error
-              );
-              const enrichedTransaction = enrichTransactionWithNames(
-                saved,
-                products,
-                services
-              );
-              pdfDoc = generatePdfForTemplate3(
-                enrichedTransaction,
-                companyDoc as any,
-                partyDoc as any,
-                serviceNameById // This is the missing argument
-              );
+            switch (templateData.defaultTemplate) {
+              case "template1":
+                pdfDoc = generatePdfForTemplate1(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template2":
+                pdfDoc = generatePdfForTemplate2(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template3":
+                pdfDoc = generatePdfForTemplate3(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template4":
+                pdfDoc = generatePdfForTemplate4(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template5":
+                pdfDoc = generatePdfForTemplate5(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template6":
+                pdfDoc = generatePdfForTemplate6(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              case "template7":
+                pdfDoc = generatePdfForTemplate7(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
+                break;
+              default:
+                pdfDoc = generatePdfForTemplate1(
+                  enrichedTransaction,
+                  companyDoc as any,
+                  partyDoc as any,
+                  serviceNameById
+                );
             }
 
             const pdfInstance = await pdfDoc;
@@ -1474,16 +1552,15 @@ export function TransactionForm({
 
   const getPartyOptions = () => {
     if (type === "sales" || type === "receipt") {
-    // All parties (customers) – no filter for balance
-    const source = parties;
+      // All parties (customers) – no filter for balance
+      const source = parties;
 
-    // For RECEIPT, show all customers regardless of balance
-    return source.map((p) => ({
-      value: p._id,
-      label: String(p.name || ""),
-    }));
-  }
-
+      // For RECEIPT, show all customers regardless of balance
+      return source.map((p) => ({
+        value: p._id,
+        label: String(p.name || ""),
+      }));
+    }
 
     if (type === "purchases" || type === "payment") {
       // vendors (unchanged)
@@ -1680,7 +1757,7 @@ export function TransactionForm({
 
             <FormMessage />
             {/* Display balance if available */}
-            {balance !== null && (
+            {balance != null && balance > 0 && (
               <div className="text-red-500 text-sm mt-2">
                 Balance: ₹{balance.toFixed(2)}
               </div>
@@ -2320,98 +2397,245 @@ export function TransactionForm({
 
       <Separator />
 
-      {/* Totals */}
-      <div className="flex justify-end">
-        <div className="w-full max-w-sm space-y-3">
-          {/* Subtotal */}
-          <FormField
-            control={form.control}
-            name="totalAmount"
-            render={({ field }) => (
-              <FormItem>
-                <div className="flex items-center justify-between">
-                  <FormLabel className="font-medium">Subtotal</FormLabel>
-                  <Input
-                    type="number"
-                    readOnly
-                    className="w-40 text-right bg-muted"
-                    {...field}
-                  />
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+     {/* Totals and Notes (Notes only for Sales) */}
+{type === "sales" ? (
+  <div className="flex gap-6">
+    {/* Notes Section - Only for Sales */}
+    <div className="flex-1">
+      {!showNotes ? (
+        <div className="flex justify-start py-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowNotes(true)}
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Add Notes
+          </Button>
+        </div>
+      ) : (
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <div className="flex items-center justify-between">
+                <FormLabel>Notes</FormLabel>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowNotes(false)}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  Remove Notes
+                </Button>
+              </div>
+              <FormControl>
+                <QuillEditor
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Add detailed notes with formatting..."
+                  className="min-h-[120px]"
+                />
+              </FormControl>
+              <FormDescription>
+                Add rich text notes with formatting, colors, and styles
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+    </div>
 
-          {/* GST row only when enabled */}
-          {gstEnabled && (
+    {/* Totals */}
+    <div className="w-full max-w-sm space-y-3">
+      {/* Subtotal */}
+      <FormField
+        control={form.control}
+        name="totalAmount"
+        render={({ field }) => (
+          <FormItem>
             <div className="flex items-center justify-between">
-              <FormLabel className="font-medium">GST</FormLabel>
-              <FormField
-                control={form.control}
-                name="taxAmount"
-                render={({ field }) => (
-                  <Input
-                    type="number"
-                    readOnly
-                    className="w-40 text-right bg-muted"
-                    value={field.value ?? 0}
-                    onChange={field.onChange}
-                  />
-                )}
+              <FormLabel className="font-medium">Subtotal</FormLabel>
+              <Input
+                type="number"
+                readOnly
+                className="w-40 text-right bg-muted"
+                {...field}
               />
             </div>
-          )}
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-          {/* Invoice total */}
+      {/* GST row only when enabled */}
+      {gstEnabled && (
+        <div className="flex items-center justify-between">
+          <FormLabel className="font-medium">GST</FormLabel>
           <FormField
             control={form.control}
-            name="invoiceTotal"
+            name="taxAmount"
             render={({ field }) => (
-              <FormItem>
-                <div className="flex items-center justify-between">
-                  <FormLabel className="font-bold">
-                    Invoice Total{gstEnabled ? " (GST incl.)" : ""}
-                  </FormLabel>
-                  <Input
-                    type="number"
-                    readOnly
-                    className="w-40 text-right bg-muted text-lg font-bold"
-                    value={field.value ?? 0}
-                    onChange={field.onChange}
-                  />
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="dontSendInvoice"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value || false}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="cursor-pointer">
-                    Don't Send Invoice
-                  </FormLabel>
-                  <FormDescription className="text-xs text-muted-foreground">
-                    Check this if you don't want to email the invoice to the
-                    customer
-                  </FormDescription>
-                </div>
-                <FormMessage />
-              </FormItem>
+              <Input
+                type="number"
+                readOnly
+                className="w-40 text-right bg-muted"
+                value={field.value ?? 0}
+                onChange={field.onChange}
+              />
             )}
           />
         </div>
-      </div>
+      )}
+
+      {/* Invoice total */}
+      <FormField
+        control={form.control}
+        name="invoiceTotal"
+        render={({ field }) => (
+          <FormItem>
+            <div className="flex items-center justify-between">
+              <FormLabel className="font-bold">
+                Invoice Total{gstEnabled ? " (GST incl.)" : ""}
+              </FormLabel>
+              <Input
+                type="number"
+                readOnly
+                className="w-40 text-right bg-muted text-lg font-bold"
+                value={field.value ?? 0}
+                onChange={field.onChange}
+              />
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="dontSendInvoice"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormControl>
+              <Checkbox
+                checked={field.value || false}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <FormLabel className="cursor-pointer">
+                Don't Send Invoice
+              </FormLabel>
+              <FormDescription className="text-xs text-muted-foreground">
+                Check this if you don't want to email the invoice to the
+                customer
+              </FormDescription>
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  </div>
+) : (
+  /* For non-sales transactions, totals on the right */
+  <div className="flex justify-end">
+    <div className="w-full max-w-md space-y-3">
+      {/* Subtotal */}
+      <FormField
+        control={form.control}
+        name="totalAmount"
+        render={({ field }) => (
+          <FormItem>
+            <div className="flex items-center justify-between">
+              <FormLabel className="font-medium">Subtotal</FormLabel>
+              <Input
+                type="number"
+                readOnly
+                className="w-40 text-right bg-muted"
+                {...field}
+              />
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* GST row only when enabled */}
+      {gstEnabled && (
+        <div className="flex items-center justify-between">
+          <FormLabel className="font-medium">GST</FormLabel>
+          <FormField
+            control={form.control}
+            name="taxAmount"
+            render={({ field }) => (
+              <Input
+                type="number"
+                readOnly
+                className="w-40 text-right bg-muted"
+                value={field.value ?? 0}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+      )}
+
+      {/* Invoice total */}
+      <FormField
+        control={form.control}
+        name="invoiceTotal"
+        render={({ field }) => (
+          <FormItem>
+            <div className="flex items-center justify-between">
+              <FormLabel className="font-bold">
+                Invoice Total{gstEnabled ? " (GST incl.)" : ""}
+              </FormLabel>
+              <Input
+                type="number"
+                readOnly
+                className="w-40 text-right bg-muted text-lg font-bold"
+                value={field.value ?? 0}
+                onChange={field.onChange}
+              />
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="dontSendInvoice"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormControl>
+              <Checkbox
+                checked={field.value || false}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <FormLabel className="cursor-pointer">
+                Don't Send Invoice
+              </FormLabel>
+              <FormDescription className="text-xs text-muted-foreground">
+                Check this if you don't want to email the invoice to the
+                customer
+              </FormDescription>
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  </div>
+)}
+      
     </div>
   );
 
@@ -2520,10 +2744,16 @@ export function TransactionForm({
               <FormMessage />
               {balance != null && type === "receipt" && (
                 <div className="mt-2 text-xs text-red-600">
-                  Balance: ₹{Number(balance).toFixed(2)}
-                  {/* {Number(receiptAmountWatch || 0) > 0 && (
-                    <> → After receipt: ₹{remainingAfterReceipt?.toFixed(2)}</>
-                  )} */}
+                  {/* Balance: ₹{Number(balance).toFixed(2)} */}
+                  {balance !== null && type === "receipt" ? (
+                    <div className="text-red-500 text-sm mt-2">
+                      Balance: ₹{(afterReceiptBalance ?? balance).toFixed(2)}
+                    </div>
+                  ) : balance !== null ? (
+                    <div className="text-red-500 text-sm mt-2">
+                      Balance: ₹{balance.toFixed(2)}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </FormItem>
@@ -2602,6 +2832,9 @@ export function TransactionForm({
           </FormItem>
         )}
       />
+
+
+
     </div>
   );
 
@@ -2825,6 +3058,28 @@ export function TransactionForm({
                           </FormItem>
                         )}
                       />
+
+                    </div>
+                  </div>
+
+                  {/* Journal Totals */}
+                  <div className="flex justify-end mt-6">
+                    <div className="w-full max-w-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="font-medium">Amount</FormLabel>
+                        <FormField
+                          control={form.control}
+                          name="totalAmount"
+                          render={({ field }) => (
+                            <Input
+                              type="number"
+                              readOnly
+                              className="w-40 text-right bg-muted"
+                              {...field}
+                            />
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                 </TabsContent>

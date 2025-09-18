@@ -59,6 +59,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { ClientForm } from "@/components/clients/client-form";
 import type { Client } from "@/lib/types";
@@ -477,7 +478,9 @@ export default function ClientManagementPage() {
   };
 
   return (
+
     <div className="space-y-6 max-w-7xl mx-auto  px-3 sm:px-4 md:px-6 ">
+
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -513,25 +516,32 @@ export default function ClientManagementPage() {
         </div>
       </div>
 
-
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent
           className="
-      w-[95vw] sm:w-[80vw] lg:w-[625px]   /* 📱 phone 95%, 📟 tab 80%, 💻 laptop fixed */
-      max-h-[90vh] overflow-y-auto        /* scroll if overflow */
+      max-w-4xl ,
+      min-h-[90vh]
+      max-h-[90vh] overflow-y-auto overflow-x-hidden      
       grid-rows-[auto,1fr,auto]
       p-0 rounded-xl
     "
         >
-          <DialogHeader className="p-4 sm:p-6">
-            <DialogTitle className="text-lg sm:text-xl lg:text-2xl">
-              {selectedClient ? "Edit Client" : "Add New Client"}
-            </DialogTitle>
-            <DialogDescription className="text-sm sm:text-base">
-              {selectedClient
-                ? `Update the details for ${selectedClient.contactName}.`
-                : "Fill in the form below to add a new client."}
-            </DialogDescription>
+          <DialogHeader className="p-4 sm:p-6 sticky top-0 z-10 bg-background border-b flex flex-row items-center justify-between">
+            <div>
+              <DialogTitle className="text-lg sm:text-xl lg:text-2xl">
+                {selectedClient ? "Edit Client" : "Add New Client"}
+              </DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
+                {selectedClient
+                  ? `Update the details for ${selectedClient.contactName}.`
+                  : "Fill in the form below to add a new client."}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
           </DialogHeader>
 
           <ClientForm
@@ -540,7 +550,6 @@ export default function ClientManagementPage() {
           />
         </DialogContent>
       </Dialog>
-
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent
@@ -555,9 +564,12 @@ export default function ClientManagementPage() {
               Are you absolutely sure?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm sm:text-base text-gray-600">
-              This action cannot be undone. This will permanently delete the client
-              account and all associated data for{" "}
-              <span className="font-semibold">{clientToDelete?.contactName}</span>.
+              This action cannot be undone. This will permanently delete the
+              client account and all associated data for{" "}
+              <span className="font-semibold">
+                {clientToDelete?.contactName}
+              </span>
+              .
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -574,7 +586,6 @@ export default function ClientManagementPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
 
       <Dialog
         open={isResetPasswordDialogOpen}
@@ -593,8 +604,10 @@ export default function ClientManagementPage() {
             </DialogTitle>
             <DialogDescription className="text-sm sm:text-base text-gray-600">
               Enter a new password for{" "}
-              <span className="font-semibold">{clientToResetPassword?.contactName}</span>.
-              They will be notified of this change.
+              <span className="font-semibold">
+                {clientToResetPassword?.contactName}
+              </span>
+              . They will be notified of this change.
             </DialogDescription>
           </DialogHeader>
 
@@ -643,7 +656,6 @@ export default function ClientManagementPage() {
         </DialogContent>
       </Dialog>
 
-
       {/* permissions dialogue */}
       <Dialog
         open={isPermissionsDialogOpen}
@@ -652,15 +664,14 @@ export default function ClientManagementPage() {
         <DialogOverlay className="fixed inset-0 bg-black/50 flex items-center justify-center p-2"></DialogOverlay>
         <DialogContent
           className="
-    w-[calc(100vw-2rem)]          /* phone: sides पर 1rem gap */
-    sm:w-[calc(100vw-4rem)]       /* small tablets: थोड़ा ज्यादा gap */
-    md:w-auto                     /* md+ पर fixed max-widths use करो */
+    w-[calc(100vw-2rem)]          
+    sm:w-[calc(100vw-4rem)]       
+    md:w-auto                     
     max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-4xl
-    max-h-[85svh] md:max-h-[90vh] /* iOS/iPad Safari safe viewport heights */
-    overflow-y-auto               /* content बड़ा हो तो scroll मिले */
+    max-h-[85svh] md:max-h-[90vh] 
+    overflow-y-auto              
   "
         >
-
           <DialogHeader className="space-y-2 text-center sm:text-left">
             <DialogTitle className="text-lg sm:text-xl md:text-2xl font-semibold break-words">
               Manage Permissions for {clientForPermissions?.contactName}
@@ -916,7 +927,7 @@ export default function ClientManagementPage() {
         </DialogContent>
       </Dialog>
       <Card className="w-full">
-        <CardHeader>
+        <CardHeader className="sticky top-0 z-10 bg-background border-b">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {/* 📱 Mobile filter button */}
             <div className="sm:hidden w-full">
@@ -961,7 +972,6 @@ export default function ClientManagementPage() {
 
             {/* 💻 Tablet & Desktop filters */}
             <div className="hidden sm:flex flex-row flex-nowrap items-center gap-3 flex-1">
-
               <Combobox
                 options={contactNameOptions}
                 value={contactNameFilter}
@@ -998,7 +1008,6 @@ export default function ClientManagementPage() {
               Clear Filters
             </Button>
           </div>
-
         </CardHeader>
         <CardContent className={viewMode === "list" ? "p-0" : ""}>
           {isLoading ? (
@@ -1166,31 +1175,31 @@ export default function ClientManagementPage() {
                                   View Analytics
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
+                              {/* <DropdownMenuItem
                                 onClick={() => handleManagePermissions(client)}
                               >
                                 <ShieldCheck className="mr-2 h-4 w-4" />
                                 Permissions
-                              </DropdownMenuItem>
+                              </DropdownMenuItem> */}
                               <DropdownMenuItem
                                 onClick={() => handleEdit(client)}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
-                                Edit........
+                                Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem
+                              {/* <DropdownMenuItem
                                 onClick={() => handleResetPassword(client)}
                               >
                                 <KeyRound className="mr-2 h-4 w-4" />
                                 Reset Password
-                              </DropdownMenuItem>
+                              </DropdownMenuItem> */}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => handleDelete(client)}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete...
+                                Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

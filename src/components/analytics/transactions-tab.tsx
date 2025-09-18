@@ -589,7 +589,7 @@ const handleTabChange = (tab: string) => {
       </Tabs>
 
       <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Item Details</DialogTitle>
             <DialogDescription>

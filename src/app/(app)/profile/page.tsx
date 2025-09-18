@@ -58,6 +58,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+// In your ProfilePage component, add this import
+import { TemplateSettings } from "@/components/settings/template-settings";
 
 export default function ProfilePage() {
   const { permissions, isLoading } = usePermissions(); // client (master) perms
@@ -130,6 +132,12 @@ export default function ProfilePage() {
       label: "Services",
       component: <ServiceSettings />,
     },
+
+     {
+    value: "templates",
+    label: "Invoices",
+    component: <TemplateSettings />,
+  },
 
     allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
       value: "banks",
