@@ -42,9 +42,22 @@ const UpdateNotification = () => {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Helper function to get user ID from token
+  // Helper function to get user ID from token or user data
   const getUserIdFromToken = () => {
     const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user._id || user.id) {
+          return user._id || user.id;
+        }
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+
     if (!token) return null;
 
     try {
@@ -117,6 +130,57 @@ const UpdateNotification = () => {
     fetchNotifications();
   }, []);
 
+  // Listen for refresh events from the badge
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener('refreshUpdateNotifications', handleRefresh);
+
+    // Set up auto-dismissal check every hour
+    const autoDismissInterval = setInterval(() => {
+      checkAndAutoDismissNotifications();
+    }, 60 * 60 * 1000); // Check every hour
+
+    return () => {
+      window.removeEventListener('refreshUpdateNotifications', handleRefresh);
+      clearInterval(autoDismissInterval);
+    };
+  }, []);
+
+  // Function to check and auto-dismiss old notifications
+  const checkAndAutoDismissNotifications = async () => {
+    const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedNotifications') || '{}');
+    const now = new Date();
+
+    for (const [notificationId, data] of Object.entries(dismissedNotifications)) {
+      const autoDismissAt = new Date((data as any).autoDismissAt);
+
+      if (now >= autoDismissAt) {
+        try {
+          const token = localStorage.getItem("token");
+
+          // For master admins, actually dismiss the update notification
+          await axios.patch(`${baseURL}/api/update-notifications/dismiss/${notificationId}`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          console.log(`Auto-dismissed master admin notification ${notificationId} after 36 hours`);
+
+          // Remove from localStorage
+          delete dismissedNotifications[notificationId];
+          localStorage.setItem('dismissedNotifications', JSON.stringify(dismissedNotifications));
+
+          // Refresh the notifications list
+          fetchNotifications();
+        } catch (error) {
+          console.error(`Error auto-dismissing notification ${notificationId}:`, error);
+        }
+      }
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
@@ -139,7 +203,25 @@ const UpdateNotification = () => {
         const response = await axios.get(`${baseURL}/api/update-notifications/master/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        notificationsData = response.data.notifications || [];
+        let masterNotifications = response.data.notifications || [];
+
+        // Filter out notifications that are in grace period (dismissed but not yet auto-dismissed)
+        const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedNotifications') || '{}');
+        const now = new Date();
+
+        notificationsData = masterNotifications.filter((n: UpdateNotification) => {
+          if (!n.dismissed) return true; // Not dismissed, show it
+
+          // Check if it's in grace period
+          const dismissedData = dismissedNotifications[n._id];
+          if (dismissedData) {
+            const autoDismissAt = new Date(dismissedData.autoDismissAt);
+            return now >= autoDismissAt; // Grace period expired, hide it
+          }
+
+          return false; // Dismissed and no grace period data, hide it
+        });
+
         console.log("Fetched master notifications:", notificationsData);
       } else {
         // For clients/users, fetch regular notifications with update type
@@ -183,6 +265,55 @@ const UpdateNotification = () => {
     }
   };
 
+  // Helper function to get the correct URL based on user role and available pages
+  const getRoleBasedUrl = (baseUrl: string) => {
+    const userData = localStorage.getItem("user");
+    if (!userData) return baseUrl;
+
+    const user = JSON.parse(userData);
+
+    // Define which pages exist for which roles
+    const pageMappings = {
+      '/dashboard': {
+        master: '/admin/dashboard',
+        client: '/dashboard'
+      },
+      '/companies': {
+        master: '/admin/companies',
+        client: '/companies'
+      },
+      '/settings': {
+        master: '/admin/settings',
+        client: '/settings'
+      },
+      '/client-management': {
+        master: '/admin/client-management',
+        client: null // Clients don't have access to client management
+      },
+      '/analytics': {
+        master: '/admin/analytics',
+        client: null // Clients don't have access to analytics
+      },
+      '/transactions': {
+        master: null, // Master admins don't have direct transaction access
+        client: '/transactions'
+      }
+    };
+
+    const mapping = pageMappings[baseUrl as keyof typeof pageMappings];
+    if (mapping) {
+      const roleUrl = mapping[user.role as keyof typeof mapping];
+      if (roleUrl) {
+        return roleUrl;
+      }
+      // If no URL for this role, return null to indicate page doesn't exist
+      return null;
+    }
+
+    // If no mapping found, return the base URL as fallback
+    return baseUrl;
+  };
+
   const handleFeatureClick = async (notification: UpdateNotification, feature: Feature, showDemo: boolean = true) => {
     // Only allow exploration for master admins
     const userData = localStorage.getItem("user");
@@ -210,8 +341,15 @@ const UpdateNotification = () => {
         )
       );
 
-      // Navigate to the section
-      router.push(feature.sectionUrl);
+      // Navigate to the section with role-based URL
+      const targetUrl = getRoleBasedUrl(feature.sectionUrl);
+      if (targetUrl) {
+        router.push(targetUrl);
+      } else {
+        // Page doesn't exist for this user role
+        console.warn(`Page ${feature.sectionUrl} is not available for ${user.role} role`);
+        // Could show a toast notification here
+      }
 
       // Show GIF in modal only if requested
       if (showDemo) {
@@ -238,35 +376,43 @@ const UpdateNotification = () => {
       if (!userData) return;
 
       const user = JSON.parse(userData);
+      const userId = getUserIdFromToken();
 
       if (user.role === "master") {
-        // For master admins, dismiss the update notification
-        await axios.patch(`${baseURL}/api/update-notifications/dismiss/${notificationId}`, {}, {
+        // For master admins, dismiss immediately via API
+        await axios.patch(`${baseURL}/api/update-notifications/dismiss/${notificationId}`, {
+          userId: userId
+        }, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        console.log(`Master admin dismissed notification ${notificationId}`);
       } else {
-        // For clients, mark the regular notification as read
-        // We need to find the actual notification ID from the regular notifications
-        const userId = getUserIdFromToken();
-        if (userId) {
-          const response = await axios.get(`${baseURL}/api/notifications/user/${userId}`, {
+        // For clients, dismiss via API and mark regular notification as read
+        await axios.patch(`${baseURL}/api/update-notifications/dismiss/${notificationId}`, {
+          userId: userId
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Also mark the regular notification as read
+        const response = await axios.get(`${baseURL}/api/notifications/user/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const allNotifications = response.data.notifications || response.data || [];
+        const targetNotification = allNotifications.find((n: any) =>
+          n.entityId === notificationId && n.type === 'system' && n.action === 'update'
+        );
+
+        if (targetNotification) {
+          await axios.patch(`${baseURL}/api/notifications/mark-as-read/${targetNotification._id}`, {}, {
             headers: { Authorization: `Bearer ${token}` }
           });
-
-          const allNotifications = response.data.notifications || response.data || [];
-          const targetNotification = allNotifications.find((n: any) =>
-            n.entityId === notificationId && n.type === 'system' && n.action === 'update'
-          );
-
-          if (targetNotification) {
-            await axios.patch(`${baseURL}/api/notifications/mark-as-read/${targetNotification._id}`, {}, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-          }
+          console.log(`Client dismissed notification ${notificationId}`);
         }
       }
 
-      // Remove from local state
+      // Remove from local state immediately for better UX
       setNotifications(prev => prev.filter(n => n._id !== notificationId));
     } catch (error) {
       console.error("Error dismissing notification:", error);
@@ -314,6 +460,30 @@ const UpdateNotification = () => {
     return notification.features.length;
   };
 
+  // Helper function to render markdown-style text
+  const renderMarkdown = (text: string) => {
+    // Split by newlines first
+    const lines = text.split('\n');
+
+    return lines.map((line, lineIndex) => {
+      // Handle bold text within each line
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      const processedLine = parts.map((part, partIndex) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={`${lineIndex}-${partIndex}`}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+
+      // Return line with proper spacing
+      return (
+        <div key={lineIndex} className={line.trim() === '' ? 'h-2' : ''}>
+          {processedLine}
+        </div>
+      );
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-4">
@@ -351,13 +521,23 @@ const UpdateNotification = () => {
                         {getExploredCount(notification)}/{getTotalFeatures(notification)} explored
                       </Badge>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDismiss(notification._id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    {isMaster && hasFeatures && getExploredCount(notification) === getTotalFeatures(notification) ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDismiss(notification._id)}
+                      >
+                        Remove Notification
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDismiss(notification._id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -414,9 +594,9 @@ const UpdateNotification = () => {
                   <p className="text-xs text-muted-foreground">
                     {isMaster && hasFeatures
                       ? (getExploredCount(notification) === getTotalFeatures(notification)
-                          ? "All features explored - notification will auto-dismiss"
+                          ? "All features explored - click 'Remove Notification' to dismiss"
                           : "Click on features to view demo or click 'View Demo' to go directly to the feature")
-                      : "Update notification from your administrator"
+                      : "Update notification from your administrator - will auto-dismiss in 36 hours"
                     }
                   </p>
                   {isMaster && !notification.propagatedToClients && (
@@ -455,16 +635,16 @@ const UpdateNotification = () => {
           </DialogHeader>
           {selectedFeature && (
             <div className="space-y-4">
-              <p id="feature-description" className="text-sm text-muted-foreground">
-                {selectedFeature.description}
-              </p>
-              <div className="flex justify-center">
+              <div id="feature-description" className="text-sm text-muted-foreground">
+                {renderMarkdown(selectedFeature.description)}
+              </div>
+              {/* <div className="flex justify-center">
                 <img
                   src={selectedFeature.gifUrl}
                   alt={`${selectedFeature.name} feature demonstration`}
                   className="max-w-full max-h-96 rounded-lg border"
                 />
-              </div>
+              </div> */}
               <div className="flex justify-end">
                 <Button onClick={() => setSelectedFeature(null)} aria-label="Close feature demo">
                   Close
