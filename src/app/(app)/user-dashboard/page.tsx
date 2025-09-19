@@ -32,6 +32,7 @@ import {
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { ProductStock } from "@/components/dashboard/product-stock";
 import Link from "next/link";
+import UpdateWalkthrough from "@/components/notifications/UpdateWalkthrough";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
@@ -285,6 +286,8 @@ export default function UserDashboardPage() {
 
         {companies.length > 0 && (
           <div className="flex items-center gap-2">
+            <UpdateWalkthrough />
+
             <Button variant="outline" asChild>
               <Link href="/profile">
                 <Settings className="mr-2 h-4 w-4" /> Go to Settings

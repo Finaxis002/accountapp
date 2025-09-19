@@ -35,7 +35,6 @@ const UpdateWalkthrough = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isBadgeHighlighted, setIsBadgeHighlighted] = useState(false);
 
   // Helper function to get user ID from token or user data
   const getUserIdFromToken = () => {
@@ -92,65 +91,37 @@ const UpdateWalkthrough = () => {
         return;
       }
 
-      console.log("Fetching from:", `${baseURL}/api/notifications/user/${userId}`);
+      console.log("Fetching from:", `${baseURL}/api/update-notifications/client/${userId}`);
 
-      // Fetch regular notifications with update type
-      const response = await axios.get(`${baseURL}/api/notifications/user/${userId}`, {
+      // Fetch update notifications directly from backend
+      const response = await axios.get(`${baseURL}/api/update-notifications/client/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const allNotifications = response.data.notifications || response.data || [];
-      console.log("Fetched client notifications:", allNotifications);
-
-      // Filter for update notifications that have been propagated and are not read
-      const updateNotifications = allNotifications.filter((n: any) =>
-        n.type === 'system' && n.action === 'update' && n.entityType === 'UpdateNotification' && !n.read
-      );
-
-      console.log("Update notifications found:", updateNotifications.length);
-      if (updateNotifications.length > 0) {
-        console.log("Sample notification metadata:", updateNotifications[0]?.metadata);
-      }
+      const updateNotifications = response.data.notifications || [];
+      console.log("Fetched update notifications:", updateNotifications.length);
 
       // Filter out notifications that are in grace period (completed but not yet auto-dismissed)
       const completedNotifications = JSON.parse(localStorage.getItem('completedNotifications') || '{}');
       const now = new Date();
 
-      const filteredUpdateNotifications = updateNotifications.filter((n: any) => {
-        if (!n.read) return true; // Not read, show it
-
+      const filteredNotifications = updateNotifications.filter((n: any) => {
         // Check if it's in grace period
-        const completedData = completedNotifications[n.entityId];
+        const completedData = completedNotifications[n._id];
         if (completedData) {
           const autoDismissAt = new Date(completedData.autoDismissAt);
           return now >= autoDismissAt; // Grace period expired, hide it
         }
 
-        return false; // Read and no grace period data, hide it
+        return true; // Show if not in grace period
       });
 
-      // Convert regular notifications to UpdateNotification format
-      const convertedNotifications = filteredUpdateNotifications.map((n: any) => {
-        console.log("Processing notification:", n._id, "Metadata:", n.metadata);
-        return {
-          _id: n.entityId,
-          title: n.title,
-          description: n.message,
-          version: n.metadata?.updateVersion || 'Unknown',
-          features: n.metadata?.features || [], // Features are now stored in metadata
-          exploredSections: [],
-          dismissed: n.read,
-          propagatedToClients: true,
-          createdAt: n.createdAt
-        };
-      });
-
-      console.log("Converted notifications:", convertedNotifications);
-      if (convertedNotifications.length > 0) {
-        console.log("Features in first notification:", convertedNotifications[0]?.features);
+      console.log("Filtered notifications:", filteredNotifications);
+      if (filteredNotifications.length > 0) {
+        console.log("Features in first notification:", filteredNotifications[0]?.features);
       }
 
-      setNotifications(convertedNotifications);
+      setNotifications(filteredNotifications);
     } catch (error) {
       console.error("Error fetching update notifications:", error);
     } finally {
@@ -183,22 +154,13 @@ const UpdateWalkthrough = () => {
           const userId = getUserIdFromToken();
 
           if (userId) {
-            // Find and mark the notification as read
-            const response = await axios.get(`${baseURL}/api/notifications/user/${userId}`, {
+            // Dismiss the update notification
+            await axios.patch(`${baseURL}/api/update-notifications/dismiss/${notificationId}`, {
+              userId: userId
+            }, {
               headers: { Authorization: `Bearer ${token}` }
             });
-
-            const allNotifications = response.data.notifications || response.data || [];
-            const targetNotification = allNotifications.find((n: any) =>
-              n.entityId === notificationId && n.type === 'system' && n.action === 'update'
-            );
-
-            if (targetNotification && !targetNotification.read) {
-              await axios.patch(`${baseURL}/api/notifications/mark-as-read/${targetNotification._id}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
-              console.log(`Auto-dismissed client notification ${notificationId} after 36 hours`);
-            }
+            console.log(`Auto-dismissed update notification ${notificationId} after 36 hours`);
           }
 
           // Remove from localStorage
@@ -214,42 +176,25 @@ const UpdateWalkthrough = () => {
     }
   };
 
-  // Mark notification as read with delay (don't remove immediately)
+  // Mark notification as dismissed with delay (don't remove immediately)
   const markAsReadWithDelay = async (notificationId: string) => {
     try {
-      const token = localStorage.getItem("token");
-      const userId = getUserIdFromToken();
+      // Instead of dismissing immediately, we'll hide it from UI
+      // The backend will handle auto-dismissal after 36 hours
+      console.log(`Notification ${notificationId} completed - will auto-dismiss in 36 hours`);
 
-      if (!userId) return;
-
-      // Find the actual notification ID from regular notifications
-      const response = await axios.get(`${baseURL}/api/notifications/user/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const allNotifications = response.data.notifications || response.data || [];
-      const targetNotification = allNotifications.find((n: any) =>
-        n.entityId === notificationId && n.type === 'system' && n.action === 'update'
-      );
-
-      if (targetNotification) {
-        // Instead of marking as read immediately, we'll hide it from UI
-        // The backend will handle auto-dismissal after 2 days
-        console.log(`Notification ${notificationId} completed - will auto-dismiss in 2 days`);
-
-        // Store completion time in localStorage for UI purposes
-        const completedNotifications = JSON.parse(localStorage.getItem('completedNotifications') || '{}');
-        completedNotifications[notificationId] = {
-          completedAt: new Date().toISOString(),
-          autoDismissAt: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString() // 36 hours
-        };
-        localStorage.setItem('completedNotifications', JSON.stringify(completedNotifications));
-      }
+      // Store completion time in localStorage for UI purposes
+      const completedNotifications = JSON.parse(localStorage.getItem('completedNotifications') || '{}');
+      completedNotifications[notificationId] = {
+        completedAt: new Date().toISOString(),
+        autoDismissAt: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString() // 36 hours
+      };
+      localStorage.setItem('completedNotifications', JSON.stringify(completedNotifications));
 
       // Update local state to hide from UI
       setNotifications(prev => prev.filter(n => n._id !== notificationId));
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      console.error("Error marking notification as dismissed:", error);
     }
   };
 
@@ -354,20 +299,8 @@ const UpdateWalkthrough = () => {
     if (currentFeature) {
       const targetUrl = getRoleBasedUrl(currentFeature.sectionUrl);
       if (targetUrl) {
-        // Close the dialog
-        setIsOpen(false);
-        setCurrentStep(0);
-
-        // Highlight the badge
-        setIsBadgeHighlighted(true);
-
-        // Remove highlight after 5 seconds
-        setTimeout(() => {
-          setIsBadgeHighlighted(false);
-        }, 5000);
-
-        // Navigate to the feature
         router.push(targetUrl);
+        // Don't close the modal, let user continue the walkthrough
       } else {
         // Page doesn't exist for this user role
         console.warn(`Page ${currentFeature.sectionUrl} is not available for client role`);
@@ -380,10 +313,22 @@ const UpdateWalkthrough = () => {
     const token = localStorage.getItem("token");
     const userId = getUserIdFromToken();
 
-    // Mark all regular notifications as read (UpdateNotifications are handled via UI hiding)
+    // Dismiss all notifications
     for (const notification of notifications) {
       try {
-        // Find and mark the regular notification as read
+        if (!notification._id) {
+          console.error("Notification _id is undefined or null:", notification);
+          continue;
+        }
+
+        // Dismiss the update notification
+        await axios.patch(`${baseURL}/api/update-notifications/dismiss/${notification._id}`, {
+          userId: userId
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Also mark any related regular notifications as read
         const response = await axios.get(`${baseURL}/api/notifications/user/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -399,7 +344,7 @@ const UpdateWalkthrough = () => {
           });
         }
       } catch (error) {
-        console.error(`Error marking notification as read ${notification._id}:`, error);
+        console.error(`Error dismissing notification ${notification._id}:`, error);
       }
     }
 
