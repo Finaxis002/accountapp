@@ -466,7 +466,7 @@ const scrollToHighlight = (index: number) => {
                       currentUser?.role === "user" ||
                       currentUser?.role === "admin" ||
                       currentUser?.role === "manager") && (
-                        <div className="hidden md:block">
+                        <div >
                           <CompanySwitcher />
                         </div>
                       )}

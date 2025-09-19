@@ -284,97 +284,147 @@ export function ProductSettings() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center items-center h-40">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+             <CardContent>
+    {/* Table (Desktop View) */}
+    <div className="hidden sm:block">
+      {isLoading ? (
+        <div className="flex justify-center items-center h-40">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : products.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Item Name</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead>Created At</TableHead>
+              {role !== "user" ? (
+                <TableHead className="text-right">Actions</TableHead>
+              ) : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {products.map((product) => (
+              <TableRow key={product._id}>
+                <TableCell>
+                  <div className="font-medium flex items-center gap-2">
+                    {product.type === "service" ? (
+                      <Server className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    {product.name}
+                    {product.type === "service" && <Badge variant="outline">Service</Badge>}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {product.type === "service" ? (
+                    <span className="text-xs text-muted-foreground">N/A</span>
+                  ) : (
+                    product.stocks ?? 0
+                  )}
+                </TableCell>
+                <TableCell>
+                  {new Intl.DateTimeFormat("en-US").format(new Date(product.createdAt!))}
+                </TableCell>
+                {role !== "user" ? (
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleOpenForm(product)}>
+                          <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenDeleteDialog(product)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Package className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Get started by adding your first product or service.</p>
+          <Button className="mt-6" onClick={() => handleOpenForm()}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+          </Button>
+        </div>
+      )}
+    </div>
+
+    {/* Card Layout (Mobile View) */}
+    <div className="sm:hidden">
+      {isLoading ? (
+        <div className="flex justify-center items-center h-40">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : products.length > 0 ? (
+        <div className="space-y-4">
+          {products.map((product) => (
+            <Card key={product._id} className="shadow-sm border">
+              <CardHeader>
+                <CardTitle>{product.name}</CardTitle>
+                <CardDescription>{product.type === "service" ? "Service" : "Product"}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    <strong>Stock: </strong>{product.type === "service" ? "N/A" : product.stocks ?? 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <strong>Created At: </strong>
+                    {new Intl.DateTimeFormat("en-US").format(new Date(product.createdAt!))}
+                  </div>
                 </div>
-              ) : products.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item Name</TableHead>
-                      <TableHead>Stock</TableHead>
-                      <TableHead>Created At</TableHead>
-                      {role !== "user" ? (
-                        <TableHead className="text-right">Actions</TableHead>
-                      ) : null}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product) => (
-                      <TableRow key={product._id}>
-                        <TableCell>
-                          <div className="font-medium flex items-center gap-2">
-                            {product.type === "service" ? (
-                              <Server className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Package className="h-4 w-4 text-muted-foreground" />
-                            )}
-                            {product.name}
-                            {product.type === "service" && (
-                              <Badge variant="outline">Service</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {product.type === "service" ? (
-                            <span className="text-xs text-muted-foreground">
-                              N/A
-                            </span>
-                          ) : (
-                            product.stocks ?? 0
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {new Intl.DateTimeFormat("en-US").format(
-                            new Date(product.createdAt!)
-                          )}
-                        </TableCell>
-                        {role !== "user" ? (
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent>
-                                <DropdownMenuItem
-                                  onClick={() => handleOpenForm(product)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleOpenDeleteDialog(product)
-                                  }
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        ) : null}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-                  <Package className="h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Get started by adding your first product or service.
-                  </p>
-                  <Button className="mt-6" onClick={() => handleOpenForm()}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Item
-                  </Button>
-                </div>
-              )}
-            </CardContent>
+              </CardContent>
+              <div className="p-4 flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleOpenForm(product)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleOpenDeleteDialog(product)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Package className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Get started by adding your first product or service.</p>
+          <Button className="mt-6" onClick={() => handleOpenForm()}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+          </Button>
+        </div>
+      )}
+    </div>
+  </CardContent>
           </Card>
 
           <Dialog

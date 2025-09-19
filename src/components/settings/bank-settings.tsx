@@ -228,69 +228,129 @@ export function BankSettings() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-           {filteredBankDetails.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bank Name</TableHead>
-                  <TableHead>Manager Name</TableHead>
-                  <TableHead>Contact Number</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bankDetails.map((bankDetail) => (
-                  <TableRow key={bankDetail._id}>
-                    <TableCell>{bankDetail.bankName}</TableCell>
-                    <TableCell>{bankDetail.managerName}</TableCell>
-                    <TableCell>{bankDetail.contactNumber}</TableCell>
-                    <TableCell>{bankDetail.email}</TableCell>
-                    <TableCell>{bankDetail.branchAddress}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenForm(bankDetail)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenDeleteDialog(bankDetail)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-              <Package className="h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">
-                No Bank Details Found
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Get started by adding your first bank detail.
-              </p>
-              <Button className="mt-6" onClick={() => handleOpenForm()}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Bank Details
-              </Button>
-            </div>
-          )}
-        </CardContent>
+       <CardContent>
+    {/* Table (Desktop View) */}
+    <div className="hidden sm:block">
+      {filteredBankDetails.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Bank Name</TableHead>
+              <TableHead>Manager Name</TableHead>
+              <TableHead>Contact Number</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {bankDetails.map((bankDetail) => (
+              <TableRow key={bankDetail._id}>
+                <TableCell>{bankDetail.bankName}</TableCell>
+                <TableCell>{bankDetail.managerName}</TableCell>
+                <TableCell>{bankDetail.contactNumber}</TableCell>
+                <TableCell>{bankDetail.email}</TableCell>
+                <TableCell>{bankDetail.branchAddress}</TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => handleOpenForm(bankDetail)}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleOpenDeleteDialog(bankDetail)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Package className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Bank Details Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Get started by adding your first bank detail.
+          </p>
+          <Button className="mt-6" onClick={() => handleOpenForm()}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Bank Details
+          </Button>
+        </div>
+      )}
+    </div>
+
+    {/* Card Layout (Mobile View) */}
+    <div className="sm:hidden">
+      {filteredBankDetails.length > 0 ? (
+        <div className="space-y-4">
+          {bankDetails.map((bankDetail) => (
+            <Card key={bankDetail._id} className="shadow-sm border">
+              <CardHeader>
+                <CardTitle>{bankDetail.bankName}</CardTitle>
+                <CardDescription>{bankDetail.managerName}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    <strong>Contact Number: </strong> {bankDetail.contactNumber}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <strong>Email: </strong> {bankDetail.email}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <strong>Address: </strong> {bankDetail.branchAddress}
+                  </div>
+                </div>
+              </CardContent>
+              <div className="p-4 flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleOpenForm(bankDetail)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleOpenDeleteDialog(bankDetail)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+          <Package className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No Bank Details Found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Get started by adding your first bank detail.
+          </p>
+          <Button className="mt-6" onClick={() => handleOpenForm()}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Bank Details
+          </Button>
+        </div>
+      )}
+    </div>
+  </CardContent>
       </Card>
 
       {/* Bank Detail Form Modal */}

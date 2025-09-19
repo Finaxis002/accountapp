@@ -210,8 +210,8 @@ export function CustomerForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-        <ScrollArea className="max-h-[60vh] flex-1">
-          <div className="space-y-4 px-6 pb-6">
+         <ScrollArea className="max-h-[60vh] flex-1 p-4 sm:p-6">
+             <div className="space-y-4 px-6 pb-6 sm:px-8 sm:pb-8">
             <FormField
               control={form.control}
               name="name"
