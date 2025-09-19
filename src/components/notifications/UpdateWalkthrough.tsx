@@ -35,6 +35,7 @@ const UpdateWalkthrough = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBadgeHighlighted, setIsBadgeHighlighted] = useState(false);
 
   // Helper function to get user ID from token or user data
   const getUserIdFromToken = () => {
@@ -353,8 +354,20 @@ const UpdateWalkthrough = () => {
     if (currentFeature) {
       const targetUrl = getRoleBasedUrl(currentFeature.sectionUrl);
       if (targetUrl) {
+        // Close the dialog
+        setIsOpen(false);
+        setCurrentStep(0);
+
+        // Highlight the badge
+        setIsBadgeHighlighted(true);
+
+        // Remove highlight after 5 seconds
+        setTimeout(() => {
+          setIsBadgeHighlighted(false);
+        }, 5000);
+
+        // Navigate to the feature
         router.push(targetUrl);
-        // Don't close the modal, let user continue the walkthrough
       } else {
         // Page doesn't exist for this user role
         console.warn(`Page ${currentFeature.sectionUrl} is not available for client role`);
@@ -367,16 +380,10 @@ const UpdateWalkthrough = () => {
     const token = localStorage.getItem("token");
     const userId = getUserIdFromToken();
 
-    // Dismiss all notifications
+    // Mark all regular notifications as read (UpdateNotifications are handled via UI hiding)
     for (const notification of notifications) {
       try {
-        await axios.patch(`${baseURL}/api/update-notifications/dismiss/${notification._id}`, {
-          userId: userId
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        // Also mark the regular notification as read
+        // Find and mark the regular notification as read
         const response = await axios.get(`${baseURL}/api/notifications/user/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -392,7 +399,7 @@ const UpdateWalkthrough = () => {
           });
         }
       } catch (error) {
-        console.error(`Error dismissing notification ${notification._id}:`, error);
+        console.error(`Error marking notification as read ${notification._id}:`, error);
       }
     }
 

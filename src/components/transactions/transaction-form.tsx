@@ -1127,6 +1127,17 @@ export function TransactionForm({
         };
       }
 
+      // Special handling for payment transactions - backend expects 'amount' field
+      if (values.type === "payment") {
+        payload.amount = values.totalAmount;
+        delete payload.totalAmount;
+        delete payload.subTotal;
+        delete payload.taxAmount;
+        delete payload.invoiceTotal;
+        delete payload.products;
+        delete payload.services;
+      }
+
       // Clean up fields not needed by the server
       delete (payload as any).items;
       delete (payload as any).gstRate;
