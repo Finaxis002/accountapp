@@ -194,8 +194,8 @@ const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
 
         const parseJournalsResponse = (data: any) => {
           // Check for the correct nested structure of the data
-          if (data?.success && Array.isArray(data?.data?.data)) {
-            return data?.data?.data; // Access the nested 'data' array
+          if (data?.success && Array.isArray(data?.data)) {
+            return data?.data; // Access the 'data' array directly
           }
           return []; // Default return if data is malformed
         };

@@ -21,6 +21,7 @@ const UpdateNotificationBadge = () => {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [notifications, setNotifications] = useState<UpdateNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBadgeHighlighted, setIsBadgeHighlighted] = useState(false);
 
   // Helper function to get user ID from token or user data
   const getUserIdFromToken = () => {

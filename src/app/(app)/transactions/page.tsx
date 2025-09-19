@@ -52,7 +52,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -76,7 +76,7 @@ export default function TransactionsPage() {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isItemsDialogOpen, setIsItemsDialogOpen] = React.useState(false);
-   const [isEditMode, setIsEditMode] = React.useState(false);
+  const [isEditMode, setIsEditMode] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] =
     React.useState<Transaction | null>(null);
   const [transactionToEdit, setTransactionToEdit] =
@@ -91,12 +91,12 @@ export default function TransactionsPage() {
   const [payments, setPayments] = React.useState<Transaction[]>([]);
   const [journals, setJournals] = React.useState<Transaction[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
-    const [selectedTab, setSelectedTab] = React.useState("all");
+  const [selectedTab, setSelectedTab] = React.useState("all");
 
-const handleTabChange = (tab: TabKey) => {
-  setActiveTab(tab);  // Type-safe now
-  setIsDropdownOpen(false);  // Close the dropdown when a tab is selected
-};
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab); // Type-safe now
+    setIsDropdownOpen(false); // Close the dropdown when a tab is selected
+  };
 
   const [companies, setCompanies] = React.useState<Company[]>([]);
   // top of component state
@@ -480,12 +480,12 @@ const handleTabChange = (tab: TabKey) => {
 
     // inside handleViewItems
     const svcArr = Array.isArray(tx.services)
-  ? tx.services
-  : Array.isArray(tx.service)
-  ? tx.service
-  : tx.services
-  ? [tx.services]
-  : [];
+      ? tx.services
+      : Array.isArray(tx.service)
+      ? tx.service
+      : tx.services
+      ? [tx.services]
+      : [];
     const svcs = svcArr.map((s: any) => {
       // id can be raw ObjectId or populated doc; also support legacy s.serviceName
       const id =
@@ -566,7 +566,7 @@ const handleTabChange = (tab: TabKey) => {
       setTransactionToDelete(null);
     }
   };
-   async function handleUpdateTransaction(updatedTransaction: Transaction) {
+  async function handleUpdateTransaction(updatedTransaction: Transaction) {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
@@ -580,7 +580,8 @@ const handleTabChange = (tab: TabKey) => {
       };
 
       const endpoint = endpointMap[updatedTransaction.type];
-      if (!endpoint) throw new Error(`Invalid transaction type: ${updatedTransaction.type}`);
+      if (!endpoint)
+        throw new Error(`Invalid transaction type: ${updatedTransaction.type}`);
 
       const res = await fetch(`${baseURL}${endpoint}`, {
         method: "PUT",
@@ -606,7 +607,8 @@ const handleTabChange = (tab: TabKey) => {
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: error instanceof Error ? error.message : "Something went wrong.",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
       });
     }
   }
@@ -865,7 +867,11 @@ const handleTabChange = (tab: TabKey) => {
                       New Transaction
                     </Button>
                   </DialogTrigger>
-                  <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "  style={{ maxWidth: 1000, width: '100%' }}>
+                  <DialogContent
+                    wide
+                    className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "
+                    style={{ maxWidth: 1000, width: "100%" }}
+                  >
                     <DialogHeader className="p-6">
                       <DialogTitle>
                         {transactionToEdit
@@ -931,13 +937,16 @@ const handleTabChange = (tab: TabKey) => {
             </AlertDialogContent>
           </AlertDialog>
 
-           <Dialog open={isPreviewOpen} onOpenChange={(open) => {
-            setIsPreviewOpen(open);
-            if (!open) setIsEditMode(false);
-          }}>
+          <Dialog
+            open={isPreviewOpen}
+            onOpenChange={(open) => {
+              setIsPreviewOpen(open);
+              if (!open) setIsEditMode(false);
+            }}
+          >
             <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col">
               <DialogHeader className="p-6 pb-0">
-               <DialogTitle>Invoice Preview</DialogTitle>
+                <DialogTitle>Invoice Preview</DialogTitle>
                 <DialogDescription>
                   This is a preview of the invoice. You can change the template
                   and download it as a PDF.
@@ -945,30 +954,23 @@ const handleTabChange = (tab: TabKey) => {
               </DialogHeader>
               {/* for mobile */}
               {transactionToPreview && (
-  <InvoicePreview
-    transaction={transactionToPreview}
-    company={companies.find(c => c._id === transactionToPreview.company?._id) || null}
-    party={parties.find(p => p._id === (transactionToPreview as any)?.party?._id || transactionToPreview?.party === p._id) || null}
-    serviceNameById={serviceNameById}
-  />
-)}
-{/* for desktop */}
-              <InvoicePreview
-                transaction={transactionToPreview}
-                company={
-                  companies.find(
-                    (c) => c._id === transactionToPreview?.company?._id
-                  ) || null
-                }
-                party={
-                  parties.find(
-                    (p) =>
-                      p._id === (transactionToPreview as any)?.party?._id ||
-                      transactionToPreview?.party === p._id
-                  ) || null
-                }
-                serviceNameById={serviceNameById} // ✅ pass it
-              />
+                <InvoicePreview
+                  transaction={transactionToPreview}
+                  company={
+                    companies.find(
+                      (c) => c._id === transactionToPreview.company?._id
+                    ) || null
+                  }
+                  party={
+                    parties.find(
+                      (p) =>
+                        p._id === (transactionToPreview as any)?.party?._id ||
+                        transactionToPreview?.party === p._id
+                    ) || null
+                  }
+                  serviceNameById={serviceNameById}
+                />
+              )}
             </DialogContent>
           </Dialog>
 
@@ -983,7 +985,7 @@ const handleTabChange = (tab: TabKey) => {
 
               <div className="mt-4">
                 <Table>
-                  <TableHeader >
+                  <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead className="hidden sm:table-cell">
@@ -1063,8 +1065,8 @@ const handleTabChange = (tab: TabKey) => {
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as TabKey)}
             >
-             {/* ✅ Desktop Tabs */}
-<div className="hidden sm:block overflow-x-auto pb-2">
+              {/* ✅ Desktop Tabs */}
+              <div className="hidden sm:block overflow-x-auto pb-2">
                 <TabsList>
                   <TabsTrigger value="all">All</TabsTrigger>
                   {canSales && <TabsTrigger value="sales">Sales</TabsTrigger>}
@@ -1082,71 +1084,71 @@ const handleTabChange = (tab: TabKey) => {
                   )}
                 </TabsList>
               </div>
-{/* ✅ Mobile Dropdown */}
-<div className="block sm:hidden relative">
-  <button
-    onClick={() => setIsDropdownOpen((prev) => !prev)}
-    className="flex items-center justify-between w-full px-3 py-2 border rounded-md bg-white shadow-sm"
-  >
-<span className="text-sm">
-  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-</span>
-    <ChevronDown className="ml-2 h-4 w-4" />
-  </button>
+              {/* ✅ Mobile Dropdown */}
+              <div className="block sm:hidden relative">
+                <button
+                  onClick={() => setIsDropdownOpen((prev) => !prev)}
+                  className="flex items-center justify-between w-full px-3 py-2 border rounded-md bg-white shadow-sm"
+                >
+                  <span className="text-sm">
+                    {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </button>
 
-  {isDropdownOpen && (
-    <div className="absolute mt-1 w-40 bg-white border rounded-md shadow-lg z-50">
-      <ul className="py-1">
-        <li
-          onClick={() => handleTabChange("all")}
-          className="cursor-pointer px-3 py-2 hover:bg-gray-100"
-        >
-          All
-        </li>
-        {canSales && (
-          <li
-            onClick={() => handleTabChange("sales")}
-            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
-          >
-            Sales
-          </li>
-        )}
-        {canPurchases && (
-          <li
-            onClick={() => handleTabChange("purchases")}
-            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
-          >
-            Purchases
-          </li>
-        )}
-        {canReceipt && (
-          <li
-            onClick={() => handleTabChange("receipts")}
-            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
-          >
-            Receipts
-          </li>
-        )}
-        {canPayment && (
-          <li
-            onClick={() => handleTabChange("payments")}
-            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
-          >
-            Payments
-          </li>
-        )}
-        {canJournal && (
-          <li
-            onClick={() => handleTabChange("journals")}
-            className="cursor-pointer px-3 py-2 hover:bg-gray-100"
-          >
-            Journals
-          </li>
-        )}
-      </ul>
-    </div>
-  )}
-</div>
+                {isDropdownOpen && (
+                  <div className="absolute mt-1 w-40 bg-white border rounded-md shadow-lg z-50">
+                    <ul className="py-1">
+                      <li
+                        onClick={() => handleTabChange("all")}
+                        className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+                      >
+                        All
+                      </li>
+                      {canSales && (
+                        <li
+                          onClick={() => handleTabChange("sales")}
+                          className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+                        >
+                          Sales
+                        </li>
+                      )}
+                      {canPurchases && (
+                        <li
+                          onClick={() => handleTabChange("purchases")}
+                          className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+                        >
+                          Purchases
+                        </li>
+                      )}
+                      {canReceipt && (
+                        <li
+                          onClick={() => handleTabChange("receipts")}
+                          className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+                        >
+                          Receipts
+                        </li>
+                      )}
+                      {canPayment && (
+                        <li
+                          onClick={() => handleTabChange("payments")}
+                          className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+                        >
+                          Payments
+                        </li>
+                      )}
+                      {canJournal && (
+                        <li
+                          onClick={() => handleTabChange("journals")}
+                          className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+                        >
+                          Journals
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
               <TabsContent value="all" className="mt-4">
                 {renderContent(allVisibleTransactions)}
               </TabsContent>
