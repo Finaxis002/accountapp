@@ -9,6 +9,13 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,10 +34,12 @@ import {
   X,
   Send,
   MessageSquare,
+  FileText,
   Contact,
   Store,
   Server,
 } from "lucide-react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VendorSettings } from "@/components/settings/vendor-settings";
 import { CustomerSettings } from "@/components/settings/customer-settings";
@@ -60,7 +69,14 @@ import {
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 // In your ProfilePage component, add this import
 import { TemplateSettings } from "@/components/settings/template-settings";
+import type { LucideIcon } from "lucide-react";
 
+type TabItem = {
+  value: string;
+  label: string;
+  component: React.ReactNode;
+  icon?: LucideIcon; // 👈 yeh add karna hai
+};
 export default function ProfilePage() {
   const { permissions, isLoading } = usePermissions(); // client (master) perms
   const { permissions: userCaps, isLoading: isUserLoading } =
@@ -87,77 +103,86 @@ export default function ProfilePage() {
   const allow = (clientFlag?: boolean | null, userFlag?: boolean | null) =>
     (isClient && !!clientFlag) || (isUser && !!userFlag);
 
-  const adminTabs = [
-    { value: "profile", label: "Profile", component: <ProfileTab /> },
-    {
-      value: "notifications",
-      label: "Notifications",
-      component: <NotificationsTab />,
-    },
-  ];
+  const adminTabs: TabItem[] = [
+  { value: "profile", label: "Profile", component: <ProfileTab /> },
+  {
+    value: "notifications",
+    label: "Notifications",
+    component: <NotificationsTab />,
+  },
+];
 
-  const permissionsTab = isUser
-    ? {
-        value: "my-permissions",
-        label: "My Permissions",
-        component: <UserPermissionsTab />,
-      }
-    : {
-        value: "permissions",
-        label: "Permissions",
-        component: <PermissionsTab />,
-      };
+const permissionsTab: TabItem = isUser
+  ? {
+      value: "my-permissions",
+      label: "My Permissions",
+      icon: Shield,
+      component: <UserPermissionsTab />,
+    }
+  : {
+      value: "permissions",
+      label: "Permissions",
+      icon: Shield,
+      component: <PermissionsTab />,
+    };
 
-  const memberTabs = [
-    permissionsTab,
-
-    allow(permissions?.canCreateVendors, userCaps?.canCreateVendors) && {
-      value: "vendors",
-      label: "Vendors",
-      component: <VendorSettings />,
-    },
-    allow(permissions?.canCreateCustomers, userCaps?.canCreateCustomers) && {
-      value: "customers",
-      label: "Customers",
-      component: <CustomerSettings />,
-    },
-    // Inventory controls both Products and Services
-    allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
-      value: "products",
-      label: "Products",
-      component: <ProductSettings />,
-    },
-    allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
-      value: "services",
-      label: "Services",
-      component: <ServiceSettings />,
-    },
-
-     {
+const memberTabs: TabItem[] = [
+  permissionsTab,
+  allow(permissions?.canCreateVendors, userCaps?.canCreateVendors) && {
+    value: "vendors",
+    label: "Vendors",
+    icon: Store,
+    component: <VendorSettings />,
+  },
+  allow(permissions?.canCreateCustomers, userCaps?.canCreateCustomers) && {
+    value: "customers",
+    label: "Customers",
+    icon: Contact,
+    component: <CustomerSettings />,
+  },
+  allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
+    value: "products",
+    label: "Products",
+    icon: Package,
+    component: <ProductSettings />,
+  },
+  allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
+    value: "services",
+    label: "Services",
+    icon: Server,
+    component: <ServiceSettings />,
+  },
+  {
     value: "templates",
     label: "Invoices",
+    icon: FileText,
     component: <TemplateSettings />,
   },
-
-    allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
-      value: "banks",
-      label: "Banks",
-      component: <BankSettings />,
-    },
-
-    {
-      value: "notifications",
-      label: "Notifications",
-      component: <NotificationsTab />,
-    },
-  ].filter(Boolean) as {
-    value: string;
-    label: string;
-    component: React.ReactNode;
-  }[];
+  allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
+    value: "banks",
+    label: "Banks",
+    icon: Building,
+    component: <BankSettings />,
+  },
+  {
+    value: "notifications",
+    label: "Notifications",
+    icon: Bell,
+    component: <NotificationsTab />,
+  },
+].filter(Boolean) as TabItem[];
 
   const availableTabs = isMember ? memberTabs : adminTabs;
-  const defaultTab = isMember ? "permissions" : "profile";
+  const defaultTabs = [];
+
+// Set default tabs based on user and member roles
+if (isUser) defaultTabs.push("my-permissions");
+if (isMember) defaultTabs.push("permissions");
+
+// Set the default tab to the first in the array
+const initialTab = defaultTabs.length > 0 ? defaultTabs[0] : "profile";
+const [selectedTab, setSelectedTab] = React.useState(initialTab);
+  
 
   const gridColsClass = `grid-cols-${availableTabs.length}`;
 
@@ -172,21 +197,47 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className={cn("grid w-full", gridColsClass)}>
-          {availableTabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+   {/* Mobile view: dropdown */}
+<div className="sm:hidden">
+  <Select value={selectedTab} onValueChange={setSelectedTab}>
+    <SelectTrigger className="w-full">
+      <SelectValue placeholder="Select a tab" />
+    </SelectTrigger>
+    <SelectContent>
+      {availableTabs.map((tab) => (
+       <SelectItem key={tab.value} value={tab.value}>
+        <div className="flex items-center gap-2">
+          {tab.icon && <tab.icon className="h-4 w-4" />}
+          {tab.label}
+        </div>
+      </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
 
-        {availableTabs.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value} className="mt-6">
-            {tab.component}
-          </TabsContent>
-        ))}
-      </Tabs>
+  {/* Render selected tab content */}
+  <div className="mt-6">
+    {availableTabs.find((t) => t.value === selectedTab)?.component}
+  </div>
+</div>
+
+<div className="hidden sm:block">
+<Tabs defaultValue={selectedTab} className="w-full">
+  <TabsList className={cn("grid w-full", gridColsClass)}>
+    {availableTabs.map((tab) => (
+      <TabsTrigger key={tab.value} value={tab.value}>
+        {tab.label}
+      </TabsTrigger>
+    ))}
+  </TabsList>
+
+  {availableTabs.map((tab) => (
+    <TabsContent key={tab.value} value={tab.value} className="mt-6">
+      {tab.component}
+    </TabsContent>
+  ))}
+</Tabs>
+</div>
     </div>
   );
 }

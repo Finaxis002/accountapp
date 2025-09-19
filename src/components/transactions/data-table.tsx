@@ -74,8 +74,8 @@ export function DataTable<TData, TValue>({
           className="max-w-sm"
         />
       </div>
-      <div className="overflow-x-auto">
-        <Table className="hidden sm:block">
+      <div className="overflow-x-auto hidden sm:block">
+         <Table className="w-full ">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -103,7 +103,7 @@ export function DataTable<TData, TValue>({
             data-state={row.getIsSelected() && "selected"}
           >
             {row.getVisibleCells().map((cell: Cell<TData, TValue>) => (
-              <TableCell key={cell.id}>
+             <TableCell key={cell.id}>
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </TableCell>
             ))}
@@ -146,8 +146,8 @@ export function DataTable<TData, TValue>({
     <div className="text-center text-gray-500 py-4">No results.</div>
   )}
 </div>
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
-        <div className="text-sm text-muted-foreground flex-1">
+<div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t w-full">
+  <div className="text-sm text-muted-foreground flex-1">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}
             {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
