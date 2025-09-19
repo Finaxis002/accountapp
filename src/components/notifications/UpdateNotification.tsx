@@ -43,6 +43,7 @@ interface UpdateNotification {
   exploredSections: string[];
   dismissed: boolean;
   propagatedToClients: boolean;
+  visibility?: string;
   createdAt: string;
 }
 
@@ -57,6 +58,7 @@ const UpdateNotification = () => {
   const [isPropagating, setIsPropagating] = useState(false);
   const [dismissAlertOpen, setDismissAlertOpen] = useState(false);
   const [notificationToDismiss, setNotificationToDismiss] = useState<string | null>(null);
+  const [changeMode, setChangeMode] = useState<{[key: string]: boolean}>({});
   const router = useRouter();
   const { toast } = useToast();
 
@@ -261,7 +263,10 @@ const UpdateNotification = () => {
 
             return false; // Dismissed and no grace period data, hide it
           }
-        );
+        ).map((n: any) => ({
+          ...n,
+          visibility: n.visibility || 'all' // Ensure visibility is set
+        }));
 
         console.log("Fetched master notifications:", notificationsData);
       } else {
@@ -530,13 +535,13 @@ const UpdateNotification = () => {
     }
   };
 
-  const handlePropagateToClients = async (notificationId: string) => {
+  const handlePropagateToAllUsers = async (notificationId: string) => {
     try {
       setIsPropagating(true);
       const token = localStorage.getItem("token");
       await axios.post(
-        `${baseURL}/api/update-notifications/propagate/${notificationId}`,
-        {},
+        `${baseURL}/api/update-notifications/propagate-all/${notificationId}`,
+        { force: true }, // Allow re-propagation
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -545,19 +550,54 @@ const UpdateNotification = () => {
       // Update local state
       setNotifications((prev) =>
         prev.map((n) =>
-          n._id === notificationId ? { ...n, propagatedToClients: true } : n
+          n._id === notificationId ? { ...n, propagatedToClients: true, visibility: 'all' } : n
         )
       );
 
       toast({
         title: "Success",
-        description: "Update notification propagated to all clients",
+        description: "Update notification sent to all users (clients, users, and admins)",
       });
     } catch (error) {
-      console.error("Error propagating to clients:", error);
+      console.error("Error propagating to all users:", error);
       toast({
         title: "Error",
-        description: "Failed to propagate to clients",
+        description: "Failed to send notifications to all users",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPropagating(false);
+    }
+  };
+
+  const handlePropagateToAdminsOnly = async (notificationId: string) => {
+    try {
+      setIsPropagating(true);
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${baseURL}/api/update-notifications/propagate-admins/${notificationId}`,
+        { force: true }, // Allow re-propagation
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notificationId ? { ...n, propagatedToClients: true, visibility: 'admins' } : n
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: "Update notification sent to admins only (clients and admins)",
+      });
+    } catch (error) {
+      console.error("Error propagating to admins only:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send notifications to admins",
         variant: "destructive",
       });
     } finally {
@@ -738,25 +778,106 @@ const UpdateNotification = () => {
                         : "Click on features to view demo or click 'View Demo' to go directly to the feature"
                       : "Update notification from your administrator - will auto-dismiss in 36 hours"}
                   </p>
+                  
+                  {/* Notification buttons logic */}
                   {isMaster && !notification.propagatedToClients && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePropagateToClients(notification._id)}
-                      disabled={isPropagating}
-                    >
-                      {isPropagating ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Users className="h-4 w-4 mr-2" />
-                      )}
-                      Notify Clients
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePropagateToAllUsers(notification._id)}
+                        disabled={isPropagating}
+                      >
+                        {isPropagating ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Users className="h-4 w-4 mr-2" />
+                        )}
+                        Notify All Users
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePropagateToAdminsOnly(notification._id)}
+                        disabled={isPropagating}
+                      >
+                        {isPropagating ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Users className="h-4 w-4 mr-2" />
+                        )}
+                        Notify Only Admins
+                      </Button>
+                    </div>
                   )}
-                  {notification.propagatedToClients && (
+                  
+                  {/* After notification is sent */}
+                  {isMaster && notification.propagatedToClients && !changeMode[notification._id] && (
+                    <div className="flex flex-col gap-2 items-end">
+                      <div className="text-sm text-muted-foreground text-right">
+                        {notification.visibility === 'admins'
+                          ? "You have notified clients and their admins only"
+                          : "Notifications sent to all users"
+                        }
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: true }))}
+                      >
+                        Change Notification
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Change mode - show buttons again */}
+                  {isMaster && changeMode[notification._id] && (
+                    <div className="flex flex-col gap-2">
+                      <div className="text-sm text-muted-foreground">
+                        Change notification audience:
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePropagateToAllUsers(notification._id)}
+                          disabled={isPropagating}
+                        >
+                          {isPropagating ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Users className="h-4 w-4 mr-2" />
+                          )}
+                          Notify All Users
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePropagateToAdminsOnly(notification._id)}
+                          disabled={isPropagating}
+                        >
+                          {isPropagating ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Users className="h-4 w-4 mr-2" />
+                          )}
+                          Notify Only Admins
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: false }))}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!isMaster && notification.propagatedToClients && (
                     <Badge variant="secondary">
                       <CheckCircle className="h-3 w-3 mr-1" />
-                      {isMaster ? "Clients Notified" : "Update Available"}
+                      Update Available
                     </Badge>
                   )}
                 </div>
@@ -813,13 +934,13 @@ const UpdateNotification = () => {
               >
                 {renderMarkdown(selectedFeature.description)}
               </div>
-              {/* <div className="flex justify-center">
+              <div className="flex justify-center">
                 <img
                   src={selectedFeature.gifUrl}
                   alt={`${selectedFeature.name} feature demonstration`}
                   className="max-w-full max-h-96 rounded-lg border"
                 />
-              </div> */}
+              </div>
               <div className="flex justify-end">
                 <Button
                   onClick={() => setSelectedFeature(null)}
