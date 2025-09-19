@@ -430,6 +430,7 @@ const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
         companyMap,
         serviceNameById,
         onSendInvoice: () => { },
+        hideActions: true,
       }),
     [onPreview, handleViewItems, handleAction, companyMap, serviceNameById]
   );
@@ -478,6 +479,7 @@ const renderContent = (data: Transaction[]) => {
         onDelete={handleAction}
         onViewItems={handleViewItems}
         onSendInvoice={() => {}}
+        hideActions={true}
       />
     );
   }
