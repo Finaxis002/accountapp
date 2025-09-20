@@ -37,7 +37,6 @@ import { ProductStock } from "@/components/dashboard/product-stock";
 import Link from "next/link";
 import UpdateWalkthrough from "@/components/notifications/UpdateWalkthrough";
 
-
 const CACHE_KEY = "company_dashboard_data"; // Key to store the cache
 const CACHE_EXPIRY = 5 * 60 * 1000; // Cache expiry time in milliseconds (5 minutes)
 
@@ -88,7 +87,7 @@ export default function DashboardPage() {
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [party, setParty] = React.useState<any>(null); // Set party data here
   const [company, setCompany] = React.useState<any>(null); // Set company data here
-   const [transaction, setTransaction] = React.useState<any>(null); 
+  const [transaction, setTransaction] = React.useState<any>(null);
 
   const { permissions: userCaps } = useUserPermissions();
   const selectedCompany = React.useMemo(
@@ -109,126 +108,127 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [isTransactionFormOpen, setIsTransactionFormOpen] =
     React.useState(false);
-    
 
-const fetchCompanyDashboard = React.useCallback(async () => {
-  setIsLoading(true);
+  const fetchCompanyDashboard = React.useCallback(async () => {
+    setIsLoading(true);
 
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
 
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Authentication token not found.");
+      const buildRequest = (url: string) =>
+        fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
-    const buildRequest = (url: string) =>
-      fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      // when "All" is selected, omit companyId
+      const queryParam = selectedCompanyId
+        ? `?companyId=${selectedCompanyId}`
+        : "";
 
-    // when "All" is selected, omit companyId
-    const queryParam = selectedCompanyId
-      ? `?companyId=${selectedCompanyId}`
-      : "";
+      const [
+        salesRes,
+        purchasesRes,
+        receiptsRes,
+        paymentsRes,
+        journalsRes,
+        usersRes,
+        companiesRes,
+        servicesRes,
+      ] = await Promise.all([
+        buildRequest(`${baseURL}/api/sales${queryParam}`),
+        buildRequest(`${baseURL}/api/purchase${queryParam}`),
+        buildRequest(`${baseURL}/api/receipts${queryParam}`),
+        buildRequest(`${baseURL}/api/payments${queryParam}`),
+        buildRequest(`${baseURL}/api/journals${queryParam}`),
+        buildRequest(`${baseURL}/api/users`),
+        buildRequest(`${baseURL}/api/companies/my`),
+        buildRequest(`${baseURL}/api/services`),
+      ]);
 
-    const [
-      salesRes,
-      purchasesRes,
-      receiptsRes,
-      paymentsRes,
-      journalsRes,
-      usersRes,
-      companiesRes,
-      servicesRes,
-    ] = await Promise.all([
-      buildRequest(`${baseURL}/api/sales${queryParam}`),
-      buildRequest(`${baseURL}/api/purchase${queryParam}`),
-      buildRequest(`${baseURL}/api/receipts${queryParam}`),
-      buildRequest(`${baseURL}/api/payments${queryParam}`),
-      buildRequest(`${baseURL}/api/journals${queryParam}`),
-      buildRequest(`${baseURL}/api/users`),
-      buildRequest(`${baseURL}/api/companies/my`),
-      buildRequest(`${baseURL}/api/services`),
-    ]);
+      const rawSales = await salesRes.json();
+      const rawPurchases = await purchasesRes.json();
+      const rawReceipts = await receiptsRes.json();
+      const rawPayments = await paymentsRes.json();
+      const rawJournals = await journalsRes.json();
+      const usersData = await usersRes.json();
+      const companiesData = await companiesRes.json();
 
-    const rawSales = await salesRes.json();
-    const rawPurchases = await purchasesRes.json();
-    const rawReceipts = await receiptsRes.json();
-    const rawPayments = await paymentsRes.json();
-    const rawJournals = await journalsRes.json();
-    const usersData = await usersRes.json();
-    const companiesData = await companiesRes.json();
+      const servicesJson = await servicesRes.json();
 
-    const servicesJson = await servicesRes.json();
+      const servicesArr = Array.isArray(servicesJson)
+        ? servicesJson
+        : servicesJson.services || [];
+      const sMap = new Map<string, string>();
+      for (const s of servicesArr) {
+        if (s?._id)
+          sMap.set(String(s._id), s.serviceName || s.name || "Service");
+      }
+      setServiceNameById(sMap);
 
-    const servicesArr = Array.isArray(servicesJson)
-      ? servicesJson
-      : servicesJson.services || [];
-    const sMap = new Map<string, string>();
-    for (const s of servicesArr) {
-      if (s?._id) sMap.set(String(s._id), s.serviceName || s.name || "Service");
+      setCompanies(Array.isArray(companiesData) ? companiesData : []);
+
+      // normalize to arrays regardless of shape
+      const salesArr = toArray(rawSales);
+      const purchasesArr = toArray(rawPurchases);
+      const receiptsArr = toArray(rawReceipts);
+      const paymentsArr = toArray(rawPayments);
+      const journalsArr = toArray(rawJournals);
+
+      // recent transactions (combined)
+      const allTransactions = [
+        ...salesArr.map((s: any) => ({ ...s, type: "sales" })),
+        ...purchasesArr.map((p: any) => ({ ...p, type: "purchases" })),
+        ...receiptsArr.map((r: any) => ({ ...r, type: "receipt" })),
+        ...paymentsArr.map((p: any) => ({ ...p, type: "payment" })),
+        ...journalsArr.map((j: any) => ({
+          ...j,
+          description: j?.narration ?? j?.description ?? "",
+          type: "journal",
+        })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      setRecentTransactions(allTransactions.slice(0, 5));
+
+      // KPI totals from normalized arrays
+      const totalSales = salesArr.reduce(
+        (acc: number, row: any) => acc + getAmount("sales", row),
+        0
+      );
+      const totalPurchases = purchasesArr.reduce(
+        (acc: number, row: any) => acc + getAmount("purchases", row),
+        0
+      );
+
+      const companiesCount = selectedCompanyId ? 1 : companiesData?.length || 0;
+
+      setCompanyData({
+        totalSales,
+        totalPurchases,
+        users: usersData?.length || 0,
+        companies: companiesCount,
+      });
+
+      // Store data in cache with timestamp
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          totalSales,
+          totalPurchases,
+          users: usersData?.length || 0,
+          companies: companiesCount,
+        })
+      );
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to load dashboard data",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+      setCompanyData(null);
+    } finally {
+      setIsLoading(false);
     }
-    setServiceNameById(sMap);
-
-    setCompanies(Array.isArray(companiesData) ? companiesData : []);
-
-    // normalize to arrays regardless of shape
-    const salesArr = toArray(rawSales);
-    const purchasesArr = toArray(rawPurchases);
-    const receiptsArr = toArray(rawReceipts);
-    const paymentsArr = toArray(rawPayments);
-    const journalsArr = toArray(rawJournals);
-
-    // recent transactions (combined)
-    const allTransactions = [
-      ...salesArr.map((s: any) => ({ ...s, type: "sales" })),
-      ...purchasesArr.map((p: any) => ({ ...p, type: "purchases" })),
-      ...receiptsArr.map((r: any) => ({ ...r, type: "receipt" })),
-      ...paymentsArr.map((p: any) => ({ ...p, type: "payment" })),
-      ...journalsArr.map((j: any) => ({
-        ...j,
-        description: j?.narration ?? j?.description ?? "",
-        type: "journal",
-      })),
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    setRecentTransactions(allTransactions.slice(0, 5));
-
-    // KPI totals from normalized arrays
-    const totalSales = salesArr.reduce(
-      (acc: number, row: any) => acc + getAmount("sales", row),
-      0
-    );
-    const totalPurchases = purchasesArr.reduce(
-      (acc: number, row: any) => acc + getAmount("purchases", row),
-      0
-    );
-
-    const companiesCount = selectedCompanyId ? 1 : companiesData?.length || 0;
-
-    setCompanyData({
-      totalSales,
-      totalPurchases,
-      users: usersData?.length || 0,
-      companies: companiesCount,
-    });
-
-    // Store data in cache with timestamp
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      totalSales,
-      totalPurchases,
-      users: usersData?.length || 0,
-      companies: companiesCount,
-    }));
-
-  } catch (error) {
-    toast({
-      variant: "destructive",
-      title: "Failed to load dashboard data",
-      description:
-        error instanceof Error ? error.message : "Something went wrong.",
-    });
-    setCompanyData(null);
-  } finally {
-    setIsLoading(false);
-  }
-}, [selectedCompanyId, toast, baseURL]);
+  }, [selectedCompanyId, toast, baseURL]);
 
   React.useEffect(() => {
     fetchCompanyDashboard();
@@ -268,49 +268,60 @@ const fetchCompanyDashboard = React.useCallback(async () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center sm:justify-between">
-        <div>
+        <div className="w-full sm:w-auto">
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm sm:text-base">
             {selectedCompany
               ? `An overview of ${selectedCompany.businessName}.`
               : "An overview across all companies."}
           </p>
         </div>
         {companies.length > 0 && (
-
-          <div className="flex flex-row sm:flex-row items-center gap-2 mt-4 sm:mt-0">
-
+          <div className="flex flex-wrap gap-2 mt-4 sm:mt-0 w-full sm:w-auto justify-center sm:justify-end">
             <UpdateWalkthrough />
 
-            <Button variant="outline" asChild>
+            <Button
+              variant="outline"
+              asChild
+              size="sm"
+              className="flex-1 sm:flex-initial"
+            >
               <Link href="/profile">
-                <Settings className="mr-2 h-4 w-4" /> Go to Settings
+                <Settings className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Go to Settings</span>
+                <span className="sm:hidden">Settings</span>
               </Link>
             </Button>
+
             <Dialog
               open={isTransactionFormOpen}
               onOpenChange={setIsTransactionFormOpen}
             >
               <DialogTrigger asChild>
-                <Button>
+                <Button size="sm" className="flex-1 sm:flex-initial">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  New Transaction
+                  <span className="hidden xs:inline">New Transaction</span>
+                  <span className="xs:hidden">New Transaction</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "  style={{ maxWidth: 1000, width: '125vw' }}>
-                <DialogHeader className="p-6">
-                  <DialogTitle>Create a New Transaction</DialogTitle>
-                  <DialogDescription>
+              <DialogContent className="max-w-[95vw] w-[95vw] p-4 sm:p-6 md:grid-rows-[auto,1fr,auto] md:max-h-[90vh] md:max-w-[1000px]">
+                <DialogHeader className="p-4 sm:p-6">
+                  <DialogTitle className="text-lg sm:text-xl">
+                    Create a New Transaction
+                  </DialogTitle>
+                  <DialogDescription className="text-sm sm:text-base">
                     Fill in the details below to record a new financial event.
                   </DialogDescription>
                 </DialogHeader>
-                <TransactionForm
-                  onFormSubmit={handleTransactionFormSubmit}
-                  serviceNameById={serviceNameById}
-                  transaction={transaction}
-                  party={party}
-                  company={company}
-                />
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <TransactionForm
+                    onFormSubmit={handleTransactionFormSubmit}
+                    serviceNameById={serviceNameById}
+                    transaction={transaction}
+                    party={party}
+                    company={company}
+                  />
+                </div>
               </DialogContent>
             </Dialog>
           </div>
@@ -341,21 +352,22 @@ const fetchCompanyDashboard = React.useCallback(async () => {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
+          <div className="grid gap-4  sm:grid-cols-4 grid-cols-2">
             {kpiData.map((kpi) => (
-              <Card key={kpi.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
+              <Card key={kpi.title} className="flex flex-col h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-xs sm:text-sm font-medium">
                     {kpi.title}
                   </CardTitle>
-                  <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                  <kpi.icon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{kpi.value}</div>
-                  <p className="text-xs text-muted-foreground">
+                <CardContent className="p-4 pt-0 flex-grow">
+                  <div className="text-xl sm:text-2xl font-bold">
+                    {kpi.value}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
                     {kpi.description}
-                  </p>{" "}
-                  {/* ✅ Add this line */}
+                  </p>
                 </CardContent>
               </Card>
             ))}

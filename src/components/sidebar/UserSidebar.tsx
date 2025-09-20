@@ -50,7 +50,7 @@ export default function UserSidebar() {
     setCurrentUser(getCurrentUser());
   }, []);
 
-  console.log("user / admin / manager Permissions :" , userCaps)
+  // console.log("user / admin / manager Permissions :" , userCaps)
 
   const handleLogout = () => {
     const to = logout();

@@ -36,6 +36,7 @@ interface TransactionsTableProps {
   onSendInvoice: (tx: Transaction) => void;
   companyMap: Map<string, string>;
   serviceNameById: Map<string, string>;
+  hideActions?: boolean;
 }
 
 export function TransactionsTable({
@@ -47,6 +48,7 @@ export function TransactionsTable({
   onSendInvoice,
   companyMap,
   serviceNameById,
+  hideActions = false,
 }: TransactionsTableProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -103,32 +105,34 @@ const companyName = companyId
                 <Badge>{tx.type}</Badge>
 
                 {/* Actions */}
-                <div className="flex justify-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => onPreview(tx)}
-                        disabled={tx.type !== "sales"}
-                      >
-                        Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(tx)}>
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onDelete(tx)}
-                        className="text-red-600"
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                {!hideActions && (
+                  <div className="flex justify-end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onPreview(tx)}
+                          disabled={tx.type !== "sales"}
+                        >
+                          Preview
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(tx)}>
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onDelete(tx)}
+                          className="text-red-600"
+                        >
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
@@ -149,6 +153,7 @@ const companyName = companyId
         onSendInvoice,
         companyMap,
         serviceNameById,
+        hideActions,
       })}
     />
   );

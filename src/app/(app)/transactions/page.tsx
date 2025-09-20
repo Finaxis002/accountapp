@@ -119,11 +119,14 @@ export default function TransactionsPage() {
   const { permissions: userCaps, role } = useUserPermissions(); // ensure your hook exposes role; otherwise get it from your auth context
   const isSuper = role === "master" || role === "client";
 
+
   const canSales = isSuper || !!userCaps?.canCreateSaleEntries;
   const canPurchases = isSuper || !!userCaps?.canCreatePurchaseEntries;
   const canReceipt = isSuper || !!userCaps?.canCreateReceiptEntries;
   const canPayment = isSuper || !!userCaps?.canCreatePaymentEntries;
   const canJournal = isSuper || !!userCaps?.canCreateJournalEntries;
+
+  console.log("cansales",canSales)
 
   const allowedTypes = React.useMemo(() => {
     const arr: Array<
