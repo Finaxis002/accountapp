@@ -341,11 +341,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
+                        
+                        {role === "master" && (
                         <DropdownMenuItem
                           onClick={() => router.push("/profile")}
                         >
                           Profile
                         </DropdownMenuItem>
+                        )}
+                        
                         <DropdownMenuItem onClick={handleSettingsClick}>
                           Settings
                         </DropdownMenuItem>

@@ -104,6 +104,8 @@ export function UserForm({
   });
 
   const [openCompanySelect, setOpenCompanySelect] = React.useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
 
   // when user prop changes, hydrate fields; roleId set below
   useEffect(() => {
@@ -152,12 +154,26 @@ export function UserForm({
   }
 }, [roles, user]);
 
+useEffect(() => {
+  if (formData.password.length < 6 && formData.password !== "") {
+    setPasswordError("Password should be at least 6 characters long.");
+  } else {
+    setPasswordError("");
+  }
+}, [formData.password]);
 
   // helper: true only for real 24-hex objectids
   const isObjectId = (s?: string) => !!s && /^[a-f0-9]{24}$/i.test(s);
 
 const handleSubmit = (e: React.FormEvent) => {
   e.preventDefault();
+
+  if (formData.password.length < 6) {
+    setPasswordError("Password should be at least 6 characters long.");
+    return; // Prevent form submission if password is invalid
+  } else {
+    setPasswordError(""); // Clear error if password is valid
+  }
 
   const selectedRole =
     roles.find((r) => r._id === formData.roleId) ||
@@ -249,6 +265,10 @@ const handleSubmit = (e: React.FormEvent) => {
             />
           </div>
         )}
+        {passwordError && (
+  <div className="text-red-500 text-sm mt-2">{passwordError}</div>
+)}
+
 
         {/* Row: Contact + Address */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -376,7 +396,7 @@ const handleSubmit = (e: React.FormEvent) => {
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">{user ? "Update" : "Create"}</Button>
+        <Button type="submit" disabled={passwordError.length > 0}>{user ? "Update" : "Create"}</Button>
       </div>
     </form>
   );

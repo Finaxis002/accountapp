@@ -20,6 +20,9 @@ export default function ResetPasswordDialog({ open, onClose, userId, userName }:
   const [pw1, setPw1] = React.useState("");
   const [pw2, setPw2] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [showPw1, setShowPw1] = React.useState(false);
+const [showPw2, setShowPw2] = React.useState(false);
+
 
   const submit = async () => {
     if (!pw1 || pw1.length < 6) {
@@ -57,7 +60,7 @@ export default function ResetPasswordDialog({ open, onClose, userId, userName }:
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      {/* <DialogContent>
         <DialogHeader>
           <DialogTitle>Reset Password{userName ? ` — ${userName}` : ""}</DialogTitle>
         </DialogHeader>
@@ -77,7 +80,64 @@ export default function ResetPasswordDialog({ open, onClose, userId, userName }:
           <Button variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button onClick={submit} disabled={loading}>{loading ? "Saving..." : "Update"}</Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogContent> */}
+      <DialogContent>
+  <DialogHeader>
+    <DialogTitle>Reset Password{userName ? ` — ${userName}` : ""}</DialogTitle>
+  </DialogHeader>
+
+  <div className="space-y-3">
+    {/* New Password */}
+    <div>
+      <Label>New Password</Label>
+      <div className="relative">
+        <Input
+          type={showPw1 ? "text" : "password"}
+          value={pw1}
+          onChange={(e) => setPw1(e.target.value)}
+          className="pr-10"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPw1((prev) => !prev)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+        >
+          {showPw1 ? "Hide" : "Show"}
+        </button>
+      </div>
+    </div>
+
+    {/* Confirm New Password */}
+    <div>
+      <Label>Confirm New Password</Label>
+      <div className="relative">
+        <Input
+          type={showPw2 ? "text" : "password"}
+          value={pw2}
+          onChange={(e) => setPw2(e.target.value)}
+          className="pr-10"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPw2((prev) => !prev)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+        >
+          {showPw2 ? "Hide" : "Show"}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <DialogFooter>
+    <Button variant="ghost" onClick={onClose} disabled={loading}>
+      Cancel
+    </Button>
+    <Button onClick={submit} disabled={loading}>
+      {loading ? "Saving..." : "Update"}
+    </Button>
+  </DialogFooter>
+</DialogContent>
+
     </Dialog>
   );
 }

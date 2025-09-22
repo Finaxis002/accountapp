@@ -16,6 +16,8 @@ export type UserPermissions = {
   canCreateJournalEntries?: boolean;
   canCreateReceiptEntries?: boolean;
   canCreatePaymentEntries?: boolean;
+  canShowCustomers?: boolean;
+  canShowVendors?: boolean;
 };
 
 type Ctx = {
@@ -57,6 +59,8 @@ const ALL_ALLOWED: UserPermissions = {
   canCreateJournalEntries: true,
   canCreateReceiptEntries: true,
   canCreatePaymentEntries: true,
+  canShowCustomers: true,
+  canShowVendors: true,
   // limits can be omitted or set very high; UI typically doesn't gate on them
 };
 
@@ -114,6 +118,8 @@ export function UserPermissionsProvider({ children }: { children: React.ReactNod
         canCreateJournalEntries: data.canCreateJournalEntries,
         canCreateReceiptEntries: data.canCreateReceiptEntries,
         canCreatePaymentEntries: data.canCreatePaymentEntries,
+        canShowCustomers: data.canShowCustomers,
+        canShowVendors: data.canShowVendors,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
