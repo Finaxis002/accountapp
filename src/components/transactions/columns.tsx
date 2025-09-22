@@ -171,25 +171,27 @@ export const columns = ({
     // COMPANY
     {
       accessorKey: "company",
-      header: "Company",
-      cell: ({ row }: { row: Row<Transaction> }) => {
-        const company = row.original.company;
-        const companyId =
-          typeof company === "object" && company !== null
-            ? (company as any)._id
-            : company;
+  header: "Company",
+  cell: ({ row }: { row: Row<Transaction> }) => {
+    const company = row.original.company;
+    const companyId =
+      typeof company === "object" && company !== null
+        ? (company as any)._id
+        : company;
 
-        if (!companyId) return "N/A";
+    if (!companyId) return "N/A";
 
-        const companyName = companyMap?.get(companyId as string) || "N/A";
-        return (
-          <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden lg:inline">{companyName}</span>
-          </div>
-        );
-      },
-    },
+    const companyName = companyMap?.get(companyId as string) || "N/A";
+    return (
+      <div className="flex items-center gap-2">
+        <Building className="h-4 w-4 text-muted-foreground" />
+        <span className="hidden sm:inline">{companyName}</span>
+        {/* Add mobile view display */}
+        <span className="sm:hidden text-sm">{companyName}</span> {/* Mobile display */}
+      </div>
+    );
+  },
+},
 
     // LINES (ITEMS/SERVICES)
     {

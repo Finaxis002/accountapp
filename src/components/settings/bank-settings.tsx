@@ -232,6 +232,7 @@ export function BankSettings() {
             </Button>
           </div>
         </CardHeader>
+
         <CardContent>
           {filteredBankDetails.length > 0 ? (
             <>
@@ -387,6 +388,7 @@ export function BankSettings() {
             </div>
           )}
         </CardContent>
+
       </Card>
 
       {/* Bank Detail Form Modal */}

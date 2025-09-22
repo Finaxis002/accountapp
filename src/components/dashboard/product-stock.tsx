@@ -308,6 +308,7 @@ export function ProductStock() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filteredProducts.length > 0 ? (
+
               <>
                 {/* Desktop Table View */}
                 <div className="hidden md:block">
@@ -432,6 +433,7 @@ export function ProductStock() {
                 </div>
                 <h3 className="mt-2 text-lg font-semibold">No Items Found</h3>
                 <p className="mt-1 text-sm text-muted-foreground max-w-[240px] mx-auto">
+
                   {searchTerm
                     ? `No items match "${searchTerm}".`
                     : "You haven't added any products or services yet."}

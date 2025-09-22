@@ -85,21 +85,27 @@ const companyName = companyId
                 </div>
 
                 {/* Amount + Date */}
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-green-600">
-                    ₹
-                    {Number(
-                      tx.totalAmount || (tx as any).amount || 0
-                    ).toLocaleString("en-IN")}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Intl.DateTimeFormat("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    }).format(new Date(tx.date))}
-                  </div>
-                </div>
+              
+  <div className="flex flex-col">
+    <span className="text-sm font-medium text-muted-foreground">Amount</span>
+    <span className="font-bold text-green-600">
+      ₹
+      {new Intl.NumberFormat("en-IN", { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+      }).format(Number(tx.totalAmount ?? (tx as any).amount ?? 0))}
+    </span>
+  </div>
+  <div className="flex flex-col text-right">
+    <span className="text-sm font-medium text-muted-foreground">Date</span>
+    <span className="text-sm text-muted-foreground">
+      {new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(tx.date))}
+    </span>
+  </div>
 
                 {/* Type */}
                 <Badge>{tx.type}</Badge>

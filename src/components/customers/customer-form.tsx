@@ -209,6 +209,7 @@ export function CustomerForm({
 
   return (
     <Form {...form}>
+
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="contents"
@@ -231,6 +232,7 @@ export function CustomerForm({
       >
         <ScrollArea className="max-h-[60vh] flex-1" tabIndex={-1}>
           <div className="space-y-4 px-6 pb-6 select-none">
+
             <FormField
               control={form.control}
               name="name"
