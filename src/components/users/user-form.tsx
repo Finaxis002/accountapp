@@ -213,7 +213,7 @@ const handleSubmit = (e: React.FormEvent) => {
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
         {/* Row: User Name + User ID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="userName">User Name</Label>
             <Input
@@ -251,7 +251,7 @@ const handleSubmit = (e: React.FormEvent) => {
         )}
 
         {/* Row: Contact + Address */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="contactNumber">Contact Number</Label>
             <Input
@@ -273,6 +273,7 @@ const handleSubmit = (e: React.FormEvent) => {
               }
             />
           </div>
+          </div>
           <div>
             <Label htmlFor="address">Address</Label>
             <Input
@@ -283,13 +284,12 @@ const handleSubmit = (e: React.FormEvent) => {
               }
             />
           </div>
-        </div>
-
+   
         {/* Role selector (no API, just defaults) */}
         <div className="space-y-2">
           <Label>Role</Label>
           <RadioGroup
-            className="mt-2 grid gap-3"
+            className="mt-2 flex gap-3"
             value={formData.roleId}
             onValueChange={(val) => setFormData({ ...formData, roleId: val })}
           >

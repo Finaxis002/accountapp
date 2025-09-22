@@ -291,6 +291,7 @@ export const columns = ({
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      meta: { label: "Amount" },
       cell: ({ row }) => {
         const amount = parseFloat(
           String(row.original.totalAmount || (row.original as any).amount || 0)
