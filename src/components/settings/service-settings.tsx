@@ -24,6 +24,9 @@ import {
   Trash2,
   PlusCircle,
   Server,
+  Badge,
+  Calendar,
+  Eye,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -297,58 +300,154 @@ export function ServiceSettings() {
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               ) : services.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Service Name</TableHead>
-                      <TableHead>Created At</TableHead>
-                      {role !== "user" ? (
-                        <TableHead className="text-right">Actions</TableHead>
-                      ) : null}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {services.map((service) => (
-                      <TableRow key={service._id}>
-                        <TableCell>
-                          <div className="font-medium flex items-center gap-2">
-                            <Server className="h-4 w-4 text-muted-foreground" />
-                            {service.serviceName}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Intl.DateTimeFormat("en-US").format(
-                            new Date(service.createdAt!)
-                          )}
-                        </TableCell>
-                        {role !== "user" ? (                                                
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem
-                                onClick={() => handleOpenForm(service)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleOpenDeleteDialog(service)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                <>
+                  {/* ✅ Desktop / Laptop Table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service Name</TableHead>
+                          <TableHead>Created At</TableHead>
+                          {role !== "user" ? (
+                            <TableHead className="text-right">
+                              Actions
+                            </TableHead>
                           ) : null}
-                      </TableRow>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {services.map((service) => (
+                          <TableRow key={service._id}>
+                            <TableCell>
+                              <div className="font-medium flex items-center gap-2">
+                                <Server className="h-4 w-4 text-muted-foreground" />
+                                {service.serviceName}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {new Intl.DateTimeFormat("en-US").format(
+                                new Date(service.createdAt!)
+                              )}
+                            </TableCell>
+                            {role !== "user" ? (
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    <DropdownMenuItem
+                                      onClick={() => handleOpenForm(service)}
+                                    >
+                                      <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleOpenDeleteDialog(service)
+                                      }
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            ) : null}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* ✅ Mobile Card View */}
+                  <div className="md:hidden space-y-3">
+                    {services.map((service) => (
+                      <div
+                        key={service._id}
+                        className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
+                      >
+                        {/* Header Section */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+                                <Server className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                              </div>
+                              <h3 className="font-semibold text-gray-900 dark:text-white text-base truncate">
+                                {service.serviceName}
+                              </h3>
+                            </div>
+                          </div>
+
+                          {role !== "user" && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenForm(service)}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleOpenDeleteDialog(service)
+                                  }
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+
+                        {/* Details Section */}
+                        <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Created
+                              </span>
+                            </div>
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {new Intl.DateTimeFormat("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              }).format(new Date(service.createdAt!))}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Quick Actions for Users */}
+                        {role === "user" && (
+                          <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 text-xs"
+                              onClick={() => handleOpenForm(service)}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View Details
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
                   <Server className="h-12 w-12 text-muted-foreground" />

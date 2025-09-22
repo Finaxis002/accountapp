@@ -209,9 +209,30 @@ export function CustomerForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-        <ScrollArea className="max-h-[60vh] flex-1">
-          <div className="space-y-4 px-6 pb-6">
+
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="contents"
+        onSelect={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          // Prevent form selection on Tab key
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            // Find next focusable element
+            const focusableElements = document.querySelectorAll(
+              'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+            );
+            const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+            const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+            if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+              (focusableElements[nextIndex] as HTMLElement).focus();
+            }
+          }
+        }}
+      >
+        <ScrollArea className="max-h-[60vh] flex-1" tabIndex={-1}>
+          <div className="space-y-4 px-6 pb-6 select-none">
+
             <FormField
               control={form.control}
               name="name"

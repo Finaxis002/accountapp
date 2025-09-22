@@ -330,7 +330,7 @@ export default function UsersPage() {
               <p className="text-muted-foreground">Manage your users</p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 rounded-md bg-secondary p-1">
+              <div className="hidden sm:flex items-center gap-1 rounded-md bg-secondary p-1">
                 <Button
                   variant={viewMode === "card" ? "primary" : "ghost"}
                   size="sm"
@@ -394,7 +394,7 @@ export default function UsersPage() {
           </Card>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xl max-w-sm sm:max-h-auto  overflow-auto">
               <DialogHeader>
                 <DialogTitle>
                   {selectedUser ? "Edit User" : "Add New User"}

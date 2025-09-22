@@ -11,7 +11,12 @@ import {
   FileText,
   Package,
   Server,
-  Edit,
+  Check,
+  CreditCard,
+  Receipt,
+  ShoppingCart,
+  TrendingUp,
+  ListCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +32,7 @@ import { useCompany } from "@/contexts/company-context";
 import { useToast } from "@/hooks/use-toast";
 import type { Transaction, Company, Party, Vendor } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
+import { ChevronDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +57,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
-import dynamic from 'next/dynamic';
+import { List } from "@react-pdf/renderer";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -89,6 +95,14 @@ export default function TransactionsPage() {
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
   const [journals, setJournals] = React.useState<Transaction[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const [selectedTab, setSelectedTab] = React.useState("all");
+
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab); // Type-safe now
+    setIsDropdownOpen(false); // Close the dropdown when a tab is selected
+  };
+
   const [companies, setCompanies] = React.useState<Company[]>([]);
   // top of component state
   const [productsList, setProductsList] = React.useState<any[]>([]);
@@ -115,6 +129,8 @@ export default function TransactionsPage() {
   const canReceipt = isSuper || !!userCaps?.canCreateReceiptEntries;
   const canPayment = isSuper || !!userCaps?.canCreatePaymentEntries;
   const canJournal = isSuper || !!userCaps?.canCreateJournalEntries;
+
+  console.log("cansales", canSales);
 
   const allowedTypes = React.useMemo(() => {
     const arr: Array<
@@ -474,8 +490,9 @@ export default function TransactionsPage() {
       ? tx.services
       : Array.isArray(tx.service)
       ? tx.service
+      : tx.services
+      ? [tx.services]
       : [];
-
     const svcs = svcArr.map((s: any) => {
       // id can be raw ObjectId or populated doc; also support legacy s.serviceName
       const id =
@@ -556,7 +573,6 @@ export default function TransactionsPage() {
       setTransactionToDelete(null);
     }
   };
-
   async function handleUpdateTransaction(updatedTransaction: Transaction) {
     try {
       const token = localStorage.getItem("token");
@@ -571,7 +587,8 @@ export default function TransactionsPage() {
       };
 
       const endpoint = endpointMap[updatedTransaction.type];
-      if (!endpoint) throw new Error(`Invalid transaction type: ${updatedTransaction.type}`);
+      if (!endpoint)
+        throw new Error(`Invalid transaction type: ${updatedTransaction.type}`);
 
       const res = await fetch(`${baseURL}${endpoint}`, {
         method: "PUT",
@@ -597,7 +614,8 @@ export default function TransactionsPage() {
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: error instanceof Error ? error.message : "Something went wrong.",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
       });
     }
   }
@@ -736,12 +754,22 @@ export default function TransactionsPage() {
     return <DataTable columns={tableColumns} data={data} />;
   };
 
-  // React.useEffect(() => {
-  //   console.log("Loading state:", isLoading);
-  //   console.log("Companies count:", companies.length);
-  //   console.log("Sales data:", sales);
-  //   console.log("Purchases data:", purchases);
-  // }, [isLoading, companies.length, sales, purchases]);
+  const getTabIcon = (tab: string) => {
+    switch (tab) {
+      case "sales":
+        return <TrendingUp className="h-4 w-4" />;
+      case "purchases":
+        return <ShoppingCart className="h-4 w-4" />;
+      case "receipts":
+        return <Receipt className="h-4 w-4" />;
+      case "payments":
+        return <CreditCard className="h-4 w-4" />;
+      case "journals":
+        return <FileText className="h-4 w-4" />;
+      default:
+        return <ShoppingCart className="h-4 w-4" />;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -856,7 +884,7 @@ export default function TransactionsPage() {
                       New Transaction
                     </Button>
                   </DialogTrigger>
-                  <DialogContent wide className="  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0 "  style={{ maxWidth: 1000, width: '125vw' }}>
+                  <DialogContent className="  grid-rows-[auto,1fr,auto] max-h-[90vh]  p-0 sm:max-w-6xl max-w-sm">
                     <DialogHeader className="p-6">
                       <DialogTitle>
                         {transactionToEdit
@@ -922,78 +950,128 @@ export default function TransactionsPage() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <Dialog open={isPreviewOpen} onOpenChange={(open) => {
-            setIsPreviewOpen(open);
-            if (!open) setIsEditMode(false);
-          }}>
+          <Dialog
+            open={isPreviewOpen}
+            onOpenChange={(open) => {
+              setIsPreviewOpen(open);
+              if (!open) setIsEditMode(false);
+            }}
+          >
             <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col">
               <DialogHeader className="p-6 pb-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <DialogTitle>Invoice Preview</DialogTitle>
-                    <DialogDescription>
-                      This is a preview of the invoice. You can change the template
-                      and download it as a PDF.
-                    </DialogDescription>
-                  </div>
-                  {/* <Button
-                    variant="outline"
-                    onClick={() => setIsEditMode(true)}
-                    disabled={!transactionToPreview}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit PDF
-                  </Button> */}
-                </div>
+                <DialogTitle>Invoice Preview</DialogTitle>
+                <DialogDescription>
+                  This is a preview of the invoice. You can change the template
+                  and download it as a PDF.
+                </DialogDescription>
               </DialogHeader>
-              <InvoicePreview
-                transaction={transactionToPreview}
-                company={
-                  companies.find(
-                    (c) => c._id === transactionToPreview?.company?._id
-                  ) || null
-                }
-                party={
-                  parties.find(
-                    (p) =>
-                      p._id === (transactionToPreview as any)?.party?._id ||
-                      transactionToPreview?.party === p._id
-                  ) || null
-                }
-                serviceNameById={serviceNameById} // ✅ pass it
-                editMode={isEditMode}
-                onSave={(updatedTransaction) => {
-                  // Handle save logic here
-                  console.log('Saving updated transaction:', updatedTransaction);
-                  setIsEditMode(false);
-                  setIsPreviewOpen(false);
-                  // You would typically call an API to update the transaction
-                  // fetchTransactions(); // Refresh the list
-                }}
-                onCancel={() => {
-                  setIsEditMode(false);
-                }}
-              />
+              {/* for mobile */}
+              {transactionToPreview && (
+                <InvoicePreview
+                  transaction={transactionToPreview}
+                  company={
+                    companies.find(
+                      (c) => c._id === transactionToPreview.company?._id
+                    ) || null
+                  }
+                  party={
+                    parties.find(
+                      (p) =>
+                        p._id === (transactionToPreview as any)?.party?._id ||
+                        transactionToPreview?.party === p._id
+                    ) || null
+                  }
+                  serviceNameById={serviceNameById}
+                />
+              )}
             </DialogContent>
           </Dialog>
 
           <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-            <DialogContent className="sm:max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Item Details</DialogTitle>
-                <DialogDescription>
-                  A detailed list of all items in this transaction..
+            <DialogContent className="max-w-[95vw] sm:max-w-xl rounded-lg sm:rounded-xl">
+              <DialogHeader className="px-1 sm:px-0">
+                <DialogTitle className="text-lg sm:text-xl">
+                  Item Details
+                </DialogTitle>
+                <DialogDescription className="text-sm sm:text-base">
+                  A detailed list of all items in this transaction.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4 max-h-[80vh] overflow-auto">
-                <Table>
+              <div className="mt-4 max-h-[60vh] overflow-y-auto">
+                <div className="sm:hidden space-y-3">
+                  {itemsToView.map((item, idx) => {
+                    const isService = item.itemType === "service";
+                    const qty =
+                      !isService &&
+                      item.quantity !== undefined &&
+                      item.quantity !== null &&
+                      !isNaN(Number(item.quantity))
+                        ? `${item.quantity} ${item.unitType || "Piece"}`
+                        : "—";
+                    const rate = !isService
+                      ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+                      : "—";
+                    const total = formatCurrency(Number(item?.amount ?? 0));
+
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          {isService ? (
+                            <Server className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="font-medium">
+                            {item?.name ?? "—"}
+                          </span>
+                        </div>
+
+                        {isService && item?.description ? (
+                          <div className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                            {item.description}
+                          </div>
+                        ) : null}
+
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">
+                              Type:{" "}
+                            </span>
+                            <span className="capitalize">
+                              {item.itemType ?? "—"}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-muted-foreground">Qty: </span>
+                            <span>{qty}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Price:{" "}
+                            </span>
+                            <span>{rate}</span>
+                          </div>
+                          <div className="text-right font-semibold">
+                            <span className="text-muted-foreground">
+                              Total:{" "}
+                            </span>
+                            <span>{total}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <Table className="hidden sm:table">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead className="hidden sm:table-cell">
-                        Type
-                      </TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead className="text-center">Qty</TableHead>
                       <TableHead className="text-right">Price/Unit</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -1005,14 +1083,15 @@ export default function TransactionsPage() {
                       const qty =
                         !isService &&
                         item.quantity !== undefined &&
-                        item.quantity !== null && // Add null check
-                        !isNaN(Number(item.quantity)) // Ensure it's a valid number
-                          ? item.quantity
+                        item.quantity !== null &&
+                        !isNaN(Number(item.quantity))
+                          ? `${item.quantity} ${item.unitType || "Piece"}`
                           : "—";
                       const rate = !isService
                         ? formatCurrency(Number(item?.pricePerUnit ?? 0))
                         : "—";
                       const total = formatCurrency(Number(item?.amount ?? 0));
+
                       return (
                         <TableRow key={idx}>
                           <TableCell className="font-medium">
@@ -1033,7 +1112,7 @@ export default function TransactionsPage() {
                             </div>
                           </TableCell>
 
-                          <TableCell className="hidden sm:table-cell capitalize">
+                          <TableCell className="capitalize">
                             {item.itemType ?? "—"}
                           </TableCell>
 
@@ -1067,59 +1146,205 @@ export default function TransactionsPage() {
             <Tabs
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as TabKey)}
+              className="w-full"
             >
-              <div className="overflow-x-auto pb-2">
-                <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  {canSales && <TabsTrigger value="sales">Sales</TabsTrigger>}
+              {/* ✅ Desktop Tabs - Improved styling */}
+              <div className="hidden sm:block overflow-x-auto pb-2">
+                <TabsList className="bg-muted/50 p-1 rounded-lg border border-border">
+                  <TabsTrigger
+                    value="all"
+                    className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                  >
+                    All
+                  </TabsTrigger>
+                  {canSales && (
+                    <TabsTrigger
+                      value="sales"
+                      className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                    >
+                      Sales
+                    </TabsTrigger>
+                  )}
                   {canPurchases && (
-                    <TabsTrigger value="purchases">Purchases</TabsTrigger>
+                    <TabsTrigger
+                      value="purchases"
+                      className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                    >
+                      Purchases
+                    </TabsTrigger>
                   )}
                   {canReceipt && (
-                    <TabsTrigger value="receipts">Receipts</TabsTrigger>
+                    <TabsTrigger
+                      value="receipts"
+                      className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                    >
+                      Receipts
+                    </TabsTrigger>
                   )}
                   {canPayment && (
-                    <TabsTrigger value="payments">Payments</TabsTrigger>
+                    <TabsTrigger
+                      value="payments"
+                      className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                    >
+                      Payments
+                    </TabsTrigger>
                   )}
                   {canJournal && (
-                    <TabsTrigger value="journals">Journals</TabsTrigger>
+                    <TabsTrigger
+                      value="journals"
+                      className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                    >
+                      Journals
+                    </TabsTrigger>
                   )}
                 </TabsList>
               </div>
 
-              <TabsContent value="all" className="mt-4">
-                {renderContent(allVisibleTransactions)}
-              </TabsContent>
+              {/* ✅ Mobile Dropdown - Enhanced with icons */}
+              <div className="block sm:hidden relative mb-4">
+                <button
+                  onClick={() => setIsDropdownOpen((prev) => !prev)}
+                  className="flex items-center justify-between w-full px-4 py-3 border border-border rounded-xl bg-background shadow-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+                >
+                  <div className="flex items-center">
+                    {getTabIcon(activeTab)}
+                    <span className="ml-2 text-sm font-medium">
+                      {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={`ml-2 h-4 w-4 transition-transform duration-200 ${
+                      isDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
 
-              {canSales && (
-                <TabsContent value="sales" className="mt-4">
-                  {renderContent(sales)}
-                </TabsContent>
-              )}
+                {isDropdownOpen && (
+                  <div className="absolute mt-2 w-full bg-background border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in-80 slide-in-from-top-2">
+                    <ul className="py-2">
+                      <li
+                        onClick={() => handleTabChange("all")}
+                        className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <div className="flex items-center">
+                          <ListCheck className="h-4 w-4 mr-3 opacity-70" />
+                          <span className="flex-1">All Transactions</span>
+                          {activeTab === "all" && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      </li>
+                      {canSales && (
+                        <li
+                          onClick={() => handleTabChange("sales")}
+                          className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <div className="flex items-center">
+                            <TrendingUp className="h-4 w-4 mr-3 opacity-70" />
+                            <span className="flex-1">Sales</span>
+                            {activeTab === "sales" && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </li>
+                      )}
+                      {canPurchases && (
+                        <li
+                          onClick={() => handleTabChange("purchases")}
+                          className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <div className="flex items-center">
+                            <ShoppingCart className="h-4 w-4 mr-3 opacity-70" />
+                            <span className="flex-1">Purchases</span>
+                            {activeTab === "purchases" && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </li>
+                      )}
+                      {canReceipt && (
+                        <li
+                          onClick={() => handleTabChange("receipts")}
+                          className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <div className="flex items-center">
+                            <Receipt className="h-4 w-4 mr-3 opacity-70" />
+                            <span className="flex-1">Receipts</span>
+                            {activeTab === "receipts" && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </li>
+                      )}
+                      {canPayment && (
+                        <li
+                          onClick={() => handleTabChange("payments")}
+                          className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <div className="flex items-center">
+                            <CreditCard className="h-4 w-4 mr-3 opacity-70" />
+                            <span className="flex-1">Payments</span>
+                            {activeTab === "payments" && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </li>
+                      )}
+                      {canJournal && (
+                        <li
+                          onClick={() => handleTabChange("journals")}
+                          className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-3 opacity-70" />
+                            <span className="flex-1">Journals</span>
+                            {activeTab === "journals" && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
 
-              {canPurchases && (
-                <TabsContent value="purchases" className="mt-4">
-                  {renderContent(purchases)}
+              {/* Tab Contents */}
+              <div className="mt-4 px-2 sm:px-0">
+                <TabsContent value="all" className="mt-0">
+                  {renderContent(allVisibleTransactions)}
                 </TabsContent>
-              )}
 
-              {canReceipt && (
-                <TabsContent value="receipts" className="mt-4">
-                  {renderContent(receipts)}
-                </TabsContent>
-              )}
+                {canSales && (
+                  <TabsContent value="sales" className="mt-0">
+                    {renderContent(sales)}
+                  </TabsContent>
+                )}
 
-              {canPayment && (
-                <TabsContent value="payments" className="mt-4">
-                  {renderContent(payments)}
-                </TabsContent>
-              )}
+                {canPurchases && (
+                  <TabsContent value="purchases" className="mt-0">
+                    {renderContent(purchases)}
+                  </TabsContent>
+                )}
 
-              {canJournal && (
-                <TabsContent value="journals" className="mt-4">
-                  {renderContent(journals)}
-                </TabsContent>
-              )}
+                {canReceipt && (
+                  <TabsContent value="receipts" className="mt-0">
+                    {renderContent(receipts)}
+                  </TabsContent>
+                )}
+
+                {canPayment && (
+                  <TabsContent value="payments" className="mt-0">
+                    {renderContent(payments)}
+                  </TabsContent>
+                )}
+
+                {canJournal && (
+                  <TabsContent value="journals" className="mt-0">
+                    {renderContent(journals)}
+                  </TabsContent>
+                )}
+              </div>
             </Tabs>
           )}
         </>

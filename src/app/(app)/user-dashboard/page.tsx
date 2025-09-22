@@ -32,6 +32,7 @@ import {
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { ProductStock } from "@/components/dashboard/product-stock";
 import Link from "next/link";
+import UpdateWalkthrough from "@/components/notifications/UpdateWalkthrough";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
@@ -285,6 +286,8 @@ export default function UserDashboardPage() {
 
         {companies.length > 0 && (
           <div className="flex items-center gap-2">
+            <UpdateWalkthrough />
+
             <Button variant="outline" asChild>
               <Link href="/profile">
                 <Settings className="mr-2 h-4 w-4" /> Go to Settings
@@ -324,7 +327,7 @@ export default function UserDashboardPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -348,27 +351,26 @@ export default function UserDashboardPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
-            {kpis.map((kpi) => (
-              <Card key={kpi.key}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
+          <div className="grid gap-4  sm:grid-cols-4 grid-cols-2">
+           {kpis.map((kpi) => (
+              <Card key={kpi.title} className="flex flex-col h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-xs sm:text-sm font-medium">
                     {kpi.title}
                   </CardTitle>
-                  <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                  <kpi.icon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{kpi.value}</div>
-                  {"description" in kpi && kpi.description ? (
-                    <p className="text-xs text-muted-foreground">
-                      {kpi.description}
-                    </p>
-                  ) : null}
+                <CardContent className="p-4 pt-0 flex-grow">
+                  <div className="text-xl sm:text-2xl font-bold">
+                    {kpi.value}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {kpi.description}
+                  </p>
                 </CardContent>
               </Card>
             ))}
           </div>
-
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-1">
             <ProductStock />
             <RecentTransactions

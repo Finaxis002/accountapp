@@ -256,7 +256,7 @@ export function EmailSendingConsent() {
       )}
 
       <Card>
-        <CardContent className="p-4 flex items-center justify-between">
+        <CardContent className="p-4 flex flex-col justify-start gap-2 md:flex-row md:justify-between">
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-muted-foreground" />
             <div className="text-sm">

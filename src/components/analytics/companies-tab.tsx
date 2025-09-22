@@ -19,12 +19,12 @@ interface CompaniesTabProps {
 }
 
 export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabProps) {
-     const baseURL = process.env. NEXT_PUBLIC_BASE_URL;
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
     const [companies, setCompanies] = React.useState<Company[]>([]);
     const [clients, setClients] = React.useState<Client[]>([]);
     const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(false);
     const { toast } = useToast();
-    
+
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [isAlertOpen, setIsAlertOpen] = React.useState(false);
     const [selectedCompany, setSelectedCompany] = React.useState<Company | null>(null);
@@ -36,7 +36,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
         try {
             const token = localStorage.getItem("token");
             if (!token) throw new Error("Authentication token not found.");
-            
+
             const [companiesRes, clientsRes] = await Promise.all([
                 fetch(`${baseURL}/api/companies/by-client/${clientId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
@@ -47,10 +47,10 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
             ]);
 
             if (!companiesRes.ok || !clientsRes.ok) throw new Error("Failed to fetch data.");
-            
+
             const companiesData = await companiesRes.json();
             const clientsData = await clientsRes.json();
-            
+
             setCompanies(companiesData);
             setClients(clientsData);
 
@@ -60,11 +60,11 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
             setIsCompaniesLoading(false);
         }
     }, [toast]);
-    
+
     React.useEffect(() => {
         fetchCompaniesAndClients(selectedClientId);
     }, [selectedClientId, fetchCompaniesAndClients]);
-    
+
     const handleAddNew = () => {
         setSelectedCompany(null);
         setIsFormOpen(true);
@@ -109,7 +109,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
             setCompanyToDelete(null);
         }
     };
-    
+
     const onFormSubmit = () => {
         setIsFormOpen(false);
         fetchCompaniesAndClients(selectedClientId);
@@ -125,9 +125,16 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
                             <CardTitle>Companies</CardTitle>
                             <CardDescription>Companies managed by {selectedClient.contactName}.</CardDescription>
                         </div>
-                         <Button onClick={handleAddNew}>
+                        {/* Create button for desktop */}
+                        <Button onClick={handleAddNew} className="sm:flex hidden">
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Create Company
+                        </Button>
+
+                        {/* Create button for mobile */}
+                        <Button onClick={handleAddNew} className="sm:hidden">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create
                         </Button>
                     </div>
                 </CardHeader>
@@ -135,101 +142,147 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
                     {isCompaniesLoading ? (
                         <div className="flex justify-center items-center h-40"><Loader2 className="h-6 w-6 animate-spin" /></div>
                     ) : companies.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Company</TableHead>
-                                    <TableHead>Contact</TableHead>
-                                    <TableHead>Identifiers</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {companies.map(company => (
-                                    <TableRow key={company._id}>
-                                        <TableCell>
-                                            <div className="font-semibold">{company.businessName}</div>
-                                            <div className="text-xs text-muted-foreground">{company.businessType}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Phone className="h-4 w-4 text-muted-foreground"/>
-                                                <span className="text-sm">{company.mobileNumber}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Mail className="h-4 w-4 text-muted-foreground"/>
-                                                <span className="text-sm">{company.emailId || 'N/A'}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Hash className="h-4 w-4 text-muted-foreground"/>
-                                                <span className="text-sm font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                                                    {company.registrationNumber}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <FileText className="h-4 w-4 text-muted-foreground"/>
-                                                <span className="text-sm font-mono bg-green-500/10 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
-                                                    {company.gstin || 'N/A'}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onClick={() => handleEdit(company)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
+                        <div className='hidden sm:block'>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Company</TableHead>
+                                        <TableHead>Contact</TableHead>
+                                        <TableHead>Identifiers</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {companies.map(company => (
+                                        <TableRow key={company._id}>
+                                            <TableCell>
+                                                <div className="font-semibold">{company.businessName}</div>
+                                                <div className="text-xs text-muted-foreground">{company.businessType}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <Phone className="h-4 w-4 text-muted-foreground"/>
+                                                    <span className="text-sm">{company.mobileNumber}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Mail className="h-4 w-4 text-muted-foreground"/>
+                                                    <span className="text-sm">{company.emailId || 'N/A'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <Hash className="h-4 w-4 text-muted-foreground"/>
+                                                    <span className="text-sm font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                                                        {company.registrationNumber}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <FileText className="h-4 w-4 text-muted-foreground"/>
+                                                    <span className="text-sm font-mono bg-green-500/10 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                                                        {company.gstin || 'N/A'}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuContent>
+                                                        <DropdownMenuItem onClick={() => handleEdit(company)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        
                     ) : (
                         <p className="text-muted-foreground text-center py-8">No companies found for this client.</p>
                     )}
+
+                    {/* Mobile View - Card View */}
+                    <div className="sm:hidden">
+                        {companies.map(company => (
+                            <div key={company._id} className="p-4 mb-4 border border-gray-300 rounded-lg shadow-sm">
+                                <div className="flex justify-between">
+                                    <div>
+                                        <div className="font-semibold">{company.businessName}</div>
+                                        <div className="text-xs text-muted-foreground">{company.businessType}</div>
+                                    </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => handleEdit(company)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                                <div className="text-sm">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Phone className="h-4 w-4 text-muted-foreground"/>
+                                        <span>{company.mobileNumber}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Mail className="h-4 w-4 text-muted-foreground"/>
+                                        <span>{company.emailId || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Hash className="h-4 w-4 text-muted-foreground"/>
+                                        <span className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                                            {company.registrationNumber}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-muted-foreground"/>
+                                        <span className="font-mono bg-green-500/10 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                                            {company.gstin || 'N/A'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </CardContent>
             </Card>
 
-             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogContent className="sm:max-w-4xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
-                <DialogHeader className="p-6">
-                    <DialogTitle>
-                    {selectedCompany ? "Edit Company" : "Create New Company"}
-                    </DialogTitle>
-                    <DialogDescription>
-                    {selectedCompany
-                        ? `Update the details for ${selectedCompany.businessName}.`
-                        : `Fill in the form to create a new company for ${selectedClient.contactName}.`}
-                    </DialogDescription>
-                </DialogHeader>
-                <AdminCompanyForm
-                    company={selectedCompany || undefined}
-                    clients={clients}
-                    onFormSubmit={onFormSubmit}
-                />
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+               <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0 overflow-y-auto">
+                    <DialogHeader className="p-6 ">
+                        <DialogTitle>
+                            {selectedCompany ? "Edit Company" : "Create New Company"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {selectedCompany
+                                ? `Update the details for ${selectedCompany.businessName}.`
+                                : `Fill in the form to create a new company for ${selectedClient.contactName}.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <AdminCompanyForm
+                        company={selectedCompany || undefined}
+                        clients={clients}
+                        onFormSubmit={onFormSubmit}
+                    />
                 </DialogContent>
             </Dialog>
 
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                 <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the
-                    company and all associated data for {companyToDelete?.businessName}
-                    .
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={confirmDelete}>
-                    Continue
-                    </AlertDialogAction>
-                </AlertDialogFooter>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the
+                            company and all associated data for {companyToDelete?.businessName}
+                            .
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>
+                            Continue
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </>

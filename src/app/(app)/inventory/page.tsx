@@ -96,6 +96,8 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const { permissions } = usePermissions();
 
+  const role = localStorage.getItem("role");
+
   const fetchCompanies = React.useCallback(async () => {
     setIsLoadingCompanies(true);
     try {
@@ -197,7 +199,7 @@ export default function InventoryPage() {
     setProducts((prev) =>
       prev.some((p) => p._id === saved._id)
         ? prev.map((p) => (p._id === saved._id ? saved : p))
-        : [...prev, saved]
+        : [saved, ...prev]
     );
     toast({
       title: "Product saved",
@@ -211,7 +213,7 @@ export default function InventoryPage() {
     setServices((prev) =>
       prev.some((s) => s._id === saved._id)
         ? prev.map((s) => (s._id === saved._id ? saved : s))
-        : [...prev, saved]
+        : [saved, ...prev]
     );
     toast({
       title: "Service saved",
@@ -304,58 +306,140 @@ export default function InventoryPage() {
       );
     }
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Product</TableHead>
-            <TableHead>Stock</TableHead>
-            <TableHead>Created At</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      <div className="space-y-6">
+        {/* Table View for Larger Screens */}
+        <div className="hidden sm:block">
+          {/* Table Component */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Created At</TableHead>
+                {role !== "user" && (
+                  <TableHead className="text-right">Actions</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.map((p) => (
+                <TableRow key={p._id}>
+                  <TableCell>
+                    <div className="font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      {p.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-bold text-lg">{p.stocks ?? 0}</span>
+                  </TableCell>
+
+                  <TableCell>
+                    {p.createdAt
+                      ? new Intl.DateTimeFormat("en-US").format(
+                          new Date(p.createdAt)
+                        )
+                      : "—"}
+                  </TableCell>
+                  {role !== "user" && (
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => openEditProduct(p)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => confirmDeleteProduct(p)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile View - Cards  product */}
+        <div className="sm:hidden space-y-3">
           {products.map((p) => (
-            <TableRow key={p._id}>
-              <TableCell>
-                <div className="font-medium flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  {p.name}
+            <div
+              key={p._id}
+              className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
+            >
+              {/* Header Section */}
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-800 dark:text-white truncate max-w-[140px]">
+                      {p.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Created:{" "}
+                      {p.createdAt
+                        ? new Intl.DateTimeFormat("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          }).format(new Date(p.createdAt))
+                        : "—"}
+                    </p>
+                  </div>
                 </div>
-              </TableCell>
-              <TableCell>
-                <span className="font-bold text-lg">{p.stocks ?? 0}</span>
-              </TableCell>
-              <TableCell>
-                {p.createdAt
-                  ? new Intl.DateTimeFormat("en-US").format(
-                      new Date(p.createdAt)
-                    )
-                  : "—"}
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => openEditProduct(p)}>
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => confirmDeleteProduct(p)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
+
+                {/* Stock Count */}
+                <div className="flex flex-col items-end">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    Stock
+                  </span>
+                  <span
+                    className={`text-lg font-bold ${
+                      (p.stocks ?? 0) > 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {p.stocks ?? 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEditProduct(p)}
+                  className="h-8 px-3 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => confirmDeleteProduct(p)}
+                  className="h-8 px-3 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1 text-red-400" />
+                </Button>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
+        </div>
+      </div>
     );
   };
 
@@ -385,55 +469,119 @@ export default function InventoryPage() {
       );
     }
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Service</TableHead>
-            <TableHead>Created At</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      <div className="space-y-6">
+        {/* //mobile view  */}
+        <div className="sm:hidden space-y-3">
           {services.map((s) => (
-            <TableRow key={s._id}>
-              <TableCell>
-                <div className="font-medium flex items-center gap-2">
-                  <Server className="h-4 w-4 text-muted-foreground" />
-                  {s.serviceName}
-                  <Badge variant="outline">Service</Badge>
+            <div
+              key={s._id}
+              className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
+            >
+              {/* Header Section */}
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+                    <Server className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-800 dark:text-white truncate max-w-[140px]">
+                      {s.serviceName}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Created:{" "}
+                        {s.createdAt
+                          ? new Intl.DateTimeFormat("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            }).format(new Date(s.createdAt))
+                          : "—"}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
+                        Service
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </TableCell>
-              <TableCell>
-                {s.createdAt
-                  ? new Intl.DateTimeFormat("en-US").format(
-                      new Date(s.createdAt)
-                    )
-                  : "—"}
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => openEditService(s)}>
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => confirmDeleteService(s)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEditService(s)}
+                  className="h-8 px-3 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => confirmDeleteService(s)}
+                  className="h-8 px-3 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1 text-red-400" />
+                </Button>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
+        </div>
+
+        <div className="hidden sm:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Service</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {services.map((s) => (
+                <TableRow key={s._id}>
+                  <TableCell>
+                    <div className="font-medium flex items-center gap-2">
+                      <Server className="h-4 w-4 text-muted-foreground" />
+                      {s.serviceName}
+                      <Badge variant="outline">Service</Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {s.createdAt
+                      ? new Intl.DateTimeFormat("en-US").format(
+                          new Date(s.createdAt)
+                        )
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => openEditService(s)}>
+                          <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => confirmDeleteService(s)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     );
   };
 
@@ -531,17 +679,18 @@ export default function InventoryPage() {
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  Inventory Management
-                </h2>
-                <p className="text-muted-foreground">
-                  Track and manage your products and services.
-                </p>
-              </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            {/* Content Section */}
+            <div className="mb-4 sm:mb-0">
+              <h2 className="text-2xl font-bold tracking-tight">
+                Inventory Management
+              </h2>
+              <p className="text-muted-foreground">
+                Track and manage your products and services.
+              </p>
             </div>
+
+            {/* Buttons Section */}
             {(permissions?.canCreateProducts ||
               userCaps?.canCreateInventory) && (
               <div className="flex gap-2">
@@ -589,7 +738,7 @@ export default function InventoryPage() {
               setIsProductFormOpen(isOpen);
             }}
           >
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="w-full max-w-[95%] sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {productToEdit ? "Edit Product" : "Create New Product"}
@@ -615,7 +764,7 @@ export default function InventoryPage() {
               setIsServiceFormOpen(isOpen);
             }}
           >
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="w-full max-w-[95%] sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {serviceToEdit ? "Edit Service" : "Create New Service"}

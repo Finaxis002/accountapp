@@ -46,6 +46,7 @@ interface ColumnsProps {
   serviceNameById: Map<string, string>;
   onSendInvoice: (tx: Transaction) => void;
   serviceMap?: Map<string, string>;
+  hideActions?: boolean;
 }
 
 /** Build a filter function that can match party/vendor, description and line names */
@@ -86,10 +87,11 @@ export const columns = ({
   companyMap,
   serviceNameById,
   onSendInvoice,
+  hideActions = false,
 }: ColumnsProps): ColumnDef<Transaction>[] => {
   const customFilterFn = makeCustomFilterFn(serviceNameById);
 
-  return [
+  const baseColumns: ColumnDef<Transaction>[] = [
     // SELECT COLUMN
     {
       id: "select",
@@ -169,25 +171,27 @@ export const columns = ({
     // COMPANY
     {
       accessorKey: "company",
-      header: "Company",
-      cell: ({ row }: { row: Row<Transaction> }) => {
-        const company = row.original.company;
-        const companyId =
-          typeof company === "object" && company !== null
-            ? (company as any)._id
-            : company;
+  header: "Company",
+  cell: ({ row }: { row: Row<Transaction> }) => {
+    const company = row.original.company;
+    const companyId =
+      typeof company === "object" && company !== null
+        ? (company as any)._id
+        : company;
 
-        if (!companyId) return "N/A";
+    if (!companyId) return "N/A";
 
-        const companyName = companyMap?.get(companyId as string) || "N/A";
-        return (
-          <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden lg:inline">{companyName}</span>
-          </div>
-        );
-      },
-    },
+    const companyName = companyMap?.get(companyId as string) || "N/A";
+    return (
+      <div className="flex items-center gap-2">
+        <Building className="h-4 w-4 text-muted-foreground" />
+        <span className="hidden sm:inline">{companyName}</span>
+        {/* Add mobile view display */}
+        <span className="sm:hidden text-sm">{companyName}</span> {/* Mobile display */}
+      </div>
+    );
+  },
+},
 
     // LINES (ITEMS/SERVICES)
     {
@@ -289,6 +293,7 @@ export const columns = ({
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      meta: { label: "Amount" },
       cell: ({ row }) => {
         const amount = parseFloat(
           String(row.original.totalAmount || (row.original as any).amount || 0)
@@ -337,9 +342,11 @@ export const columns = ({
         );
       },
     },
+  ];
 
-    // ACTIONS
-    {
+  // Conditionally add actions column
+  if (!hideActions) {
+    baseColumns.push({
       id: "actions",
       cell: ({ row }) => {
         // inside actions column cell
@@ -441,6 +448,8 @@ export const columns = ({
           </DropdownMenu>
         );
       },
-    },
-  ];
+    });
+  }
+
+  return baseColumns;
 };

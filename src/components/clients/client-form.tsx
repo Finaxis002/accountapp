@@ -185,6 +185,18 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
     });
   }, [client, form]);
 
+
+    // Preview (create mode only)
+  const watchedAmt = form.watch("validityAmount" as any);
+  const watchedUnit = form.watch("validityUnit" as any);
+
+  React.useEffect(() => {
+    if (!client) {
+      setPermissionsConfigured(true);
+      setValidityConfigured(!!watchedAmt && watchedAmt > 0 && !!watchedUnit);
+    }
+  }, [client, watchedAmt, watchedUnit]);
+
   const watchedUsername = form.watch("clientUsername");
   const watchedContact = form.watch("contactName");
 
@@ -525,9 +537,7 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
     return copy;
   }
 
-  // Preview (create mode only)
-  const watchedAmt = form.watch("validityAmount" as any);
-  const watchedUnit = form.watch("validityUnit" as any);
+
   const expiryPreview = React.useMemo(() => {
     if (client) return null;
     const amt = Number(watchedAmt);
@@ -548,6 +558,19 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
     toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to perform this action." });
     setIsSubmitting(false);
     return;
+  }
+
+  // Check if permissions and validity are configured for new clients
+  if (!client) {
+    if (!permissionsConfigured || !validityConfigured) {
+      toast({
+        variant: "destructive",
+        title: "Configuration Required",
+        description: "You have not set up permissions or validity. Please configure them before proceeding."
+      });
+      setIsSubmitting(false);
+      return;
+    }
   }
 
   try {
@@ -602,6 +625,8 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
 
 
   const [selectedTab, setSelectedTab] = React.useState("general");
+  const [permissionsConfigured, setPermissionsConfigured] = React.useState(false);
+  const [validityConfigured, setValidityConfigured] = React.useState(false);
 
   React.useEffect(() => {
     if (client && selectedTab === "permissions" && !permissionsLoaded) {
@@ -623,9 +648,28 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
 
           <TabsContent value="general" className="flex-1 mt-0">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-                <ScrollArea className="flex-1">
-                  <div className="space-y-6 px-6 pb-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="contents"
+                onSelect={(e) => e.preventDefault()}
+                onKeyDown={(e) => {
+                  // Prevent form selection on Tab key
+                  if (e.key === 'Tab') {
+                    e.preventDefault();
+                    // Find next focusable element
+                    const focusableElements = document.querySelectorAll(
+                      'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+                    );
+                    const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+                    const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+                    if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+                      (focusableElements[nextIndex] as HTMLElement).focus();
+                    }
+                  }
+                }}
+              >
+                <ScrollArea className="flex-1" tabIndex={-1}>
+                  <div className="space-y-6 px-6 pb-6 select-none">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
               <FormField
                 control={form.control}
@@ -1202,9 +1246,28 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
   // Create mode - original form
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-        <ScrollArea className="flex-1 ">
-          <div className="space-y-6 px-6 pb-6">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="contents"
+        onSelect={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          // Prevent form selection on Tab key
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            // Find next focusable element
+            const focusableElements = document.querySelectorAll(
+              'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+            );
+            const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+            const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+            if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+              (focusableElements[nextIndex] as HTMLElement).focus();
+            }
+          }
+        }}
+      >
+        <ScrollArea className="flex-1 " tabIndex={-1}>
+          <div className="space-y-6 px-6 pb-6 select-none">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}

@@ -478,7 +478,10 @@ export default function ClientManagementPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 ">
+
+    <div className="space-y-6 max-w-7xl mx-auto  px-3 sm:px-4 md:px-6 ">
+
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
@@ -490,7 +493,7 @@ export default function ClientManagementPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md bg-secondary p-1 self-end md:self-auto">
+          <div className="hidden sm:flex items-center gap-1 rounded-md bg-secondary p-1">
             <Button
               variant={viewMode === "card" ? "primary" : "ghost"}
               size="sm"
@@ -1013,199 +1016,180 @@ export default function ClientManagementPage() {
             </div>
           ) : viewMode === "list" ? (
             <div className="overflow-x-auto p-4">
-              <Table className="border-separate border-spacing-y-2 p-4">
-                <TableHeader className="[&_tr]:border-b-0">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[300px]">Contact</TableHead>
+              <div className="overflow-x-auto">
+  <Table className="border-separate border-spacing-y-2 p-4 min-w-[800px] lg:min-w-full">
+    <TableHeader className="[&_tr]:border-b-0">
+      <TableRow className="hover:bg-transparent">
+        <TableHead className="w-[220px]">Contact</TableHead>
+        <TableHead className="w-[120px]">Username</TableHead>
+        <TableHead className="w-[180px]">Email</TableHead>
+        <TableHead className="w-[140px]">Phone</TableHead>
+        <TableHead className="w-[200px]">Login</TableHead>
+        <TableHead className="text-right w-[80px]">Actions</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody className="[&_tr:last-child]:border-0">
+      {filteredClients.map((client) => {
+        const appUrl = getAppLoginUrl(client.slug);
+        const apiUrl = getApiLoginUrl(client.slug, baseURL);
 
-                    <TableHead>Username</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead className="w-[350px]">Login</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="[&_tr:last-child]:border-0">
-                  {filteredClients.map((client) => {
-                    const appUrl = getAppLoginUrl(client.slug);
-                    const apiUrl = getApiLoginUrl(client.slug, baseURL);
+        return (
+          <TableRow
+            key={client._id}
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+          >
+            <TableCell className="rounded-l-lg text-sm py-3">
+              <div className="flex items-center gap-3">
+                <Avatar className="border border-gray-200 dark:border-gray-700 h-8 w-8">
+                  <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-xs">
+                    {client.contactName.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-900 dark:text-white truncate text-sm">
+                    {client.contactName}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {client.email}
+                  </p>
+                </div>
+              </div>
+            </TableCell>
 
-                    return (
-                      <TableRow
-                        key={client._id}
-                        className="bg-white dark:bg-gray-900 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+            <TableCell className="py-3">
+              <div className="font-mono text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md inline-flex items-center max-w-full">
+                <User className="h-3 w-3 mr-1 text-muted-foreground" />
+                <span className="truncate">{client.clientUsername}</span>
+              </div>
+            </TableCell>
+
+            <TableCell className="py-3">
+              <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md max-w-full">
+                <Mail className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                <span className="text-xs text-blue-700 dark:text-blue-300 truncate">
+                  {client.email}
+                </span>
+              </div>
+            </TableCell>
+
+            <TableCell className="py-3">
+              <div className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/30 rounded-md max-w-full">
+                <Phone className="h-3 w-3 text-green-500 flex-shrink-0" />
+                <span className="text-xs text-green-700 dark:text-green-300 truncate">
+                  {client.phone || "Not set"}
+                </span>
+              </div>
+            </TableCell>
+
+            <TableCell className="py-3">
+              <div className="flex items-center gap-1">
+                <Link
+                  href={`/client-login/${client.slug}`}
+                  className="text-xs font-medium text-primary hover:underline truncate max-w-[120px]"
+                  title={appUrl}
+                >
+                  /client-login/{client.slug}
+                </Link>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() =>
+                    navigator.clipboard.writeText(appUrl).then(() => {
+                      toast({
+                        title: "Copied",
+                        description: "App login URL copied.",
+                      });
+                    })
+                  }
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      title="More login links"
+                    >
+                      <MoreHorizontal className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={appUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center text-xs"
                       >
-                        <TableCell className="rounded-l-lg">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="border border-gray-200 dark:border-gray-700">
-                              <AvatarFallback className="bg-gray-100 dark:bg-gray-800">
-                                {client.contactName
-                                  .substring(0, 2)
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {client.contactName}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {client.email}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
+                        <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                        Open App Login
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        navigator.clipboard.writeText(apiUrl).then(() =>
+                          toast({
+                            title: "Copied",
+                            description: "API login URL copied.",
+                          })
+                        )
+                      }
+                      className="text-xs"
+                    >
+                      <Copy className="mr-2 h-3.5 w-3.5" />
+                      Copy API URL
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </TableCell>
 
-                        <TableCell>
-                          <div className="font-mono text-sm px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-md inline-flex items-center">
-                            <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                            {client.clientUsername}
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md max-w-[200px]">
-                            <Mail className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm text-blue-700 dark:text-blue-300 truncate">
-                              {client.email}
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/30 rounded-md">
-                            <Phone className="h-4 w-4 text-green-500" />
-                            <span className="text-sm text-green-700 dark:text-green-300">
-                              {client.phone || "Not set"}
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/client-login/${client.slug}`}
-                              className="text-sm font-medium text-primary hover:underline"
-                              title={appUrl}
-                            >
-                              /client-login/{client.slug}
-                            </Link>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() =>
-                                navigator.clipboard
-                                  .writeText(appUrl)
-                                  .then(() => {
-                                    toast({
-                                      title: "Copied",
-                                      description: "App login URL copied.",
-                                    });
-                                  })
-                              }
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  title="More login links"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem asChild>
-                                  <a
-                                    href={appUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center"
-                                  >
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                    Open App Login
-                                  </a>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    navigator.clipboard
-                                      .writeText(apiUrl)
-                                      .then(() =>
-                                        toast({
-                                          title: "Copied",
-                                          description: "API login URL copied.",
-                                        })
-                                      )
-                                  }
-                                >
-                                  <Copy className="mr-2 h-4 w-4" />
-                                  Copy API URL
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="rounded-r-lg text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
-                              <DropdownMenuItem asChild>
-                                <Link
-                                  href={`/admin/analytics?clientId=${client._id}`}
-                                  className="flex items-center"
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Analytics
-                                </Link>
-                              </DropdownMenuItem>
-                              {/* <DropdownMenuItem
-                                onClick={() => handleManagePermissions(client)}
-                              >
-                                <ShieldCheck className="mr-2 h-4 w-4" />
-                                Permissions
-                              </DropdownMenuItem> */}
-                              <DropdownMenuItem
-                                onClick={() => handleEdit(client)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              {/* <DropdownMenuItem
-                                onClick={() => handleResetPassword(client)}
-                              >
-                                <KeyRound className="mr-2 h-4 w-4" />
-                                Reset Password
-                              </DropdownMenuItem> */}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(client)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <TableCell className="rounded-r-lg text-right py-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem asChild className="text-xs">
+                    <Link
+                      href={`/admin/analytics?clientId=${client._id}`}
+                      className="flex items-center"
+                    >
+                      <Eye className="mr-2 h-3.5 w-3.5" />
+                      View Analytics
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleEdit(client)}
+                    className="text-xs"
+                  >
+                    <Edit className="mr-2 h-3.5 w-3.5" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleDelete(client)}
+                    className="text-destructive focus:text-destructive text-xs"
+                  >
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        );
+      })}
+    </TableBody>
+  </Table>
+</div>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
