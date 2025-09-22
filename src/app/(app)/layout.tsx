@@ -527,9 +527,17 @@ const scrollToHighlight = (index: number) => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => router.push("/profile")}>
+
+                        
+                        {role === "master" && (
+                        <DropdownMenuItem
+                          onClick={() => router.push("/profile")}
+                        >
+
                           Profile
                         </DropdownMenuItem>
+                        )}
+                        
                         <DropdownMenuItem onClick={handleSettingsClick}>
                           Settings
                         </DropdownMenuItem>

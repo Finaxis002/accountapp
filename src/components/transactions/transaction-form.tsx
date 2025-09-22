@@ -68,8 +68,7 @@ import {
 import { getUnifiedLines } from "@/lib/getUnifiedLines";
 
 import QuillEditor from "@/components/ui/quill-editor";
-
-import WhatsAppMessage from './WhatsAppMessage'
+import axios from 'axios';
 
 import {
   Command,
@@ -1389,7 +1388,94 @@ export function TransactionForm({
                 "The selected customer does not have an email address.",
             });
           }
-        }
+
+          // Send WhatsApp message if party has contact number
+          // if (partyDoc?.contactNumber) {
+          //   try {
+          //     await axios.post('http://localhost:8745/send-whatsapp', {
+          //       phoneNumber: partyDoc.contactNumber,
+          //       message: "your invoice is generated"
+          //     });
+          //     toast({
+          //       title: "WhatsApp message sent",
+          //       description: `Sent to ${partyDoc.contactNumber}`,
+          //     });
+          //   } catch (error) {
+          //     console.error('Error sending WhatsApp message:', error);
+          //     toast({
+          //       variant: "destructive",
+          //       title: "WhatsApp message failed",
+          //       description: "Failed to send WhatsApp message.",
+          //     });
+          //   }
+          // }
+          // Send WhatsApp message if party has contact number
+
+if (partyDoc?.contactNumber) {
+  try {
+    // Prepare detailed invoice message
+    const invoiceDetails = {
+      invoiceNumber: saved.invoiceNumber || saved.referenceNumber || "N/A",
+      date: values.date,
+      companyName: companyDoc?.businessName || "Your Company",
+      partyName: partyDoc?.name || "Customer",
+      items: [] as Array<{
+        name: string;
+        quantity: number | undefined;
+        price: number | undefined;
+        amount: number;
+      }>,
+      subTotal: uiSubTotal,
+      taxAmount: uiTax,
+      totalAmount: uiInvoiceTotal
+    };
+
+    // Add product items
+    if (productLines.length > 0) {
+      productLines.forEach(item => {
+        const product = products.find(p => p._id === item.product);
+        invoiceDetails.items.push({
+          name: product?.name || "Product",
+          quantity: item.quantity,
+          price: item.pricePerUnit,
+          amount: item.amount
+        });
+      });
+    }
+
+    // Add service items
+    if (serviceLines.length > 0) {
+      serviceLines.forEach(item => {
+        const service = services.find(s => s._id === item.service);
+        invoiceDetails.items.push({
+          name: service?.name || "Service",
+          quantity: 1,
+          price: item.amount,
+          amount: item.amount
+        });
+      });
+    }
+
+    // await axios.post('http://localhost:8745/send-whatsapp', {
+    await axios.post('/send-whatsapp', {
+      phoneNumber: partyDoc.contactNumber,
+      transactionDetails: invoiceDetails,
+      messageType: "detailed_invoice"
+    });
+    
+    toast({
+      title: "WhatsApp message sent",
+      description: `Invoice details sent to ${partyDoc.contactNumber}`,
+    });
+  } catch (error) {
+    console.error('Error sending WhatsApp message:', error);
+    toast({
+      variant: "destructive",
+      title: "WhatsApp message failed",
+      description: "Failed to send invoice details via WhatsApp.",
+    });
+  }
+}
       }
 
       const inv = data?.entry?.invoiceNumber;
@@ -1401,7 +1487,8 @@ export function TransactionForm({
       });
 
       onFormSubmit();
-    } catch (error) {
+    }
+  } catch (error) {
       toast({
         variant: "destructive",
         title: "Submission Failed",
@@ -2882,7 +2969,7 @@ export function TransactionForm({
     </div>
   </div>
 )}
-      
+
     </div>
   );
 

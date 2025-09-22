@@ -27,6 +27,8 @@ const ALL_CAPS = [
   "canCreateJournalEntries",
   "canCreateReceiptEntries",
   "canCreatePaymentEntries",
+  "canShowCustomers",  // New permission for showing customers in sales
+  "canShowVendors", 
 ] as const;
 
 
@@ -46,6 +48,8 @@ const CAP_LABELS: Record<CapKey, string> = {
   canCreateJournalEntries: "Create Journal",
   canCreateReceiptEntries: "Create Receipt",
   canCreatePaymentEntries: "Create Payment",
+   canShowCustomers: "Show Customers",  // Label for show customers
+  canShowVendors: "Show Vendors",
 };
 
 // Show only these 5 primaries
@@ -61,8 +65,10 @@ type PrimaryCap = typeof PRIMARY_CAPS[number];
 
 // 2) Type your dependencies
 const DEPENDENCIES: Partial<Record<PrimaryCap, CapKey[]>> = {
-  canCreateSaleEntries: ["canCreateInventory", "canCreateCustomers"],
-  canCreatePurchaseEntries: ["canCreateVendors", "canCreateInventory"],
+  // canCreateSaleEntries: ["canCreateInventory", "canCreateCustomers"],
+  // canCreatePurchaseEntries: ["canCreateVendors", "canCreateInventory"],
+   canCreateSaleEntries: ["canCreateInventory", "canCreateCustomers", "canShowCustomers"],  // Show customers in sales
+  canCreatePurchaseEntries: ["canCreateVendors", "canCreateInventory", "canShowVendors"],  // Show vendors in purchases
 };
 
 // 3) Flatten, filter, and de-dupe to a proper CapKey[]
