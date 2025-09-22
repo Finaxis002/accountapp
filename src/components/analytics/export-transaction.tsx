@@ -8,6 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 type Props = {
   /** Required to build client-wide endpoints */
   selectedClientId: string;
@@ -39,12 +42,19 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
   const [types, setTypes] = React.useState<Record<TxType, boolean>>({
     sales: true, purchases: true, receipts: true, payments: true, journals: true,
   });
+  const [dateRange, setDateRange] = React.useState({
+    from: "",
+    to: ""
+  });
+  const [useDateRange, setUseDateRange] = React.useState(false);
+  
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
   type TxType = "sales" | "purchases" | "receipts" | "payments" | "journals";
   const allTypes: TxType[] = ["sales", "purchases", "receipts", "payments", "journals"];
   const [busy, setBusy] = React.useState(false);
   const [clients, setClients] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  
   React.useEffect(() => {
     setCompanyId(defaultCompanyId ?? "ALL");
   }, [defaultCompanyId]);
@@ -79,12 +89,12 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
         },
       });
 
-      const text = await res.text(); // 👈 always read as text first
+      const text = await res.text();
       console.log("👉 raw /api/clients response:", text);
 
       let data;
       try {
-        data = JSON.parse(text); // 👈 try parse JSON
+        data = JSON.parse(text);
       } catch (err) {
         throw new Error("Response is not valid JSON.");
       }
@@ -92,7 +102,6 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       if (!res.ok) {
         throw new Error(data?.message || "Failed to fetch clients.");
       }
-
 
       setClients(data);
     } catch (error) {
@@ -105,7 +114,7 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       setIsLoading(false);
     }
   }, [baseURL]);
-  // Call fetchClients on component mount or whenever needed
+  
   React.useEffect(() => {
     fetchClients();
   }, [fetchClients]);
@@ -119,9 +128,6 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
   );
 
   const handleExport = async () => {
-
-
-    // ---------------- helpers ----------------
     const idOf = (v: any) => (typeof v === "string" ? v : v?.$oid || v?._id || v?.id || "");
     const HEADERS: string[] = [
       "party",
@@ -198,7 +204,7 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
     const amountOf = (t: any) => first(
       t.totalAmount, t.grandTotal, t.netAmount, t.amount, t.value, t.total
     );
-    // ---- type-aware mapping ----
+
     const normalizeByType = (t: any, txType: TxType) => {
       const companyName = first(
         t.company?.businessName,
@@ -215,7 +221,6 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
         idOf(t.party)
       );
 
-      // Prefer party GSTIN, fallback to on-doc or company GSTIN
       const gstin = first(
         gstinOf(t.party),
         t.partyGstin,
@@ -232,8 +237,6 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
         clientsById.get(selectedClientId),
         stringifyId(t.client || t.clientId)
       );
-
-
 
       const base: any = {
         party: partyName,
@@ -277,7 +280,6 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
         return base;
       }
 
-      // journals
       base.amount = amountOf(t);
       base.description = descriptionOf(t);
       base["invoice type"] = invoiceTypeOf(t, "Journal");
@@ -294,23 +296,40 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
         .filter(t => types[t]);
       if (!chosen.length) throw new Error("Choose at least one transaction type.");
 
+      // Validate date range if enabled
+      if (useDateRange) {
+        if (!dateRange.from || !dateRange.to) {
+          throw new Error("Please select both from and to dates.");
+        }
+        if (new Date(dateRange.from) > new Date(dateRange.to)) {
+          throw new Error("From date cannot be after to date.");
+        }
+      }
+
       const byCompany = companyId !== "ALL";
-      const qCompany = byCompany ? `?companyId=${companyId}` : "";
+      const baseQuery = byCompany ? `?companyId=${companyId}` : `?`;
+      
+      // Add date range to query if enabled
+      let dateQuery = "";
+      if (useDateRange) {
+        dateQuery = `&from=${dateRange.from}&to=${dateRange.to}`;
+      }
+
       const clientPath = `/by-client/${selectedClientId}`;
 
       const urlFor = (t: TxType) => {
         if (byCompany) {
-          if (t === "sales") return `${BASE_URL}/api/sales${qCompany}`;
-          if (t === "purchases") return `${BASE_URL}/api/purchase${qCompany}`;
-          if (t === "receipts") return `${BASE_URL}/api/receipts${qCompany}`;
-          if (t === "payments") return `${BASE_URL}/api/payments${qCompany}`;
-          return `${BASE_URL}/api/journals${qCompany}`;
+          if (t === "sales") return `${BASE_URL}/api/sales${baseQuery}${dateQuery}`;
+          if (t === "purchases") return `${BASE_URL}/api/purchase${baseQuery}${dateQuery}`;
+          if (t === "receipts") return `${BASE_URL}/api/receipts${baseQuery}${dateQuery}`;
+          if (t === "payments") return `${BASE_URL}/api/payments${baseQuery}${dateQuery}`;
+          return `${BASE_URL}/api/journals${baseQuery}${dateQuery}`;
         }
-        if (t === "sales") return `${BASE_URL}/api/sales${clientPath}`;
-        if (t === "purchases") return `${BASE_URL}/api/purchase${clientPath}`;
-        if (t === "receipts") return `${BASE_URL}/api/receipts${clientPath}`;
-        if (t === "payments") return `${BASE_URL}/api/payments${clientPath}`;
-        return `${BASE_URL}/api/journals${clientPath}`;
+        if (t === "sales") return `${BASE_URL}/api/sales${clientPath}${dateQuery ? `?${dateQuery.slice(1)}` : ''}`;
+        if (t === "purchases") return `${BASE_URL}/api/purchase${clientPath}${dateQuery ? `?${dateQuery.slice(1)}` : ''}`;
+        if (t === "receipts") return `${BASE_URL}/api/receipts${clientPath}${dateQuery ? `?${dateQuery.slice(1)}` : ''}`;
+        if (t === "payments") return `${BASE_URL}/api/payments${clientPath}${dateQuery ? `?${dateQuery.slice(1)}` : ''}`;
+        return `${BASE_URL}/api/journals${clientPath}${dateQuery ? `?${dateQuery.slice(1)}` : ''}`;
       };
 
       const fetchAuth = (u: string) =>
@@ -331,31 +350,50 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
         const list = Array.isArray(data)
           ? data
           : (data?.entries ?? data?.data ?? []);
-        const filtered = byCompany
-          ? list.filter((it: any) => {
+        
+        // Additional client-side date filtering (in case backend doesn't fully support it)
+        const filtered = list.filter((it: any) => {
+          // Company filter
+          if (byCompany) {
             const cid = idOf(it.company?._id || it.company);
-            return cid && cid === companyId;
-          })
-          : list;
+            if (!cid || cid !== companyId) return false;
+          }
+          
+          // Date range filter (client-side fallback)
+          if (useDateRange) {
+            const transactionDate = first(it.date, it.createdAt, it.invoiceDate, it.voucherDate);
+            if (transactionDate) {
+              const txDate = new Date(transactionDate);
+              const fromDate = new Date(dateRange.from);
+              const toDate = new Date(dateRange.to);
+              toDate.setHours(23, 59, 59, 999); // Include entire to date
+              
+              if (txDate < fromDate || txDate > toDate) {
+                return false;
+              }
+            }
+          }
+          
+          return true;
+        });
 
         filtered.forEach((it: any) => {
           byType[txType].push(normalizeByType(it, txType));
-        })
+        });
       });
+
       for (const t of chosen) {
-        byType[t] = await Promise.all(byType[t]); // resolve promises -> plain objects
+        byType[t] = await Promise.all(byType[t]);
       }
 
-      // make at least one row total; if absolutely none, error
       const totalRows = chosen.reduce((n, t) => n + byType[t].length, 0);
       if (!totalRows) throw new Error("No data to export for selected filters.");
 
-      // Dynamically import xlsx only when needed
       const XLSX = await import("xlsx");
       const wb = XLSX.utils.book_new();
 
       const sheetName = (t: TxType) =>
-        t.charAt(0).toUpperCase() + t.slice(1); // Sales, Purchases, ...
+        t.charAt(0).toUpperCase() + t.slice(1);
 
       chosen.forEach((t) => {
         const rows = byType[t];
@@ -376,7 +414,8 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
 
       const a = document.createElement("a");
       const fnameCompany = byCompany ? (companyMap.get(companyId) || companyId) : "all-companies";
-      const filename = `transactions_${fnameCompany}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const dateSuffix = useDateRange ? `_${dateRange.from}_to_${dateRange.to}` : "";
+      const filename = `transactions_${fnameCompany}${dateSuffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       const url = URL.createObjectURL(blob);
       a.href = url;
       a.setAttribute("download", filename);
@@ -386,14 +425,17 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       URL.revokeObjectURL(url);
 
       onExported?.(totalRows);
+      setOpen(false);
     } catch (err: any) {
-      alert(err?.message || "Export failed.");
+      toast({
+        title: "Export Error",
+        description: err?.message || "Export failed.",
+        variant: "destructive",
+      });
     } finally {
       setBusy(false);
     }
   };
-
-
 
   return (
     <>
@@ -421,6 +463,44 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <Separator className="my-2" />
+
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="chk-date-range"
+                checked={useDateRange}
+                onCheckedChange={(c) => setUseDateRange(Boolean(c))}
+              />
+              <Label htmlFor="chk-date-range" className="text-sm font-medium">
+                Filter by date range
+              </Label>
+            </div>
+
+            {useDateRange && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="from-date" className="text-sm">From date</Label>
+                  <Input
+                    id="from-date"
+                    type="date"
+                    value={dateRange.from}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="to-date" className="text-sm">To date</Label>
+                  <Input
+                    id="to-date"
+                    type="date"
+                    value={dateRange.to}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <Separator className="my-2" />

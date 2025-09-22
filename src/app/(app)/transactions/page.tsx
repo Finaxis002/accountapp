@@ -884,9 +884,7 @@ export default function TransactionsPage() {
                       New Transaction
                     </Button>
                   </DialogTrigger>
-                  <DialogContent
-                    className="  grid-rows-[auto,1fr,auto] max-h-[90vh]  p-0 sm:max-w-6xl max-w-sm"
-                  >
+                  <DialogContent className="  grid-rows-[auto,1fr,auto] max-h-[90vh]  p-0 sm:max-w-6xl max-w-sm">
                     <DialogHeader className="p-6">
                       <DialogTitle>
                         {transactionToEdit
@@ -989,135 +987,150 @@ export default function TransactionsPage() {
             </DialogContent>
           </Dialog>
 
-         <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-  <DialogContent className="max-w-[95vw] sm:max-w-xl rounded-lg sm:rounded-xl">
-    <DialogHeader className="px-1 sm:px-0">
-      <DialogTitle className="text-lg sm:text-xl">Item Details</DialogTitle>
-      <DialogDescription className="text-sm sm:text-base">
-        A detailed list of all items in this transaction.
-      </DialogDescription>
-    </DialogHeader>
+          <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
+            <DialogContent className="max-w-[95vw] sm:max-w-xl rounded-lg sm:rounded-xl">
+              <DialogHeader className="px-1 sm:px-0">
+                <DialogTitle className="text-lg sm:text-xl">
+                  Item Details
+                </DialogTitle>
+                <DialogDescription className="text-sm sm:text-base">
+                  A detailed list of all items in this transaction.
+                </DialogDescription>
+              </DialogHeader>
 
-    <div className="mt-4 max-h-[60vh] overflow-y-auto">
-      <div className="sm:hidden space-y-3">
-        {itemsToView.map((item, idx) => {
-          const isService = item.itemType === "service";
-          const qty =
-            !isService &&
-            item.quantity !== undefined &&
-            item.quantity !== null &&
-            !isNaN(Number(item.quantity))
-              ? item.quantity
-              : "—";
-          const rate = !isService
-            ? formatCurrency(Number(item?.pricePerUnit ?? 0))
-            : "—";
-          const total = formatCurrency(Number(item?.amount ?? 0));
-          
-          return (
-            <div key={idx} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                {isService ? (
-                  <Server className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span className="font-medium">{item?.name ?? "—"}</span>
+              <div className="mt-4 max-h-[60vh] overflow-y-auto">
+                <div className="sm:hidden space-y-3">
+                  {itemsToView.map((item, idx) => {
+                    const isService = item.itemType === "service";
+                    const qty =
+                      !isService &&
+                      item.quantity !== undefined &&
+                      item.quantity !== null &&
+                      !isNaN(Number(item.quantity))
+                        ? `${item.quantity} ${item.unitType || "Piece"}`
+                        : "—";
+                    const rate = !isService
+                      ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+                      : "—";
+                    const total = formatCurrency(Number(item?.amount ?? 0));
+
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          {isService ? (
+                            <Server className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="font-medium">
+                            {item?.name ?? "—"}
+                          </span>
+                        </div>
+
+                        {isService && item?.description ? (
+                          <div className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                            {item.description}
+                          </div>
+                        ) : null}
+
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">
+                              Type:{" "}
+                            </span>
+                            <span className="capitalize">
+                              {item.itemType ?? "—"}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-muted-foreground">Qty: </span>
+                            <span>{qty}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Price:{" "}
+                            </span>
+                            <span>{rate}</span>
+                          </div>
+                          <div className="text-right font-semibold">
+                            <span className="text-muted-foreground">
+                              Total:{" "}
+                            </span>
+                            <span>{total}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <Table className="hidden sm:table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-center">Qty</TableHead>
+                      <TableHead className="text-right">Price/Unit</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {itemsToView.map((item, idx) => {
+                      const isService = item.itemType === "service";
+                      const qty =
+                        !isService &&
+                        item.quantity !== undefined &&
+                        item.quantity !== null &&
+                        !isNaN(Number(item.quantity))
+                          ? `${item.quantity} ${item.unitType || "Piece"}`
+                          : "—";
+                      const rate = !isService
+                        ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+                        : "—";
+                      const total = formatCurrency(Number(item?.amount ?? 0));
+
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {isService ? (
+                                <Server className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <div className="flex flex-col">
+                                <span>{item?.name ?? "—"}</span>
+                                {isService && item?.description ? (
+                                  <span className="text-xs text-muted-foreground line-clamp-1">
+                                    {item.description}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="capitalize">
+                            {item.itemType ?? "—"}
+                          </TableCell>
+
+                          <TableCell className="text-center">{qty}</TableCell>
+
+                          <TableCell className="text-right">{rate}</TableCell>
+
+                          <TableCell className="text-right font-semibold">
+                            {total}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
-              
-              {isService && item?.description ? (
-                <div className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                  {item.description}
-                </div>
-              ) : null}
-              
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Type: </span>
-                  <span className="capitalize">{item.itemType ?? "—"}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-muted-foreground">Qty: </span>
-                  <span>{qty}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Price: </span>
-                  <span>{rate}</span>
-                </div>
-                <div className="text-right font-semibold">
-                  <span className="text-muted-foreground">Total: </span>
-                  <span>{total}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      
-      <Table className="hidden sm:table">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Item</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead className="text-center">Qty</TableHead>
-            <TableHead className="text-right">Price/Unit</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {itemsToView.map((item, idx) => {
-            const isService = item.itemType === "service";
-            const qty =
-              !isService &&
-              item.quantity !== undefined &&
-              item.quantity !== null &&
-              !isNaN(Number(item.quantity))
-                ? item.quantity
-                : "—";
-            const rate = !isService
-              ? formatCurrency(Number(item?.pricePerUnit ?? 0))
-              : "—";
-            const total = formatCurrency(Number(item?.amount ?? 0));
-            
-            return (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {isService ? (
-                      <Server className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <div className="flex flex-col">
-                      <span>{item?.name ?? "—"}</span>
-                      {isService && item?.description ? (
-                        <span className="text-xs text-muted-foreground line-clamp-1">
-                          {item.description}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </TableCell>
-
-                <TableCell className="capitalize">
-                  {item.itemType ?? "—"}
-                </TableCell>
-
-                <TableCell className="text-center">{qty}</TableCell>
-
-                <TableCell className="text-right">{rate}</TableCell>
-
-                <TableCell className="text-right font-semibold">
-                  {total}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
-  </DialogContent>
-</Dialog>
+            </DialogContent>
+          </Dialog>
 
           {allowedTypes.length === 0 ? (
             <Card>
