@@ -304,7 +304,7 @@ export default function DashboardPage() {
                   <span className="xs:hidden">New Transaction</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] w-[95vw] p-4 sm:p-6 md:grid-rows-[auto,1fr,auto] md:max-h-[90vh] md:max-w-[1000px]">
+              <DialogContent className="  grid-rows-[auto,1fr,auto] max-h-[90vh]  p-0 sm:max-w-6xl max-w-sm">
                 <DialogHeader className="p-4 sm:p-6">
                   <DialogTitle className="text-lg sm:text-xl">
                     Create a New Transaction

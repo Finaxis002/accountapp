@@ -38,6 +38,7 @@ import {
   Settings2,
   Edit2,
   Settings2Icon,
+  Percent,
 } from "lucide-react";
 
 import {
@@ -410,148 +411,167 @@ export function VendorSettings() {
 
                   {/* ✅ Mobile Card View */}
                   {/* ✅ Mobile / Tablet Card View */}
-                  <div className="block md:hidden space-y-4">
+                  {/* Mobile View */}
+                  <div className="md:hidden space-y-4">
                     {vendors.map((vendor) => (
                       <div
                         key={vendor._id}
-                        className="border rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow bg-white dark:bg-gray-900"
+                        className="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
                       >
-                        {/* Vendor Name */}
-                        <div className="flex items-center gap-2 text-xs mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
-                            <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                          </span>
-                          <span className="font-medium text-gray-600">
-                            Vendor
-                          </span>
-                          <span className="ml-auto text-gray-900 dark:text-gray-100 font-semibold">
-                            {vendor.vendorName}
-                          </span>
+                        {/* Header Section */}
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+                              {vendor.vendorName}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                              >
+                                {vendor.gstRegistrationType}
+                              </Badge>
+                              <div
+                                className={cn(
+                                  "flex items-center gap-1 px-2 py-1 rounded-full text-[12px]",
+                                  vendor.isTDSApplicable
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                )}
+                              >
+                                {vendor.isTDSApplicable ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                                <span>
+                                  TDS{" "}
+                                  {vendor.isTDSApplicable
+                                    ? "Applicable"
+                                    : "Not Applicable"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleOpenForm(vendor)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenDeleteDialog(vendor)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                        <hr className="my-2" />
 
-                        {/* Contact */}
-                        <div className="flex items-center gap-2 text-xs mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
-                            <Phone className="h-3.5 w-3.5 text-green-600" />
-                          </span>
-                          <span className="font-medium text-gray-600">
-                            Contact
-                          </span>
-                          <span className="ml-auto text-gray-800 dark:text-gray-200">
-                            {vendor.contactNumber || "N/A"}
-                          </span>
+                        {/* Contact Information */}
+                        <div className="space-y-3 mb-4">
+                          {(vendor.contactNumber || vendor.email) && (
+                            <div className="flex flex-col items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                              {vendor.contactNumber && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-blue-500" />
+                                  <span className="text-[12px] text-gray-700 dark:text-gray-300">
+                                    {vendor.contactNumber}
+                                  </span>
+                                </div>
+                              )}
+                              {vendor.email && (
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-4 w-4 text-purple-500" />
+                                  <span className="text-[12px] text-gray-700 dark:text-gray-300 truncate">
+                                    {vendor.email}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Address */}
+                          {vendor.address && (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                              <MapPin className="h-4 w-4 text-green-500 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  {vendor.address}
+                                </p>
+                                {(vendor.city || vendor.state) && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    {[vendor.city, vendor.state]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <hr className="my-2" />
 
-                        {/* Email */}
-                        <div className="flex items-center gap-2 text-xs mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
-                            <Mail className="h-3.5 w-3.5 text-red-600" />
-                          </span>
-                          <span className="font-medium text-gray-600">
-                            Email
-                          </span>
-                          <span className="ml-auto text-gray-800 dark:text-gray-200 truncate max-w-[150px] text-right">
-                            {vendor.email || "N/A"}
-                          </span>
-                        </div>
-                        <hr className="my-2" />
+                        {/* Tax Information */}
+                        {/* Tax Information - Only show if GSTIN or PAN exists */}
+                        {(vendor.gstin || vendor.pan) && (
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                            <h4 className="font-medium text-sm text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              Tax Information
 
-                        {/* Address */}
-                        <div className="flex items-center gap-2 text-xs mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100">
-                            <MapPin className="h-3.5 w-3.5 text-purple-600" />
-                          </span>
-                          <span className="font-medium text-gray-600">
-                            Address
-                          </span>
-                          <span className="ml-auto text-gray-800 dark:text-gray-200 text-right max-w-[150px]">
-                            {vendor.address}
-                          </span>
-                        </div>
-                        <hr className="my-2" />
 
-                        {/* GSTIN */}
-                        <div className="flex items-center gap-2 text-xs mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100">
-                            <FileText className="h-3.5 w-3.5 text-orange-600" />
-                          </span>
-                          <span className="font-medium text-gray-600">
-                            GSTIN
-                          </span>
-                          <span className="ml-auto font-mono">
-                            {vendor.gstin || "N/A"}
-                          </span>
-                        </div>
-                        <hr className="my-2" />
+                              
+                            </h4>
+                            <div className="space-y-2">
+                              {vendor.gstin && (
+                                <div className="flex items-center gap-4">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    GSTIN:
+                                  </span>
+                                  <span className="text-xs font-mono text-gray-800 dark:text-gray-200">
+                                    {vendor.gstin}
+                                  </span>
+                                </div>
+                              )}
+                              {vendor.pan && (
+                                <div className="flex items-center gap-4">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    PAN:
+                                  </span>
+                                  <span className="text-xs font-mono text-gray-800 dark:text-gray-200">
+                                    {vendor.pan}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-                        {/* PAN */}
-                        <div className="flex items-center gap-2 text-xs mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100">
-                            <IdCard className="h-3.5 w-3.5 text-pink-600" />
-                          </span>
-                          <span className="font-medium text-gray-600">PAN</span>
-                          <span className="ml-auto font-mono">
-                            {vendor.pan || "N/A"}
-                          </span>
-                        </div>
-                        <hr className="my-2" />
-
-                        {/* TDS */}
-                        <div className="flex items-center gap-2 text-xs mb-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
-                            <FileText className="h-4 w-4 text-indigo-600" />
-                          </span>
-                          <span className="font-medium text-gray-600">TDS</span>
-                          <div className="ml-auto flex items-center gap-1">
-                            {vendor.isTDSApplicable ? (
-                              <Check className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <X className="h-4 w-4 text-red-600" />
-                            )}
-                            {vendor.isTDSApplicable && (
-                              <span className="text-muted-foreground">
+                        {/* TDS Details */}
+                        {vendor.isTDSApplicable && vendor.tdsSection && (
+                          <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800/30">
+                            <div className="flex items-center gap-2">
+                              <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                                TDS Section:
+                              </span>
+                              <span className="text-sm text-green-700 dark:text-green-400">
                                 {vendor.tdsSection}
                               </span>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                        <hr className="my-2" />
-
-                        {/* Actions */}
-                        <div className="flex justify-between">
-                          <div className="flex items-center  text-xs mb-2">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
-                              <Edit2 className="h-4 w-4 text-indigo-600" />
-                            </span>
-                            <span className="font-medium ml-2 text-gray-600">
-                              Actions
-                            </span>
-                          </div>
-                          <div className="flex justify-end pt-1">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent>
-                                <DropdownMenuItem
-                                  onClick={() => handleOpenForm(vendor)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleOpenDeleteDialog(vendor)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>

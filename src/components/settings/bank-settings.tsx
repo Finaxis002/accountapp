@@ -24,6 +24,10 @@ import {
   Trash2,
   PlusCircle,
   Package,
+  Mail,
+  MapPin,
+  Phone,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -68,24 +72,26 @@ interface BankDetail {
 export function BankSettings() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [bankDetails, setBankDetails] = React.useState<BankDetail[]>([]);
-    const [filteredBankDetails, setFilteredBankDetails] = React.useState<BankDetail[]>([]);
+  const [filteredBankDetails, setFilteredBankDetails] = React.useState<
+    BankDetail[]
+  >([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedBankDetail, setSelectedBankDetail] =
     React.useState<BankDetail | null>(null);
-    
+
   const [bankDetailToDelete, setBankDetailToDelete] =
     React.useState<BankDetail | null>(null);
   const { toast } = useToast();
 
- // Function to get user's company ID from token
+  // Function to get user's company ID from token
   const getUserCompanyId = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return null;
-      
-      const payload = JSON.parse(atob(token.split('.')[1]));
+
+      const payload = JSON.parse(atob(token.split(".")[1]));
       return payload.companyId || null;
     } catch (error) {
       console.error("Error decoding token:", error);
@@ -93,27 +99,26 @@ export function BankSettings() {
     }
   };
 
-
-// In your BankSettings component, update the fetchBankDetails function:
- // Fetch bank details
+  // In your BankSettings component, update the fetchBankDetails function:
+  // Fetch bank details
   const fetchBankDetails = React.useCallback(async () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
-      
+
       const res = await fetch(`${baseURL}/api/bank-details`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (!res.ok) throw new Error("Failed to fetch bank details.");
-      
+
       const data = await res.json();
       const allBankDetails = data.data || data || [];
-      
+
       // Get user's company ID and filter bank details
       const userCompanyId = getUserCompanyId();
-      
+
       if (userCompanyId) {
         // Filter bank details to show only those from the user's company
         const userBankDetails = allBankDetails.filter(
@@ -130,7 +135,8 @@ export function BankSettings() {
       toast({
         variant: "destructive",
         title: "Failed to load bank details",
-        description: error instanceof Error ? error.message : "Something went wrong.",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
       });
     } finally {
       setIsLoading(false);
@@ -205,8 +211,6 @@ export function BankSettings() {
     );
   }
 
-
-
   return (
     <>
       <Card>
@@ -229,52 +233,144 @@ export function BankSettings() {
           </div>
         </CardHeader>
         <CardContent>
-           {filteredBankDetails.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bank Name</TableHead>
-                  <TableHead>Manager Name</TableHead>
-                  <TableHead>Contact Number</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bankDetails.map((bankDetail) => (
-                  <TableRow key={bankDetail._id}>
-                    <TableCell>{bankDetail.bankName}</TableCell>
-                    <TableCell>{bankDetail.managerName}</TableCell>
-                    <TableCell>{bankDetail.contactNumber}</TableCell>
-                    <TableCell>{bankDetail.email}</TableCell>
-                    <TableCell>{bankDetail.branchAddress}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenForm(bankDetail)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenDeleteDialog(bankDetail)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          {filteredBankDetails.length > 0 ? (
+            <>
+              {/* ✅ Desktop / Laptop Table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Bank Name</TableHead>
+                      <TableHead>Manager Name</TableHead>
+                      <TableHead>Contact Number</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bankDetails.map((bankDetail) => (
+                      <TableRow key={bankDetail._id}>
+                        <TableCell>{bankDetail.bankName}</TableCell>
+                        <TableCell>{bankDetail.managerName}</TableCell>
+                        <TableCell>{bankDetail.contactNumber}</TableCell>
+                        <TableCell>{bankDetail.email}</TableCell>
+                        <TableCell>{bankDetail.branchAddress}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenForm(bankDetail)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleOpenDeleteDialog(bankDetail)
+                                }
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* ✅ Mobile Card View */}
+<div className="md:hidden space-y-4">
+  {bankDetails.map((bankDetail) => (
+    <div
+      key={bankDetail._id}
+      className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
+    >
+      {/* Header Section */}
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+            {bankDetail.bankName}
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {bankDetail.branchAddress}
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleOpenForm(bankDetail)}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleOpenDeleteDialog(bankDetail)}
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Contact Information */}
+      <div className="space-y-3 mb-4 grid">
+        {/* Manager Name */}
+        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Manager</p>
+            <p className="text-sm text-gray-900 dark:text-white">{bankDetail.managerName}</p>
+          </div>
+        </div>
+
+        {/* Contact Number */}
+        {bankDetail.contactNumber && (
+          <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Contact</p>
+              <p className="text-sm text-gray-900 dark:text-white">{bankDetail.contactNumber}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Email */}
+        {bankDetail.email && (
+          <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <Mail className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Email</p>
+              <p className="text-sm text-gray-900 dark:text-white truncate">{bankDetail.email}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Address */}
+        {bankDetail.branchAddress && (
+          <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Branch Address</p>
+              <p className="text-sm text-gray-900 dark:text-white">{bankDetail.branchAddress}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  ))}
+</div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
               <Package className="h-12 w-12 text-muted-foreground" />
@@ -317,7 +413,7 @@ export function BankSettings() {
             </DialogHeader>
 
             <BankDetailsForm
-                bankDetail={selectedBankDetail || undefined}
+              bankDetail={selectedBankDetail || undefined}
               onSuccess={handleFormSuccess}
               onCancel={() => setIsFormOpen(false)}
             />
