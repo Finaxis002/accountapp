@@ -16,11 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
@@ -76,6 +71,21 @@ import QuillEditor from "@/components/ui/quill-editor";
 
 import WhatsAppMessage from './WhatsAppMessage'
 
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown, X } from "lucide-react";
+
 
 // reads gstin from various possible shapes/keys
 const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -102,6 +112,8 @@ const unitTypes = [
   "Pack",
   "Other",
 ] as const;
+
+type UnitType = typeof unitTypes[number] | string;
 const STANDARD_GST = 18; // default "Standard"
 const GST_OPTIONS = [
   { label: "Standard (18%)", value: "18" },
@@ -132,7 +144,7 @@ const PRODUCT_DEFAULT = {
   product: "",
   quantity: 1,
   pricePerUnit: 0,
-  unitType: "Piece" as const,
+  unitType: "Piece",
   otherUnit: "",
   amount: 0,
   gstPercentage: STANDARD_GST, // NEW
@@ -146,7 +158,7 @@ const itemSchema = z
     product: z.string().optional(),
     service: z.string().optional(),
     quantity: z.coerce.number().optional(),
-    unitType: z.enum(unitTypes).optional(),
+    unitType: z.string().optional(),
     otherUnit: z.string().optional(),
     pricePerUnit: z.coerce.number().optional(),
     description: z.string().optional(),
@@ -300,6 +312,8 @@ export function TransactionForm({
   const [isLoading, setIsLoading] = React.useState(true);
   const [showNotes, setShowNotes] = React.useState(false);
   const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer"];
+  const [existingUnits, setExistingUnits] = React.useState<any[]>([]);
+  const [unitOpen, setUnitOpen] = React.useState(false);
 
   const { selectedCompanyId } = useCompany();
   const { permissions: userCaps } = useUserPermissions();
@@ -695,6 +709,25 @@ export function TransactionForm({
   React.useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  React.useEffect(() => {
+    const fetchUnits = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const res = await fetch(`${baseURL}/api/units`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const units = await res.json();
+          setExistingUnits(units);
+        }
+      } catch (error) {
+        console.error("Failed to fetch units:", error);
+      }
+    };
+    fetchUnits();
+  }, [baseURL]);
 
   React.useEffect(() => {
     if (!transactionToEdit) return;
@@ -1556,6 +1589,43 @@ export function TransactionForm({
     setIsServiceDialogOpen(false);
   };
 
+  const handleDeleteUnit = async (unitId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(`${baseURL}/api/units/${unitId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to delete unit");
+      }
+
+      // Refresh units
+      const unitsRes = await fetch(`${baseURL}/api/units`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (unitsRes.ok) {
+        const units = await unitsRes.json();
+        setExistingUnits(units);
+      }
+
+      toast({
+        title: "Unit deleted",
+        description: "The unit has been removed successfully.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+    }
+  };
+
   const paymentMethod = useWatch({
     control: form.control,
     name: "paymentMethod",
@@ -1886,7 +1956,16 @@ export function TransactionForm({
                           <Combobox
                             options={productOptions}
                             value={field.value || ""}
-                            onChange={(value) => field.onChange(value)}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Auto-populate unit when product is selected
+                              if (value) {
+                                const selectedProduct = products.find(p => p._id === value);
+                                if (selectedProduct?.unit) {
+                                  form.setValue(`items.${index}.unitType`, selectedProduct.unit);
+                                }
+                              }
+                            }}
                             placeholder="Select or create a product..."
                             searchPlaceholder="Search products..."
                             noResultsText="No product found."
@@ -1904,8 +1983,8 @@ export function TransactionForm({
                   </div>
 
                   {/* Product Details - Compact Grid */}
-                  {/* Product Details - Single Row Layout */}
-                  <div className="flex flex-wrap items-end gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                  {/* Product Details - Responsive Layout */}
+                  <div className="grid grid-cols-2 md:flex md:flex-wrap items-end md:gap-3 gap-2 md:p-4 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                     {/* Quantity */}
                     <div className="min-w-[80px] flex-1">
                       <FormField
@@ -1948,27 +2027,184 @@ export function TransactionForm({
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
                               Unit
                             </FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
-                                  <SelectValue placeholder="Unit" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {unitTypes.map((u) => (
-                                  <SelectItem
-                                    key={u}
-                                    value={u}
-                                    className="text-sm"
+                            <Popover open={unitOpen} onOpenChange={setUnitOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={unitOpen}
+                                    className="w-full h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 justify-between"
                                   >
-                                    {u}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                    {field.value
+                                      ? field.value === "Other"
+                                        ? "Other (Custom)"
+                                        : field.value
+                                      : "Select unit..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-full p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search units..." />
+                                  <CommandList>
+                                    <CommandEmpty>No unit found.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="Piece"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Piece");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Piece" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Piece
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Kg"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Kg");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Kg" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Kg
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Litre"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Litre");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Litre" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Litre
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Box"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Box");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Box" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Box
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Meter"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Meter");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Meter" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Meter
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Dozen"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Dozen");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Dozen" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Dozen
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Pack"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Pack");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Pack" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Pack
+                                      </CommandItem>
+                                      {existingUnits.map((unit) => (
+                                        <CommandItem
+                                          key={unit._id}
+                                          value={unit.name}
+                                          onSelect={() => {
+                                            form.setValue(`items.${index}.unitType`, unit.name);
+                                            setUnitOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              field.value === unit.name ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <span className="flex-1">{unit.name}</span>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteUnit(unit._id);
+                                            }}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </CommandItem>
+                                      ))}
+                                      <CommandItem
+                                        value="Other"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Other");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Other" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Other
+                                      </CommandItem>
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -2410,9 +2646,9 @@ export function TransactionForm({
 
      {/* Totals and Notes (Notes only for Sales) */}
 {type === "sales" ? (
-  <div className="flex gap-6">
-    {/* Notes Section - Only for Sales */}
-    <div className="flex-1">
+<div className="flex flex-col md:flex-row gap-6">
+{/* Notes Section - Only for Sales */}
+<div className="flex-1">
       {!showNotes ? (
         <div className="flex justify-start py-4">
           <Button
@@ -2864,237 +3100,296 @@ export function TransactionForm({
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-          <ScrollArea className="flex-1 overflow-y-hidden">
-            <div className="p-6 space-y-6">
-              <Tabs
-                value={type}
-                onValueChange={(value) => form.setValue("type", value as any)}
-                className="w-full"
-              >
-                <TabsList className="grid w-full grid-cols-5">
-                  {canSales && (
-                    <TabsTrigger value="sales" disabled={!!transactionToEdit}>
-                      Sales
-                    </TabsTrigger>
-                  )}
-                  {canPurchases && (
-                    <TabsTrigger
-                      value="purchases"
-                      disabled={!!transactionToEdit}
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="contents"
+          onSelect={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            // Prevent form selection on Tab key
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              // Find next focusable element
+              const focusableElements = document.querySelectorAll(
+                'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+              );
+              const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+              const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+              if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+                (focusableElements[nextIndex] as HTMLElement).focus();
+              }
+            }
+          }}
+        >
+          <ScrollArea className="flex-1 overflow-y-hidden" tabIndex={-1}>
+            <div className="p-6 space-y-6 select-none">
+              <div className="w-full">
+  {/* Mobile Dropdown (hidden on desktop) */}
+  <div className="md:hidden mb-4">
+    <Select
+      value={type}
+      onValueChange={(value) => form.setValue("type", value as any)}
+    >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select transaction type" />
+      </SelectTrigger>
+      <SelectContent>
+        {canSales && (
+          <SelectItem value="sales" disabled={!!transactionToEdit}>
+            Sales
+          </SelectItem>
+        )}
+        {canPurchases && (
+          <SelectItem value="purchases" disabled={!!transactionToEdit}>
+            Purchases
+          </SelectItem>
+        )}
+        {canReceipt && (
+          <SelectItem value="receipt" disabled={!!transactionToEdit}>
+            Receipt
+          </SelectItem>
+        )}
+        {canPayment && (
+          <SelectItem value="payment" disabled={!!transactionToEdit}>
+            Payment
+          </SelectItem>
+        )}
+        {canJournal && (
+          <SelectItem value="journal" disabled={!!transactionToEdit}>
+            Journal
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
+  </div>
+
+  {/* Desktop Tabs (hidden on mobile) */}
+  <div className="hidden md:block">
+    <Tabs
+      value={type}
+      onValueChange={(value) => form.setValue("type", value as any)}
+      className="w-full"
+    >
+      <TabsList className="grid w-full grid-cols-5">
+        {canSales && (
+          <TabsTrigger value="sales" disabled={!!transactionToEdit}>
+            Sales
+          </TabsTrigger>
+        )}
+        {canPurchases && (
+          <TabsTrigger
+            value="purchases"
+            disabled={!!transactionToEdit}
+          >
+            Purchases
+          </TabsTrigger>
+        )}
+        {canReceipt && (
+          <TabsTrigger value="receipt" disabled={!!transactionToEdit}>
+            Receipt
+          </TabsTrigger>
+        )}
+        {canPayment && (
+          <TabsTrigger value="payment" disabled={!!transactionToEdit}>
+            Payment
+          </TabsTrigger>
+        )}
+        {canJournal && (
+          <TabsTrigger value="journal" disabled={!!transactionToEdit}>
+            Journal
+          </TabsTrigger>
+        )}
+      </TabsList>
+    </Tabs>
+  </div>
+
+  {/* Tab Content (same for both mobile and desktop) */}
+  <div className="pt-4 md:pt-6">
+    {type === "sales" && renderSalesPurchasesFields()}
+    {type === "purchases" && renderSalesPurchasesFields()}
+    {type === "receipt" && renderReceiptPaymentFields()}
+    {type === "payment" && renderReceiptPaymentFields()}
+    {type === "journal" && (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <h3 className="text-base font-medium pb-2 border-b">
+            Core Details
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a company" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {companies.map((c) => (
+                        <SelectItem key={c._id} value={c._id}>
+                          {c.businessName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Transaction Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0"
+                      align="start"
                     >
-                      Purchases
-                    </TabsTrigger>
-                  )}
-                  {canReceipt && (
-                    <TabsTrigger value="receipt" disabled={!!transactionToEdit}>
-                      Receipt
-                    </TabsTrigger>
-                  )}
-                  {canPayment && (
-                    <TabsTrigger value="payment" disabled={!!transactionToEdit}>
-                      Payment
-                    </TabsTrigger>
-                  )}
-                  {canJournal && (
-                    <TabsTrigger value="journal" disabled={!!transactionToEdit}>
-                      Journal
-                    </TabsTrigger>
-                  )}
-                </TabsList>
-
-                <TabsContent value="sales" className="pt-6">
-                  {renderSalesPurchasesFields()}
-                </TabsContent>
-                <TabsContent value="purchases" className="pt-6">
-                  {renderSalesPurchasesFields()}
-                </TabsContent>
-                <TabsContent value="receipt" className="pt-6">
-                  {renderReceiptPaymentFields()}
-                </TabsContent>
-                <TabsContent value="payment" className="pt-6">
-                  {renderReceiptPaymentFields()}
-                </TabsContent>
-                <TabsContent value="journal" className="pt-6">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <h3 className="text-base font-medium pb-2 border-b">
-                        Core Details
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        <FormField
-                          control={form.control}
-                          name="company"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Company</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a company" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {companies.map((c) => (
-                                    <SelectItem key={c._id} value={c._id}>
-                                      {c.businessName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="date"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Transaction Date</FormLabel>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant={"outline"}
-                                      className={cn(
-                                        "w-full pl-3 text-left font-normal",
-                                        !field.value && "text-muted-foreground"
-                                      )}
-                                    >
-                                      {field.value ? (
-                                        format(field.value, "PPP")
-                                      ) : (
-                                        <span>Pick a date</span>
-                                      )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  className="w-auto p-0"
-                                  align="start"
-                                >
-                                  <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    disabled={(date) =>
-                                      date > new Date() ||
-                                      date < new Date("1900-01-01")
-                                    }
-                                    initialFocus
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-base font-medium pb-2 border-b">
-                        Journal Entry
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        <FormField
-                          control={form.control}
-                          name="fromAccount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Debit Account</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g., Rent Expense"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="toAccount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Credit Account</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g., Cash" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="totalAmount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Amount</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="0.00"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-base font-medium pb-2 border-b">
-                        Additional Details
-                      </h3>
-                      <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>Narration</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Describe the transaction..."
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() ||
+                          date < new Date("1900-01-01")
+                        }
+                        initialFocus
                       />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-base font-medium pb-2 border-b">
+            Journal Entry
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <FormField
+              control={form.control}
+              name="fromAccount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Debit Account</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., Rent Expense"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="toAccount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Credit Account</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Cash" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="totalAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-base font-medium pb-2 border-b">
+            Additional Details
+          </h3>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Narration</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Describe the transaction..."
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+    )}
+  </div>
 
-                    </div>
-                  </div>
-
-                  {/* Journal Totals */}
-                  <div className="flex justify-end mt-6">
-                    <div className="w-full max-w-sm space-y-3">
-                      <div className="flex items-center justify-between">
-                        <FormLabel className="font-medium">Amount</FormLabel>
-                        <FormField
-                          control={form.control}
-                          name="totalAmount"
-                          render={({ field }) => (
-                            <Input
-                              type="number"
-                              readOnly
-                              className="w-40 text-right bg-muted"
-                              {...field}
-                            />
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
+  {/* Journal Totals (only for journal type) */}
+  {type === "journal" && (
+    <div className="flex justify-end mt-6">
+      <div className="w-full max-w-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <FormLabel className="font-medium">Amount</FormLabel>
+          <FormField
+            control={form.control}
+            name="totalAmount"
+            render={({ field }) => (
+              <Input
+                type="number"
+                readOnly
+                className="w-40 text-right bg-muted"
+                {...field}
+              />
+            )}
+          />
+        </div>
+      </div>
+    </div>
+  )}
+</div>
             </div>
           </ScrollArea>
           <div className="flex justify-end p-6 border-t bg-background">

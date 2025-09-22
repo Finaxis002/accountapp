@@ -77,12 +77,13 @@ function getItems(
   svcMap?: Map<string, string>
 ): { label: string; icon: "product" | "service" | "none"; items: LineItem[] } {
   const productsArr = Array.isArray(tx?.products) ? tx.products : [];
-const servicesArr =
-  Array.isArray(tx?.services) ? tx.services
-  : Array.isArray(tx?.service)  ? tx.service      // <-- service can be an array
-  : tx?.service                 ? [tx.service]    // <-- or a single object
-  : [];
-
+  const servicesArr = Array.isArray(tx?.services)
+    ? tx.services
+    : Array.isArray(tx?.service)
+    ? tx.service // <-- service can be an array
+    : tx?.service
+    ? [tx.service] // <-- or a single object
+    : [];
 
   const normalized: LineItem[] = [];
 
@@ -189,7 +190,7 @@ export function RecentTransactions({
 
   return (
     <>
-      <Card className="w-full h-full flex flex-col">
+      {/* <Card className="w-full h-full flex flex-col">
         <CardHeader>
           <CardTitle>Recent Transactions</CardTitle>
           <CardDescription>
@@ -288,6 +289,203 @@ export function RecentTransactions({
                 )}
               </TableBody>
             </Table>
+          </ScrollArea>
+        </CardContent>
+        <CardFooter className="justify-end pt-4">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/transactions">
+              View All Transactions <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </CardFooter>
+      </Card> */}
+
+      <Card className="w-full h-full flex flex-col">
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+          <CardDescription>
+            A summary of your most recent financial activities.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0 flex-1">
+          <ScrollArea className="h-72">
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Party</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="hidden sm:table-cell">Type</TableHead>
+                    <TableHead className="hidden md:table-cell">Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions?.length > 0 ? (
+                    transactions.map((tx: any) => {
+                      const item = getItems(tx, serviceNameById);
+                      const amt = getAmount(tx);
+                      const clickable = item.items.length > 0;
+
+                      return (
+                        <TableRow key={tx._id}>
+                          <TableCell>
+                            <div className="font-medium">
+                              {getPartyName(tx)}
+                            </div>
+                            <div className="hidden text-sm text-muted-foreground md:block">
+                              {tx.description || tx.narration}
+                            </div>
+                          </TableCell>
+
+                          <TableCell>
+                            {item.icon === "product" ? (
+                              <button
+                                type="button"
+                                disabled={!clickable}
+                                onClick={() => openItemsDialog(tx, item.items)}
+                                className={`flex items-center gap-2 ${
+                                  clickable ? "hover:underline text-left" : ""
+                                }`}
+                              >
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {item.label}
+                                </span>
+                              </button>
+                            ) : item.icon === "service" ? (
+                              <button
+                                type="button"
+                                disabled={!clickable}
+                                onClick={() => openItemsDialog(tx, item.items)}
+                                className={`flex items-center gap-2 ${
+                                  clickable ? "hover:underline text-left" : ""
+                                }`}
+                              >
+                                <Server className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {item.label}
+                                </span>
+                              </button>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge
+                              variant="secondary"
+                              className={typeStyles[tx.type] || ""}
+                            >
+                              {tx.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {safeDate(tx.date)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {inr(amt)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                        No recent transactions.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden p-4 space-y-4">
+              {transactions?.length > 0 ? (
+                transactions.map((tx: any) => {
+                  const item = getItems(tx, serviceNameById);
+                  const amt = getAmount(tx);
+                  const clickable = item.items.length > 0;
+                  const partyName = getPartyName(tx);
+                  const description = tx.description || tx.narration;
+
+                  return (
+                    <div
+                      key={tx._id}
+                      className="rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          {/* Header section */}
+                          <div className="mb-3">
+                            <h3 className="font-semibold text-base">
+                              {partyName}
+                            </h3>
+                            {description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Item section */}
+                          <div className="flex items-center gap-2 mb-3">
+                            {item.icon === "product" ? (
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            ) : item.icon === "service" ? (
+                              <Server className="h-4 w-4 text-muted-foreground" />
+                            ) : null}
+                            <button
+                              type="button"
+                              disabled={!clickable}
+                              onClick={() => openItemsDialog(tx, item.items)}
+                              className={`text-sm font-medium ${
+                                clickable
+                                  ? "text-primary hover:underline"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {item.label || "—"}
+                            </button>
+                          </div>
+
+                          {/* Footer section */}
+                          <div className="flex items-center justify-between">
+                            <Badge
+                              variant="secondary"
+                              className={typeStyles[tx.type] || ""}
+                            >
+                              {tx.type}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="pl-4 text-right">
+                          <div className="text-lg font-bold text-primary">
+                            {inr(amt)}
+                          </div>
+                          <span className="text-xs text-muted-foreground block mt-1">
+                            {safeDate(tx.date)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center h-48 text-center rounded-lg border border-dashed">
+                  <div className="rounded-full bg-muted p-3 mb-4">
+                    {/* <Receipt className="h-6 w-6 text-muted-foreground" /> */}
+                  </div>
+                  <h3 className="text-lg font-semibold">No transactions</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your recent transactions will appear here
+                  </p>
+                </div>
+              )}
+            </div>
           </ScrollArea>
         </CardContent>
         <CardFooter className="justify-end pt-4">

@@ -47,8 +47,6 @@ import { ServiceForm } from "../services/service-form";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
 const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
-
-
 function StockEditForm({
   product,
   onSuccess,
@@ -69,17 +67,14 @@ function StockEditForm({
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
-      const res = await fetch(
-        `${baseURL}/api/products/${product._id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ stocks: newStock }),
-        }
-      );
+      const res = await fetch(`${baseURL}/api/products/${product._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ stocks: newStock }),
+      });
       if (!res.ok) throw new Error("Failed to update stock.");
       const data = await res.json();
       toast({ title: "Stock updated successfully!" });
@@ -138,7 +133,7 @@ export function ProductStock() {
   const { permissions } = usePermissions();
   const { selectedCompanyId } = useCompany();
 
-   const { permissions: userCaps } = useUserPermissions();
+  const { permissions: userCaps } = useUserPermissions();
 
   const fetchProducts = React.useCallback(async () => {
     setIsLoading(true);
@@ -211,26 +206,31 @@ export function ProductStock() {
   );
 
   if (
-    !permissions?.canCreateProducts && !userCaps?.canCreateInventory &&
+    !permissions?.canCreateProducts &&
+    !userCaps?.canCreateInventory &&
     (permissions?.maxInventories ?? 0) === 0
   ) {
     return null;
   }
 
-
   const role = localStorage.getItem("role");
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="rounded-lg shadow-sm border-0 md:border md:shadow">
+        <CardHeader className="px-4 py-5 sm:px-6 bg-muted/20 rounded-t-lg">
           <div className="flex flex-col sm:flex-row items-center sm:justify-between">
-            <div>
-              <CardTitle>Product & Service Stock</CardTitle>
-              <CardDescription>Current inventory levels.</CardDescription>
+            <div className="text-center sm:text-left mb-4 sm:mb-0">
+              <CardTitle className="text-xl sm:text-2xl font-bold ">
+                Product & Service Stock
+              </CardTitle>
+              <CardDescription className="mt-1 text-sm sm:text-base">
+                Current inventory levels
+              </CardDescription>
             </div>
-            {(permissions?.canCreateProducts || userCaps?.canCreateInventory) &&(
-              <div className="flex flex-row sm:flex-row items-center gap-4 mt-4 sm:mt-0">
+            {(permissions?.canCreateProducts ||
+              userCaps?.canCreateInventory) && (
+              <div className="flex flex-row justify-center sm:justify-end items-center gap-2 w-full sm:w-auto">
                 {/* Add Product */}
                 <Dialog
                   open={isAddProductOpen}
@@ -238,14 +238,18 @@ export function ProductStock() {
                 >
                   <DialogTrigger asChild>
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="sm"
+                      className="h-10 rounded-full px-4 shadow-sm sm:rounded-md sm:px-3"
                       onClick={() => setIsAddProductOpen(true)}
                     >
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Product
+                      <PlusCircle className="h-4 w-4 mr-1" />
+                      <span className="sm:inline">
+                        Product
+                      </span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
+                  <DialogContent className="sm:max-w-lg max-w-sm overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create New Product</DialogTitle>
                       <DialogDescription>
@@ -265,12 +269,16 @@ export function ProductStock() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="h-10 rounded-full px-4 shadow-sm sm:rounded-md sm:px-3"
                       onClick={() => setIsAddServiceOpen(true)}
                     >
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Service
+                      <Server className="h-4 w-4 mr-1" />
+                      <span className="sm:inline">
+                        Service
+                      </span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
+                 <DialogContent className="sm:max-w-lg max-w-sm overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create New Service</DialogTitle>
                       <DialogDescription>
@@ -284,123 +292,148 @@ export function ProductStock() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 py-5 sm:px-6">
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search items..."
-              className="pl-9"
+              className="pl-9 py-5 sm:py-2 rounded-xl sm:rounded-md"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <ScrollArea className="h-60">
+          <ScrollArea className="h-80 sm:h-80 rounded-lg border">
             {isLoading ? (
               <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filteredProducts.length > 0 ? (
-    <>
-      {/* Mobile cards (show on small screens) */}
-      <div className="sm:hidden space-y-3">
-        {filteredProducts.map((product) => (
-          <div
-            key={product._id}
-            className="flex items-center justify-between rounded-xl border bg-card p-4"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              {product.type === "service" ? (
-                <Server className="h-4 w-4 text-muted-foreground shrink-0" />
-              ) : (
-                <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-              )}
-              <div className="min-w-0">
-                <div className="font-medium truncate flex items-center gap-2">
-                  {product.name}
-                  {product.type === "service" && (
-                    <Badge variant="outline">Service</Badge>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {product.type === "service" ? "Stock: N/A" : `Stock: ${product.stocks ?? 0}`}
-                </div>
-              </div>
-            </div>
 
-            {role !== "user" ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-3 shrink-0"
-                onClick={() => handleEditClick(product)}
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                Edit
-              </Button>
-            ) : null}
-          </div>
-        ))}
-      </div>
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-card">
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Stock</TableHead>
+                        {role !== "user" ? (
+                          <TableHead className="text-right">Actions</TableHead>
+                        ) : null}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProducts.map((product) => (
+                        <TableRow key={product._id}>
+                          <TableCell className="font-medium flex items-center gap-2">
+                            {product.type === "service" ? (
+                              <Server className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            {product.name}
+                            {product.type === "service" && (
+                              <Badge variant="outline">Service</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {product.type === "service" ? (
+                              <span className="text-muted-foreground text-xs">
+                                N/A
+                              </span>
+                            ) : (
+                              <span className="font-bold text-lg">
+                                {product.stocks ?? 0}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {role !== "user" ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditClick(product)}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                <span className="hidden sm:inline">
+                                  Edit Stock
+                                </span>
+                                <span className="sm:hidden">Edit</span>
+                              </Button>
+                            ) : null}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
 
-      {/* Desktop/tablet table (hidden on small screens) */}
-      <div className="hidden sm:block w-full overflow-x-auto">
-        <Table className="min-w-[560px]">
-          <TableHeader className="sticky top-0 bg-card">
-            <TableRow>
-              <TableHead className="whitespace-nowrap">Item</TableHead>
-              <TableHead className="whitespace-nowrap">Stock</TableHead>
-              {role !== "user" ? (
-                <TableHead className="text-right whitespace-nowrap w-[140px]">Actions</TableHead>
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProducts.map((product) => (
-              <TableRow key={product._id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {product.type === "service" ? (
-                      <Server className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="truncate">{product.name}</span>
-                    {product.type === "service" && (
-                      <Badge variant="outline">Service</Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {product.type === "service" ? (
-                    <span className="text-muted-foreground text-xs">N/A</span>
-                  ) : (
-                    <span className="font-bold text-lg">{product.stocks ?? 0}</span>
-                  )}
-                </TableCell>
-                {role !== "user" ? (
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditClick(product)}
+                {/* Mobile Card View */}
+                <div className="md:hidden p-4 space-y-4">
+                  {filteredProducts.map((product) => (
+                    <div
+                      key={product._id}
+                      className="rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md"
                     >
-                      <Edit className="h-4 w-4 mr-2" />
-                      <span className="hidden md:inline">Edit Stock</span>
-                      <span className="md:hidden">Edit</span>
-                    </Button>
-                  </TableCell>
-                ) : null}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </>
-  ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                <Package className="h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {product.type === "service" ? (
+                            <Server className="h-5 w-5 text-primary/70" />
+                          ) : (
+                            <Package className="h-5 w-5 text-primary/70" />
+                          )}
+                          <div>
+                            <h3 className="font-semibold text-base">
+                              {product.name}
+                            </h3>
+                            {product.type === "service" && (
+                              <Badge
+                                variant="secondary"
+                                className="text-xs mt-1"
+                              >
+                                Service
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {product.type !== "service" && (
+                          <div className="text-right">
+                            <div className="text-xl font-bold text-primary">
+                              {product.stocks ?? 0}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              in stock
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t">
+                        {role !== "user" && product.type !== "service" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-full"
+                            onClick={() => handleEditClick(product)}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center py-8 px-4">
+                <div className="rounded-full bg-muted/30 p-4 mb-4">
+                  <Package className="h-8 w-8 text-muted-foreground sm:h-12 sm:w-12" />
+                </div>
+                <h3 className="mt-2 text-lg font-semibold">No Items Found</h3>
+                <p className="mt-1 text-sm text-muted-foreground max-w-[240px] mx-auto">
+
                   {searchTerm
                     ? `No items match "${searchTerm}".`
                     : "You haven't added any products or services yet."}

@@ -5,11 +5,12 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RevenueChart } from '@/components/dashboard/revenue-chart';
 import { ClientStatusChart } from '@/components/dashboard/client-status-chart';
-import { Users, Building, Database, FileText, Loader2 } from 'lucide-react';
+import { Users, Building, Database, FileText, Loader2, TrendingDown, TrendingUp } from 'lucide-react';
 import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import UpdateNotification from '@/components/notifications/UpdateNotification';
 import UpdateNotificationBadge from '@/components/notifications/UpdateNotificationBadge';
+import { cn } from '@/lib/utils';
 
 
 const CACHE_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
@@ -141,26 +142,44 @@ export default function AdminDashboardPage() {
         <UpdateNotificationBadge />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {kpiData.map((kpi) => (
-          <Card key={kpi.title}>
-            <CardContent className="p-2">
-              <div className="flex items-start justify-between">
-                <div className='space-y-2'>
-                    <p className="text-sm font-medium text-muted-foreground">{kpi.title}</p>
-                    <p className="text-3xl font-bold">{kpi.value}</p>
-                    <p className="text-xs text-muted-foreground">
-                        <span className={kpi.change.startsWith('+') ? "text-green-500" : "text-red-500"}>{kpi.change}</span>
-                    </p>
-                </div>
-                <div className={`p-2 rounded-md ${kpi.iconBg}`}>
-                    <kpi.icon className={`h-6 w-6 ${kpi.iconColor}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+  <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
+  {kpiData.map((kpi) => (
+    <Card key={kpi.title} className="hover:shadow-md transition-shadow duration-200">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between">
+          <div className='space-y-1 sm:space-y-2 flex-1 min-w-0'>
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
+              {kpi.title}
+            </p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
+              {kpi.value}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <span className={cn(
+                "inline-flex items-center gap-1 w-[45vh]",
+                kpi.change.startsWith('+') ? "text-green-500" : "text-red-500"
+              )}>
+                {kpi.change.startsWith('+') ? (
+                  <TrendingUp className="h-3 w-3" />
+                ) : (
+                  <TrendingDown className="h-3 w-3" />
+                )}
+                {kpi.change}
+              </span>
+            </p>
+          </div>
+          <div className={cn(
+            "p-2 rounded-md flex-shrink-0 ml-2",
+            kpi.iconBg
+          )}>
+            <kpi.icon className={`h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 ${kpi.iconColor}`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  ))}
+</div>
+
 
       {/* Update Notifications */}
       <div data-notification-section>

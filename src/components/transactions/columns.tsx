@@ -46,6 +46,7 @@ interface ColumnsProps {
   serviceNameById: Map<string, string>;
   onSendInvoice: (tx: Transaction) => void;
   serviceMap?: Map<string, string>;
+  hideActions?: boolean;
 }
 
 /** Build a filter function that can match party/vendor, description and line names */
@@ -86,10 +87,11 @@ export const columns = ({
   companyMap,
   serviceNameById,
   onSendInvoice,
+  hideActions = false,
 }: ColumnsProps): ColumnDef<Transaction>[] => {
   const customFilterFn = makeCustomFilterFn(serviceNameById);
 
-  return [
+  const baseColumns: ColumnDef<Transaction>[] = [
     // SELECT COLUMN
     {
       id: "select",
@@ -291,6 +293,7 @@ export const columns = ({
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      meta: { label: "Amount" },
       cell: ({ row }) => {
         const amount = parseFloat(
           String(row.original.totalAmount || (row.original as any).amount || 0)
@@ -339,9 +342,11 @@ export const columns = ({
         );
       },
     },
+  ];
 
-    // ACTIONS
-    {
+  // Conditionally add actions column
+  if (!hideActions) {
+    baseColumns.push({
       id: "actions",
       cell: ({ row }) => {
         // inside actions column cell
@@ -443,6 +448,8 @@ export const columns = ({
           </DropdownMenu>
         );
       },
-    },
-  ];
+    });
+  }
+
+  return baseColumns;
 };

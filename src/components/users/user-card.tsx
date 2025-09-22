@@ -120,67 +120,81 @@ export function UserCard({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((user) => {
           const roleLabel = getRoleLabel(user.role as RoleLike, rMap);
-          const initials = (user.userName || "NN").substring(0, 2).toUpperCase();
+          const initials = (user.userName || "NN")
+            .substring(0, 2)
+            .toUpperCase();
 
           return (
             <Card key={user._id} className="flex flex-col overflow-hidden">
               <CardContent className="p-6 flex-1">
                 {/* User Avatar and Basic Info */}
-             <div className="flex items-start mb-5 p-4 bg-gradient-to-r from-muted/20 to-muted/30 rounded-lg border">
-  <Avatar className="h-14 w-14  shadow-md">
-    <AvatarImage src={user.avatar} alt={user.userName} />
-    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-primary font-medium">
-      {initials}
-    </AvatarFallback>
-  </Avatar>
-  
-  <div className="ml-4 flex-1 min-w-0">
-    <div className="flex items-baseline justify-between">
-      <h3 className="font-bold text-lg text-foreground truncate">{user.userName}</h3>
-      <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full">
-        <RoleIcon label={roleLabel}  />
-        <span className="font-medium text-xs text-primary">{roleLabel}</span>
-      </div>
-    </div>
-    
-    <p className="text-sm text-muted-foreground mt-1">ID: {user.userId}</p>
-    
-    {user.status && (
-      <div className="flex items-center gap-1.5 mt-2">
-        <div className={`h-2 w-2 rounded-full ${
-          user.status === 'Active' 
-            ? 'bg-green-500 dark:bg-green-400' 
-            : 'bg-amber-500 dark:bg-amber-400'
-        }`} />
-        <span className="text-xs font-medium text-muted-foreground">{user.status}</span>
-      </div>
-    )}
-  </div>
-</div>
+                <div className="flex items-start mb-5 p-4 bg-gradient-to-r from-muted/20 to-muted/30 rounded-lg border">
+                  <Avatar className="h-14 w-14  shadow-md">
+                    <AvatarImage src={user.avatar} alt={user.userName} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-primary font-medium">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="ml-4 flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between">
+                      <h3 className="font-bold text-lg text-foreground truncate">
+                        {user.userName}
+                      </h3>
+                      <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full">
+                        <RoleIcon label={roleLabel} />
+                        <span className="font-medium text-xs text-primary">
+                          {roleLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ID: {user.userId}
+                    </p>
+
+                    {user.status && (
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <div
+                          className={`h-2 w-2 rounded-full ${
+                            user.status === "Active"
+                              ? "bg-green-500 dark:bg-green-400"
+                              : "bg-amber-500 dark:bg-amber-400"
+                          }`}
+                        />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {user.status}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {/* Contact Information */}
                 <div className="space-y-3 mb-4">
-                  {user.contactNumber && (
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-md bg-green-500/10 p-1">
-                        <Phone className="h-3 w-3 text-green-500" />
+                  <div className="flex gap-6 items-center align-middle">
+                    {user.contactNumber && (
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-md bg-green-500/10 p-1">
+                          <Phone className="h-3 w-3 text-green-500" />
+                        </div>
+                        <span className="text-sm">{user.contactNumber}</span>
                       </div>
-                      <span className="text-sm">{user.contactNumber}</span>
-                    </div>
-                  )}
+                    )}
 
-                  {user.email && (
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-md bg-purple-500/10 p-1">
-                        <Mail className="h-3 w-3 text-purple-500" />
+                    {user.email && (
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-md bg-purple-500/10 p-1">
+                          <Mail className="h-3 w-3 text-purple-500" />
+                        </div>
+                        <span className="text-sm text-muted-foreground truncate">
+                          {user.email}
+                        </span>
                       </div>
-                      <span className="text-sm text-muted-foreground truncate">
-                        {user.email}
-                      </span>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {user.address && (
-                    <div className="flex items-start gap-2">
+                    <div className="flex items-center gap-2">
                       <div className="mt-0.5 rounded-md bg-gray-500/10 p-1">
                         <MapPin className="h-3 w-3 text-gray-500" />
                       </div>

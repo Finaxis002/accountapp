@@ -445,7 +445,7 @@ const scrollToHighlight = (index: number) => {
       <PermissionProvider>
         <UserPermissionsProvider>
           <SidebarProvider>
-            <div className="flex min-h-screen bg-background text-foreground">
+            <div className="flex min-h-screen w-full bg-background text-foreground overflow-x-hidden">
               {showAppSidebar ? <AppSidebar /> : <UserSidebar />}
               <div className="flex-1 flex flex-col w-full">
                 <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 z-20">
@@ -541,7 +541,7 @@ const scrollToHighlight = (index: number) => {
                     </DropdownMenu>
                   </div>
                 </header>
-                <main ref={contentRef} className="flex-1 p-4 md:p-6 lg:p-8 w-[42vh] sm:min-w-[165vh]">
+                <main ref={contentRef} className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
                   {children}
                 </main>
               </div>

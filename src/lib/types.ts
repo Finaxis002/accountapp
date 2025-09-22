@@ -5,6 +5,7 @@ export type Product = {
   name: string;
   type?: 'product' | 'service';
   stocks?: number;
+  unit?: string;
   createdByClient: string;   // <-- required
   createdAt?: string;
   updatedAt?: string;
