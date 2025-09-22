@@ -287,7 +287,6 @@ export function ProductSettings() {
                 </Button>
               </div>
             </CardHeader>
-
             <CardContent>
               {isLoading ? (
                 <div className="flex justify-center items-center h-40">
@@ -533,44 +532,9 @@ export function ProductSettings() {
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Item
                   </Button>
-
                 </div>
-              </CardContent>
-              <div className="p-4 flex justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleOpenForm(product)}>
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleOpenDeleteDialog(product)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-          <Package className="h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Get started by adding your first product or service.</p>
-          <Button className="mt-6" onClick={() => handleOpenForm()}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-          </Button>
-        </div>
-      )}
-    </div>
-  </CardContent>
+              )}
+            </CardContent>
           </Card>
 
           <Dialog
