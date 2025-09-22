@@ -300,59 +300,103 @@ export function ProductStock() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : filteredProducts.length > 0 ? (
-              <Table>
-                <TableHeader className="sticky top-0 bg-card">
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Stock</TableHead>
-                     {role !== "user" ? (
-      <TableHead className="text-right">Actions</TableHead>
-    ) : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product) => (
-                    <TableRow key={product._id}>
-                      <TableCell className="font-medium flex items-center gap-2">
-                        {product.type === "service" ? (
-                          <Server className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        {product.name}
-                        {product.type === "service" && (
-                          <Badge variant="outline">Service</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {product.type === "service" ? (
-                          <span className="text-muted-foreground text-xs">
-                            N/A
-                          </span>
-                        ) : (
-                          <span className="font-bold text-lg">
-                            {product.stocks ?? 0}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {role !== "user" ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(product)}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-  <span className="hidden sm:inline">Edit Stock</span>
-  <span className="sm:hidden">Edit</span>
-                            </Button>
-                            ) : null}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
+    <>
+      {/* Mobile cards (show on small screens) */}
+      <div className="sm:hidden space-y-3">
+        {filteredProducts.map((product) => (
+          <div
+            key={product._id}
+            className="flex items-center justify-between rounded-xl border bg-card p-4"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {product.type === "service" ? (
+                <Server className="h-4 w-4 text-muted-foreground shrink-0" />
+              ) : (
+                <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
+              <div className="min-w-0">
+                <div className="font-medium truncate flex items-center gap-2">
+                  {product.name}
+                  {product.type === "service" && (
+                    <Badge variant="outline">Service</Badge>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {product.type === "service" ? "Stock: N/A" : `Stock: ${product.stocks ?? 0}`}
+                </div>
+              </div>
+            </div>
+
+            {role !== "user" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-3 shrink-0"
+                onClick={() => handleEditClick(product)}
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop/tablet table (hidden on small screens) */}
+      <div className="hidden sm:block w-full overflow-x-auto">
+        <Table className="min-w-[560px]">
+          <TableHeader className="sticky top-0 bg-card">
+            <TableRow>
+              <TableHead className="whitespace-nowrap">Item</TableHead>
+              <TableHead className="whitespace-nowrap">Stock</TableHead>
+              {role !== "user" ? (
+                <TableHead className="text-right whitespace-nowrap w-[140px]">Actions</TableHead>
+              ) : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredProducts.map((product) => (
+              <TableRow key={product._id}>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {product.type === "service" ? (
+                      <Server className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="truncate">{product.name}</span>
+                    {product.type === "service" && (
+                      <Badge variant="outline">Service</Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {product.type === "service" ? (
+                    <span className="text-muted-foreground text-xs">N/A</span>
+                  ) : (
+                    <span className="font-bold text-lg">{product.stocks ?? 0}</span>
+                  )}
+                </TableCell>
+                {role !== "user" ? (
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditClick(product)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      <span className="hidden md:inline">Edit Stock</span>
+                      <span className="md:hidden">Edit</span>
+                    </Button>
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  ) : (
               <div className="flex flex-col items-center justify-center h-full text-center py-8">
                 <Package className="h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>

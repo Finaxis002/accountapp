@@ -148,7 +148,7 @@ export function ProductSettings() {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
       const res = await fetch(
-        `http://localhost:5000/api/products/${productToDelete._id}`,
+        `${baseURL}/api/products/${productToDelete._id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

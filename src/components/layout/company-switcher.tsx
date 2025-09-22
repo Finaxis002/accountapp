@@ -96,6 +96,7 @@ export function CompanySwitcher() {
         placeholder="Select a company..."
         searchPlaceholder="Search companies..."
         noResultsText="No companies found."
+         className="truncate max-w-[100px] sm:max-w-[200px] md:max-w-[250px]"
       />
     </div>
   );
