@@ -16,11 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
@@ -76,6 +71,21 @@ import QuillEditor from "@/components/ui/quill-editor";
 
 import WhatsAppMessage from './WhatsAppMessage'
 
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown, X } from "lucide-react";
+
 
 // reads gstin from various possible shapes/keys
 const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -102,6 +112,8 @@ const unitTypes = [
   "Pack",
   "Other",
 ] as const;
+
+type UnitType = typeof unitTypes[number] | string;
 const STANDARD_GST = 18; // default "Standard"
 const GST_OPTIONS = [
   { label: "Standard (18%)", value: "18" },
@@ -132,7 +144,7 @@ const PRODUCT_DEFAULT = {
   product: "",
   quantity: 1,
   pricePerUnit: 0,
-  unitType: "Piece" as const,
+  unitType: "Piece",
   otherUnit: "",
   amount: 0,
   gstPercentage: STANDARD_GST, // NEW
@@ -146,7 +158,7 @@ const itemSchema = z
     product: z.string().optional(),
     service: z.string().optional(),
     quantity: z.coerce.number().optional(),
-    unitType: z.enum(unitTypes).optional(),
+    unitType: z.string().optional(),
     otherUnit: z.string().optional(),
     pricePerUnit: z.coerce.number().optional(),
     description: z.string().optional(),
@@ -300,6 +312,8 @@ export function TransactionForm({
   const [isLoading, setIsLoading] = React.useState(true);
   const [showNotes, setShowNotes] = React.useState(false);
   const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer"];
+  const [existingUnits, setExistingUnits] = React.useState<any[]>([]);
+  const [unitOpen, setUnitOpen] = React.useState(false);
 
   const { selectedCompanyId } = useCompany();
   const { permissions: userCaps } = useUserPermissions();
@@ -695,6 +709,25 @@ export function TransactionForm({
   React.useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  React.useEffect(() => {
+    const fetchUnits = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const res = await fetch(`${baseURL}/api/units`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const units = await res.json();
+          setExistingUnits(units);
+        }
+      } catch (error) {
+        console.error("Failed to fetch units:", error);
+      }
+    };
+    fetchUnits();
+  }, [baseURL]);
 
   React.useEffect(() => {
     if (!transactionToEdit) return;
@@ -1556,6 +1589,43 @@ export function TransactionForm({
     setIsServiceDialogOpen(false);
   };
 
+  const handleDeleteUnit = async (unitId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(`${baseURL}/api/units/${unitId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to delete unit");
+      }
+
+      // Refresh units
+      const unitsRes = await fetch(`${baseURL}/api/units`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (unitsRes.ok) {
+        const units = await unitsRes.json();
+        setExistingUnits(units);
+      }
+
+      toast({
+        title: "Unit deleted",
+        description: "The unit has been removed successfully.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+    }
+  };
+
   const paymentMethod = useWatch({
     control: form.control,
     name: "paymentMethod",
@@ -1886,7 +1956,16 @@ export function TransactionForm({
                           <Combobox
                             options={productOptions}
                             value={field.value || ""}
-                            onChange={(value) => field.onChange(value)}
+                            onChange={(value) => {
+                              field.onChange(value);
+                              // Auto-populate unit when product is selected
+                              if (value) {
+                                const selectedProduct = products.find(p => p._id === value);
+                                if (selectedProduct?.unit) {
+                                  form.setValue(`items.${index}.unitType`, selectedProduct.unit);
+                                }
+                              }
+                            }}
                             placeholder="Select or create a product..."
                             searchPlaceholder="Search products..."
                             noResultsText="No product found."
@@ -1948,27 +2027,184 @@ export function TransactionForm({
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
                               Unit
                             </FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
-                                  <SelectValue placeholder="Unit" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {unitTypes.map((u) => (
-                                  <SelectItem
-                                    key={u}
-                                    value={u}
-                                    className="text-sm"
+                            <Popover open={unitOpen} onOpenChange={setUnitOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={unitOpen}
+                                    className="w-full h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 justify-between"
                                   >
-                                    {u}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                    {field.value
+                                      ? field.value === "Other"
+                                        ? "Other (Custom)"
+                                        : field.value
+                                      : "Select unit..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-full p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search units..." />
+                                  <CommandList>
+                                    <CommandEmpty>No unit found.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        value="Piece"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Piece");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Piece" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Piece
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Kg"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Kg");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Kg" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Kg
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Litre"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Litre");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Litre" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Litre
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Box"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Box");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Box" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Box
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Meter"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Meter");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Meter" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Meter
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Dozen"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Dozen");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Dozen" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Dozen
+                                      </CommandItem>
+                                      <CommandItem
+                                        value="Pack"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Pack");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Pack" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Pack
+                                      </CommandItem>
+                                      {existingUnits.map((unit) => (
+                                        <CommandItem
+                                          key={unit._id}
+                                          value={unit.name}
+                                          onSelect={() => {
+                                            form.setValue(`items.${index}.unitType`, unit.name);
+                                            setUnitOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              field.value === unit.name ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <span className="flex-1">{unit.name}</span>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteUnit(unit._id);
+                                            }}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </CommandItem>
+                                      ))}
+                                      <CommandItem
+                                        value="Other"
+                                        onSelect={() => {
+                                          form.setValue(`items.${index}.unitType`, "Other");
+                                          setUnitOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === "Other" ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        Other
+                                      </CommandItem>
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -2864,9 +3100,28 @@ export function TransactionForm({
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-          <ScrollArea className="flex-1 overflow-y-hidden">
-            <div className="p-6 space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="contents"
+          onSelect={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            // Prevent form selection on Tab key
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              // Find next focusable element
+              const focusableElements = document.querySelectorAll(
+                'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+              );
+              const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+              const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+              if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+                (focusableElements[nextIndex] as HTMLElement).focus();
+              }
+            }
+          }}
+        >
+          <ScrollArea className="flex-1 overflow-y-hidden" tabIndex={-1}>
+            <div className="p-6 space-y-6 select-none">
               <div className="w-full">
   {/* Mobile Dropdown (hidden on desktop) */}
   <div className="md:hidden mb-4">

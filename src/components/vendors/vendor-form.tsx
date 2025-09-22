@@ -21,6 +21,8 @@ import type { Vendor } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Switch } from "../ui/switch"
 import { ScrollArea } from "../ui/scroll-area"
+import { State, City } from "country-state-city"
+import { Combobox } from "@/components/ui/combobox"
 
 interface VendorFormProps {
     vendor?: Vendor;
@@ -72,6 +74,49 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
   });
 
   const isTDSApplicable = form.watch("isTDSApplicable");
+  const indiaStates = React.useMemo(() => State.getStatesOfCountry("IN"), []);
+  const [stateCode, setStateCode] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const currentStateName = form.getValues("state")?.trim();
+    if (!currentStateName) {
+      setStateCode(null);
+      return;
+    }
+    const found = indiaStates.find(
+      (s) => s.name.toLowerCase() === currentStateName.toLowerCase()
+    );
+    setStateCode(found?.isoCode || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    const current = (form.getValues("state") || "").trim().toLowerCase();
+    const found = indiaStates.find((s) => s.name.toLowerCase() === current);
+    setStateCode(found?.isoCode ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const stateOptions = React.useMemo(
+    () =>
+      indiaStates
+        .map((s) => ({ value: s.isoCode, label: s.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [indiaStates]
+  );
+
+  const cityOptions = React.useMemo(() => {
+    if (!stateCode) return [];
+    const list = City.getCitiesOfState("IN", stateCode);
+    return list
+      .map((c) => ({ value: c.name, label: c.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [stateCode]);
+
+  // when state changes, clear the city field
+  React.useEffect(() => {
+    form.setValue("city", "", { shouldValidate: true });
+  }, [stateCode]);
 
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
@@ -114,9 +159,28 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-        <ScrollArea className="max-h-[60vh] flex-1">
-            <div className="space-y-4 px-6 pb-6">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="contents"
+        onSelect={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          // Prevent form selection on Tab key
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            // Find next focusable element
+            const focusableElements = document.querySelectorAll(
+              'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+            );
+            const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+            const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+            if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+              (focusableElements[nextIndex] as HTMLElement).focus();
+            }
+          }
+        }}
+      >
+        <ScrollArea className="max-h-[60vh] flex-1" tabIndex={-1}>
+            <div className="space-y-4 px-6 pb-6 select-none">
                 <FormField
                     control={form.control}
                     name="vendorName"
@@ -134,8 +198,73 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
                 </div>
                 <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="e.g. 123 Industrial Area" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="city" render={({ field }) => (<FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="e.g. Mumbai" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="state" render={({ field }) => (<FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="e.g. Maharashtra" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  {/* STATE (searchable) */}
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <Combobox
+                          options={stateOptions}
+                          // value is the isoCode of the selected state
+                          value={
+                            stateCode ??
+                            stateOptions.find(
+                              (o) =>
+                                o.label.toLowerCase() ===
+                                (field.value || "").toLowerCase()
+                            )?.value ??
+                            ""
+                          }
+                          onChange={(iso) => {
+                            setStateCode(iso);
+                            const selected = indiaStates.find(
+                              (s) => s.isoCode === iso
+                            );
+                            // store STATE NAME in your form (backend unchanged)
+                            field.onChange(selected?.name || "");
+                          }}
+                          placeholder="Select state"
+                          searchPlaceholder="Type a state…"
+                          noResultsText="No states found."
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* CITY (searchable, depends on state) */}
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <Combobox
+                          options={cityOptions}
+                          // we store the city NAME directly
+                          value={
+                            cityOptions.find(
+                              (o) =>
+                                o.label.toLowerCase() ===
+                                (field.value || "").toLowerCase()
+                            )?.value ?? ""
+                          }
+                          onChange={(v) => field.onChange(v)}
+                          placeholder={
+                            stateCode ? "Select city" : "Select a state first"
+                          }
+                          searchPlaceholder="Type a city…"
+                          noResultsText={
+                            stateCode ? "No cities found." : "Select a state first"
+                          }
+                          disabled={!stateCode || cityOptions.length === 0}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="gstin" render={({ field }) => (<FormItem><FormLabel>GSTIN</FormLabel><FormControl><Input placeholder="15-digit GSTIN" {...field} /></FormControl><FormMessage /></FormItem>)} />

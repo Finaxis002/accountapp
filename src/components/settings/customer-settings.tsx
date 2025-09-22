@@ -243,7 +243,7 @@ export function CustomerSettings() {
           <TableHeader>
             <TableRow>
               <TableHead>Customer Details</TableHead>
-              <TableHead>Address</TableHead>
+              <TableHead className="max-w-xl">Address</TableHead>
               <TableHead>GST / PAN</TableHead>
               <TableHead>TDS</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -261,7 +261,7 @@ export function CustomerSettings() {
                     {customer.email || ""}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="max-w-xl">
                   <div className="text-sm">{customer.address}</div>
                   <div className="text-xs text-muted-foreground">
                     {customer.city}, {customer.state}

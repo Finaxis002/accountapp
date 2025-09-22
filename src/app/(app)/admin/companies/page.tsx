@@ -59,7 +59,6 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
-
 function MobileCompanyCard({
   company,
   onEdit,
@@ -71,8 +70,9 @@ function MobileCompanyCard({
   onDelete: (c: Company) => void;
   getClientInfo: (c: any) => { name: string; email?: string };
 }) {
-  const { name, email } =
-    getClientInfo(company.selectedClient || (company as any).client);
+  const { name, email } = getClientInfo(
+    company.selectedClient || (company as any).client
+  );
 
   const [open, setOpen] = React.useState(false);
 
@@ -168,11 +168,13 @@ function MobileCompanyCard({
               </span>
             </div>
 
-           
-
             {/* Actions inside the expanded section */}
             <div className="pt-1 flex items-center justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => onEdit(company)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onEdit(company)}
+              >
                 Edit
               </Button>
               <Button
@@ -189,7 +191,6 @@ function MobileCompanyCard({
     </Card>
   );
 }
-
 
 export default function AdminCompaniesPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL as string;
@@ -335,34 +336,36 @@ export default function AdminCompaniesPage() {
       email: client?.email || "N/A",
     };
   };
-const renderCardGrid = (gridClass = "grid grid-cols-1 gap-4") => (
-  <div className={gridClass}>
-    {companies.map((company) => (
-      <CompanyCard
-        key={company._id}
-        company={company}
-        clientName={getClientInfo(company.selectedClient || company.client).name}
-        onEdit={() => handleEdit(company)}
-        onDelete={() => handleDelete(company)}
-      />
-    ))}
-  </div>
-);
+  const renderCardGrid = (gridClass = "grid grid-cols-1 gap-4") => (
+    <div className={gridClass}>
+      {companies.map((company) => (
+        <CompanyCard
+          key={company._id}
+          company={company}
+          clientName={
+            getClientInfo(company.selectedClient || company.client).name
+          }
+          onEdit={() => handleEdit(company)}
+          onDelete={() => handleDelete(company)}
+        />
+      ))}
+    </div>
+  );
   return (
     <div className="space-y-6">
-     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-  <div>
-    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-      Company Management
-    </h2>
-    <p className="text-sm sm:text-base text-muted-foreground">
-      Manage all companies across all clients.
-    </p>
-  </div>
-  
-  <div className="flex items-center justify-between gap-2">
-    {/* View mode toggle - hidden on small screens if not needed */}
-    {/* <div className="hidden sm:flex items-center gap-1 rounded-md bg-secondary p-1">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Company Management
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Manage all companies across all clients.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          {/* View mode toggle - hidden on small screens if not needed */}
+          {/* <div className="hidden sm:flex items-center gap-1 rounded-md bg-secondary p-1">
 
       <Button
         variant={viewMode === "card" ? "primary" : "ghost"}
@@ -384,14 +387,13 @@ const renderCardGrid = (gridClass = "grid grid-cols-1 gap-4") => (
       </Button>
     </div> */}
 
-    
-    <Button onClick={handleAddNew} size="sm" className="sm:w-auto">
-  <PlusCircle className="mr-0 sm:mr-2 h-4 w-4" />
-  <span className="hidden sm:inline">Create Company</span>
-  <span className="sm:hidden">Add</span>
-</Button>
-  </div>
-</div>
+          <Button onClick={handleAddNew} size="sm" className="sm:w-auto">
+            <PlusCircle className="mr-0 sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Create Company</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-4xl  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
@@ -432,123 +434,145 @@ const renderCardGrid = (gridClass = "grid grid-cols-1 gap-4") => (
         </AlertDialogContent>
       </AlertDialog>
 
-     <div>
-  {isLoading ? (
-    <div className="flex justify-center items-center h-64">
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-    </div>
-  ) : companies.length > 0 ? (
-    <>
-      {/* 📱 Mobile (< sm): hamesha cards */}
-     {/* 📱 Mobile (< sm): always show the compact card with down-arrow */}
-<div className="sm:hidden space-y-4">
-  {companies.map((company) => (
-    <MobileCompanyCard
-      key={company._id}
-      company={company}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-      getClientInfo={(c: any) =>
-        getClientInfo((c as any) || (company as any).client)
-      }
-    />
-  ))}
-</div>
+      <div>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : companies.length > 0 ? (
+          <>
+            {/* 📱 Mobile (< sm): always show the compact card with down-arrow */}
+            <div className="sm:hidden space-y-4">
+              {companies.map((company) => (
+                <MobileCompanyCard
+                  key={company._id}
+                  company={company}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  getClientInfo={(c: any) =>
+                    getClientInfo((c as any) || (company as any).client)
+                  }
+                />
+              ))}
+            </div>
 
-      {/* 💻 sm aur upar: card/list toggle follow kare */}
-      <div className="hidden sm:block">
-        {viewMode === "card" ? (
-          renderCardGrid("grid gap-6 md:grid-cols-1 lg:grid-cols-2")
+            {/* 💻 sm aur upar: card/list toggle follow kare */}
+            <div className="hidden sm:block">
+              {viewMode === "card" ? (
+                renderCardGrid("grid gap-6 md:grid-cols-1 lg:grid-cols-2")
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-300 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-700">
+                          <TableHead className="text-black dark:text-white">
+                            Company
+                          </TableHead>
+                          <TableHead className="text-black dark:text-white">
+                            Assigned Client
+                          </TableHead>
+                          <TableHead className="text-black dark:text-white">
+                            Owner & Contact
+                          </TableHead>
+                          <TableHead className="text-black dark:text-white">
+                            Identifiers
+                          </TableHead>
+                          <TableHead className="text-right dark:text-white">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {companies.map((company) => {
+                          const clientInfo = getClientInfo(
+                            company.selectedClient || company.client
+                          );
+                          return (
+                            <TableRow
+                              key={company._id}
+                              className="transition-colors duration-200 hover:bg-gray-200 dark:hover:bg-gray-800"
+                            >
+                              <TableCell>
+                                <div className="font-semibold dark:text-white">
+                                  {company.businessName}
+                                </div>
+                                <div className="text-xs text-muted-foreground dark:text-gray-400">
+                                  {company.businessType}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm font-medium dark:text-white">
+                                  {clientInfo.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground dark:text-gray-400">
+                                  {clientInfo.email}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-green-900 dark:text-green-400" />
+                                  <span className="text-sm text-green-800 dark:text-green-300">
+                                    {company.mobileNumber}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Hash className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+                                  <span className="text-sm font-mono bg-secondary px-2 py-0.5 rounded dark:bg-gray-700 dark:text-gray-200">
+                                    {company.registrationNumber}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <FileTextIcon className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+                                  <span className="text-sm font-mono bg-secondary px-2 py-0.5 rounded dark:bg-gray-700 dark:text-gray-200">
+                                    {company.gstin || "N/A"}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEdit(company)}
+                                  className="bg-blue-500 hover:bg-blue-700 text-white transition-colors dark:bg-blue-600 dark:hover:bg-blue-800"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDelete(company)}
+                                  className="bg-red-400 hover:bg-red-700 text-white transition-colors dark:bg-red-600 dark:hover:bg-red-800"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </>
         ) : (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-               <TableHeader>
-  <TableRow className="bg-gray-300 hover:bg-gray-300">
-      <TableHead className="text-black">Company</TableHead>
-      <TableHead className="text-black">Assigned Client</TableHead>
-      <TableHead className="text-black">Owner & Contact</TableHead>
-      <TableHead className="text-black">Identifiers</TableHead>
-      <TableHead className="text-right ">Actions</TableHead>
-    </TableRow>
-  </TableHeader>
-                <TableBody>
-                  {companies.map((company) => {
-                    const clientInfo = getClientInfo(company.selectedClient || company.client);
-                    return (
-                      <TableRow
-                       key={company._id}
-                       className="transition-colors duration-200 hover:bg-gray-200">
-                        <TableCell>
-                          <div className="font-semibold">{company.businessName}</div>
-                          <div className="text-xs text-muted-foreground">{company.businessType}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm font-medium">{clientInfo.name}</div>
-                          <div className="text-xs text-muted-foreground">{clientInfo.email}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4  text-green-900" />
-                            <span className="text-sm text-green-800">{company.mobileNumber}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Hash className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-mono bg-secondary px-2 py-0.5 rounded">
-                              {company.registrationNumber}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-mono bg-secondary px-2 py-0.5 rounded">
-                              {company.gstin || "N/A"}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() => handleEdit(company)}
-     className=" bg-blue-500 hover:bg-blue-700  text-white transition-colors"
-  >
-    <Edit className="mr-1 h-4 w-4 " />
-  </Button>
-
-  <Button
-  size="sm"
-  onClick={() => handleDelete(company)}
-  className="bg-red-400 hover:bg-red-700 text-white transition-colors "
->
-  <Trash2 className="mr-1 h-4 w-4" />
-</Button>
-</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
+          <Card className="flex flex-col items-center justify-center p-12 border-dashed">
+            <Building className="h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No Companies Found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Get started by creating the first company.
+            </p>
+            <Button className="mt-6" onClick={handleAddNew}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Company
+            </Button>
           </Card>
         )}
       </div>
-    </>
-  ) : (
-    <Card className="flex flex-col items-center justify-center p-12 border-dashed">
-      <Building className="h-12 w-12 text-muted-foreground" />
-      <h3 className="mt-4 text-lg font-semibold">No Companies Found</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Get started by creating the first company.
-      </p>
-      <Button className="mt-6" onClick={handleAddNew}>
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Create Company
-      </Button>
-    </Card>
-  )}
-</div>
     </div>
   );
 }

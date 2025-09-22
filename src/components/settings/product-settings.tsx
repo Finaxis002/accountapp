@@ -151,7 +151,7 @@ export function ProductSettings() {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
       const res = await fetch(
-        `http://localhost:5000/api/products/${productToDelete._id}`,
+        `${baseURL}/api/products/${productToDelete._id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -301,6 +301,7 @@ export function ProductSettings() {
                         <TableRow>
                           <TableHead>Item Name</TableHead>
                           <TableHead>Stock</TableHead>
+                          <TableHead>Unit</TableHead>
                           <TableHead>Created At</TableHead>
                           {role !== "user" ? (
                             <TableHead className="text-right">
@@ -333,6 +334,9 @@ export function ProductSettings() {
                               ) : (
                                 product.stocks ?? 0
                               )}
+                            </TableCell>
+                            <TableCell>
+                              {product.unit ?? "Piece"}
                             </TableCell>
                             <TableCell>
                               {new Intl.DateTimeFormat("en-US").format(
@@ -472,21 +476,30 @@ export function ProductSettings() {
                             </div>
                           </div>
 
-                          {/* Created Date */}
+                          {/* Unit Information */}
                           <div className="space-y-1">
                             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                              Created
+                              Unit
                             </span>
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-3 w-3 text-gray-400" />
                               <span className="text-sm text-gray-700 dark:text-gray-300">
-                                {new Intl.DateTimeFormat("en-US", {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                }).format(new Date(product.createdAt!))}
+                                {product.unit ?? "Piece"}
                               </span>
                             </div>
+                          </div>
+                        </div>
+
+                        {/* Created Date */}
+                        <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                              Created: {new Intl.DateTimeFormat("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              }).format(new Date(product.createdAt!))}
+                            </span>
                           </div>
                         </div>
 
