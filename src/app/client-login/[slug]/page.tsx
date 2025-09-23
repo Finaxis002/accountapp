@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, Loader2, LogIn, Mail } from 'lucide-react';
+import ReCAPTCHA from "react-google-recaptcha";
 import { useToast } from '@/hooks/use-toast';
 import { loginClientBySlug, getCurrentUser } from "@/lib/auth";
 import {
@@ -15,7 +16,7 @@ import {
   saveSession,
   scheduleAutoLogout,
 } from "@/lib/authSession";
-import { requestClientOtp, loginClientBySlugWithOtp } from "@/lib/auth"; 
+import { requestClientOtp, loginClientBySlugWithOtp } from "@/lib/auth";
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode
 
 // Add interface for decoded token
@@ -31,6 +32,7 @@ export default function ClientLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { slug } = useParams() as { slug: string };
+  const recaptchaRef = React.useRef<ReCAPTCHA>(null);
 
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -66,8 +68,18 @@ export default function ClientLoginPage() {
     setIsLoading(true);
 
     try {
+      const captchaToken = await recaptchaRef.current?.executeAsync();
+      if (!captchaToken) {
+        toast({
+          variant: "destructive",
+          title: "reCAPTCHA Verification Failed",
+          description: "Please try again.",
+        });
+        return;
+      }
+
       // Login (slug first)
-      const user = await loginClientBySlug(slug, username, password);
+      const user = await loginClientBySlug(slug, username, password, captchaToken);
       
       // DEBUG: Check what properties the user object actually has
       console.log("User object from login:", user);
@@ -175,7 +187,17 @@ export default function ClientLoginPage() {
     setIsLoading(true);
 
     try {
-      const user = await loginClientBySlugWithOtp(slug, username, otp); // calls /api/clients/:slug/login-otp
+      const captchaToken = await recaptchaRef.current?.executeAsync();
+      if (!captchaToken) {
+        toast({
+          variant: "destructive",
+          title: "reCAPTCHA Verification Failed",
+          description: "Please try again.",
+        });
+        return;
+      }
+
+      const user = await loginClientBySlugWithOtp(slug, username, otp, captchaToken); // calls /api/clients/:slug/login-otp
       
       // DEBUG: Check what properties the user object actually has
       console.log("User object from OTP login:", user);
@@ -300,6 +322,12 @@ export default function ClientLoginPage() {
                   </div>
                 </div>
 
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                  size="invisible"
+                />
+
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                   Sign In
@@ -349,6 +377,12 @@ export default function ClientLoginPage() {
                     disabled={isLoading}
                   />
                 </div>
+
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                  size="invisible"
+                />
 
                 <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
