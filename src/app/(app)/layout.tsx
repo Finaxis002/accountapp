@@ -65,11 +65,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [currentHighlightIndex, setCurrentHighlightIndex] = useState(0); // Tracks current highlight index
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
   const contentRef = useRef<HTMLDivElement | null>(null);
-const role = localStorage.getItem("role");
-const userRole = currentUser?.role || role;
+  const [role, setRole] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Access localStorage only on the client-side
+      const storedRole = localStorage.getItem("role");
+      setRole(storedRole); // Set the role in state
+    }
 
-// Define which roles should see the support icon
-const showSupportIcon = userRole === 'customer' || userRole === 'admin';
+    // Fetch current user from some method (e.g., `getCurrentUser()`)
+    const user = getCurrentUser(); // Assuming `getCurrentUser()` is a function that retrieves the logged-in user
+    if (user) {
+      setCurrentUser(user); // Set the current user in state
+    }
+
+    setIsLoading(false); // Once the data is fetched, set isLoading to false
+  }, []);
+
+  const userRole = currentUser?.role || role;
+
+  // Define which roles should see the support icon
+  const showSupportIcon = userRole === "customer" || userRole === "admin";
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/user-login" ||
@@ -572,7 +588,7 @@ const showSupportIcon = userRole === 'customer' || userRole === 'admin';
                     {children}
                   </main>
                 </div>
-                  {showSupportIcon && <FloatingSupportIcon />}
+                {showSupportIcon && <FloatingSupportIcon />}
               </div>
             </SidebarProvider>
           </SupportProvider>
@@ -580,4 +596,4 @@ const showSupportIcon = userRole === 'customer' || userRole === 'admin';
       </PermissionProvider>
     </CompanyProvider>
   );
-} 
+}
