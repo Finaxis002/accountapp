@@ -34,8 +34,8 @@ const gstRegistrationTypes = ["Regular", "Composition", "Unregistered", "Consume
 
 const formSchema = z.object({
   vendorName: z.string().min(2, "Vendor name is required."),
-  contactNumber: z.string().optional(),
-  email: z.string().email("Invalid email address.").optional().or(z.literal('')),
+  contactNumber: z.string().min(10, "Mobile number is required."),
+  email: z.string().email("Invalid email address.").min(1, "Email is required."),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -192,7 +192,7 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
                         </FormItem>
                     )}
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="contactNumber" render={({ field }) => (<FormItem><FormLabel>Mobile Number / Whatsapp</FormLabel><FormControl><Input placeholder="e.g. 9876543210" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email ID</FormLabel><FormControl><Input type="email" placeholder="e.g. contact@acme.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
@@ -266,7 +266,7 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
                     )}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="gstin" render={({ field }) => (<FormItem><FormLabel>GSTIN</FormLabel><FormControl><Input placeholder="15-digit GSTIN" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="pan" render={({ field }) => (<FormItem><FormLabel>PAN</FormLabel><FormControl><Input placeholder="10-digit PAN" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>

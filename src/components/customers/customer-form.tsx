@@ -246,7 +246,7 @@ export function CustomerForm({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid  md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="contactNumber"
@@ -390,7 +390,7 @@ export function CustomerForm({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               {/* …after City/State … */}
 
               <FormField
