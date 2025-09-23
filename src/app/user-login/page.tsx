@@ -165,7 +165,7 @@ export default function UserLoginPage() {
 
             <Button type="submit" className="w-full" disabled={isLoading || !captchaToken}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-              Sign In
+              Sign In 
             </Button>
           </CardContent>
         </form>
