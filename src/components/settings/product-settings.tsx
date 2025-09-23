@@ -27,6 +27,10 @@ import {
   Server,
   Calendar,
   Eye,
+  Download,
+  CheckCircle,
+  FileText,
+  Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,7 +60,8 @@ import type { Company, Product } from "@/lib/types";
 import { ProductForm } from "@/components/products/product-form";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
-import * as XLSX from "xlsx";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ExcelImportExport } from "@/components/ui/excel-import-export";
 export function ProductSettings() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [products, setProducts] = React.useState<Product[]>([]);
@@ -69,11 +74,10 @@ export function ProductSettings() {
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(
     null
   );
+  const [selectedProducts, setSelectedProducts] = React.useState<string[]>([]);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = React.useState(true);
   const { toast } = useToast();
-const [importFile, setImportFile] = React.useState<File | null>(null);
-const [importPreview, setImportPreview] = React.useState<any[]>([]);
 
   const fetchCompanies = React.useCallback(async () => {
     setIsLoadingCompanies(true);
@@ -99,28 +103,29 @@ const [importPreview, setImportPreview] = React.useState<any[]>([]);
     fetchCompanies();
   }, [fetchCompanies]);
 
- const fetchProducts = React.useCallback(async () => {
-  setIsLoading(true);
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Authentication token not found.");
-    const res = await fetch(`${baseURL}/api/products`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error("Failed to fetch products.");
-    const data = await res.json();
-    console.log("Products data from server:", data); // Check the response here
-    setProducts(Array.isArray(data) ? data : data.products || []);
-  } catch (error) {
-    toast({
-      variant: "destructive",
-      title: "Failed to load products",
-      description: error instanceof Error ? error.message : "Something went wrong.",
-    });
-  } finally {
-    setIsLoading(false);
-  }
-}, [toast]);
+  const fetchProducts = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+      const res = await fetch(`${baseURL}/api/products`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch products.");
+      const data = await res.json();
+      console.log("Products data from server:", data); // Check the response here
+      setProducts(Array.isArray(data) ? data : data.products || []);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to load products",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
   React.useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
@@ -177,6 +182,57 @@ const [importPreview, setImportPreview] = React.useState<any[]>([]);
     }
   };
 
+  const handleSelectProduct = (productId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(prev => [...prev, productId]);
+    } else {
+      setSelectedProducts(prev => prev.filter(id => id !== productId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(products.map(p => p._id));
+    } else {
+      setSelectedProducts([]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProducts.length === 0) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(`${baseURL}/api/products/bulk-delete`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productIds: selectedProducts }),
+      });
+
+      if (!res.ok) throw new Error("Failed to delete products.");
+
+      toast({
+        title: "Items Deleted",
+        description: `${selectedProducts.length} items have been successfully removed.`,
+      });
+
+      setSelectedProducts([]);
+      fetchProducts();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Bulk Deletion Failed",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    }
+  };
+
   if (isLoadingCompanies) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -186,73 +242,7 @@ const [importPreview, setImportPreview] = React.useState<any[]>([]);
   }
 
   const role = localStorage.getItem("role");
-   // Function to download an empty Excel template
-   const handleDownloadTemplate = () => {
-    // Prepare empty data for the template
-    const data = [
-      { "Item Name": "", "Stock": "", "Unit": "" }, // Empty row for user to fill
-    ];
 
-    // Create a worksheet from the empty data
-    const ws = XLSX.utils.json_to_sheet(data);
-
-    // Create a new workbook
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Products");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "product_template.xlsx");
-  };
-
-  // Function to handle file import
-  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-      setImportFile(file);
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: "array" });
-
-        // Assuming the first sheet is the one we need
-        const ws = wb.Sheets[wb.SheetNames[0]];
-
-        // Convert the sheet into JSON
-        const json = XLSX.utils.sheet_to_json(ws);
-
-        // Filter and format the data
-        const formattedData = json.map((item: any) => ({
-          name: item["Item Name"],
-          stocks: item["Stock"],
-          unit: item["Unit"],
-        }));
- console.log("Formatted Data for Import:", formattedData); // Log the formatted data
-        // Save the data
-         setImportPreview(formattedData); // ✅ sirf preview ke liye save karna h
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast({
-          variant: "destructive",
-          title: "Failed to parse file",
-          description: error.message,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "An unknown error occurred",
-          description: "Something went wrong.",
-        });
-      }
-    }
-  };
-
-  reader.readAsArrayBuffer(file);
-};
- 
-  
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -260,36 +250,6 @@ const [importPreview, setImportPreview] = React.useState<any[]>([]);
       </div>
     );
   }
-const handleConfirmImport = async () => {
-  try {
-    for (let product of importPreview) {
-      if (product.name && product.stocks && product.unit) {
-        await fetch(`${baseURL}/api/products`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(product),
-        });
-      }
-    }
-    fetchProducts();
-    toast({
-      title: "Import successful",
-      description: "Products have been added from file.",
-    });
-    setImportFile(null);
-    setImportPreview([]);
-  } catch (error) {
-    toast({
-      variant: "destructive",
-      title: "Import Failed",
-      description: error instanceof Error ? error.message : "Something went wrong.",
-    });
-  }
-};
-
 
   return (
     <>
@@ -384,39 +344,46 @@ const handleConfirmImport = async () => {
                     A list of all your products or services.
                   </CardDescription>
                 </div>
-                <div className="flex gap-4">
-            {/* Download Button */}
-             <Button onClick={handleDownloadTemplate}>Download Template</Button>
-              {/* Import Input */}
-  <input
-    type="file"
-    accept=".xlsx"
-    className="hidden"
-    id="import-file"
-    onChange={handleImportFile}
-  />
-  <label htmlFor="import-file">
-    <span className="inline-block cursor-pointer text-blue-600 font-medium py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors">
-      Import
-    </span>
-  </label>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-3 items-start sm:items-center">
+                  <ExcelImportExport
+                    templateData={[{ "Item Name": "", Stock: "", Unit: "" }]}
+                    templateFileName="product_template.xlsx"
+                    importEndpoint={`${baseURL}/api/products`}
+                    onImportSuccess={fetchProducts}
+                    expectedColumns={["Item Name", "Stock", "Unit"]}
+                    transformImportData={(data) =>
+                      data.map((item: any) => ({
+                        name: item["Item Name"],
+                        stocks: item["Stock"],
+                        unit: item["Unit"],
+                      }))
+                    }
+                  />
 
-  {/* ✅ Show file name + Confirm button */}
-  {importFile && (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-600">{importFile.name}</span>
-      <Button size="sm" onClick={handleConfirmImport}>
-        Confirm Import
-      </Button>
-    </div>
-  )}
+                  {/* Bulk Delete Button */}
+                  {selectedProducts.length > 0 && role !== "user" && (
+                    <Button
+                      onClick={handleBulkDelete}
+                      variant="destructive"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete ({selectedProducts.length})
+                    </Button>
+                  )}
 
-            {/* Add Item Button */}
-            <Button onClick={() => handleOpenForm()} className="ml-4">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-            </Button>
-          </div>
-          </div>
+                  {/* Add Item Button */}
+                  <Button
+                    onClick={() => handleOpenForm()}
+                    size="sm"
+                    className="gap-2 w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white ml-auto"
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    Add Product
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -430,7 +397,15 @@ const handleConfirmImport = async () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Item Name</TableHead>
+                          {role !== "user" ? (
+                            <TableHead className="w-12">
+                              <Checkbox
+                                checked={selectedProducts.length === products.length && products.length > 0}
+                                onCheckedChange={handleSelectAll}
+                              />
+                            </TableHead>
+                          ) : null}
+                          <TableHead>Product Name</TableHead>
                           <TableHead>Stock</TableHead>
                           <TableHead>Unit</TableHead>
                           <TableHead>Created At</TableHead>
@@ -444,6 +419,16 @@ const handleConfirmImport = async () => {
                       <TableBody>
                         {products.map((product) => (
                           <TableRow key={product._id}>
+                            {role !== "user" ? (
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedProducts.includes(product._id)}
+                                  onCheckedChange={(checked) =>
+                                    handleSelectProduct(product._id, checked as boolean)
+                                  }
+                                />
+                              </TableCell>
+                            ) : null}
                             <TableCell>
                               <div className="font-medium flex items-center gap-2">
                                 {product.type === "service" ? (
@@ -466,9 +451,7 @@ const handleConfirmImport = async () => {
                                 product.stocks ?? 0
                               )}
                             </TableCell>
-                            <TableCell>
-                              {product.unit ?? "Piece"}
-                            </TableCell>
+                            <TableCell>{product.unit ?? "Piece"}</TableCell>
                             <TableCell>
                               {new Intl.DateTimeFormat("en-US").format(
                                 new Date(product.createdAt!)
@@ -508,6 +491,29 @@ const handleConfirmImport = async () => {
 
                   {/* ✅ Mobile Card View */}
                   <div className="md:hidden space-y-3">
+                    {/* Mobile Select All */}
+                    {role !== "user" && products.length > 0 && (
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                        <Checkbox
+                          checked={selectedProducts.length === products.length && products.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                        <span className="text-sm font-medium">
+                          Select All ({products.length} items)
+                        </span>
+                        {selectedProducts.length > 0 && (
+                          <Button
+                            onClick={handleBulkDelete}
+                            variant="destructive"
+                            size="sm"
+                            className="ml-auto gap-1"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete ({selectedProducts.length})
+                          </Button>
+                        )}
+                      </div>
+                    )}
                     {products.map((product) => (
                       <div
                         key={product._id}
@@ -515,29 +521,39 @@ const handleConfirmImport = async () => {
                       >
                         {/* Header Section */}
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              {product.type === "service" ? (
-                                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                                  <Server className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                </div>
-                              ) : (
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                  <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                </div>
-                              )}
-                              <h3 className="font-semibold text-gray-900 dark:text-white text-base truncate">
-                                {product.name}
-                              </h3>
-                            </div>
-                            {product.type === "service" && (
-                              <Badge
-                                variant="outline"
-                                className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-xs"
-                              >
-                                Service
-                              </Badge>
+                          <div className="flex items-center gap-3 mb-2">
+                            {role !== "user" && (
+                              <Checkbox
+                                checked={selectedProducts.includes(product._id)}
+                                onCheckedChange={(checked) =>
+                                  handleSelectProduct(product._id, checked as boolean)
+                                }
+                              />
                             )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                {product.type === "service" ? (
+                                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                                    <Server className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                  </div>
+                                ) : (
+                                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                    <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                  </div>
+                                )}
+                                <h3 className="font-semibold text-gray-900 dark:text-white text-base truncate">
+                                  {product.name}
+                                </h3>
+                                {product.type === "service" && (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-xs"
+                                  >
+                                    Service
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           {role !== "user" && (
@@ -625,7 +641,8 @@ const handleConfirmImport = async () => {
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 text-gray-400" />
                             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                              Created: {new Intl.DateTimeFormat("en-US", {
+                              Created:{" "}
+                              {new Intl.DateTimeFormat("en-US", {
                                 year: "numeric",
                                 month: "short",
                                 day: "numeric",
@@ -655,13 +672,15 @@ const handleConfirmImport = async () => {
               ) : (
                 <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
                   <Package className="h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-semibold">No Items Found</h3>
+                  <h3 className="mt-4 text-lg font-semibold">
+                    No Products Found
+                  </h3>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Get started by adding your first product or service.
                   </p>
                   <Button className="mt-6" onClick={() => handleOpenForm()}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Item
+                    Add Product
                   </Button>
                 </div>
               )}
@@ -678,7 +697,7 @@ const handleConfirmImport = async () => {
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
-                  {selectedProduct ? "Edit Item" : "Create New Item"}
+                  {selectedProduct ? "Edit Product" : "Create New Product"}
                 </DialogTitle>
                 <DialogDescription>
                   {selectedProduct
@@ -714,4 +733,4 @@ const handleConfirmImport = async () => {
       )}
     </>
   );
-}  
+}

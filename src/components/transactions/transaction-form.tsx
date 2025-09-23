@@ -1442,12 +1442,26 @@ export function TransactionForm({
                 });
               }
 
-              // await axios.post('http://localhost:8745/send-whatsapp', {
+
+    // Add service items
+    if (serviceLines.length > 0) {
+      serviceLines.forEach(item => {
+        const service = services.find(s => s._id === item.service);
+        invoiceDetails.items.push({
+          name: service?.serviceName || "Service",
+          quantity: 1,
+          price: item.amount,
+          amount: item.amount
+        });
+      });
+    }
+                // await axios.post('http://localhost:8745/send-whatsapp', {
               await axios.post("/send-whatsapp", {
                 phoneNumber: partyDoc.contactNumber,
                 transactionDetails: invoiceDetails,
                 messageType: "detailed_invoice",
               });
+
 
               toast({
                 title: "WhatsApp message sent",
