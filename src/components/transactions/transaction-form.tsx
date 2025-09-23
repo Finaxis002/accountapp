@@ -1448,7 +1448,7 @@ if (partyDoc?.contactNumber) {
       serviceLines.forEach(item => {
         const service = services.find(s => s._id === item.service);
         invoiceDetails.items.push({
-          name: service?.name || "Service",
+          name: service?.serviceName || "Service",
           quantity: 1,
           price: item.amount,
           amount: item.amount
