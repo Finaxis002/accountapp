@@ -676,12 +676,13 @@ const UpdateNotification = () => {
               key={notification._id}
               className="border-l-4 border-l-blue-500"
             >
+       
               {/* ✅ Desktop / Laptop Table */}
               <div className="hidden md:block">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-lg">
+                      <CardTitle className="text-lg text-foreground">
                         {notification.title}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -690,7 +691,10 @@ const UpdateNotification = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {isMaster && hasFeatures && (
-                        <Badge variant="secondary">
+                        <Badge
+                          variant="secondary"
+                          className="bg-secondary/50 text-secondary-foreground"
+                        >
                           {getExploredCount(notification)}/
                           {getTotalFeatures(notification)} explored
                         </Badge>
@@ -703,7 +707,7 @@ const UpdateNotification = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDismiss(notification._id)}
-                          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors duration-200"
+                          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300 dark:hover:border-red-700 transition-colors duration-200"
                         >
                           <X className="h-3 w-3 mr-1.5" />
                           Dismiss
@@ -713,6 +717,7 @@ const UpdateNotification = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDismiss(notification._id)}
+                          className="hover:bg-muted/50 dark:hover:bg-muted/80"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -721,22 +726,26 @@ const UpdateNotification = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm mb-4">{notification.description}</p>
+                  <p className="text-sm mb-4 text-foreground/90">
+                    {notification.description}
+                  </p>
 
-                  {isMaster && hasFeatures && (
+                  {/* {isMaster && hasFeatures && (
                     <>
                       <div className="space-y-2">
-                        <h4 className="font-medium text-sm">New Features:</h4>
+                        <h4 className="font-medium text-sm text-foreground">
+                          New Features:
+                        </h4>
                         {notification.features.map((feature, index) => (
                           <div
                             key={index}
-                            className={`flex items-center justify-between p-2 rounded border cursor-pointer hover:bg-muted/50 ${
+                            className={`flex items-center justify-between p-2 rounded border cursor-pointer transition-all duration-200 ${
                               notification.exploredSections.includes(
                                 feature.sectionUrl
                               )
-                                ? "bg-green-50 border-green-200"
-                                : "bg-background"
-                            }`}
+                                ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800"
+                                : "bg-background border-border dark:bg-card dark:border-border/50"
+                            } hover:bg-muted/50 dark:hover:bg-muted/80`}
                             onClick={() =>
                               handleFeatureClick(notification, feature)
                             }
@@ -754,17 +763,17 @@ const UpdateNotification = () => {
                               {notification.exploredSections.includes(
                                 feature.sectionUrl
                               ) ? (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
                               ) : (
-                                <Play className="h-4 w-4 text-blue-500" />
+                                <Play className="h-4 w-4 text-blue-500 dark:text-blue-400" />
                               )}
-                              <span className="text-sm font-medium">
+                              <span className="text-sm font-medium text-foreground">
                                 {feature.name}
                               </span>
                             </div>
                             <Badge
                               variant="outline"
-                              className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                              className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary/90 dark:hover:text-primary-foreground border-border dark:border-border/60"
                               onClick={(event) =>
                                 handleViewDemoClick(
                                   notification,
@@ -779,12 +788,12 @@ const UpdateNotification = () => {
                         ))}
                       </div>
 
-                      <Separator className="my-4" />
+                      <Separator className="my-4 bg-border/50 dark:bg-border/30" />
                     </>
-                  )}
+                  )} */}
 
                   <div className="flex justify-between items-center">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground dark:text-muted-foreground/80">
                       {isMaster && hasFeatures
                         ? getExploredCount(notification) ===
                           getTotalFeatures(notification)
@@ -803,6 +812,7 @@ const UpdateNotification = () => {
                             handlePropagateToAllUsers(notification._id)
                           }
                           disabled={isPropagating}
+                          className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
                         >
                           {isPropagating ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -818,6 +828,7 @@ const UpdateNotification = () => {
                             handlePropagateToAdminsOnly(notification._id)
                           }
                           disabled={isPropagating}
+                          className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
                         >
                           {isPropagating ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -834,7 +845,7 @@ const UpdateNotification = () => {
                       notification.propagatedToClients &&
                       !changeMode[notification._id] && (
                         <div className="flex flex-col gap-2 items-end">
-                          <div className="text-sm text-muted-foreground text-right">
+                          <div className="text-sm text-muted-foreground dark:text-muted-foreground/80 text-right">
                             {notification.visibility === "admins"
                               ? "You have notified clients and their admins only"
                               : "Notifications sent to all users"}
@@ -848,6 +859,7 @@ const UpdateNotification = () => {
                                 [notification._id]: true,
                               }))
                             }
+                            className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
                           >
                             Change Notification
                           </Button>
@@ -857,7 +869,7 @@ const UpdateNotification = () => {
                     {/* Change mode - show buttons again */}
                     {isMaster && changeMode[notification._id] && (
                       <div className="flex flex-col gap-2">
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground dark:text-muted-foreground/80">
                           Change notification audience:
                         </div>
                         <div className="flex gap-2">
@@ -868,6 +880,7 @@ const UpdateNotification = () => {
                               handlePropagateToAllUsers(notification._id)
                             }
                             disabled={isPropagating}
+                            className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
                           >
                             {isPropagating ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -883,6 +896,7 @@ const UpdateNotification = () => {
                               handlePropagateToAdminsOnly(notification._id)
                             }
                             disabled={isPropagating}
+                            className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
                           >
                             {isPropagating ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -900,6 +914,7 @@ const UpdateNotification = () => {
                                 [notification._id]: false,
                               }))
                             }
+                            className="hover:bg-muted/50 dark:hover:bg-muted/80"
                           >
                             Cancel
                           </Button>
@@ -908,8 +923,11 @@ const UpdateNotification = () => {
                     )}
 
                     {!isMaster && notification.propagatedToClients && (
-                      <Badge variant="secondary">
-                        <CheckCircle className="h-3 w-3 mr-1" />
+                      <Badge
+                        variant="secondary"
+                        className="bg-secondary/50 text-secondary-foreground dark:bg-secondary/30"
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1 dark:text-green-400" />
                         Update Available
                       </Badge>
                     )}
@@ -917,30 +935,34 @@ const UpdateNotification = () => {
                 </CardContent>
               </div>
 
-              {/* 📱 Mobile UI */}
+             {/* 📱 Mobile UI */}
 <div className="block md:hidden">
   <CardHeader className="pb-3 px-4">
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-start gap-2">
         <div className="flex-1 min-w-0">
-          <CardTitle className="text-base line-clamp-2">
+          <CardTitle className="text-base line-clamp-2 text-foreground">
             {notification.title}
           </CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground dark:text-muted-foreground/80 mt-1">
             Version {notification.version}
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {isMaster && hasFeatures && (
-            <Badge variant="secondary" className="text-xs whitespace-nowrap">
-              {getExploredCount(notification)}/{getTotalFeatures(notification)}
+            <Badge
+              variant="secondary"
+              className="text-xs whitespace-nowrap bg-secondary/50 text-secondary-foreground dark:bg-secondary/30"
+            >
+              {getExploredCount(notification)}/
+              {getTotalFeatures(notification)}
             </Badge>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => handleDismiss(notification._id)}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 hover:bg-muted/50 dark:hover:bg-muted/80"
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -950,12 +972,13 @@ const UpdateNotification = () => {
       {/* Dismiss button for completed features - Mobile */}
       {isMaster &&
         hasFeatures &&
-        getExploredCount(notification) === getTotalFeatures(notification) && (
+        getExploredCount(notification) ===
+          getTotalFeatures(notification) && (
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleDismiss(notification._id)}
-            className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors duration-200 text-xs py-1.5"
+            className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300 dark:hover:border-red-700 transition-colors duration-200 text-xs py-1.5"
           >
             <X className="h-3 w-3 mr-1.5" />
             Dismiss Notification
@@ -963,23 +986,29 @@ const UpdateNotification = () => {
         )}
     </div>
   </CardHeader>
-  
+
   <CardContent className="px-4">
-    <p className="text-sm mb-4 leading-relaxed">{notification.description}</p>
+    <p className="text-sm mb-4 leading-relaxed text-foreground/90 dark:text-foreground/80">
+      {notification.description}
+    </p>
 
     {isMaster && hasFeatures && (
       <>
         <div className="space-y-2">
-          <h4 className="font-medium text-sm">New Features:</h4>
+          <h4 className="font-medium text-sm text-foreground">New Features:</h4>
           {notification.features.map((feature, index) => (
             <div
               key={index}
-              className={`flex flex-col p-3 rounded border cursor-pointer hover:bg-muted/50 gap-2 ${
-                notification.exploredSections.includes(feature.sectionUrl)
-                  ? "bg-green-50 border-green-200"
-                  : "bg-background"
+              className={`flex flex-col p-3 rounded border cursor-pointer hover:bg-muted/50 dark:hover:bg-muted/80 gap-2 transition-all duration-200 ${
+                notification.exploredSections.includes(
+                  feature.sectionUrl
+                )
+                  ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800"
+                  : "bg-background border-border dark:bg-card dark:border-border/50"
               }`}
-              onClick={() => handleFeatureClick(notification, feature)}
+              onClick={() =>
+                handleFeatureClick(notification, feature)
+              }
               role="button"
               tabIndex={0}
               aria-label={`Explore ${feature.name} feature`}
@@ -992,21 +1021,27 @@ const UpdateNotification = () => {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {notification.exploredSections.includes(feature.sectionUrl) ? (
-                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  {notification.exploredSections.includes(
+                    feature.sectionUrl
+                  ) ? (
+                    <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0" />
                   ) : (
-                    <Play className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    <Play className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                   )}
-                  <span className="text-sm font-medium truncate">
+                  <span className="text-sm font-medium truncate text-foreground">
                     {feature.name}
                   </span>
                 </div>
               </div>
               <Badge
                 variant="outline"
-                className="text-xs w-full justify-center cursor-pointer hover:bg-primary hover:text-primary-foreground py-1.5"
+                className="text-xs w-full justify-center cursor-pointer hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary/90 dark:hover:text-primary-foreground py-1.5 border-border dark:border-border/60"
                 onClick={(event) =>
-                  handleViewDemoClick(notification, feature, event)
+                  handleViewDemoClick(
+                    notification,
+                    feature,
+                    event
+                  )
                 }
               >
                 View Demo
@@ -1015,28 +1050,31 @@ const UpdateNotification = () => {
           ))}
         </div>
 
-        <Separator className="my-4" />
+        <Separator className="my-4 bg-border/50 dark:bg-border/30" />
       </>
     )}
 
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-muted-foreground leading-relaxed">
+      <p className="text-xs text-muted-foreground dark:text-muted-foreground/80 leading-relaxed">
         {isMaster && hasFeatures
-          ? getExploredCount(notification) === getTotalFeatures(notification)
+          ? getExploredCount(notification) ===
+            getTotalFeatures(notification)
             ? "All features explored - dismiss when ready"
             : "Tap features to view demo or 'View Demo' to go directly"
           : "Update notification from your administrator - will auto-dismiss in 36 hours"}
       </p>
-      
+
       {/* Notification buttons logic - Mobile */}
       {isMaster && !notification.propagatedToClients && (
         <div className="flex flex-col gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handlePropagateToAllUsers(notification._id)}
+            onClick={() =>
+              handlePropagateToAllUsers(notification._id)
+            }
             disabled={isPropagating}
-            className="w-full text-xs py-1.5"
+            className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
           >
             {isPropagating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
@@ -1048,9 +1086,11 @@ const UpdateNotification = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handlePropagateToAdminsOnly(notification._id)}
+            onClick={() =>
+              handlePropagateToAdminsOnly(notification._id)
+            }
             disabled={isPropagating}
-            className="w-full text-xs py-1.5"
+            className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
           >
             {isPropagating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
@@ -1061,40 +1101,48 @@ const UpdateNotification = () => {
           </Button>
         </div>
       )}
-      
+
       {/* After notification is sent - Mobile */}
-      {isMaster && notification.propagatedToClients && !changeMode[notification._id] && (
-        <div className="flex flex-col gap-2">
-          <div className="text-xs text-muted-foreground text-center">
-            {notification.visibility === 'admins'
-              ? "Notified clients and admins only"
-              : "Notifications sent to all users"
-            }
+      {isMaster &&
+        notification.propagatedToClients &&
+        !changeMode[notification._id] && (
+          <div className="flex flex-col gap-2">
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground/80 text-center">
+              {notification.visibility === "admins"
+                ? "Notified clients and admins only"
+                : "Notifications sent to all users"}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setChangeMode((prev) => ({
+                  ...prev,
+                  [notification._id]: true,
+                }))
+              }
+              className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+            >
+              Change Notification
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: true }))}
-            className="w-full text-xs py-1.5"
-          >
-            Change Notification
-          </Button>
-        </div>
-      )}
-      
+        )}
+
       {/* Change mode - show buttons again - Mobile */}
       {isMaster && changeMode[notification._id] && (
         <div className="flex flex-col gap-2">
-          <div className="text-xs text-muted-foreground text-center">
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground/80 text-center">
             Change notification audience:
           </div>
           <div className="flex flex-col gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handlePropagateToAllUsers(notification._id)}
+              onClick={() =>
+                handlePropagateToAllUsers(notification._id)
+              }
               disabled={isPropagating}
-              className="w-full text-xs py-1.5"
+              className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
             >
               {isPropagating ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
@@ -1106,9 +1154,11 @@ const UpdateNotification = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handlePropagateToAdminsOnly(notification._id)}
+              onClick={() =>
+                handlePropagateToAdminsOnly(notification._id)
+              }
               disabled={isPropagating}
-              className="w-full text-xs py-1.5"
+              className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
             >
               {isPropagating ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
@@ -1120,25 +1170,32 @@ const UpdateNotification = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: false }))}
-              className="w-full text-xs py-1.5"
+              onClick={() =>
+                setChangeMode((prev) => ({
+                  ...prev,
+                  [notification._id]: false,
+                }))
+              }
+              className="w-full text-xs py-1.5 hover:bg-muted/50 dark:hover:bg-muted/80"
             >
               Cancel
             </Button>
           </div>
         </div>
       )}
-      
+
       {!isMaster && notification.propagatedToClients && (
-        <Badge variant="secondary" className="w-full justify-center py-1.5">
-          <CheckCircle className="h-3 w-3 mr-1" />
+        <Badge
+          variant="secondary"
+          className="w-full justify-center py-1.5 bg-secondary/50 text-secondary-foreground dark:bg-secondary/30"
+        >
+          <CheckCircle className="h-3 w-3 mr-1 dark:text-green-400" />
           Update Available
         </Badge>
       )}
     </div>
   </CardContent>
 </div>
-
             </Card>
           );
         })}
