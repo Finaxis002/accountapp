@@ -56,7 +56,7 @@ import type { Company, Product } from "@/lib/types";
 import { ProductForm } from "@/components/products/product-form";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
-
+import * as XLSX from "xlsx";
 export function ProductSettings() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [products, setProducts] = React.useState<Product[]>([]);
@@ -72,6 +72,8 @@ export function ProductSettings() {
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = React.useState(true);
   const { toast } = useToast();
+const [importFile, setImportFile] = React.useState<File | null>(null);
+const [importPreview, setImportPreview] = React.useState<any[]>([]);
 
   const fetchCompanies = React.useCallback(async () => {
     setIsLoadingCompanies(true);
@@ -97,29 +99,28 @@ export function ProductSettings() {
     fetchCompanies();
   }, [fetchCompanies]);
 
-  const fetchProducts = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Authentication token not found.");
-      const res = await fetch(`${baseURL}/api/products`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch products.");
-      const data = await res.json();
-      setProducts(Array.isArray(data) ? data : data.products || []);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to load products",
-        description:
-          error instanceof Error ? error.message : "Something went wrong.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
+ const fetchProducts = React.useCallback(async () => {
+  setIsLoading(true);
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication token not found.");
+    const res = await fetch(`${baseURL}/api/products`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Failed to fetch products.");
+    const data = await res.json();
+    console.log("Products data from server:", data); // Check the response here
+    setProducts(Array.isArray(data) ? data : data.products || []);
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Failed to load products",
+      description: error instanceof Error ? error.message : "Something went wrong.",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+}, [toast]);
   React.useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
@@ -185,6 +186,110 @@ export function ProductSettings() {
   }
 
   const role = localStorage.getItem("role");
+   // Function to download an empty Excel template
+   const handleDownloadTemplate = () => {
+    // Prepare empty data for the template
+    const data = [
+      { "Item Name": "", "Stock": "", "Unit": "" }, // Empty row for user to fill
+    ];
+
+    // Create a worksheet from the empty data
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Create a new workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Products");
+
+    // Download the Excel file
+    XLSX.writeFile(wb, "product_template.xlsx");
+  };
+
+  // Function to handle file import
+  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+      setImportFile(file);
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+
+        // Assuming the first sheet is the one we need
+        const ws = wb.Sheets[wb.SheetNames[0]];
+
+        // Convert the sheet into JSON
+        const json = XLSX.utils.sheet_to_json(ws);
+
+        // Filter and format the data
+        const formattedData = json.map((item: any) => ({
+          name: item["Item Name"],
+          stocks: item["Stock"],
+          unit: item["Unit"],
+        }));
+ console.log("Formatted Data for Import:", formattedData); // Log the formatted data
+        // Save the data
+         setImportPreview(formattedData); // ✅ sirf preview ke liye save karna h
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast({
+          variant: "destructive",
+          title: "Failed to parse file",
+          description: error.message,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "An unknown error occurred",
+          description: "Something went wrong.",
+        });
+      }
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+};
+ 
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+const handleConfirmImport = async () => {
+  try {
+    for (let product of importPreview) {
+      if (product.name && product.stocks && product.unit) {
+        await fetch(`${baseURL}/api/products`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(product),
+        });
+      }
+    }
+    fetchProducts();
+    toast({
+      title: "Import successful",
+      description: "Products have been added from file.",
+    });
+    setImportFile(null);
+    setImportPreview([]);
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Import Failed",
+      description: error instanceof Error ? error.message : "Something went wrong.",
+    });
+  }
+};
+
 
   return (
     <>
@@ -279,13 +384,39 @@ export function ProductSettings() {
                     A list of all your products or services.
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={() => handleOpenForm()}
-                  className="w-full sm:w-auto lg:w-auto"
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-                </Button>
-              </div>
+                <div className="flex gap-4">
+            {/* Download Button */}
+             <Button onClick={handleDownloadTemplate}>Download Template</Button>
+              {/* Import Input */}
+  <input
+    type="file"
+    accept=".xlsx"
+    className="hidden"
+    id="import-file"
+    onChange={handleImportFile}
+  />
+  <label htmlFor="import-file">
+    <span className="inline-block cursor-pointer text-blue-600 font-medium py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors">
+      Import
+    </span>
+  </label>
+
+  {/* ✅ Show file name + Confirm button */}
+  {importFile && (
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">{importFile.name}</span>
+      <Button size="sm" onClick={handleConfirmImport}>
+        Confirm Import
+      </Button>
+    </div>
+  )}
+
+            {/* Add Item Button */}
+            <Button onClick={() => handleOpenForm()} className="ml-4">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+            </Button>
+          </div>
+          </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -583,4 +714,4 @@ export function ProductSettings() {
       )}
     </>
   );
-}
+}  
