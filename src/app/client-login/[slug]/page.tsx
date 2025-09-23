@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, Loader2, LogIn, Mail } from 'lucide-react';
 import ReCAPTCHA from "react-google-recaptcha";
+import { useTheme } from "next-themes";
 import { useToast } from '@/hooks/use-toast';
 import { loginClientBySlug, getCurrentUser } from "@/lib/auth";
 import {
@@ -31,13 +32,14 @@ interface DecodedToken {
 export default function ClientLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { theme } = useTheme();
   const { slug } = useParams() as { slug: string };
-  const recaptchaRef = React.useRef<ReCAPTCHA>(null);
 
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
 
   // OTP state
   const [tab, setTab] = React.useState<"password" | "otp">("password");
@@ -65,19 +67,17 @@ export default function ClientLoginPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!captchaToken) {
+      toast({
+        variant: "destructive",
+        title: "reCAPTCHA Required",
+        description: "Please complete the reCAPTCHA verification.",
+      });
+      return;
+    }
     setIsLoading(true);
 
     try {
-      const captchaToken = await recaptchaRef.current?.executeAsync();
-      if (!captchaToken) {
-        toast({
-          variant: "destructive",
-          title: "reCAPTCHA Verification Failed",
-          description: "Please try again.",
-        });
-        return;
-      }
-
       // Login (slug first)
       const user = await loginClientBySlug(slug, username, password, captchaToken);
       
@@ -184,19 +184,17 @@ export default function ClientLoginPage() {
 
   const onSubmitOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!captchaToken) {
+      toast({
+        variant: "destructive",
+        title: "reCAPTCHA Required",
+        description: "Please complete the reCAPTCHA verification.",
+      });
+      return;
+    }
     setIsLoading(true);
 
     try {
-      const captchaToken = await recaptchaRef.current?.executeAsync();
-      if (!captchaToken) {
-        toast({
-          variant: "destructive",
-          title: "reCAPTCHA Verification Failed",
-          description: "Please try again.",
-        });
-        return;
-      }
-
       const user = await loginClientBySlugWithOtp(slug, username, otp, captchaToken); // calls /api/clients/:slug/login-otp
       
       // DEBUG: Check what properties the user object actually has
@@ -322,13 +320,16 @@ export default function ClientLoginPage() {
                   </div>
                 </div>
 
-                <ReCAPTCHA
-                  ref={recaptchaRef}
-                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
-                  size="invisible"
-                />
+                <div className="flex justify-center">
+                  <ReCAPTCHA
+                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                    theme={theme === "dark" ? "dark" : "light"}
+                    onChange={(token) => setCaptchaToken(token)}
+                    onExpired={() => setCaptchaToken(null)}
+                  />
+                </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading || !captchaToken}>
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                   Sign In
                 </Button>
@@ -378,13 +379,15 @@ export default function ClientLoginPage() {
                   />
                 </div>
 
-                <ReCAPTCHA
-                  ref={recaptchaRef}
-                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
-                  size="invisible"
-                />
+                <div className="flex justify-center">
+                  <ReCAPTCHA
+                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                    onChange={(token) => setCaptchaToken(token)}
+                    onExpired={() => setCaptchaToken(null)}
+                  />
+                </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
+                <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6 || !captchaToken}>
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                   Verify & Sign In
                 </Button>
