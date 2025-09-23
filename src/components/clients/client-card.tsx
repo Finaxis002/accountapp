@@ -126,7 +126,7 @@ export function ClientCard({
                 size="sm"
                 className="h-8 w-8 p-0 md:h-9 md:w-auto md:px-3"
                 onClick={() => {
-                  const appUrl = `${window.location.origin}/client/${client.slug}`;
+                  const appUrl = `${window.location.origin}/client-login/${client.slug}`;
                   navigator.clipboard.writeText(appUrl).then(() =>
                     toast({
                       title: "Copied",
