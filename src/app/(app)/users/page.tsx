@@ -394,7 +394,7 @@ export default function UsersPage() {
           </Card>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="sm:max-w-xl max-w-sm sm:max-h-auto  overflow-auto">
+            <DialogContent className="sm:max-w-2xl max-w-sm  overflow-auto">
               <DialogHeader>
                 <DialogTitle>
                   {selectedUser ? "Edit User" : "Add New User"}

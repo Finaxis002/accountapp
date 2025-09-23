@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import type { User, Company } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { X as RemoveIcon, ChevronsUpDown } from "lucide-react";
+import { X as RemoveIcon, ChevronsUpDown, Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -23,6 +23,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import ManageUserPermissionsDialog from "./user-permissions";
+
+const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 type RoleDoc = { _id: string; name: "admin" | "user" };
 
@@ -106,6 +112,14 @@ export function UserForm({
   const [openCompanySelect, setOpenCompanySelect] = React.useState(false);
   const [passwordError, setPasswordError] = useState("");
 
+  // Password reset state
+  const [newPassword, setNewPassword] = useState("");
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [eyeOpenPassword, setEyeOpenPassword] = useState(false);
+
+  const [selectedTab, setSelectedTab] = useState("general");
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+
 
   // when user prop changes, hydrate fields; roleId set below
   useEffect(() => {
@@ -162,8 +176,60 @@ useEffect(() => {
   }
 }, [formData.password]);
 
+
   // helper: true only for real 24-hex objectids
   const isObjectId = (s?: string) => !!s && /^[a-f0-9]{24}$/i.test(s);
+
+
+  // Password reset function
+  const handleResetPassword = async () => {
+    if (!user || !newPassword) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "New password cannot be empty.",
+      });
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/users/reset-password/${user._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ newpassword: newPassword }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to reset password.");
+      }
+
+      toast({
+        title: "Password Reset Successful",
+        description: `Password for ${user.userName} has been updated.`,
+      });
+
+      setNewPassword("");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Password Reset Failed",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
 
 const handleSubmit = (e: React.FormEvent) => {
   e.preventDefault();
@@ -225,6 +291,265 @@ const handleSubmit = (e: React.FormEvent) => {
     formData.companies.includes(c._id)
   );
 
+  if (user) {
+    // Edit mode with tabs
+    return (
+      <div className="flex flex-col h-full">
+        <Tabs
+          value={selectedTab}
+          onValueChange={setSelectedTab}
+          className="flex-1 flex flex-col p-2"
+        >
+          <TabsList className="flex flex-row flex-wrap gap-2 w-full px-4 md:px-6 mt-4 md:mt-6">
+            <TabsTrigger
+              value="general"
+              className="flex-1 min-w-[120px] text-sm px-3 py-2 truncate"
+            >
+              General
+            </TabsTrigger>
+            <TabsTrigger
+              value="permissions"
+              className="flex-1 min-w-[120px] text-sm px-3 py-2 truncate"
+            >
+              Permissions
+            </TabsTrigger>
+            <TabsTrigger
+              value="password"
+              className="flex-1 min-w-[120px] text-sm px-3 py-2 truncate"
+            >
+              Password
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="flex-1 mt-0 sm:max-h-[60vh] overflow-auto">
+            <form onSubmit={handleSubmit}>
+              <ScrollArea className="flex-1">
+                <div className="space-y-6 px-6 pb-6 select-none">
+                  {/* Row: User Name + User ID */}
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-4 pt-4">
+                    <div>
+                      <Label htmlFor="userName">User Name</Label>
+                      <Input
+                        id="userName"
+                        value={formData.userName}
+                        onChange={(e) =>
+                          setFormData({ ...formData, userName: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="userId">User ID</Label>
+                      <Input
+                        id="userId"
+                        value={formData.userId}
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row: Contact + Email */}
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="contactNumber">Contact Number</Label>
+                      <Input
+                        id="contactNumber"
+                        value={formData.contactNumber}
+                        onChange={(e) =>
+                          setFormData({ ...formData, contactNumber: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        value={formData.email}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  {/* Role selector */}
+                  <div className="space-y-2">
+                    <Label>Role</Label>
+                    <RadioGroup
+                      className="mt-2 flex gap-3"
+                      value={formData.roleId}
+                      onValueChange={(val) => setFormData({ ...formData, roleId: val })}
+                    >
+                      {rolesLoading ? (
+                        <div className="text-sm text-muted-foreground">
+                          Loading roles…
+                        </div>
+                      ) : roles.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">
+                          No roles available. Please set DEFAULT_ROLES ids.
+                        </div>
+                      ) : (
+                        roles.map((r) => (
+                          <div key={r._id} className="flex items-center space-x-2">
+                            <RadioGroupItem id={`role-${r._id}`} value={r._id} />
+                            <Label htmlFor={`role-${r._id}`}>{r.name}</Label>
+                          </div>
+                        ))
+                      )}
+                    </RadioGroup>
+                  </div>
+
+                  {/* Companies multi-select */}
+                  <div>
+                    <Label>Companies</Label>
+                    <Popover open={openCompanySelect} onOpenChange={setOpenCompanySelect}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openCompanySelect}
+                          className="w-full justify-between h-auto min-h-10"
+                        >
+                          <div className="flex gap-1 flex-wrap">
+                            {selectedCompanies.length > 0
+                              ? selectedCompanies.map((company) => (
+                                  <Badge
+                                    variant="secondary"
+                                    key={company._id}
+                                    className="mr-1"
+                                  >
+                                    {company.businessName}
+                                  </Badge>
+                                ))
+                              : "Select companies..."}
+                          </div>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search companies..." />
+                          <CommandList>
+                            <CommandEmpty>No company found.</CommandEmpty>
+                            <CommandGroup>
+                              {allCompanies.map((company) => (
+                                <CommandItem
+                                  key={company._id}
+                                  value={company.businessName}
+                                  onSelect={() => handleCompanySelect(company._id)}
+                                >
+                                  <div
+                                    className={cn(
+                                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                      formData.companies.includes(company._id)
+                                        ? "bg-primary text-primary-foreground"
+                                        : "opacity-50 [&_svg]:invisible"
+                                    )}
+                                  >
+                                    <RemoveIcon className="h-4 w-4" />
+                                  </div>
+                                  {company.businessName}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </ScrollArea>
+              <div className="flex justify-end p-6 border-t bg-background">
+                <Button type="submit" disabled={passwordError.length > 0}>
+                  Update
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="permissions" className="flex-1 mt-0">
+            <div className="h-full p-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Manage Permissions</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Click the button below to manage permissions for this user.
+                  </p>
+                </div>
+
+                <Button onClick={() => setPermissionsDialogOpen(true)}>
+                  Open Permissions Manager
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="password" className="flex-1 mt-0 sm:max-h-[60vh] overflow-auto">
+            <div className="h-full p-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Reset Password</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Set a new password for {user.userName}.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="new-password"
+                        type={eyeOpenPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEyeOpenPassword((prev) => !prev)}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                      >
+                        {eyeOpenPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleResetPassword}
+                    disabled={isSubmittingPassword || !newPassword.trim()}
+                    className="w-full"
+                  >
+                    {isSubmittingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Reset Password
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <ManageUserPermissionsDialog
+          open={permissionsDialogOpen}
+          onClose={() => setPermissionsDialogOpen(false)}
+          user={user}
+        />
+      </div>
+    );
+  }
+
+  // Create mode - original form
   return (
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
@@ -266,11 +591,10 @@ const handleSubmit = (e: React.FormEvent) => {
           </div>
         )}
         {passwordError && (
-  <div className="text-red-500 text-sm mt-2">{passwordError}</div>
-)}
+          <div className="text-red-500 text-sm mt-2">{passwordError}</div>
+        )}
 
-
-        {/* Row: Contact + Address */}
+        {/* Row: Contact + Email */}
         <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="contactNumber">Contact Number</Label>
@@ -282,8 +606,7 @@ const handleSubmit = (e: React.FormEvent) => {
               }
             />
           </div>
-
-           <div>
+          <div>
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -293,18 +616,18 @@ const handleSubmit = (e: React.FormEvent) => {
               }
             />
           </div>
-          </div>
-          <div>
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
-            />
-          </div>
-   
+        </div>
+        <div>
+          <Label htmlFor="address">Address</Label>
+          <Input
+            id="address"
+            value={formData.address}
+            onChange={(e) =>
+              setFormData({ ...formData, address: e.target.value })
+            }
+          />
+        </div>
+
         {/* Role selector (no API, just defaults) */}
         <div className="space-y-2">
           <Label>Role</Label>
