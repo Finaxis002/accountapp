@@ -595,7 +595,7 @@ export function VendorSettings() {
           </Card>
 
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogContent className="sm:max-w-2xl grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+            <DialogContent className="md:max-w-2xl max-w-sm grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
               <DialogHeader className="p-6">
                 <DialogTitle>
                   {selectedVendor ? "Edit Vendor" : "Create New Vendor"}

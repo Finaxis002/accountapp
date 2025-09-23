@@ -1636,19 +1636,43 @@ export function TransactionForm({
       // All parties (customers) – no filter for balance
       const source = parties;
 
+      // Group by name to check for duplicates
+      const nameCount = source.reduce((acc, p) => {
+        const name = p.name || "";
+        acc[name] = (acc[name] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
       // For RECEIPT, show all customers regardless of balance
-      return source.map((p) => ({
-        value: p._id,
-        label: String(p.name || ""),
-      }));
+      return source.map((p) => {
+        const name = p.name || "";
+        const hasDuplicates = nameCount[name] > 1;
+        const label = hasDuplicates ? `${name} (${p.contactNumber || ""})` : name;
+        return {
+          value: p._id,
+          label: String(label),
+        };
+      });
     }
 
     if (type === "purchases" || type === "payment") {
-      // vendors (unchanged)
-      return vendors.map((v) => ({
-        value: v._id,
-        label: String(v.vendorName || ""),
-      }));
+      // vendors
+      // Group by vendorName to check for duplicates
+      const nameCount = vendors.reduce((acc, v) => {
+        const name = v.vendorName || "";
+        acc[name] = (acc[name] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return vendors.map((v) => {
+        const name = v.vendorName || "";
+        const hasDuplicates = nameCount[name] > 1;
+        const label = hasDuplicates ? `${name} (${v.contactNumber || ""})` : name;
+        return {
+          value: v._id,
+          label: String(label),
+        };
+      });
     }
 
     return [];
