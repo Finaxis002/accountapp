@@ -88,6 +88,41 @@ const defaultBusinessTypes = [
   "Others",
 ];
 
+// Fields for each step
+const stepFields = {
+  1: [
+    "client",
+    "businessType",
+    "businessName",
+    "registrationNumber",
+    "address",
+    "Country",
+    "addressState",
+    "City",
+    "Pincode",
+    "Telephone",
+    "mobileNumber",
+  ],
+  2: [
+    "gstin",
+    "gstState",
+    "RegistrationType",
+    "PeriodicityofGSTReturns",
+    "GSTUsername",
+    "GSTPassword",
+    "ewayBillApplicable",
+    "EWBBillUsername",
+    "EWBBillPassword",
+  ],
+  3: [
+    "TANNumber",
+    "TAXDeductionCollectionAcc",
+    "DeductorType",
+    "TDSLoginUsername",
+    "TDSLoginPassword",
+  ],
+};
+
 // Pretty labels for fields
 const FIELD_LABELS: Partial<Record<keyof FormData | string, string>> = {
   client: "Assign to Client",
@@ -169,6 +204,7 @@ export function AdminCompanyForm({
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
     defaultValues: {
       registrationNumber: company?.registrationNumber || "",
       businessName: company?.businessName || "",
@@ -586,7 +622,7 @@ export function AdminCompanyForm({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="businessType"
@@ -748,7 +784,7 @@ export function AdminCompanyForm({
               {/* Step 2 - Mobile Optimized */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
                       "gstin",
                       "gstState",
@@ -759,6 +795,7 @@ export function AdminCompanyForm({
                       "EWBBillUsername",
                       "EWBBillPassword",
                     ].map((name) => (
+
                       <FormField
                         key={name}
                         control={form.control}
@@ -814,7 +851,7 @@ export function AdminCompanyForm({
               {/* Step 3 - Mobile Optimized */}
               {step === 3 && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
                       "TANNumber",
                       "TAXDeductionCollectionAcc",
@@ -864,7 +901,12 @@ export function AdminCompanyForm({
                 {step < 3 ? (
                   <Button
                     type="button"
-                    onClick={() => setStep(step + 1)}
+                    onClick={async () => {
+                      const isValid = await form.trigger(stepFields[step as keyof typeof stepFields] as (keyof FormData)[]);
+                      if (isValid) {
+                        setStep(step + 1);
+                      }
+                    }}
                     className="flex-1 gap-1 text-sm"
                   >
                     Next
@@ -918,7 +960,12 @@ export function AdminCompanyForm({
                 {step < 3 ? (
                   <Button
                     type="button"
-                    onClick={() => setStep(step + 1)}
+                    onClick={async () => {
+                      const isValid = await form.trigger(stepFields[step as keyof typeof stepFields] as (keyof FormData)[]);
+                      if (isValid) {
+                        setStep(step + 1);
+                      }
+                    }}
                     className="gap-1 transition-all hover:gap-2 min-w-[7rem] ml-auto"
                   >
                     Next
