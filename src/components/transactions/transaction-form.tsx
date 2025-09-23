@@ -68,7 +68,7 @@ import {
 import { getUnifiedLines } from "@/lib/getUnifiedLines";
 
 import QuillEditor from "@/components/ui/quill-editor";
-import axios from 'axios';
+import axios from "axios";
 
 import {
   Command,
@@ -84,7 +84,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, X } from "lucide-react";
-
 
 // reads gstin from various possible shapes/keys
 const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -112,7 +111,7 @@ const unitTypes = [
   "Other",
 ] as const;
 
-type UnitType = typeof unitTypes[number] | string;
+type UnitType = (typeof unitTypes)[number] | string;
 const STANDARD_GST = 18; // default "Standard"
 const GST_OPTIONS = [
   { label: "Standard (18%)", value: "18" },
@@ -295,7 +294,7 @@ export function TransactionForm({
   const [services, setServices] = React.useState<Service[]>([]);
   const [balance, setBalance] = React.useState<number | null>(null);
   const [banks, setBanks] = React.useState<any[]>([]);
-  
+
   const [partyBalances, setPartyBalances] = React.useState<
     Record<string, number>
   >({});
@@ -881,7 +880,10 @@ export function TransactionForm({
     });
 
     // Show notes section if there are existing notes
-    if ((transactionToEdit as any).notes && (transactionToEdit as any).notes.trim()) {
+    if (
+      (transactionToEdit as any).notes &&
+      (transactionToEdit as any).notes.trim()
+    ) {
       setShowNotes(true);
     }
 
@@ -913,9 +915,12 @@ export function TransactionForm({
       }
     } catch (error) {
       console.error("Stock update failed:", error);
-  
-      const errorMessage = error instanceof Error ? error.message : "Failed to update stock levels.";
-  
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to update stock levels.";
+
       toast({
         variant: "destructive",
         title: "Stock Update Failed",
@@ -1228,14 +1233,16 @@ export function TransactionForm({
 
       // 🔽 SEND INVOICE PDF BY EMAIL (Sales only)
 
-      const templateRes = await fetch(`${baseURL}/api/settings/default-template`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const templateRes = await fetch(
+        `${baseURL}/api/settings/default-template`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       const templateData = await templateRes.json();
-     
 
       if (values.type === "sales") {
         if (values.dontSendInvoice) {
@@ -1389,59 +1396,52 @@ export function TransactionForm({
             });
           }
 
-          // Send WhatsApp message if party has contact number
-          // if (partyDoc?.contactNumber) {
-          //   try {
-          //     await axios.post('http://localhost:8745/send-whatsapp', {
-          //       phoneNumber: partyDoc.contactNumber,
-          //       message: "your invoice is generated"
-          //     });
-          //     toast({
-          //       title: "WhatsApp message sent",
-          //       description: `Sent to ${partyDoc.contactNumber}`,
-          //     });
-          //   } catch (error) {
-          //     console.error('Error sending WhatsApp message:', error);
-          //     toast({
-          //       variant: "destructive",
-          //       title: "WhatsApp message failed",
-          //       description: "Failed to send WhatsApp message.",
-          //     });
-          //   }
-          // }
-          // Send WhatsApp message if party has contact number
+          if (partyDoc?.contactNumber) {
+            try {
+              // Prepare detailed invoice message
+              const invoiceDetails = {
+                invoiceNumber:
+                  saved.invoiceNumber || saved.referenceNumber || "N/A",
+                date: values.date,
+                companyName: companyDoc?.businessName || "Your Company",
+                partyName: partyDoc?.name || "Customer",
+                items: [] as Array<{
+                  name: string;
+                  quantity: number | undefined;
+                  price: number | undefined;
+                  amount: number;
+                }>,
+                subTotal: uiSubTotal,
+                taxAmount: uiTax,
+                totalAmount: uiInvoiceTotal,
+              };
 
-if (partyDoc?.contactNumber) {
-  try {
-    // Prepare detailed invoice message
-    const invoiceDetails = {
-      invoiceNumber: saved.invoiceNumber || saved.referenceNumber || "N/A",
-      date: values.date,
-      companyName: companyDoc?.businessName || "Your Company",
-      partyName: partyDoc?.name || "Customer",
-      items: [] as Array<{
-        name: string;
-        quantity: number | undefined;
-        price: number | undefined;
-        amount: number;
-      }>,
-      subTotal: uiSubTotal,
-      taxAmount: uiTax,
-      totalAmount: uiInvoiceTotal
-    };
+              // Add product items
+              if (productLines.length > 0) {
+                productLines.forEach((item) => {
+                  const product = products.find((p) => p._id === item.product);
+                  invoiceDetails.items.push({
+                    name: product?.name || "Product",
+                    quantity: item.quantity,
+                    price: item.pricePerUnit,
+                    amount: item.amount,
+                  });
+                });
+              }
 
-    // Add product items
-    if (productLines.length > 0) {
-      productLines.forEach(item => {
-        const product = products.find(p => p._id === item.product);
-        invoiceDetails.items.push({
-          name: product?.name || "Product",
-          quantity: item.quantity,
-          price: item.pricePerUnit,
-          amount: item.amount
-        });
-      });
-    }
+              // Add service items
+              if (serviceLines.length > 0) {
+                serviceLines.forEach((item) => {
+                  const service = services.find((s) => s._id === item.service);
+                  invoiceDetails.items.push({
+                    name: service?.name || "Service",
+                    quantity: 1,
+                    price: item.amount,
+                    amount: item.amount,
+                  });
+                });
+              }
+
 
     // Add service items
     if (serviceLines.length > 0) {
@@ -1455,40 +1455,40 @@ if (partyDoc?.contactNumber) {
         });
       });
     }
+                // await axios.post('http://localhost:8745/send-whatsapp', {
+              await axios.post("/send-whatsapp", {
+                phoneNumber: partyDoc.contactNumber,
+                transactionDetails: invoiceDetails,
+                messageType: "detailed_invoice",
+              });
 
-    // await axios.post('http://localhost:8745/send-whatsapp', {
-    await axios.post('/send-whatsapp', {
-      phoneNumber: partyDoc.contactNumber,
-      transactionDetails: invoiceDetails,
-      messageType: "detailed_invoice"
-    });
-    
-    toast({
-      title: "WhatsApp message sent",
-      description: `Invoice details sent to ${partyDoc.contactNumber}`,
-    });
-  } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
-    toast({
-      variant: "destructive",
-      title: "WhatsApp message failed",
-      description: "Failed to send invoice details via WhatsApp.",
-    });
-  }
-}
+
+              toast({
+                title: "WhatsApp message sent",
+                description: `Invoice details sent to ${partyDoc.contactNumber}`,
+              });
+            } catch (error) {
+              console.error("Error sending WhatsApp message:", error);
+              toast({
+                variant: "destructive",
+                title: "WhatsApp message failed",
+                description: "Failed to send invoice details via WhatsApp.",
+              });
+            }
+          }
+        }
+
+        const inv = data?.entry?.invoiceNumber;
+        toast({
+          title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
+          description: inv
+            ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
+            : `Your ${values.type} entry has been recorded.`,
+        });
+
+        onFormSubmit();
       }
-
-      const inv = data?.entry?.invoiceNumber;
-      toast({
-        title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
-        description: inv
-          ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
-          : `Your ${values.type} entry has been recorded.`,
-      });
-
-      onFormSubmit();
-    }
-  } catch (error) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Submission Failed",
@@ -1708,7 +1708,8 @@ if (partyDoc?.contactNumber) {
       toast({
         variant: "destructive",
         title: "Delete Failed",
-        description: error instanceof Error ? error.message : "Something went wrong.",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
       });
     }
   };
@@ -1734,7 +1735,9 @@ if (partyDoc?.contactNumber) {
       return source.map((p) => {
         const name = p.name || "";
         const hasDuplicates = nameCount[name] > 1;
-        const label = hasDuplicates ? `${name} (${p.contactNumber || ""})` : name;
+        const label = hasDuplicates
+          ? `${name} (${p.contactNumber || ""})`
+          : name;
         return {
           value: p._id,
           label: String(label),
@@ -1754,7 +1757,9 @@ if (partyDoc?.contactNumber) {
       return vendors.map((v) => {
         const name = v.vendorName || "";
         const hasDuplicates = nameCount[name] > 1;
-        const label = hasDuplicates ? `${name} (${v.contactNumber || ""})` : name;
+        const label = hasDuplicates
+          ? `${name} (${v.contactNumber || ""})`
+          : name;
         return {
           value: v._id,
           label: String(label),
@@ -2071,9 +2076,14 @@ if (partyDoc?.contactNumber) {
                               field.onChange(value);
                               // Auto-populate unit when product is selected
                               if (value) {
-                                const selectedProduct = products.find(p => p._id === value);
+                                const selectedProduct = products.find(
+                                  (p) => p._id === value
+                                );
                                 if (selectedProduct?.unit) {
-                                  form.setValue(`items.${index}.unitType`, selectedProduct.unit);
+                                  form.setValue(
+                                    `items.${index}.unitType`,
+                                    selectedProduct.unit
+                                  );
                                 }
                               }
                             }}
@@ -2165,14 +2175,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Piece"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Piece");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Piece"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Piece" ? "opacity-100" : "opacity-0"
+                                            field.value === "Piece"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Piece
@@ -2180,14 +2195,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Kg"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Kg");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Kg"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Kg" ? "opacity-100" : "opacity-0"
+                                            field.value === "Kg"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Kg
@@ -2195,14 +2215,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Litre"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Litre");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Litre"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Litre" ? "opacity-100" : "opacity-0"
+                                            field.value === "Litre"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Litre
@@ -2210,14 +2235,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Box"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Box");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Box"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Box" ? "opacity-100" : "opacity-0"
+                                            field.value === "Box"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Box
@@ -2225,14 +2255,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Meter"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Meter");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Meter"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Meter" ? "opacity-100" : "opacity-0"
+                                            field.value === "Meter"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Meter
@@ -2240,14 +2275,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Dozen"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Dozen");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Dozen"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Dozen" ? "opacity-100" : "opacity-0"
+                                            field.value === "Dozen"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Dozen
@@ -2255,14 +2295,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Pack"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Pack");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Pack"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Pack" ? "opacity-100" : "opacity-0"
+                                            field.value === "Pack"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Pack
@@ -2272,17 +2317,24 @@ if (partyDoc?.contactNumber) {
                                           key={unit._id}
                                           value={unit.name}
                                           onSelect={() => {
-                                            form.setValue(`items.${index}.unitType`, unit.name);
+                                            form.setValue(
+                                              `items.${index}.unitType`,
+                                              unit.name
+                                            );
                                             setUnitOpen(false);
                                           }}
                                         >
                                           <Check
                                             className={cn(
                                               "mr-2 h-4 w-4",
-                                              field.value === unit.name ? "opacity-100" : "opacity-0"
+                                              field.value === unit.name
+                                                ? "opacity-100"
+                                                : "opacity-0"
                                             )}
                                           />
-                                          <span className="flex-1">{unit.name}</span>
+                                          <span className="flex-1">
+                                            {unit.name}
+                                          </span>
                                           <Button
                                             variant="ghost"
                                             size="sm"
@@ -2299,14 +2351,19 @@ if (partyDoc?.contactNumber) {
                                       <CommandItem
                                         value="Other"
                                         onSelect={() => {
-                                          form.setValue(`items.${index}.unitType`, "Other");
+                                          form.setValue(
+                                            `items.${index}.unitType`,
+                                            "Other"
+                                          );
                                           setUnitOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            field.value === "Other" ? "opacity-100" : "opacity-0"
+                                            field.value === "Other"
+                                              ? "opacity-100"
+                                              : "opacity-0"
                                           )}
                                         />
                                         Other
@@ -2755,245 +2812,244 @@ if (partyDoc?.contactNumber) {
 
       <Separator />
 
-     {/* Totals and Notes (Notes only for Sales) */}
-{type === "sales" ? (
-<div className="flex flex-col md:flex-row gap-6">
-{/* Notes Section - Only for Sales */}
-<div className="flex-1">
-      {!showNotes ? (
-        <div className="flex justify-start py-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setShowNotes(true)}
-            className="flex items-center gap-2"
-          >
-            <PlusCircle className="h-4 w-4" />
-            Add Notes
-          </Button>
-        </div>
-      ) : (
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center justify-between">
-                <FormLabel>Notes</FormLabel>
+      {/* Totals and Notes (Notes only for Sales) */}
+      {type === "sales" ? (
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Notes Section - Only for Sales */}
+          <div className="flex-1">
+            {!showNotes ? (
+              <div className="flex justify-start py-4">
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowNotes(false)}
-                  className="text-muted-foreground hover:text-destructive"
+                  variant="outline"
+                  onClick={() => setShowNotes(true)}
+                  className="flex items-center gap-2"
                 >
-                  Remove Notes
+                  <PlusCircle className="h-4 w-4" />
+                  Add Notes
                 </Button>
               </div>
-              <FormControl>
-                <QuillEditor
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  placeholder="Add detailed notes with formatting..."
-                  className="min-h-[120px]"
+            ) : (
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Notes</FormLabel>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowNotes(false)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        Remove Notes
+                      </Button>
+                    </div>
+                    <FormControl>
+                      <QuillEditor
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        placeholder="Add detailed notes with formatting..."
+                        className="min-h-[120px]"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Add rich text notes with formatting, colors, and styles
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </div>
+
+          {/* Totals */}
+          <div className="w-full max-w-sm space-y-3">
+            {/* Subtotal */}
+            <FormField
+              control={form.control}
+              name="totalAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="font-medium">Subtotal</FormLabel>
+                    <Input
+                      type="number"
+                      readOnly
+                      className="w-40 text-right bg-muted"
+                      {...field}
+                    />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* GST row only when enabled */}
+            {gstEnabled && (
+              <div className="flex items-center justify-between">
+                <FormLabel className="font-medium">GST</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="taxAmount"
+                  render={({ field }) => (
+                    <Input
+                      type="number"
+                      readOnly
+                      className="w-40 text-right bg-muted"
+                      value={field.value ?? 0}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
-              </FormControl>
-              <FormDescription>
-                Add rich text notes with formatting, colors, and styles
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-    </div>
-
-    {/* Totals */}
-    <div className="w-full max-w-sm space-y-3">
-      {/* Subtotal */}
-      <FormField
-        control={form.control}
-        name="totalAmount"
-        render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center justify-between">
-              <FormLabel className="font-medium">Subtotal</FormLabel>
-              <Input
-                type="number"
-                readOnly
-                className="w-40 text-right bg-muted"
-                {...field}
-              />
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* GST row only when enabled */}
-      {gstEnabled && (
-        <div className="flex items-center justify-between">
-          <FormLabel className="font-medium">GST</FormLabel>
-          <FormField
-            control={form.control}
-            name="taxAmount"
-            render={({ field }) => (
-              <Input
-                type="number"
-                readOnly
-                className="w-40 text-right bg-muted"
-                value={field.value ?? 0}
-                onChange={field.onChange}
-              />
+              </div>
             )}
-          />
+
+            {/* Invoice total */}
+            <FormField
+              control={form.control}
+              name="invoiceTotal"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="font-bold">
+                      Invoice Total{gstEnabled ? " (GST incl.)" : ""}
+                    </FormLabel>
+                    <Input
+                      type="number"
+                      readOnly
+                      className="w-40 text-right bg-muted text-lg font-bold"
+                      value={field.value ?? 0}
+                      onChange={field.onChange}
+                    />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dontSendInvoice"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value || false}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="cursor-pointer">
+                      Don't Send Invoice
+                    </FormLabel>
+                    <FormDescription className="text-xs text-muted-foreground">
+                      Check this if you don't want to email the invoice to the
+                      customer
+                    </FormDescription>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+      ) : (
+        /* For non-sales transactions, totals on the right */
+        <div className="flex justify-end">
+          <div className="w-full max-w-md space-y-3">
+            {/* Subtotal */}
+            <FormField
+              control={form.control}
+              name="totalAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="font-medium">Subtotal</FormLabel>
+                    <Input
+                      type="number"
+                      readOnly
+                      className="w-40 text-right bg-muted"
+                      {...field}
+                    />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* GST row only when enabled */}
+            {gstEnabled && (
+              <div className="flex items-center justify-between">
+                <FormLabel className="font-medium">GST</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="taxAmount"
+                  render={({ field }) => (
+                    <Input
+                      type="number"
+                      readOnly
+                      className="w-40 text-right bg-muted"
+                      value={field.value ?? 0}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Invoice total */}
+            <FormField
+              control={form.control}
+              name="invoiceTotal"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="font-bold">
+                      Invoice Total{gstEnabled ? " (GST incl.)" : ""}
+                    </FormLabel>
+                    <Input
+                      type="number"
+                      readOnly
+                      className="w-40 text-right bg-muted text-lg font-bold"
+                      value={field.value ?? 0}
+                      onChange={field.onChange}
+                    />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dontSendInvoice"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value || false}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="cursor-pointer">
+                      Don't Send Invoice
+                    </FormLabel>
+                    <FormDescription className="text-xs text-muted-foreground">
+                      Check this if you don't want to email the invoice to the
+                      customer
+                    </FormDescription>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
       )}
-
-      {/* Invoice total */}
-      <FormField
-        control={form.control}
-        name="invoiceTotal"
-        render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center justify-between">
-              <FormLabel className="font-bold">
-                Invoice Total{gstEnabled ? " (GST incl.)" : ""}
-              </FormLabel>
-              <Input
-                type="number"
-                readOnly
-                className="w-40 text-right bg-muted text-lg font-bold"
-                value={field.value ?? 0}
-                onChange={field.onChange}
-              />
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="dontSendInvoice"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-            <FormControl>
-              <Checkbox
-                checked={field.value || false}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-            <div className="space-y-1 leading-none">
-              <FormLabel className="cursor-pointer">
-                Don't Send Invoice
-              </FormLabel>
-              <FormDescription className="text-xs text-muted-foreground">
-                Check this if you don't want to email the invoice to the
-                customer
-              </FormDescription>
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
-  </div>
-) : (
-  /* For non-sales transactions, totals on the right */
-  <div className="flex justify-end">
-    <div className="w-full max-w-md space-y-3">
-      {/* Subtotal */}
-      <FormField
-        control={form.control}
-        name="totalAmount"
-        render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center justify-between">
-              <FormLabel className="font-medium">Subtotal</FormLabel>
-              <Input
-                type="number"
-                readOnly
-                className="w-40 text-right bg-muted"
-                {...field}
-              />
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* GST row only when enabled */}
-      {gstEnabled && (
-        <div className="flex items-center justify-between">
-          <FormLabel className="font-medium">GST</FormLabel>
-          <FormField
-            control={form.control}
-            name="taxAmount"
-            render={({ field }) => (
-              <Input
-                type="number"
-                readOnly
-                className="w-40 text-right bg-muted"
-                value={field.value ?? 0}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </div>
-      )}
-
-      {/* Invoice total */}
-      <FormField
-        control={form.control}
-        name="invoiceTotal"
-        render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center justify-between">
-              <FormLabel className="font-bold">
-                Invoice Total{gstEnabled ? " (GST incl.)" : ""}
-              </FormLabel>
-              <Input
-                type="number"
-                readOnly
-                className="w-40 text-right bg-muted text-lg font-bold"
-                value={field.value ?? 0}
-                onChange={field.onChange}
-              />
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="dontSendInvoice"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-            <FormControl>
-              <Checkbox
-                checked={field.value || false}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-            <div className="space-y-1 leading-none">
-              <FormLabel className="cursor-pointer">
-                Don't Send Invoice
-              </FormLabel>
-              <FormDescription className="text-xs text-muted-foreground">
-                Check this if you don't want to email the invoice to the
-                customer
-              </FormDescription>
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
-  </div>
-)}
-
     </div>
   );
 
@@ -3190,9 +3246,6 @@ if (partyDoc?.contactNumber) {
           </FormItem>
         )}
       />
-
-
-
     </div>
   );
 
@@ -3217,14 +3270,18 @@ if (partyDoc?.contactNumber) {
           onSelect={(e) => e.preventDefault()}
           onKeyDown={(e) => {
             // Prevent form selection on Tab key
-            if (e.key === 'Tab') {
+            if (e.key === "Tab") {
               e.preventDefault();
               // Find next focusable element
               const focusableElements = document.querySelectorAll(
                 'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
               );
-              const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
-              const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+              const currentIndex = Array.from(focusableElements).indexOf(
+                document.activeElement as Element
+              );
+              const nextIndex = e.shiftKey
+                ? currentIndex - 1
+                : currentIndex + 1;
               if (nextIndex >= 0 && nextIndex < focusableElements.length) {
                 (focusableElements[nextIndex] as HTMLElement).focus();
               }
@@ -3234,273 +3291,305 @@ if (partyDoc?.contactNumber) {
           <ScrollArea className="flex-1 overflow-y-hidden" tabIndex={-1}>
             <div className="p-6 space-y-6 select-none">
               <div className="w-full">
-  {/* Mobile Dropdown (hidden on desktop) */}
-  <div className="md:hidden mb-4">
-    <Select
-      value={type}
-      onValueChange={(value) => form.setValue("type", value as any)}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder="Select transaction type" />
-      </SelectTrigger>
-      <SelectContent>
-        {canSales && (
-          <SelectItem value="sales" disabled={!!transactionToEdit}>
-            Sales
-          </SelectItem>
-        )}
-        {canPurchases && (
-          <SelectItem value="purchases" disabled={!!transactionToEdit}>
-            Purchases
-          </SelectItem>
-        )}
-        {canReceipt && (
-          <SelectItem value="receipt" disabled={!!transactionToEdit}>
-            Receipt
-          </SelectItem>
-        )}
-        {canPayment && (
-          <SelectItem value="payment" disabled={!!transactionToEdit}>
-            Payment
-          </SelectItem>
-        )}
-        {canJournal && (
-          <SelectItem value="journal" disabled={!!transactionToEdit}>
-            Journal
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
-  </div>
-
-  {/* Desktop Tabs (hidden on mobile) */}
-  <div className="hidden md:block">
-    <Tabs
-      value={type}
-      onValueChange={(value) => form.setValue("type", value as any)}
-      className="w-full"
-    >
-      <TabsList className="grid w-full grid-cols-5">
-        {canSales && (
-          <TabsTrigger value="sales" disabled={!!transactionToEdit}>
-            Sales
-          </TabsTrigger>
-        )}
-        {canPurchases && (
-          <TabsTrigger
-            value="purchases"
-            disabled={!!transactionToEdit}
-          >
-            Purchases
-          </TabsTrigger>
-        )}
-        {canReceipt && (
-          <TabsTrigger value="receipt" disabled={!!transactionToEdit}>
-            Receipt
-          </TabsTrigger>
-        )}
-        {canPayment && (
-          <TabsTrigger value="payment" disabled={!!transactionToEdit}>
-            Payment
-          </TabsTrigger>
-        )}
-        {canJournal && (
-          <TabsTrigger value="journal" disabled={!!transactionToEdit}>
-            Journal
-          </TabsTrigger>
-        )}
-      </TabsList>
-    </Tabs>
-  </div>
-
-  {/* Tab Content (same for both mobile and desktop) */}
-  <div className="pt-4 md:pt-6">
-    {type === "sales" && renderSalesPurchasesFields()}
-    {type === "purchases" && renderSalesPurchasesFields()}
-    {type === "receipt" && renderReceiptPaymentFields()}
-    {type === "payment" && renderReceiptPaymentFields()}
-    {type === "journal" && (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <h3 className="text-base font-medium pb-2 border-b">
-            Core Details
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            <FormField
-              control={form.control}
-              name="company"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company</FormLabel>
+                {/* Mobile Dropdown (hidden on desktop) */}
+                <div className="md:hidden mb-4">
                   <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
+                    value={type}
+                    onValueChange={(value) =>
+                      form.setValue("type", value as any)
+                    }
                   >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a company" />
-                      </SelectTrigger>
-                    </FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select transaction type" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {companies.map((c) => (
-                        <SelectItem key={c._id} value={c._id}>
-                          {c.businessName}
+                      {canSales && (
+                        <SelectItem
+                          value="sales"
+                          disabled={!!transactionToEdit}
+                        >
+                          Sales
                         </SelectItem>
-                      ))}
+                      )}
+                      {canPurchases && (
+                        <SelectItem
+                          value="purchases"
+                          disabled={!!transactionToEdit}
+                        >
+                          Purchases
+                        </SelectItem>
+                      )}
+                      {canReceipt && (
+                        <SelectItem
+                          value="receipt"
+                          disabled={!!transactionToEdit}
+                        >
+                          Receipt
+                        </SelectItem>
+                      )}
+                      {canPayment && (
+                        <SelectItem
+                          value="payment"
+                          disabled={!!transactionToEdit}
+                        >
+                          Payment
+                        </SelectItem>
+                      )}
+                      {canJournal && (
+                        <SelectItem
+                          value="journal"
+                          disabled={!!transactionToEdit}
+                        >
+                          Journal
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Transaction Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() ||
-                          date < new Date("1900-01-01")
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-base font-medium pb-2 border-b">
-            Journal Entry
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            <FormField
-              control={form.control}
-              name="fromAccount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Debit Account</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g., Rent Expense"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="toAccount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Credit Account</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Cash" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="totalAmount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-base font-medium pb-2 border-b">
-            Additional Details
-          </h3>
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Narration</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Describe the transaction..."
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      </div>
-    )}
-  </div>
+                </div>
 
-  {/* Journal Totals (only for journal type) */}
-  {type === "journal" && (
-    <div className="flex justify-end mt-6">
-      <div className="w-full max-w-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <FormLabel className="font-medium">Amount</FormLabel>
-          <FormField
-            control={form.control}
-            name="totalAmount"
-            render={({ field }) => (
-              <Input
-                type="number"
-                readOnly
-                className="w-40 text-right bg-muted"
-                {...field}
-              />
-            )}
-          />
-        </div>
-      </div>
-    </div>
-  )}
-</div>
+                {/* Desktop Tabs (hidden on mobile) */}
+                <div className="hidden md:block">
+                  <Tabs
+                    value={type}
+                    onValueChange={(value) =>
+                      form.setValue("type", value as any)
+                    }
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full grid-cols-5">
+                      {canSales && (
+                        <TabsTrigger
+                          value="sales"
+                          disabled={!!transactionToEdit}
+                        >
+                          Sales
+                        </TabsTrigger>
+                      )}
+                      {canPurchases && (
+                        <TabsTrigger
+                          value="purchases"
+                          disabled={!!transactionToEdit}
+                        >
+                          Purchases
+                        </TabsTrigger>
+                      )}
+                      {canReceipt && (
+                        <TabsTrigger
+                          value="receipt"
+                          disabled={!!transactionToEdit}
+                        >
+                          Receipt
+                        </TabsTrigger>
+                      )}
+                      {canPayment && (
+                        <TabsTrigger
+                          value="payment"
+                          disabled={!!transactionToEdit}
+                        >
+                          Payment
+                        </TabsTrigger>
+                      )}
+                      {canJournal && (
+                        <TabsTrigger
+                          value="journal"
+                          disabled={!!transactionToEdit}
+                        >
+                          Journal
+                        </TabsTrigger>
+                      )}
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                {/* Tab Content (same for both mobile and desktop) */}
+                <div className="pt-4 md:pt-6">
+                  {type === "sales" && renderSalesPurchasesFields()}
+                  {type === "purchases" && renderSalesPurchasesFields()}
+                  {type === "receipt" && renderReceiptPaymentFields()}
+                  {type === "payment" && renderReceiptPaymentFields()}
+                  {type === "journal" && (
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <h3 className="text-base font-medium pb-2 border-b">
+                          Core Details
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <FormField
+                            control={form.control}
+                            name="company"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Company</FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select a company" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {companies.map((c) => (
+                                      <SelectItem key={c._id} value={c._id}>
+                                        {c.businessName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="date"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>Transaction Date</FormLabel>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <FormControl>
+                                      <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                          "w-full pl-3 text-left font-normal",
+                                          !field.value &&
+                                            "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value ? (
+                                          format(field.value, "PPP")
+                                        ) : (
+                                          <span>Pick a date</span>
+                                        )}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-auto p-0"
+                                    align="start"
+                                  >
+                                    <Calendar
+                                      mode="single"
+                                      selected={field.value}
+                                      onSelect={field.onChange}
+                                      disabled={(date) =>
+                                        date > new Date() ||
+                                        date < new Date("1900-01-01")
+                                      }
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-base font-medium pb-2 border-b">
+                          Journal Entry
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <FormField
+                            control={form.control}
+                            name="fromAccount"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Debit Account</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="e.g., Rent Expense"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="toAccount"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Credit Account</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="e.g., Cash" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="totalAmount"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Amount</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="0.00"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-base font-medium pb-2 border-b">
+                          Additional Details
+                        </h3>
+                        <FormField
+                          control={form.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                              <FormLabel>Narration</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Describe the transaction..."
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Journal Totals (only for journal type) */}
+                {type === "journal" && (
+                  <div className="flex justify-end mt-6">
+                    <div className="w-full max-w-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="font-medium">Amount</FormLabel>
+                        <FormField
+                          control={form.control}
+                          name="totalAmount"
+                          render={({ field }) => (
+                            <Input
+                              type="number"
+                              readOnly
+                              className="w-40 text-right bg-muted"
+                              {...field}
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </ScrollArea>
           <div className="flex justify-end p-6 border-t bg-background">
