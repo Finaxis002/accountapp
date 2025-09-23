@@ -52,6 +52,8 @@ import { ServiceForm } from "@/components/services/service-form";
 import { usePermissions } from "@/contexts/permission-context";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ExcelImportExport } from "@/components/ui/excel-import-export";
 
 type Service = {
   _id: string;
@@ -80,6 +82,7 @@ export default function InventoryPage() {
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(
     null
   );
+  const [selectedProducts, setSelectedProducts] = React.useState<string[]>([]);
 
   // Dialog states: service
   const [isServiceFormOpen, setIsServiceFormOpen] = React.useState(false);
@@ -279,6 +282,57 @@ export default function InventoryPage() {
     }
   };
 
+  const handleSelectProduct = (productId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(prev => [...prev, productId]);
+    } else {
+      setSelectedProducts(prev => prev.filter(id => id !== productId));
+    }
+  };
+
+  const handleSelectAllProducts = (checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(products.map(p => p._id));
+    } else {
+      setSelectedProducts([]);
+    }
+  };
+
+  const handleBulkDeleteProducts = async () => {
+    if (selectedProducts.length === 0) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const res = await fetch(`${baseURL}/api/products/bulk-delete`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productIds: selectedProducts }),
+      });
+
+      if (!res.ok) throw new Error("Failed to delete products.");
+
+      toast({
+        title: "Products Deleted",
+        description: `${selectedProducts.length} products have been successfully removed.`,
+      });
+
+      setSelectedProducts([]);
+      fetchProducts();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Bulk Deletion Failed",
+        description:
+          error instanceof Error ? error.message : "Something went wrong.",
+      });
+    }
+  };
+
   // Render helpers
   const renderProductsTable = () => {
     if (isLoadingProducts) {
@@ -309,10 +363,32 @@ export default function InventoryPage() {
       <div className="space-y-6">
         {/* Table View for Larger Screens */}
         <div className="hidden sm:block">
+          {/* Bulk Delete Button */}
+          {selectedProducts.length > 0 && role !== "user" && (
+            <div className="mb-4 flex justify-end">
+              <Button
+                onClick={handleBulkDeleteProducts}
+                variant="destructive"
+                size="sm"
+                className="gap-2"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete ({selectedProducts.length})
+              </Button>
+            </div>
+          )}
           {/* Table Component */}
           <Table>
             <TableHeader>
               <TableRow>
+                {role !== "user" && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedProducts.length === products.length && products.length > 0}
+                      onCheckedChange={handleSelectAllProducts}
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Product</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Stock</TableHead>
@@ -325,6 +401,16 @@ export default function InventoryPage() {
             <TableBody>
               {products.map((p) => (
                 <TableRow key={p._id}>
+                  {role !== "user" && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedProducts.includes(p._id)}
+                        onCheckedChange={(checked) =>
+                          handleSelectProduct(p._id, checked as boolean)
+                        }
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="font-medium flex items-center gap-2">
                       <Package className="h-4 w-4 text-muted-foreground" />
@@ -375,31 +461,65 @@ export default function InventoryPage() {
 
         {/* Mobile View - Cards  product */}
         <div className="sm:hidden space-y-3">
+          {/* Mobile Select All */}
+          {role !== "user" && products.length > 0 && (
+            <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+              <Checkbox
+                checked={selectedProducts.length === products.length && products.length > 0}
+                onCheckedChange={handleSelectAllProducts}
+              />
+              <span className="text-sm font-medium">
+                Select All ({products.length} items)
+              </span>
+              {selectedProducts.length > 0 && (
+                <Button
+                  onClick={handleBulkDeleteProducts}
+                  variant="destructive"
+                  size="sm"
+                  className="ml-auto gap-1"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Delete ({selectedProducts.length})
+                </Button>
+              )}
+            </div>
+          )}
           {products.map((p) => (
             <div
               key={p._id}
               className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
             >
               {/* Header Section */}
+               {role !== "user" && (
+                    <Checkbox
+                      checked={selectedProducts.includes(p._id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectProduct(p._id, checked as boolean)
+                      }
+                    />
+                  )}
               <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800 dark:text-white truncate max-w-[140px]">
-                      {p.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Created:{" "}
-                      {p.createdAt
-                        ? new Intl.DateTimeFormat("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          }).format(new Date(p.createdAt))
-                        : "—"}
-                    </p>
+                <div className="flex items-center gap-3 mb-2">
+                 
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 dark:text-white truncate max-w-[140px]">
+                        {p.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Created:{" "}
+                        {p.createdAt
+                          ? new Intl.DateTimeFormat("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            }).format(new Date(p.createdAt))
+                          : "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -700,19 +820,37 @@ export default function InventoryPage() {
             </div>
 
             {/* Buttons Section */}
-            {(permissions?.canCreateProducts ||
-              userCaps?.canCreateInventory) && (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={openCreateProduct}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Product
-                </Button>
-                <Button onClick={openCreateService}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Service
-                </Button>
-              </div>
-            )}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-3 items-start sm:items-center">
+              <ExcelImportExport
+                templateData={[{ "Item Name": "", Stock: "", Unit: "" }]}
+                templateFileName="product_template.xlsx"
+                importEndpoint={`${baseURL}/api/products`}
+                onImportSuccess={fetchProducts}
+                expectedColumns={["Item Name", "Stock", "Unit"]}
+                transformImportData={(data) =>
+                  data.map((item: any) => ({
+                    name: item["Item Name"],
+                    stocks: item["Stock"],
+                    unit: item["Unit"],
+                  }))
+                }
+              />
+
+              {/* Add Item Buttons */}
+              {(permissions?.canCreateProducts ||
+                userCaps?.canCreateInventory) && (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={openCreateProduct}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Product
+                  </Button>
+                  <Button onClick={openCreateService}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Service
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
           <Card>
             <CardContent className="p-0">
