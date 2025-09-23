@@ -106,13 +106,14 @@ export default function ProfilePage() {
   const canShowCustomers = userCaps?.canShowCustomers ?? false;
   const canShowVendors = userCaps?.canShowVendors ?? false;
 
-  const adminTabs = [
+  const adminTabs: TabItem[] = [
 
-    { value: "profile", label: "Profile", component: <ProfileTab /> },
+    { value: "profile", label: "Profile", component: <ProfileTab />, icon: UserCircle },
     {
       value: "notifications",
       label: "Notifications",
       component: <NotificationsTab />,
+      icon: Bell,
     },
   ];
 
@@ -130,60 +131,70 @@ export default function ProfilePage() {
         component: <PermissionsTab />,
       };
 
-  const memberTabs: TabItem[] = [
-    permissionsTab,
-    allow(permissions?.canCreateVendors, userCaps?.canCreateVendors) && {
+  const memberTabs: TabItem[] = [permissionsTab];
+
+  if (allow(permissions?.canCreateVendors, userCaps?.canCreateVendors)) {
+    memberTabs.push({
       value: "vendors",
       label: "Vendors",
-
-      component: <VendorSettings canBlur={!canShowVendors} />,
-
+      component: <VendorSettings />,
       icon: Store,
+    });
+  }
 
-    },
-    allow(permissions?.canCreateCustomers, userCaps?.canCreateCustomers) && {
+  if (allow(permissions?.canCreateCustomers, userCaps?.canCreateCustomers)) {
+    memberTabs.push({
       value: "customers",
       label: "Customers",
       icon: Contact,
       component: <CustomerSettings />,
-    },
-    allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
+    });
+  }
+
+  if (allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory)) {
+    memberTabs.push({
       value: "products",
       label: "Products",
       icon: Package,
       component: <ProductSettings />,
-    },
-    allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
+    });
+  }
+
+  if (allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory)) {
+    memberTabs.push({
       value: "services",
       label: "Services",
       icon: Server,
       component: <ServiceSettings />,
-    },
+    });
+  }
 
-
-    role !== "user" && {
+  if (role !== "user") {
+    memberTabs.push({
       value: "templates",
       label: "Invoices",
       icon: FileText,
       component: <TemplateSettings />,
-    },
+    });
+  }
 
-    role !== "user" &&
-      allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory) && {
-        value: "banks",
-        label: "Banks",
-        icon: Building,
-        component: <BankSettings />,
-      },
+  if (role !== "user" && allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory)) {
+    memberTabs.push({
+      value: "banks",
+      label: "Banks",
+      icon: Building,
+      component: <BankSettings />,
+    });
+  }
 
-    role !== "user" && {
-
+  if (role !== "user") {
+    memberTabs.push({
       value: "notifications",
       label: "Notifications",
       icon: Bell,
       component: <NotificationsTab />,
-    },
-  ].filter(Boolean) as TabItem[];
+    });
+  }
 
   const availableTabs = isMember ? memberTabs : adminTabs;
   const defaultTabs = [];
@@ -195,8 +206,6 @@ export default function ProfilePage() {
   // Set the default tab to the first in the array
   const initialTab = defaultTabs.length > 0 ? defaultTabs[0] : "profile";
   const [selectedTab, setSelectedTab] = React.useState(initialTab);
-
-  const gridColsClass = `grid-cols-${availableTabs.length}`;
 
   return (
     <div className="space-y-8">
@@ -235,7 +244,10 @@ export default function ProfilePage() {
 
       <div className="hidden sm:block">
         <Tabs defaultValue={selectedTab} className="w-full">
-          <TabsList className={cn("grid w-full", gridColsClass)}>
+          <TabsList
+            className="grid w-full"
+            style={{ gridTemplateColumns: `repeat(${availableTabs.length}, 1fr)` }}
+          >
             {availableTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>
                 {tab.label}
@@ -248,34 +260,8 @@ export default function ProfilePage() {
               {tab.component}
             </TabsContent>
           ))}
-
-        </TabsList>
-
-        {/* {availableTabs.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value} className="mt-6">
-           
-            <div
-              className={cn("space-y-6", {
-                "blur-sm":
-                  (tab.value === "customers" && !canShowCustomers) ||
-                  (tab.value === "vendors" && !canShowVendors),
-              })}
-            >
-              {tab.component}
-            </div>
-          </TabsContent>
-        ))} */}
-        {availableTabs.map((tab) => (
-          <TabsContent
-            key={tab.value}
-            value={tab.value}
-            className="mt-6 space-y-6"
-          >
-            {tab.component}
-          </TabsContent>
-        ))}
-      </Tabs>
-
+        </Tabs>
+      </div>
     </div>
   );
 }

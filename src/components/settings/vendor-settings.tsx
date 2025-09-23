@@ -38,9 +38,7 @@ import {
   Settings2,
   Edit2,
   Settings2Icon,
-
   Percent,
-
 } from "lucide-react";
 
 import {
@@ -71,12 +69,9 @@ import type { Company, Vendor } from "@/lib/types";
 import { VendorForm } from "@/components/vendors/vendor-form";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
-
 import { useUserPermissions } from "@/contexts/user-permissions-context";
 
-
-export function VendorSettings({ canBlur = false }: { canBlur?: boolean }) {
-
+export function VendorSettings() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -95,9 +90,10 @@ export function VendorSettings({ canBlur = false }: { canBlur?: boolean }) {
     null
   );
 
+  // Permission checks
   const { permissions: userCaps } = useUserPermissions();
-const canShowVendors = userCaps?.canShowVendors ?? false;
-
+  const canShowVendors = !!userCaps?.canShowVendors;
+  const canCreateVendors = !!userCaps?.canCreateVendors;
 
   const fetchCompanies = React.useCallback(async () => {
     setIsLoadingCompanies(true);
@@ -301,29 +297,35 @@ const canShowVendors = userCaps?.canShowVendors ?? false;
                   </CardDescription>
                 </div>
 
-                <Button
-                  onClick={() => handleOpenForm()}
-                  className="w-full sm:w-auto lg:w-auto"
-                >
-
-                  <PlusCircle className="mr-2 h-4 w-4 " /> Add Vendor
-
-                </Button>
+                {canCreateVendors && (
+                  <Button
+                    onClick={() => handleOpenForm()}
+                    className="w-full sm:w-auto lg:w-auto"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Vendor
+                  </Button>
+                )}
               </div>
             </CardHeader>
 
-
-            <CardContent >
-
+            <CardContent>
               {isLoading ? (
                 <div className="flex justify-center items-center h-40">
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
-              ) : vendors.length > 0 ? (
+              ) : !canShowVendors && !canCreateVendors ? (
+                // No permissions - don't show anything
+                <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
+                  <Building className="h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-semibold">
+                    Access Restricted
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    You don't have permission to view or manage vendors.
+                  </p>
+                </div>
+              ) : vendors.length > 0 && canShowVendors ? (
                 <>
-
-                 <div className={cn({ "blur-sm": canBlur })}>
-
                   {/* ✅ Desktop / Laptop Table */}
                   <div className="hidden md:block">
                     <Table>
@@ -424,283 +426,266 @@ const canShowVendors = userCaps?.canShowVendors ?? false;
                         ))}
                       </TableBody>
                     </Table>
-<div className="flex justify-center items-center h-40">
-  {isLoading ? (
-    <Loader2 className="h-6 w-6 animate-spin" />
-  ) : vendors.length > 0 ? (
-    <>
-      {/* ✅ Desktop / Laptop View */}
-      <div className="hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Vendor Details</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead>GST / PAN</TableHead>
-              <TableHead>TDS</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vendors.map((vendor) => (
-              <TableRow key={vendor._id}>
-                <TableCell>
-                  <div className="font-medium">{vendor.vendorName}</div>
-                  <div className="text-muted-foreground text-xs">
-                    {vendor.contactNumber || "N/A"}
                   </div>
-                  <div className="text-muted-foreground text-xs">
-                    {vendor.email || "N/A"}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">{vendor.address}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {vendor.city}, {vendor.state}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-mono text-xs">
-                      GSTIN: {vendor.gstin || "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-mono text-xs">
-                      PAN: {vendor.pan || "N/A"}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-full",
-                        vendor.isTDSApplicable
-                          ? "bg-green-100 dark:bg-green-900/50"
-                          : "bg-red-100 dark:bg-red-900/50"
-                      )}
-                    >
-                      {vendor.isTDSApplicable ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <X className="h-4 w-4 text-red-600" />
-                      )}
-                    </div>
-                    {vendor.isTDSApplicable && (
-                      <div className="text-xs text-muted-foreground">
-                        {vendor.tdsSection}
-                      </div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => handleOpenForm(vendor)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleOpenDeleteDialog(vendor)}
-                        className="text-destructive"
+
+                  {/* ✅ Mobile Card View */}
+                  {/* ✅ Mobile / Tablet Card View */}
+                  {/* Mobile View */}
+                  <div className="md:hidden space-y-4">
+                    {vendors.map((vendor) => (
+                      <div
+                        key={vendor._id}
+                        className="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
                       >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                        {/* Header Section */}
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+                              {vendor.vendorName}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                              >
+                                {vendor.gstRegistrationType}
+                              </Badge>
+                              <div
+                                className={cn(
+                                  "flex items-center gap-1 px-2 py-1 rounded-full text-[12px]",
+                                  vendor.isTDSApplicable
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                )}
+                              >
+                                {vendor.isTDSApplicable ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                                <span>
+                                  TDS{" "}
+                                  {vendor.isTDSApplicable
+                                    ? "Applicable"
+                                    : "Not Applicable"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleOpenForm(vendor)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenDeleteDialog(vendor)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
 
-      {/* ✅ Mobile Card View */}
-      <div className="md:hidden space-y-4">
-        {vendors.map((vendor) => (
-          <div
-            key={vendor._id}
-            className="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
-          >
-            {/* Header Section */}
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
-                  {vendor.vendorName}
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge
-                    variant="outline"
-                    className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                  >
-                    {vendor.gstRegistrationType}
-                  </Badge>
-                  <div
-                    className={cn(
-                      "flex items-center gap-1 px-2 py-1 rounded-full text-[12px]",
-                      vendor.isTDSApplicable
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                    )}
-                  >
-                    {vendor.isTDSApplicable ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <X className="h-3 w-3" />
-                    )}
-                    <span>
-                      TDS{" "}
-                      {vendor.isTDSApplicable
-                        ? "Applicable"
-                        : "Not Applicable"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleOpenForm(vendor)}
-                  >
-                    <Edit className="mr-2 h-4 w-4" /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleOpenDeleteDialog(vendor)}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                        {/* Contact Information */}
+                        <div className="space-y-3 mb-4">
+                          {(vendor.contactNumber || vendor.email) && (
+                            <div className="flex flex-col items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                              {vendor.contactNumber && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-blue-500" />
+                                  <span className="text-[12px] text-gray-700 dark:text-gray-300">
+                                    {vendor.contactNumber}
+                                  </span>
+                                </div>
+                              )}
+                              {vendor.email && (
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-4 w-4 text-purple-500" />
+                                  <span className="text-[12px] text-gray-700 dark:text-gray-300 truncate">
+                                    {vendor.email}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
-            {/* Contact Information */}
-            <div className="space-y-3 mb-4">
-              {(vendor.contactNumber || vendor.email) && (
-                <div className="flex flex-col items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  {vendor.contactNumber && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-blue-500" />
-                      <span className="text-[12px] text-gray-700 dark:text-gray-300">
-                        {vendor.contactNumber}
-                      </span>
-                    </div>
-                  )}
-                  {vendor.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-purple-500" />
-                      <span className="text-[12px] text-gray-700 dark:text-gray-300 truncate">
-                        {vendor.email}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+                          {/* Address */}
+                          {vendor.address && (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                              <MapPin className="h-4 w-4 text-green-500 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  {vendor.address}
+                                </p>
+                                {(vendor.city || vendor.state) && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    {[vendor.city, vendor.state]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
 
-              {/* Address */}
-              {vendor.address && (
-                <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <MapPin className="h-4 w-4 text-green-500 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      {vendor.address}
-                    </p>
-                    {(vendor.city || vendor.state) && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {[vendor.city, vendor.state]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+                        {/* Tax Information */}
+                        {/* Tax Information - Only show if GSTIN or PAN exists */}
+                        {(vendor.gstin || vendor.pan) && (
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                            <h4 className="font-medium text-sm text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              Tax Information
 
-            {/* Tax Information */}
-            {/* Tax Information - Only show if GSTIN or PAN exists */}
-            {(vendor.gstin || vendor.pan) && (
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
-                <h4 className="font-medium text-sm text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Tax Information
-                </h4>
-                <div className="space-y-2">
-                  {vendor.gstin && (
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs text-gray-600 dark:text-gray-400">
-                        GSTIN:
-                      </span>
-                      <span className="text-xs font-mono text-gray-800 dark:text-gray-200">
-                        {vendor.gstin}
-                      </span>
-                    </div>
-                  )}
-                  {vendor.pan && (
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs text-gray-600 dark:text-gray-400">
-                        PAN:
-                      </span>
-                      <span className="text-xs font-mono text-gray-800 dark:text-gray-200">
-                        {vendor.pan}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* TDS Details */}
-            {vendor.isTDSApplicable && vendor.tdsSection && (
-              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800/30">
-                <div className="flex items-center gap-2">
-                  <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                    TDS Section:
-                  </span>
-                  <span className="text-sm text-green-700 dark:text-green-400">
-                    {vendor.tdsSection}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </>
-  ) : (
-    <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
-      <Users className="h-12 w-12 text-muted-foreground" />
-      <h3 className="mt-4 text-lg font-semibold">No Vendors Found</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Get started by adding your first vendor.
-      </p>
-      <Button className="mt-6" onClick={() => handleOpenForm()}>
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Add Vendor
-      </Button>
-    </div>
-  )}
-</div>
 
+                            </h4>
+                            <div className="space-y-2">
+                              {vendor.gstin && (
+                                <div className="flex items-center gap-4">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    GSTIN:
+                                  </span>
+                                  <span className="text-xs font-mono text-gray-800 dark:text-gray-200">
+                                    {vendor.gstin}
+                                  </span>
+                                </div>
+                              )}
+                              {vendor.pan && (
+                                <div className="flex items-center gap-4">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    PAN:
+                                  </span>
+                                  <span className="text-xs font-mono text-gray-800 dark:text-gray-200">
+                                    {vendor.pan}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TDS Details */}
+                        {vendor.isTDSApplicable && vendor.tdsSection && (
+                          <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800/30">
+                            <div className="flex items-center gap-2">
+                              <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                                TDS Section:
+                              </span>
+                              <span className="text-sm text-green-700 dark:text-green-400">
+                                {vendor.tdsSection}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </>
+              ) : vendors.length > 0 && !canShowVendors && canCreateVendors ? (
+                // Can create but not view - show blurred overlay
+                <div className="relative">
+                  {/* Blurred vendor content */}
+                  <div className="filter blur-sm pointer-events-none opacity-60">
+                    {/* Desktop Table */}
+                    <div className="hidden md:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Vendor Details</TableHead>
+                            <TableHead>Address</TableHead>
+                            <TableHead>Tax Information</TableHead>
+                            <TableHead>TDS</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {vendors.slice(0, 3).map((vendor) => (
+                            <TableRow key={vendor._id}>
+                              <TableCell>
+                                <div className="font-medium">
+                                  {vendor.vendorName}
+                                </div>
+                                <div className="text-muted-foreground text-xs">
+                                  {vendor.contactNumber || "N/A"}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">{vendor.address}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-mono text-xs">
+                                  GSTIN: {vendor.gstin || "N/A"}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs">
+                                  {vendor.isTDSApplicable ? "Applicable" : "Not Applicable"}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" disabled>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Mobile Cards */}
+                    <div className="md:hidden space-y-4">
+                      {vendors.slice(0, 2).map((vendor) => (
+                        <div
+                          key={vendor._id}
+                          className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-semibold text-lg">
+                                {vendor.vendorName}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {vendor.contactNumber || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Glass overlay with create button */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/70 backdrop-blur-sm rounded-lg">
+                    <div className="text-center">
+                      <Building className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">
+                        Vendor Management
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-6 max-w-md">
+                        You can create vendors, but viewing existing vendor details requires additional permissions.
+                      </p>
+                      <Button onClick={() => handleOpenForm()}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create New Vendor
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-12 border-dashed rounded-lg text-center">
                   <Building className="h-12 w-12 text-muted-foreground" />
@@ -710,10 +695,12 @@ const canShowVendors = userCaps?.canShowVendors ?? false;
                   <p className="mt-1 text-sm text-muted-foreground">
                     Get started by adding your first vendor.
                   </p>
-                  <Button className="mt-6" onClick={() => handleOpenForm()}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Vendor
-                  </Button>
+                  {canCreateVendors && (
+                    <Button className="mt-6" onClick={() => handleOpenForm()}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Vendor
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>

@@ -408,7 +408,8 @@ export default function InventoryPage() {
                   <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                     Stock
                   </span>
-                  <span
+                 <div className="flex gap-2 items-center">
+                   <span
                     className={`text-lg font-bold ${
                       (p.stocks ?? 0) > 0
                         ? "text-green-600 dark:text-green-400"
@@ -417,10 +418,13 @@ export default function InventoryPage() {
                   >
                     {p.stocks ?? 0}
                   </span>
+                  <span className="font-bold text-sm">{p.unit ?? "Piece"}</span>
+                 </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
+              {role !== "user" && (
               <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
                 <Button
                   variant="ghost"
@@ -440,6 +444,7 @@ export default function InventoryPage() {
                   <Trash2 className="h-3.5 w-3.5 mr-1 text-red-400" />
                 </Button>
               </div>
+              )}
             </div>
           ))}
         </div>
