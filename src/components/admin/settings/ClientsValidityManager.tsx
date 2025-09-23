@@ -287,37 +287,7 @@ export function ClientsValidityManager({ onClientClick }: ClientsValidityManager
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearch("");
-                setStatusFilter("all");
-              }}
-              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
-            >
-              Clear Filters
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-6">
-        <div className="space-y-6">
-          {/* Search and Filter Section */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
-              <Input
-                placeholder="Search clients by name, email, or contact..."
-                className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="flex gap-2">
+          <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[160px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
                   <Filter className="h-4 w-4 mr-2 dark:text-gray-400" />
@@ -333,9 +303,13 @@ export function ClientsValidityManager({ onClientClick }: ClientsValidityManager
                 </SelectContent>
               </Select>
             </div>
-          </div>
- 
-          {/* Stats Summary */}
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-6">
+        <div className="space-y-6">
+
+           {/* Stats Summary */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-center border dark:border-blue-800/50">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -386,6 +360,34 @@ export function ClientsValidityManager({ onClientClick }: ClientsValidityManager
               <div className="text-xs text-gray-800 dark:text-gray-300">Unknown</div>
             </div>
           </div>
+          {/* Search and Filter Section */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
+              <Input
+                placeholder="Search clients by name, email, or contact..."
+                className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+ <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("all");
+              }}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+            >
+              Clear Filters
+            </Button>
+          </div>
+           
+          </div>
+ 
+         
 
  {/* Mobile View Cards */}
     <div className="space-y-4 md:hidden">
