@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -207,6 +208,80 @@ export function AdminCompanyForm({
     },
   });
 
+  // Reset form when company changes
+  React.useEffect(() => {
+    if (company) {
+      form.reset({
+        registrationNumber: company.registrationNumber || "",
+        businessName: company.businessName || "",
+        businessType: company.businessType || "",
+        address: company.address || "",
+        City: company.City || "",
+        addressState: company.addressState || "",
+        Country: company.Country || "",
+        Pincode: company.Pincode || "",
+        Telephone: company.Telephone || "",
+        mobileNumber: company.mobileNumber || "",
+        emailId: company.emailId || "",
+        Website: company.Website || "",
+        PANNumber: company.PANNumber || "",
+        IncomeTaxLoginPassword: company.IncomeTaxLoginPassword || "",
+        gstin: company.gstin || "",
+        gstState: company.gstState || "",
+        RegistrationType: company.RegistrationType || "",
+        PeriodicityofGSTReturns: company.PeriodicityofGSTReturns || "",
+        GSTUsername: company.GSTUsername || "",
+        GSTPassword: company.GSTPassword || "",
+        ewayBillApplicable:
+          company.ewayBillApplicable === true
+            ? "true"
+            : company.ewayBillApplicable === false
+            ? "false"
+            : "false",
+        EWBBillUsername: company.EWBBillUsername || "",
+        EWBBillPassword: company.EWBBillPassword || "",
+        TANNumber: company.TANNumber || "",
+        TAXDeductionCollectionAcc: company.TAXDeductionCollectionAcc || "",
+        DeductorType: company.DeductorType || "",
+        TDSLoginUsername: company.TDSLoginUsername || "",
+        TDSLoginPassword: company.TDSLoginPassword || "",
+        client: getClientId(company.client),
+      });
+    } else {
+      form.reset({
+        registrationNumber: "",
+        businessName: "",
+        businessType: "",
+        address: "",
+        City: "",
+        addressState: "",
+        Country: "",
+        Pincode: "",
+        Telephone: "",
+        mobileNumber: "",
+        emailId: "",
+        Website: "",
+        PANNumber: "",
+        IncomeTaxLoginPassword: "",
+        gstin: "",
+        gstState: "",
+        RegistrationType: "",
+        PeriodicityofGSTReturns: "",
+        GSTUsername: "",
+        GSTPassword: "",
+        ewayBillApplicable: "false",
+        EWBBillUsername: "",
+        EWBBillPassword: "",
+        TANNumber: "",
+        TAXDeductionCollectionAcc: "",
+        DeductorType: "",
+        TDSLoginUsername: "",
+        TDSLoginPassword: "",
+        client: "",
+      });
+    }
+  }, [company, form]);
+
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
     try {
@@ -218,26 +293,35 @@ export function AdminCompanyForm({
         : `${baseURL}/api/companies`;
       const method = company ? "PUT" : "POST";
 
-      // Build multipart form data
-      const fd = new FormData();
-
       // Map form values → body fields expected by backend
       // NOTE: backend expects selectedClient; don't send "client" directly.
       const { client, ...rest } = values;
-      Object.entries(rest).forEach(([k, v]) => {
-        // everything is string in your schema here, so append directly
-        if (v !== undefined && v !== null) fd.append(k, String(v));
-      });
-      if (client) fd.append("selectedClient", client);
+      const payload = { ...rest, selectedClient: client };
 
-      // Add file only if user picked one (keeps old logo if not)
-      if (logoFile) fd.append("logo", logoFile);
+      let headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      let body: BodyInit;
 
-      // IMPORTANT: do NOT set Content-Type header; the browser will add the boundary.
+      if (logoFile || method === "POST") {
+        // Use FormData for create or when logo is being uploaded
+        const fd = new FormData();
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) fd.append(k, String(v));
+        });
+        if (logoFile) fd.append("logo", logoFile);
+        body = fd;
+        // Do not set Content-Type for FormData
+      } else {
+        // Use JSON for update without logo
+        // Convert ewayBillApplicable to boolean for JSON
+        const jsonPayload = { ...payload, ewayBillApplicable: payload.ewayBillApplicable === "true" };
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify(jsonPayload);
+      }
+
       const res = await fetch(url, {
         method,
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
+        headers,
+        body,
       });
 
       const data = await res.json();
@@ -326,152 +410,137 @@ export function AdminCompanyForm({
   }, []); // run once
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 md:px-8 overflow-y-auto max-h-[80vh]">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 ">
-          <div className="flex justify-center items-center gap-2 pb-8">
-            {[
-              { number: 1, label: "Company Basic Details" },
-              { number: 2, label: "GST Registration Details" },
-              { number: 3, label: "Company TDS Details" },
-            ].map(({ number, label }, index, array) => (
-              <div key={number} className="flex items-center">
+    <>
+      <div className="w-full max-w-5xl mx-auto px-4 md:px-8 overflow-y-auto max-h-[80vh] md:block">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Mobile Stepper - Vertical */}
+            <div className="md:hidden flex flex-col space-y-3 pb-2">
+              {[
+                { number: 1, label: "Company Basic Details" },
+                { number: 2, label: "GST Registration Details" },
+                { number: 3, label: "Company TDS Details" },
+              ].map(({ number, label }) => (
                 <button
+                  key={number}
                   type="button"
                   onClick={() => setStep(number)}
-                  className={`flex flex-col items-center group transition-all duration-200`}
+                  className={`flex items-center gap-3 p-2 rounded-xl border transition-all duration-200 ${
+                    step === number
+                      ? "bg-indigo-50 border-indigo-200 shadow-sm dark:bg-indigo-950/30 dark:border-indigo-800"
+                      : "bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700"
+                  } hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600`}
                 >
                   <div
-                    className={`w-8 h-8 text-sm flex items-center justify-center rounded-full border-2 font-semibold mb-2 transition-all ${
+                    className={`w-6 h-6 text-base flex items-center justify-center rounded-full border-2 font-semibold flex-shrink-0 transition-all ${
                       step === number
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                        : "bg-white text-gray-500 border-gray-300 group-hover:border-indigo-400"
+                        : "bg-white text-gray-500 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400"
                     }`}
                   >
                     {number}
                   </div>
                   <span
-                    className={`text-sm ${
+                    className={`text-sm font-medium ${
                       step === number
-                        ? "text-indigo-600 font-semibold"
-                        : "text-gray-300 group-hover:text-gray-500"
+                        ? "text-indigo-600 dark:text-indigo-400"
+                        : "text-gray-600 dark:text-gray-300"
                     }`}
                   >
                     {label}
                   </span>
                   {step === number && (
-                    <div className="w-4 h-1 bg-indigo-600 rounded-full mt-1"></div>
+                    <ChevronRight className="h-5 w-5 text-indigo-600 dark:text-indigo-400 ml-auto flex-shrink-0" />
                   )}
                 </button>
+              ))}
+            </div>
 
-                {/* Add arrow between steps except after the last one */}
-                {index < array.length - 1 && (
-                  <svg
-                    className="mx-2 text-gray-300"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
+            {/* Desktop Stepper - Hidden on mobile */}
+            <div className="hidden md:flex justify-center items-center gap-8 pb-10">
+              {[
+                { number: 1, label: "Company Basic Details" },
+                { number: 2, label: "GST Registration Details" },
+                { number: 3, label: "Company TDS Details" },
+              ].map(({ number, label }, index, array) => (
+                <div key={number} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setStep(number)}
+                    className={`flex flex-col items-center group transition-all duration-300`}
                   >
-                    <path
-                      d="M9 18L15 12L9 6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="pb-[15vh]">
-            {step === 1 && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="client"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Assign to Client</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a client" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {clients.map((client) => (
-                            <SelectItem key={client._id} value={client._id}>
-                              {client.contactName} - ({client.email})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="space-y-2">
-                  <FormLabel>Company Logo</FormLabel>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] || null;
-                      setLogoFile(f);
-                      setLogoPreview(f ? URL.createObjectURL(f) : logoPreview);
-                    }}
-                  />
-                  {logoPreview && (
-                    <img
-                      src={logoPreview}
-                      alt="Logo preview"
-                      className="mt-2 h-20 w-auto rounded border"
-                    />
-                  )}
-
-                  {/* Optional: show a remove button when editing and a logo already exists */}
-                  {company?.logo && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRemoveLogo}
-                      className="mt-2"
+                    <div
+                      className={`w-8 h-8 text-base flex items-center justify-center rounded-full border-2 font-semibold mb-3 transition-all ${
+                        step === number
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-lg scale-110"
+                          : step > number
+                          ? "bg-green-500 text-white border-green-500"
+                          : "bg-white text-gray-500 border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 group-hover:border-indigo-400 dark:group-hover:border-indigo-500"
+                      }`}
                     >
-                      Remove current logo
-                    </Button>
+                      {step > number ? <Check className="h-5 w-5" /> : number}
+                    </div>
+                    <span
+                      className={`text-sm font-medium text-center  leading-tight ${
+                        step === number
+                          ? "text-indigo-600 dark:text-indigo-400 font-semibold"
+                          : step > number
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                    {step === number && (
+                      <div className="w-6 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full mt-2"></div>
+                    )}
+                  </button>
+
+                  {index < array.length - 1 && (
+                    <div
+                      className={`w-16 h-1 rounded-full mx-4 transition-all duration-300 ${
+                        step > number + 1
+                          ? "bg-green-500"
+                          : step > number
+                          ? "bg-indigo-300 dark:bg-indigo-600"
+                          : "bg-gray-200 dark:bg-gray-700"
+                      }`}
+                    />
                   )}
                 </div>
+              ))}
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="pb-20 md:pb-[15vh]">
+              {/* Step 1 - Mobile Optimized */}
+              {step === 1 && (
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="businessType"
+                    name="client"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Business Type</FormLabel>
+                        <FormLabel className="text-sm font-medium">
+                          Assign to Client
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
                           defaultValue={field.value}
                         >
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select business type" />
+                            <SelectTrigger className="text-sm">
+                              <SelectValue placeholder="Select a client" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {defaultBusinessTypes.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
+                            {clients.map((client) => (
+                              <SelectItem
+                                key={client._id}
+                                value={client._id}
+                                className="text-sm"
+                              >
+                                {client.contactName} - ({client.email})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -481,266 +550,413 @@ export function AdminCompanyForm({
                     )}
                   />
 
-                  {[
-                    "businessName",
-                    "registrationNumber",
+                  <div className="space-y-2">
+                    <FormLabel className="text-sm font-medium">
+                      Company Logo
+                    </FormLabel>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        setLogoFile(f);
+                        setLogoPreview(
+                          f ? URL.createObjectURL(f) : logoPreview
+                        );
+                      }}
+                      className="text-sm"
+                    />
+                    {logoPreview && (
+                      <img
+                        src={logoPreview}
+                        alt="Logo preview"
+                        className="mt-2 h-16 w-auto rounded border"
+                      />
+                    )}
+                    {company?.logo && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveLogo}
+                        className="mt-2 text-xs"
+                      >
+                        Remove current logo
+                      </Button>
+                    )}
+                  </div>
 
-                    "Pincode",
-                    "Telephone",
-                    "mobileNumber",
-                    "emailId",
-                    "Website",
-                    "PANNumber",
-                    "IncomeTaxLoginPassword",
-                    "address",
-                  ].map((name) => (
+                  <div className="grid grid-cols-1 gap-4">
                     <FormField
-                      key={name}
                       control={form.control}
-                      name={name as keyof FormData}
+                      name="businessType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{getLabel(name)}</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
+                          <FormLabel className="text-sm font-medium">
+                            Business Type
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="text-sm">
+                                <SelectValue placeholder="Select business type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {defaultBusinessTypes.map((type) => (
+                                <SelectItem
+                                  key={type}
+                                  value={type}
+                                  className="text-sm"
+                                >
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  ))}
 
-                  {/* <StepOne form={form} /> */}
-                  {/* Country */}
-                  <FormField
-                    control={form.control}
-                    name="Country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <Combobox
-                          options={[{ label: "India", value: "IN" }]}
-                          value={countryCode}
-                          onChange={(iso: string) => {
-                            setCountryCode(iso);
-                            setStateCode("");
-                            form.setValue("Country", "India");
-                            form.setValue("addressState", "");
-                            form.setValue("City", "");
-                          }}
-                          placeholder="Select country"
-                          searchPlaceholder="Type to search"
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    {[
+                      "businessName",
+                      "registrationNumber",
+                      "Pincode",
+                      "Telephone",
+                      "mobileNumber",
+                      "emailId",
+                      "Website",
+                      "PANNumber",
+                      "IncomeTaxLoginPassword",
+                      "address",
+                    ].map((name) => (
+                      <FormField
+                        key={name}
+                        control={form.control}
+                        name={name as keyof FormData}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">
+                              {getLabel(name)}
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...field} className="text-sm" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
 
-                  {/* State */}
-                  <FormField
-                    control={form.control}
-                    name="addressState"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>State</FormLabel>
-                        <Combobox
-                          options={stateOptions}
-                          value={
-                            stateCode ||
-                            stateOptions.find(
-                              (o) =>
-                                o.label.toLowerCase() ===
-                                (field.value || "").toLowerCase()
-                            )?.value ||
-                            ""
-                          }
-                          onChange={(iso: string) => {
-                            setStateCode(iso);
-                            const selected = stateOptions.find(
-                              (s) => s.value === iso
-                            );
-                            field.onChange(selected?.label || "");
-                            form.setValue("City", "");
-                          }}
-                          placeholder="Select state"
-                          searchPlaceholder="Type state name"
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* City */}
-                  <FormField
-                    control={form.control}
-                    name="City"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City</FormLabel>
-                        <Combobox
-                          options={cityOptions}
-                          value={
-                            cityOptions.find(
-                              (o) =>
-                                o.label.toLowerCase() ===
-                                (field.value || "").toLowerCase()
-                            )?.value || ""
-                          }
-                          onChange={(v: string) => field.onChange(v)}
-                          placeholder={
-                            stateCode ? "Select city" : "Select a state first"
-                          }
-                          searchPlaceholder="Type city name"
-                          disabled={!stateCode || cityOptions.length === 0}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    "gstin",
-                    "gstState",
-                    "RegistrationType",
-                    "PeriodicityofGSTReturns",
-                    "GSTUsername",
-                    "GSTPassword",
-                    "EWBBillUsername",
-                    "EWBBillPassword",
-                  ].map((name) => (
                     <FormField
-                      key={name}
                       control={form.control}
-                      name={name as keyof FormData}
+                      name="Country"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{getLabel(name)}</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
+                          <FormLabel className="text-sm font-medium">
+                            Country
+                          </FormLabel>
+                          <Combobox
+                            options={[{ label: "India", value: "IN" }]}
+                            value={countryCode}
+                            onChange={(iso: string) => {
+                              setCountryCode(iso);
+                              setStateCode("");
+                              form.setValue("Country", "India");
+                              form.setValue("addressState", "");
+                              form.setValue("City", "");
+                            }}
+                            placeholder="Select country"
+                            searchPlaceholder="Type to search"
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  ))}
-                  <FormField
-                    control={form.control}
-                    name="ewayBillApplicable"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{getLabel("ewayBillApplicable")}</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Yes or No" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="true">Yes</SelectItem>
-                            <SelectItem value="false">No</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
 
-            {step === 3 && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    "TANNumber",
-                    "TAXDeductionCollectionAcc",
-                    "DeductorType",
-                    "TDSLoginUsername",
-                    "TDSLoginPassword",
-                  ].map((name) => (
                     <FormField
-                      key={name}
                       control={form.control}
-                      name={name as keyof FormData}
+                      name="addressState"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{getLabel(name)}</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
+                          <FormLabel className="text-sm font-medium">
+                            State
+                          </FormLabel>
+                          <Combobox
+                            options={stateOptions}
+                            value={
+                              stateCode ||
+                              stateOptions.find(
+                                (o) =>
+                                  o.label.toLowerCase() ===
+                                  (field.value || "").toLowerCase()
+                              )?.value ||
+                              ""
+                            }
+                            onChange={(iso: string) => {
+                              setStateCode(iso);
+                              const selected = stateOptions.find(
+                                (s) => s.value === iso
+                              );
+                              field.onChange(selected?.label || "");
+                              form.setValue("City", "");
+                            }}
+                            placeholder="Select state"
+                            searchPlaceholder="Type state name"
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
 
-          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 z-50">
-            <div className="container flex justify-between items-center">
-              {step > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                  className="gap-1 transition-all hover:gap-2 min-w-[7rem]"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
+                    <FormField
+                      control={form.control}
+                      name="City"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">
+                            City
+                          </FormLabel>
+                          <Combobox
+                            options={cityOptions}
+                            value={
+                              cityOptions.find(
+                                (o) =>
+                                  o.label.toLowerCase() ===
+                                  (field.value || "").toLowerCase()
+                              )?.value || ""
+                            }
+                            onChange={(v: string) => field.onChange(v)}
+                            placeholder={
+                              stateCode ? "Select city" : "Select a state first"
+                            }
+                            searchPlaceholder="Type city name"
+                            disabled={!stateCode || cityOptions.length === 0}
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               )}
-              {step < 3 ? (
-                <Button
-                  type="button"
-                  onClick={() => setStep(step + 1)}
-                  className="gap-1 transition-all hover:gap-2 min-w-[7rem] ml-auto"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="bg-primary hover:bg-primary/90 transition-colors min-w-[10rem]"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {company ? "Saving..." : "Creating..."}
-                    </>
-                  ) : (
-                    <>
-                      {company ? (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Save Changes
-                        </>
-                      ) : (
-                        <>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Create Company
-                        </>
+
+              {/* Step 2 - Mobile Optimized */}
+              {step === 2 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    {[
+                      "gstin",
+                      "gstState",
+                      "RegistrationType",
+                      "PeriodicityofGSTReturns",
+                      "GSTUsername",
+                      "GSTPassword",
+                      "EWBBillUsername",
+                      "EWBBillPassword",
+                    ].map((name) => (
+                      <FormField
+                        key={name}
+                        control={form.control}
+                        name={name as keyof FormData}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">
+                              {getLabel(name)}
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...field} className="text-sm" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+
+                    <FormField
+                      control={form.control}
+                      name="ewayBillApplicable"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">
+                            {getLabel("ewayBillApplicable")}
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="text-sm">
+                                <SelectValue placeholder="Select Yes or No" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="true" className="text-sm">
+                                Yes
+                              </SelectItem>
+                              <SelectItem value="false" className="text-sm">
+                                No
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </>
-                  )}
-                </Button>
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3 - Mobile Optimized */}
+              {step === 3 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    {[
+                      "TANNumber",
+                      "TAXDeductionCollectionAcc",
+                      "DeductorType",
+                      "TDSLoginUsername",
+                      "TDSLoginPassword",
+                    ].map((name) => (
+                      <FormField
+                        key={name}
+                        control={form.control}
+                        name={name as keyof FormData}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">
+                              {getLabel(name)}
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...field} className="text-sm" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        </form>
-      </Form>
-    </div>
+
+            {/* Mobile Bottom Actions */}
+            <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 z-50 md:hidden">
+              <div className="flex justify-between items-center gap-3">
+                {step > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStep(step - 1)}
+                    className="flex-1 gap-1 text-sm"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                ) : (
+                  <div className="flex-1"></div>
+                )}
+
+                {step < 3 ? (
+                  <Button
+                    type="button"
+                    onClick={() => setStep(step + 1)}
+                    className="flex-1 gap-1 text-sm"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 bg-primary hover:bg-primary/90 transition-colors text-sm"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {company ? "Saving..." : "Creating..."}
+                      </>
+                    ) : (
+                      <>
+                        {company ? (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save
+                          </>
+                        ) : (
+                          <>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create
+                          </>
+                        )}
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop Bottom Actions */}
+            <div className="hidden md:block fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 z-50">
+              <div className="container flex justify-between items-center">
+                {step > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStep(step - 1)}
+                    className="gap-1 transition-all hover:gap-2 min-w-[7rem]"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                )}
+                {step < 3 ? (
+                  <Button
+                    type="button"
+                    onClick={() => setStep(step + 1)}
+                    className="gap-1 transition-all hover:gap-2 min-w-[7rem] ml-auto"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="bg-primary hover:bg-primary/90 transition-colors min-w-[10rem]"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {company ? "Saving..." : "Creating..."}
+                      </>
+                    ) : (
+                      <>
+                        {company ? (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                          </>
+                        ) : (
+                          <>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create Company
+                          </>
+                        )}
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </form>
+        </Form>
+      </div>
+    </>
   );
 }

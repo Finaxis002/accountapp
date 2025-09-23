@@ -57,8 +57,10 @@ const UpdateNotification = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isPropagating, setIsPropagating] = useState(false);
   const [dismissAlertOpen, setDismissAlertOpen] = useState(false);
-  const [notificationToDismiss, setNotificationToDismiss] = useState<string | null>(null);
-  const [changeMode, setChangeMode] = useState<{[key: string]: boolean}>({});
+  const [notificationToDismiss, setNotificationToDismiss] = useState<
+    string | null
+  >(null);
+  const [changeMode, setChangeMode] = useState<{ [key: string]: boolean }>({});
   const router = useRouter();
   const { toast } = useToast();
 
@@ -250,8 +252,8 @@ const UpdateNotification = () => {
         );
         const now = new Date();
 
-        notificationsData = masterNotifications.filter(
-          (n: UpdateNotification) => {
+        notificationsData = masterNotifications
+          .filter((n: UpdateNotification) => {
             if (!n.dismissed) return true; // Not dismissed, show it
 
             // Check if it's in grace period
@@ -262,11 +264,11 @@ const UpdateNotification = () => {
             }
 
             return false; // Dismissed and no grace period data, hide it
-          }
-        ).map((n: any) => ({
-          ...n,
-          visibility: n.visibility || 'all' // Ensure visibility is set
-        }));
+          })
+          .map((n: any) => ({
+            ...n,
+            visibility: n.visibility || "all", // Ensure visibility is set
+          }));
 
         console.log("Fetched master notifications:", notificationsData);
       } else {
@@ -439,7 +441,7 @@ const UpdateNotification = () => {
   };
 
   const handleDismiss = (notificationId: string) => {
-    const notification = notifications.find(n => n._id === notificationId);
+    const notification = notifications.find((n) => n._id === notificationId);
     const userData = localStorage.getItem("user");
 
     if (!userData || !notification) return;
@@ -550,13 +552,16 @@ const UpdateNotification = () => {
       // Update local state
       setNotifications((prev) =>
         prev.map((n) =>
-          n._id === notificationId ? { ...n, propagatedToClients: true, visibility: 'all' } : n
+          n._id === notificationId
+            ? { ...n, propagatedToClients: true, visibility: "all" }
+            : n
         )
       );
 
       toast({
         title: "Success",
-        description: "Update notification sent to all users (clients, users, and admins)",
+        description:
+          "Update notification sent to all users (clients, users, and admins)",
       });
     } catch (error) {
       console.error("Error propagating to all users:", error);
@@ -585,13 +590,16 @@ const UpdateNotification = () => {
       // Update local state
       setNotifications((prev) =>
         prev.map((n) =>
-          n._id === notificationId ? { ...n, propagatedToClients: true, visibility: 'admins' } : n
+          n._id === notificationId
+            ? { ...n, propagatedToClients: true, visibility: "admins" }
+            : n
         )
       );
 
       toast({
         title: "Success",
-        description: "Update notification sent to admins only (clients and admins)",
+        description:
+          "Update notification sent to admins only (clients and admins)",
       });
     } catch (error) {
       console.error("Error propagating to admins only:", error);
@@ -668,179 +676,132 @@ const UpdateNotification = () => {
               key={notification._id}
               className="border-l-4 border-l-blue-500"
             >
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {notification.title}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Version {notification.version}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isMaster && hasFeatures && (
-                      <Badge variant="secondary">
-                        {getExploredCount(notification)}/
-                        {getTotalFeatures(notification)} explored
-                      </Badge>
-                    )}
-                    {isMaster &&
-                    hasFeatures &&
-                    getExploredCount(notification) ===
-                      getTotalFeatures(notification) ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDismiss(notification._id)}
-                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors duration-200"
-                      >
-                        <X className="h-3 w-3 mr-1.5" />
-                         Dismiss
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDismiss(notification._id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm mb-4">{notification.description}</p>
-
-                {isMaster && hasFeatures && (
-                  <>
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-sm">New Features:</h4>
-                      {notification.features.map((feature, index) => (
-                        <div
-                          key={index}
-                          className={`flex items-center justify-between p-2 rounded border cursor-pointer hover:bg-muted/50 ${
-                            notification.exploredSections.includes(
-                              feature.sectionUrl
-                            )
-                              ? "bg-green-50 border-green-200"
-                              : "bg-background"
-                          }`}
-                          onClick={() =>
-                            handleFeatureClick(notification, feature)
-                          }
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`Explore ${feature.name} feature`}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              handleFeatureClick(notification, feature);
-                            }
-                          }}
+              {/* ✅ Desktop / Laptop Table */}
+              <div className="hidden md:block">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">
+                        {notification.title}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Version {notification.version}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isMaster && hasFeatures && (
+                        <Badge variant="secondary">
+                          {getExploredCount(notification)}/
+                          {getTotalFeatures(notification)} explored
+                        </Badge>
+                      )}
+                      {isMaster &&
+                      hasFeatures &&
+                      getExploredCount(notification) ===
+                        getTotalFeatures(notification) ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDismiss(notification._id)}
+                          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors duration-200"
                         >
-                          <div className="flex items-center gap-2">
-                            {notification.exploredSections.includes(
-                              feature.sectionUrl
-                            ) ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Play className="h-4 w-4 text-blue-500" />
-                            )}
-                            <span className="text-sm font-medium">
-                              {feature.name}
-                            </span>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                            onClick={(event) =>
-                              handleViewDemoClick(notification, feature, event)
+                          <X className="h-3 w-3 mr-1.5" />
+                          Dismiss
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDismiss(notification._id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm mb-4">{notification.description}</p>
+
+                  {isMaster && hasFeatures && (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-sm">New Features:</h4>
+                        {notification.features.map((feature, index) => (
+                          <div
+                            key={index}
+                            className={`flex items-center justify-between p-2 rounded border cursor-pointer hover:bg-muted/50 ${
+                              notification.exploredSections.includes(
+                                feature.sectionUrl
+                              )
+                                ? "bg-green-50 border-green-200"
+                                : "bg-background"
+                            }`}
+                            onClick={() =>
+                              handleFeatureClick(notification, feature)
                             }
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Explore ${feature.name} feature`}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                handleFeatureClick(notification, feature);
+                              }
+                            }}
                           >
-                            View Demo
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-
-                    <Separator className="my-4" />
-                  </>
-                )}
-
-                <div className="flex justify-between items-center">
-                  <p className="text-xs text-muted-foreground">
-                    {isMaster && hasFeatures
-                      ? getExploredCount(notification) ===
-                        getTotalFeatures(notification)
-                        ? "All features explored - click 'Remove Notification' to dismiss"
-                        : "Click on features to view demo or click 'View Demo' to go directly to the feature"
-                      : "Update notification from your administrator - will auto-dismiss in 36 hours"}
-                  </p>
-                  
-                  {/* Notification buttons logic */}
-                  {isMaster && !notification.propagatedToClients && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePropagateToAllUsers(notification._id)}
-                        disabled={isPropagating}
-                      >
-                        {isPropagating ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Users className="h-4 w-4 mr-2" />
-                        )}
-                        Notify All Users
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePropagateToAdminsOnly(notification._id)}
-                        disabled={isPropagating}
-                      >
-                        {isPropagating ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Users className="h-4 w-4 mr-2" />
-                        )}
-                        Notify Only Admins
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {/* After notification is sent */}
-                  {isMaster && notification.propagatedToClients && !changeMode[notification._id] && (
-                    <div className="flex flex-col gap-2 items-end">
-                      <div className="text-sm text-muted-foreground text-right">
-                        {notification.visibility === 'admins'
-                          ? "You have notified clients and their admins only"
-                          : "Notifications sent to all users"
-                        }
+                            <div className="flex items-center gap-2">
+                              {notification.exploredSections.includes(
+                                feature.sectionUrl
+                              ) ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Play className="h-4 w-4 text-blue-500" />
+                              )}
+                              <span className="text-sm font-medium">
+                                {feature.name}
+                              </span>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                              onClick={(event) =>
+                                handleViewDemoClick(
+                                  notification,
+                                  feature,
+                                  event
+                                )
+                              }
+                            >
+                              View Demo
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: true }))}
-                      >
-                        Change Notification
-                      </Button>
-                    </div>
+
+                      <Separator className="my-4" />
+                    </>
                   )}
-                  
-                  {/* Change mode - show buttons again */}
-                  {isMaster && changeMode[notification._id] && (
-                    <div className="flex flex-col gap-2">
-                      <div className="text-sm text-muted-foreground">
-                        Change notification audience:
-                      </div>
+
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-muted-foreground">
+                      {isMaster && hasFeatures
+                        ? getExploredCount(notification) ===
+                          getTotalFeatures(notification)
+                          ? "All features explored - click 'Remove Notification' to dismiss"
+                          : "Click on features to view demo or click 'View Demo' to go directly to the feature"
+                        : "Update notification from your administrator - will auto-dismiss in 36 hours"}
+                    </p>
+
+                    {/* Notification buttons logic */}
+                    {isMaster && !notification.propagatedToClients && (
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handlePropagateToAllUsers(notification._id)}
+                          onClick={() =>
+                            handlePropagateToAllUsers(notification._id)
+                          }
                           disabled={isPropagating}
                         >
                           {isPropagating ? (
@@ -853,7 +814,9 @@ const UpdateNotification = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handlePropagateToAdminsOnly(notification._id)}
+                          onClick={() =>
+                            handlePropagateToAdminsOnly(notification._id)
+                          }
                           disabled={isPropagating}
                         >
                           {isPropagating ? (
@@ -863,25 +826,319 @@ const UpdateNotification = () => {
                           )}
                           Notify Only Admins
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: false }))}
-                        >
-                          Cancel
-                        </Button>
                       </div>
-                    </div>
+                    )}
+
+                    {/* After notification is sent */}
+                    {isMaster &&
+                      notification.propagatedToClients &&
+                      !changeMode[notification._id] && (
+                        <div className="flex flex-col gap-2 items-end">
+                          <div className="text-sm text-muted-foreground text-right">
+                            {notification.visibility === "admins"
+                              ? "You have notified clients and their admins only"
+                              : "Notifications sent to all users"}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setChangeMode((prev) => ({
+                                ...prev,
+                                [notification._id]: true,
+                              }))
+                            }
+                          >
+                            Change Notification
+                          </Button>
+                        </div>
+                      )}
+
+                    {/* Change mode - show buttons again */}
+                    {isMaster && changeMode[notification._id] && (
+                      <div className="flex flex-col gap-2">
+                        <div className="text-sm text-muted-foreground">
+                          Change notification audience:
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handlePropagateToAllUsers(notification._id)
+                            }
+                            disabled={isPropagating}
+                          >
+                            {isPropagating ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Users className="h-4 w-4 mr-2" />
+                            )}
+                            Notify All Users
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handlePropagateToAdminsOnly(notification._id)
+                            }
+                            disabled={isPropagating}
+                          >
+                            {isPropagating ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Users className="h-4 w-4 mr-2" />
+                            )}
+                            Notify Only Admins
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setChangeMode((prev) => ({
+                                ...prev,
+                                [notification._id]: false,
+                              }))
+                            }
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isMaster && notification.propagatedToClients && (
+                      <Badge variant="secondary">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Update Available
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </div>
+
+              {/* 📱 Mobile UI */}
+<div className="block md:hidden">
+  <CardHeader className="pb-3 px-4">
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <CardTitle className="text-base line-clamp-2">
+            {notification.title}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Version {notification.version}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {isMaster && hasFeatures && (
+            <Badge variant="secondary" className="text-xs whitespace-nowrap">
+              {getExploredCount(notification)}/{getTotalFeatures(notification)}
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDismiss(notification._id)}
+            className="h-8 w-8 p-0"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Dismiss button for completed features - Mobile */}
+      {isMaster &&
+        hasFeatures &&
+        getExploredCount(notification) === getTotalFeatures(notification) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDismiss(notification._id)}
+            className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors duration-200 text-xs py-1.5"
+          >
+            <X className="h-3 w-3 mr-1.5" />
+            Dismiss Notification
+          </Button>
+        )}
+    </div>
+  </CardHeader>
+  
+  <CardContent className="px-4">
+    <p className="text-sm mb-4 leading-relaxed">{notification.description}</p>
+
+    {isMaster && hasFeatures && (
+      <>
+        <div className="space-y-2">
+          <h4 className="font-medium text-sm">New Features:</h4>
+          {notification.features.map((feature, index) => (
+            <div
+              key={index}
+              className={`flex flex-col p-3 rounded border cursor-pointer hover:bg-muted/50 gap-2 ${
+                notification.exploredSections.includes(feature.sectionUrl)
+                  ? "bg-green-50 border-green-200"
+                  : "bg-background"
+              }`}
+              onClick={() => handleFeatureClick(notification, feature)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Explore ${feature.name} feature`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleFeatureClick(notification, feature);
+                }
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {notification.exploredSections.includes(feature.sectionUrl) ? (
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <Play className="h-4 w-4 text-blue-500 flex-shrink-0" />
                   )}
-                  
-                  {!isMaster && notification.propagatedToClients && (
-                    <Badge variant="secondary">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Update Available
-                    </Badge>
-                  )}
+                  <span className="text-sm font-medium truncate">
+                    {feature.name}
+                  </span>
                 </div>
-              </CardContent>
+              </div>
+              <Badge
+                variant="outline"
+                className="text-xs w-full justify-center cursor-pointer hover:bg-primary hover:text-primary-foreground py-1.5"
+                onClick={(event) =>
+                  handleViewDemoClick(notification, feature, event)
+                }
+              >
+                View Demo
+              </Badge>
+            </div>
+          ))}
+        </div>
+
+        <Separator className="my-4" />
+      </>
+    )}
+
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        {isMaster && hasFeatures
+          ? getExploredCount(notification) === getTotalFeatures(notification)
+            ? "All features explored - dismiss when ready"
+            : "Tap features to view demo or 'View Demo' to go directly"
+          : "Update notification from your administrator - will auto-dismiss in 36 hours"}
+      </p>
+      
+      {/* Notification buttons logic - Mobile */}
+      {isMaster && !notification.propagatedToClients && (
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePropagateToAllUsers(notification._id)}
+            disabled={isPropagating}
+            className="w-full text-xs py-1.5"
+          >
+            {isPropagating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+            ) : (
+              <Users className="h-3.5 w-3.5 mr-2" />
+            )}
+            Notify All Users
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePropagateToAdminsOnly(notification._id)}
+            disabled={isPropagating}
+            className="w-full text-xs py-1.5"
+          >
+            {isPropagating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+            ) : (
+              <Users className="h-3.5 w-3.5 mr-2" />
+            )}
+            Notify Only Admins
+          </Button>
+        </div>
+      )}
+      
+      {/* After notification is sent - Mobile */}
+      {isMaster && notification.propagatedToClients && !changeMode[notification._id] && (
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground text-center">
+            {notification.visibility === 'admins'
+              ? "Notified clients and admins only"
+              : "Notifications sent to all users"
+            }
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: true }))}
+            className="w-full text-xs py-1.5"
+          >
+            Change Notification
+          </Button>
+        </div>
+      )}
+      
+      {/* Change mode - show buttons again - Mobile */}
+      {isMaster && changeMode[notification._id] && (
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground text-center">
+            Change notification audience:
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePropagateToAllUsers(notification._id)}
+              disabled={isPropagating}
+              className="w-full text-xs py-1.5"
+            >
+              {isPropagating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+              ) : (
+                <Users className="h-3.5 w-3.5 mr-2" />
+              )}
+              Notify All Users
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePropagateToAdminsOnly(notification._id)}
+              disabled={isPropagating}
+              className="w-full text-xs py-1.5"
+            >
+              {isPropagating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+              ) : (
+                <Users className="h-3.5 w-3.5 mr-2" />
+              )}
+              Notify Only Admins
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setChangeMode(prev => ({ ...prev, [notification._id]: false }))}
+              className="w-full text-xs py-1.5"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {!isMaster && notification.propagatedToClients && (
+        <Badge variant="secondary" className="w-full justify-center py-1.5">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Update Available
+        </Badge>
+      )}
+    </div>
+  </CardContent>
+</div>
+
             </Card>
           );
         })}
@@ -891,13 +1148,18 @@ const UpdateNotification = () => {
       <AlertDialog open={dismissAlertOpen} onOpenChange={setDismissAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>⚠️ Dismiss Without Notifying Clients?</AlertDialogTitle>
+            <AlertDialogTitle>
+              ⚠️ Dismiss Without Notifying Clients?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This update notification has not been propagated to clients yet. If you dismiss it now,
-              clients will not receive this important update information.
-              <br /><br />
-              <strong>Recommended:</strong> Click "Notify Clients" first to ensure all users are informed
-              about this update before dismissing it.
+              This update notification has not been propagated to clients yet.
+              If you dismiss it now, clients will not receive this important
+              update information.
+              <br />
+              <br />
+              <strong>Recommended:</strong> Click "Notify Clients" first to
+              ensure all users are informed about this update before dismissing
+              it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

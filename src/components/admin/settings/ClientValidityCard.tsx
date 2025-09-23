@@ -401,8 +401,9 @@ export function ClientValidityCard({
           <Label className="text-sm text-muted-foreground dark:text-gray-300">
             Extend Validity
           </Label>
-          <div className="grid grid-cols-1 sm:grid-cols-[140px_160px_1fr_auto] gap-3 items-end">
-            <div>
+          <div className="grid grid-cols-1 gap-3 items-end">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
               <Label htmlFor="v-amount" className="dark:text-gray-300">Duration</Label>
               <Input
                 id="v-amount"
@@ -434,6 +435,7 @@ export function ClientValidityCard({
               </select>
             </div>
 
+            </div>
             <div className="self-center text-sm text-muted-foreground dark:text-gray-300">
               → New expiry:{" "}
               <span className="font-medium dark:text-white">{fmtDate(previewDate)}</span>
@@ -448,7 +450,7 @@ export function ClientValidityCard({
                 setExtendDirty(false);
               }}
               disabled={loading || saving}
-              className="dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
+              className="dark:bg-blue-600 w-[20vh] dark:hover:bg-blue-700 dark:text-white"
             >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

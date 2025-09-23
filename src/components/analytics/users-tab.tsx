@@ -81,16 +81,16 @@ export function UsersTab({
   const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
 
   const idOf = (v: any) =>
-  typeof v === "string" ? v : v?._id || v?.id || v?.$oid || "";
+    typeof v === "string" ? v : v?._id || v?.id || v?.$oid || "";
 
-const filteredUsers = React.useMemo(() => {
-  if (!selectedCompanyId) return users;   // All companies
-  return users.filter(u =>
-    Array.isArray(u.companies) &&
-    u.companies.some((c: any) => idOf(c) === selectedCompanyId)
-  );
-}, [users, selectedCompanyId]);
-
+  const filteredUsers = React.useMemo(() => {
+    if (!selectedCompanyId) return users; // All companies
+    return users.filter(
+      (u) =>
+        Array.isArray(u.companies) &&
+        u.companies.some((c: any) => idOf(c) === selectedCompanyId)
+    );
+  }, [users, selectedCompanyId]);
 
   const fetchUsersAndCompanies = React.useCallback(async () => {
     const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -133,7 +133,6 @@ const filteredUsers = React.useMemo(() => {
   React.useEffect(() => {
     fetchUsersAndCompanies();
   }, [fetchUsersAndCompanies]);
-
 
   const handleOpenForm = (user: User | null = null) => {
     setSelectedUser(user);
@@ -221,188 +220,221 @@ const filteredUsers = React.useMemo(() => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-  {isLoading ? (
-    <div className="flex justify-center items-center h-40">
-      <Loader2 className="h-6 w-6 animate-spin" />
-    </div>
-  ) : filteredUsers.length > 0 ? (
-    <>
-      {/* Mobile: Card view */}
-      <div className="sm:hidden flex flex-col gap-4">
-        {filteredUsers.map((user) => {
-          const roleName = getRoleName(user.role);
-          const roleKey = roleName.toLowerCase();
-
-          return (
-            <Card key={user._id} className="p-3 shadow-sm">
-              <div className="flex justify-between items-start">
-                {/* Left: avatar + name + id + role */}
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={user.avatar} />
-                    <AvatarFallback>
-                      {(user.userName || "U").substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-medium">{user.userName}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {user.userId}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        roleBadgeColors[roleKey] ?? roleBadgeColors.user,
-                        "capitalize mt-1"
-                      )}
-                    >
-                      {roleName}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Right: actions */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleOpenForm(user)}>
-                      <Edit className="mr-2 h-4 w-4" /> Edit User
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleOpenDeleteDialog(user)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete User
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : filteredUsers.length > 0 ? (
+            <>
+             {/* Mobile: Card view */}
+<div className="sm:hidden space-y-3">
+  {filteredUsers.map((user) => {
+    const roleName = getRoleName(user.role);
+    const roleKey = roleName.toLowerCase();
+    
+    return (
+      <div key={user._id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow duration-200 p-4">
+        {/* User Info Section */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={user.avatar} />
+              <AvatarFallback className="text-sm">
+                {(user.userName || "U").substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-gray-900 dark:text-white truncate">
+                {user.userName}
               </div>
-
-              {/* Companies */}
-              <div className="mt-3">
-                {user.companies && Array.isArray(user.companies) ? (
-                  <div className="flex flex-wrap gap-2">
-                    {user.companies.map((companyId: any) => {
-                      const id = typeof companyId === "object" ? companyId._id : companyId;
-                      const companyName = companyMap.get(id);
-                      return companyName ? (
-                        <Badge key={id} variant="secondary">
-                          {companyName}
-                        </Badge>
-                      ) : null;
-                    })}
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground">No companies</span>
-                )}
+              <div className="text-xs text-muted-foreground truncate">
+                {user.userId}
               </div>
-            </Card>
-          );
-        })}
+            </div>
+          </div>
+          
+          {/* Role Badge */}
+          <Badge
+            variant="outline"
+            className={cn(
+              roleBadgeColors[roleKey] ?? roleBadgeColors.user,
+              "capitalize text-xs shrink-0 ml-2"
+            )}
+          >
+            {roleName}
+          </Badge>
+        </div>
+
+        {/* Assigned Companies Section */}
+        <div className="mb-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2">
+            Assigned Companies
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {user.companies && Array.isArray(user.companies) ? (
+              user.companies.slice(0, 3).map((companyId: any) => {
+                const id = typeof companyId === "object" ? companyId._id : companyId;
+                const companyName = companyMap.get(id);
+                return companyName ? (
+                  <Badge key={id} variant="secondary" className="text-xs">
+                    {companyName}
+                  </Badge>
+                ) : null;
+              })
+            ) : (
+              <span className="text-xs text-muted-foreground">No companies</span>
+            )}
+            {user.companies && user.companies.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{user.companies.length - 3} more
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Actions Section */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+          <div className="text-xs text-muted-foreground">
+            {user.companies?.length || 0} company{(user.companies?.length || 0) !== 1 ? 's' : ''}
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-2">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => handleOpenForm(user)}>
+                <Edit className="mr-2 h-4 w-4" /> 
+                Edit User
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleOpenDeleteDialog(user)}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> 
+                Delete User
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
+    );
+  })}
+</div>
+              {/* Desktop: Table view (unchanged) */}
+              <div className="hidden sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Assigned Companies</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => {
+                      const roleName = getRoleName(user.role);
+                      const roleKey = roleName.toLowerCase();
+                      return (
+                        <TableRow key={user._id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarImage src={user.avatar} />
+                                <AvatarFallback>
+                                  {(user.userName || "U")
+                                    .substring(0, 2)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">
+                                  {user.userName}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {user.userId}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
 
-      {/* Desktop: Table view (unchanged) */}
-      <div className="hidden sm:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Assigned Companies</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers.map((user) => {
-              const roleName = getRoleName(user.role);
-              const roleKey = roleName.toLowerCase();
-              return (
-                <TableRow key={user._id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage src={user.avatar} />
-                        <AvatarFallback>
-                          {(user.userName || "U").substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{user.userName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {user.userId}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        roleBadgeColors[roleKey] ?? roleBadgeColors.user,
-                        "capitalize"
-                      )}
-                    >
-                      {roleName}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {user.companies && Array.isArray(user.companies) ? (
-                        user.companies.map((companyId: any) => {
-                          const id =
-                            typeof companyId === "object" ? companyId._id : companyId;
-                          const companyName = companyMap.get(id);
-                          return companyName ? (
-                            <Badge key={id} variant="secondary">
-                              {companyName}
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                roleBadgeColors[roleKey] ??
+                                  roleBadgeColors.user,
+                                "capitalize"
+                              )}
+                            >
+                              {roleName}
                             </Badge>
-                          ) : null;
-                        })
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No companies</span>
-                      )}
-                    </div>
-                  </TableCell>
+                          </TableCell>
 
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenForm(user)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleOpenDeleteDialog(user)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    </>
-  ) : (
-    <p className="text-muted-foreground text-center py-8">
-      No users found for this client.
-    </p>
-  )}
-</CardContent>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {user.companies &&
+                              Array.isArray(user.companies) ? (
+                                user.companies.map((companyId: any) => {
+                                  const id =
+                                    typeof companyId === "object"
+                                      ? companyId._id
+                                      : companyId;
+                                  const companyName = companyMap.get(id);
+                                  return companyName ? (
+                                    <Badge key={id} variant="secondary">
+                                      {companyName}
+                                    </Badge>
+                                  ) : null;
+                                })
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  No companies
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenForm(user)}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" /> Edit User
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenDeleteDialog(user)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">
+              No users found for this client.
+            </p>
+          )}
+        </CardContent>
       </Card>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

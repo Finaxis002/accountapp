@@ -501,7 +501,7 @@ const scrollToHighlight = (index: number) => {
                       )}
 
                     </div>
-                    <Button variant="ghost" size="icon" className="md:hidden">
+                    <Button variant="ghost" size="icon" className="hidden md:block">
                       <Search className="h-5 w-5" />
                     </Button>
 

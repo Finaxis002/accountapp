@@ -13,7 +13,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Eye, EyeOff, Building, Users, Package, Mail, MessageSquare, Contact, Store } from "lucide-react";
+import {
+  Loader2,
+  Eye,
+  EyeOff,
+  Building,
+  Users,
+  Package,
+  Mail,
+  MessageSquare,
+  Contact,
+  Store,
+} from "lucide-react";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -95,7 +106,9 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
   const [authToken, setAuthToken] = React.useState<string | null>(null);
 
   // Permissions management state
-  const [currentPermissions, setCurrentPermissions] = React.useState<Partial<AllowedPermissions>>({});
+  const [currentPermissions, setCurrentPermissions] = React.useState<
+    Partial<AllowedPermissions>
+  >({});
   const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
   const [permissionsLoaded, setPermissionsLoaded] = React.useState(false);
 
@@ -185,8 +198,7 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
     });
   }, [client, form]);
 
-
-    // Preview (create mode only)
+  // Preview (create mode only)
   const watchedAmt = form.watch("validityAmount" as any);
   const watchedUnit = form.watch("validityUnit" as any);
 
@@ -537,7 +549,6 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
     return copy;
   }
 
-
   const expiryPreview = React.useMemo(() => {
     if (client) return null;
     const amt = Number(watchedAmt);
@@ -550,82 +561,101 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
     }).format(dt);
   }, [client, watchedAmt, watchedUnit]);
 
- async function onSubmit(values: z.infer<typeof formSchema>) {
-  setIsSubmitting(true);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
 
-  const token = localStorage.getItem("token");
-  if (!token) {
-    toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to perform this action." });
-    setIsSubmitting(false);
-    return;
-  }
-
-  // Check if permissions and validity are configured for new clients
-  if (!client) {
-    if (!permissionsConfigured || !validityConfigured) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       toast({
         variant: "destructive",
-        title: "Configuration Required",
-        description: "You have not set up permissions or validity. Please configure them before proceeding."
+        title: "Authentication Error",
+        description: "You must be logged in to perform this action.",
       });
       setIsSubmitting(false);
       return;
     }
-  }
 
-  try {
-    const valid = await form.trigger();
-    if (!valid) { setIsSubmitting(false); return; }
-
-    const url = client ? `${baseURL}/api/clients/${client._id}` : `${baseURL}/api/clients`;
-    const method = client ? "PATCH" : "POST";
-
-    // 🔑 shape the body
-    let body: any = { ...values };
+    // Check if permissions and validity are configured for new clients
     if (!client) {
-      body.validity = {
-        amount: (values as any).validityAmount,
-        unit:   (values as any).validityUnit, // "days" | "months" | "years"
-      };
-      delete body.validityAmount;
-      delete body.validityUnit;
+      if (!permissionsConfigured || !validityConfigured) {
+        toast({
+          variant: "destructive",
+          title: "Configuration Required",
+          description:
+            "You have not set up permissions or validity. Please configure them before proceeding.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
     }
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
+    try {
+      const valid = await form.trigger();
+      if (!valid) {
+        setIsSubmitting(false);
+        return;
+      }
 
-    const data = await res.json().catch(() => ({} as any));
-    if (!res.ok) {
-      const msg = data?.message || "Failed to save";
+      const url = client
+        ? `${baseURL}/api/clients/${client._id}`
+        : `${baseURL}/api/clients`;
+      const method = client ? "PATCH" : "POST";
+
+      // 🔑 shape the body
+      let body: any = { ...values };
+      if (!client) {
+        body.validity = {
+          amount: (values as any).validityAmount,
+          unit: (values as any).validityUnit, // "days" | "months" | "years"
+        };
+        delete body.validityAmount;
+        delete body.validityUnit;
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) {
+        const msg = data?.message || "Failed to save";
+        applyServerErrorsToForm(msg);
+        toast({
+          variant: "destructive",
+          title: "Operation Failed",
+          description: msg,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      toast({
+        title: `Client ${client ? "Updated" : "Created"}!`,
+        description: `${values.contactName}'s details have been successfully saved.`,
+      });
+      onFormSubmit?.();
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Something went wrong.";
       applyServerErrorsToForm(msg);
-      toast({ variant: "destructive", title: "Operation Failed", description: msg });
+      toast({
+        variant: "destructive",
+        title: "Operation Failed",
+        description: msg,
+      });
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    toast({
-      title: `Client ${client ? "Updated" : "Created"}!`,
-      description: `${values.contactName}'s details have been successfully saved.`,
-    });
-    onFormSubmit?.();
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Something went wrong.";
-    applyServerErrorsToForm(msg);
-    toast({ variant: "destructive", title: "Operation Failed", description: msg });
-  } finally {
-    setIsSubmitting(false);
   }
-}
-
 
   const [selectedTab, setSelectedTab] = React.useState("general");
-  const [permissionsConfigured, setPermissionsConfigured] = React.useState(false);
+  const [permissionsConfigured, setPermissionsConfigured] =
+    React.useState(false);
   const [validityConfigured, setValidityConfigured] = React.useState(false);
 
   React.useEffect(() => {
@@ -638,12 +668,36 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
     // Edit mode with tabs
     return (
       <div className="flex flex-col h-full">
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-4 mx-6 mt-6">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="permissions">Manage Permissions</TabsTrigger>
-            <TabsTrigger value="validity">Validity Management</TabsTrigger>
-            <TabsTrigger value="password">Reset Password</TabsTrigger>
+        <Tabs
+          value={selectedTab}
+          onValueChange={setSelectedTab}
+          className="flex-1 flex flex-col p-2"
+        >
+          <TabsList className="flex flex-row flex-wrap gap-2 w-full px-4 md:px-6 mt-4 md:mt-6">
+            <TabsTrigger
+              value="general"
+              className="flex-1 min-w-[120px] text-sm px-3 py-2 truncate"
+            >
+              General
+            </TabsTrigger>
+            <TabsTrigger
+              value="permissions"
+              className="flex-1 min-w-[120px] text-sm px-3 py-2 truncate"
+            >
+              Permissions
+            </TabsTrigger>
+            <TabsTrigger
+              value="validity"
+              className="flex-1 min-w-[120px] text-sm px-3 py-2 truncate"
+            >
+              Validity
+            </TabsTrigger>
+            <TabsTrigger
+              value="password"
+              className="flex-1 min-w-[120px] text-sm px-3 py-2 truncate"
+            >
+              Password
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="flex-1 mt-0">
@@ -654,15 +708,22 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                 onSelect={(e) => e.preventDefault()}
                 onKeyDown={(e) => {
                   // Prevent form selection on Tab key
-                  if (e.key === 'Tab') {
+                  if (e.key === "Tab") {
                     e.preventDefault();
                     // Find next focusable element
                     const focusableElements = document.querySelectorAll(
                       'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
                     );
-                    const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
-                    const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
-                    if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+                    const currentIndex = Array.from(focusableElements).indexOf(
+                      document.activeElement as Element
+                    );
+                    const nextIndex = e.shiftKey
+                      ? currentIndex - 1
+                      : currentIndex + 1;
+                    if (
+                      nextIndex >= 0 &&
+                      nextIndex < focusableElements.length
+                    ) {
                       (focusableElements[nextIndex] as HTMLElement).focus();
                     }
                   }
@@ -670,295 +731,304 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
               >
                 <ScrollArea className="flex-1" tabIndex={-1}>
                   <div className="space-y-6 px-6 pb-6 select-none">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-              <FormField
-                control={form.control}
-                name="contactName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="clientUsername"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          placeholder="e.g. johndoe"
-                          {...field}
-                          disabled={!!client}
-                          onChange={(e) => {
-                            // force lowercase and strip spaces as user types
-                            const val = e.target.value
-                              .toLowerCase()
-                              .replace(/\s+/g, "");
-                            field.onChange(val);
-                          }}
-                        />
-                        {!client && (
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                            {checkingUsername && <span>checking…</span>}
-                            {usernameAvailable === true &&
-                              !checkingUsername && (
-                                <span className="text-green-600">
-                                  available ✓
-                                </span>
-                              )}
-                            {usernameAvailable === false &&
-                              !checkingUsername && (
-                                <span className="text-red-600">taken ✗</span>
-                              )}
-                          </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                      <FormField
+                        control={form.control}
+                        name="contactName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contact Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. John Doe" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-
-                    {!client && usernameSuggestions.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {usernameSuggestions.map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() =>
-                              form.setValue("clientUsername", s, {
-                                shouldValidate: true,
-                                shouldDirty: true,
-                              })
-                            }
-                            className="text-xs rounded-full border px-3 py-1 hover:bg-muted"
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {!client &&
-                      usernameAvailable === true &&
-                      !checkingUsername && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Nice! This username is available.
-                        </p>
-                      )}
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {!client && (
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          type={eyeOpen ? "text" : "password"}
-                          placeholder="••••••••"
-                          {...field}
-                          className="pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setEyeOpen((prev) => !prev)}
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
-                        >
-                          {eyeOpen ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="contact@company.com"
-                        {...field}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input placeholder="+1 (555) 123-4567" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormField
+                        control={form.control}
+                        name="clientUsername"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  placeholder="e.g. johndoe"
+                                  {...field}
+                                  disabled={!!client}
+                                  onChange={(e) => {
+                                    // force lowercase and strip spaces as user types
+                                    const val = e.target.value
+                                      .toLowerCase()
+                                      .replace(/\s+/g, "");
+                                    field.onChange(val);
+                                  }}
+                                />
+                                {!client && (
+                                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                    {checkingUsername && <span>checking…</span>}
+                                    {usernameAvailable === true &&
+                                      !checkingUsername && (
+                                        <span className="text-green-600">
+                                          available ✓
+                                        </span>
+                                      )}
+                                    {usernameAvailable === false &&
+                                      !checkingUsername && (
+                                        <span className="text-red-600">
+                                          taken ✗
+                                        </span>
+                                      )}
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
 
-            <Separator />
+                            {!client && usernameSuggestions.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {usernameSuggestions.map((s) => (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() =>
+                                      form.setValue("clientUsername", s, {
+                                        shouldValidate: true,
+                                        shouldDirty: true,
+                                      })
+                                    }
+                                    className="text-xs rounded-full border px-3 py-1 hover:bg-muted"
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {!client &&
+                              usernameAvailable === true &&
+                              !checkingUsername && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Nice! This username is available.
+                                </p>
+                              )}
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-            <div>
-              <h3 className="text-base font-medium mb-4">
-                Permissions & Limits
-              </h3>
-              <div className="space-y-4">
-                {!client && (
-                  <>
+                    {!client && (
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  type={eyeOpen ? "text" : "password"}
+                                  placeholder="••••••••"
+                                  {...field}
+                                  className="pr-10"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setEyeOpen((prev) => !prev)}
+                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                                >
+                                  {eyeOpen ? (
+                                    <EyeOff size={18} />
+                                  ) : (
+                                    <Eye size={18} />
+                                  )}
+                                </button>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="contact@company.com"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="+1 (555) 123-4567"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <Separator />
+
                     <div>
                       <h3 className="text-base font-medium mb-4">
-                        Account Validity
+                        Permissions & Limits
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                      <div className="space-y-4">
+                        {!client && (
+                          <>
+                            <Separator />
+                            <div>
+                              <h3 className="text-base font-medium mb-4">
+                                Account Validity
+                              </h3>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                                <FormField
+                                  control={form.control}
+                                  name={"validityAmount" as any}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Duration</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          min={1}
+                                          placeholder="e.g. 30"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name={"validityUnit" as any}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Unit</FormLabel>
+                                      <FormControl>
+                                        <select
+                                          className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                                          {...field}
+                                        >
+                                          <option value="days">Days</option>
+                                          <option value="months">Months</option>
+                                          <option value="years">Years</option>
+                                        </select>
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <div className="sm:col-span-3">
+                                  {expiryPreview && (
+                                    <p className="text-xs text-muted-foreground">
+                                      This account will expire on{" "}
+                                      <span className="font-medium">
+                                        {expiryPreview}
+                                      </span>
+                                      .
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="maxCompanies"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Max Companies</FormLabel>
+                                <FormControl>
+                                  <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="maxUsers"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Max Users</FormLabel>
+                                <FormControl>
+                                  <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                         <FormField
                           control={form.control}
-                          name={"validityAmount" as any}
+                          name="canSendInvoiceEmail"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Duration</FormLabel>
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>Send Invoice via Email</FormLabel>
+                                <p className="text-xs text-muted-foreground">
+                                  Allow this client to send invoices to their
+                                  customers via email.
+                                </p>
+                              </div>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  placeholder="e.g. 30"
-                                  {...field}
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
                                 />
                               </FormControl>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
-
                         <FormField
                           control={form.control}
-                          name={"validityUnit" as any}
+                          name="canSendInvoiceWhatsapp"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Unit</FormLabel>
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>Send Invoice via WhatsApp</FormLabel>
+                                <p className="text-xs text-muted-foreground">
+                                  Allow this client to send invoices via
+                                  WhatsApp integration.
+                                </p>
+                              </div>
                               <FormControl>
-                                <select
-                                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                                  {...field}
-                                >
-                                  <option value="days">Days</option>
-                                  <option value="months">Months</option>
-                                  <option value="years">Years</option>
-                                </select>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
                               </FormControl>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
-
-                        <div className="sm:col-span-3">
-                          {expiryPreview && (
-                            <p className="text-xs text-muted-foreground">
-                              This account will expire on{" "}
-                              <span className="font-medium">
-                                {expiryPreview}
-                              </span>
-                              .
-                            </p>
-                          )}
-                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="maxCompanies"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Max Companies</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="maxUsers"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Max Users</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="canSendInvoiceEmail"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Send Invoice via Email</FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Allow this client to send invoices to their customers
-                          via email.
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="canSendInvoiceWhatsapp"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Send Invoice via WhatsApp</FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Allow this client to send invoices via WhatsApp
-                          integration.
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
                     </div>
                   </div>
                 </ScrollArea>
@@ -972,7 +1042,9 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                       (!client && usernameAvailable === false)
                     }
                   >
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmitting && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Save Changes
                   </Button>
                 </div>
@@ -991,9 +1063,12 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                 </div>
 
                 <div className="grid gap-6 py-4">
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="maxCompanies" className="flex items-center gap-3">
+                      <Label
+                        htmlFor="maxCompanies"
+                        className="flex items-center gap-3"
+                      >
                         <Building className="h-5 w-5 text-muted-foreground" />
                         <span className="font-medium">Max Companies</span>
                       </Label>
@@ -1010,7 +1085,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="maxUsers" className="flex items-center gap-3">
+                      <Label
+                        htmlFor="maxUsers"
+                        className="flex items-center gap-3"
+                      >
                         <Users className="h-5 w-5 text-muted-foreground" />
                         <span className="font-medium">Max Users</span>
                       </Label>
@@ -1027,7 +1105,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="maxInventories" className="flex items-center gap-3">
+                      <Label
+                        htmlFor="maxInventories"
+                        className="flex items-center gap-3"
+                      >
                         <Package className="h-5 w-5 text-muted-foreground" />
                         <span className="font-medium">Max Inventories</span>
                       </Label>
@@ -1049,7 +1130,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <Mail className="h-5 w-5 text-muted-foreground" />
-                        <Label htmlFor="canSendInvoiceEmail" className="font-medium">
+                        <Label
+                          htmlFor="canSendInvoiceEmail"
+                          className="font-medium"
+                        >
                           Send Invoice via Email
                         </Label>
                       </div>
@@ -1064,7 +1148,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                        <Label htmlFor="canSendInvoiceWhatsapp" className="font-medium">
+                        <Label
+                          htmlFor="canSendInvoiceWhatsapp"
+                          className="font-medium"
+                        >
                           Send Invoice via WhatsApp
                         </Label>
                       </div>
@@ -1094,7 +1181,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <Contact className="h-5 w-5 text-muted-foreground" />
-                        <Label htmlFor="canCreateCustomers" className="font-medium">
+                        <Label
+                          htmlFor="canCreateCustomers"
+                          className="font-medium"
+                        >
                           Create Customers
                         </Label>
                       </div>
@@ -1109,7 +1199,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <Store className="h-5 w-5 text-muted-foreground" />
-                        <Label htmlFor="canCreateVendors" className="font-medium">
+                        <Label
+                          htmlFor="canCreateVendors"
+                          className="font-medium"
+                        >
                           Create Vendors
                         </Label>
                       </div>
@@ -1124,7 +1217,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <Package className="h-5 w-5 text-muted-foreground" />
-                        <Label htmlFor="canCreateProducts" className="font-medium">
+                        <Label
+                          htmlFor="canCreateProducts"
+                          className="font-medium"
+                        >
                           Create Products
                         </Label>
                       </div>
@@ -1139,7 +1235,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <Building className="h-5 w-5 text-muted-foreground" />
-                        <Label htmlFor="canCreateCompanies" className="font-medium">
+                        <Label
+                          htmlFor="canCreateCompanies"
+                          className="font-medium"
+                        >
                           Create Companies
                         </Label>
                       </div>
@@ -1154,7 +1253,10 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <Users className="h-5 w-5 text-muted-foreground" />
-                        <Label htmlFor="canUpdateCompanies" className="font-medium">
+                        <Label
+                          htmlFor="canUpdateCompanies"
+                          className="font-medium"
+                        >
                           Update Companies
                         </Label>
                       </div>
@@ -1174,7 +1276,9 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     onClick={handleSavePermissions}
                     disabled={isSavingPermissions}
                   >
-                    {isSavingPermissions && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSavingPermissions && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Save Changes
                   </Button>
                 </div>
@@ -1183,7 +1287,7 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
           </TabsContent>
 
           <TabsContent value="validity" className="flex-1 mt-0">
-            <div className="h-full p-6">
+            <div className="h-full md:p-6 p-1 pt-4">
               <ClientValidityCard
                 clientId={client._id}
                 onChanged={() => {
@@ -1199,7 +1303,8 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                 <div>
                   <h3 className="text-lg font-medium">Reset Password</h3>
                   <p className="text-sm text-muted-foreground">
-                    Set a new password for {client.contactName}. They will be notified of this change.
+                    Set a new password for {client.contactName}. They will be
+                    notified of this change.
                   </p>
                 </div>
 
@@ -1220,7 +1325,11 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                         onClick={() => setEyeOpenPassword((prev) => !prev)}
                         className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
                       >
-                        {eyeOpenPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {eyeOpenPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1230,7 +1339,9 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                     disabled={isSubmittingPassword || !newPassword.trim()}
                     className="w-full"
                   >
-                    {isSubmittingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmittingPassword && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Reset Password
                   </Button>
                 </div>
@@ -1238,7 +1349,6 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
             </div>
           </TabsContent>
         </Tabs>
-
       </div>
     );
   }
@@ -1252,13 +1362,15 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
         onSelect={(e) => e.preventDefault()}
         onKeyDown={(e) => {
           // Prevent form selection on Tab key
-          if (e.key === 'Tab') {
+          if (e.key === "Tab") {
             e.preventDefault();
             // Find next focusable element
             const focusableElements = document.querySelectorAll(
               'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
             );
-            const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+            const currentIndex = Array.from(focusableElements).indexOf(
+              document.activeElement as Element
+            );
             const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
             if (nextIndex >= 0 && nextIndex < focusableElements.length) {
               (focusableElements[nextIndex] as HTMLElement).focus();
