@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react"; 
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +13,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import ReCAPTCHA from "react-google-recaptcha";
+import { useTheme } from "next-themes";
 import { loginMasterAdmin } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentUser } from "@/lib/auth";  
+import { getCurrentUser } from "@/lib/auth";
 import {getCurrentUserNew as getSession, saveSession, scheduleAutoLogout } from "@/lib/authSession";
 
 
@@ -23,10 +25,12 @@ import {getCurrentUserNew as getSession, saveSession, scheduleAutoLogout } from 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
   const [loginType, setLoginType] = React.useState<"admin" | "customer">(
     "admin"
   );
@@ -51,10 +55,18 @@ export default function LoginPage() {
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!captchaToken) {
+      toast({
+        variant: "destructive",
+        title: "reCAPTCHA Required",
+        description: "Please complete the reCAPTCHA verification.",
+      });
+      return;
+    }
     setIsLoading(true);
 
     try {
-      const user = await loginMasterAdmin(username, password);
+      const user = await loginMasterAdmin(username, password, captchaToken);
       // if (user) {
       //   router.push("/admin/dashboard");
       //   toast({
@@ -155,10 +167,18 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+            <div className="flex justify-center">
+              <ReCAPTCHA
+                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                theme={theme === "dark" ? "dark" : "light"}
+                onChange={(token: React.SetStateAction<string | null>) => setCaptchaToken(token)}
+                onExpired={() => setCaptchaToken(null)}
+              />
+            </div>
             <Button
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !captchaToken}
             >
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
