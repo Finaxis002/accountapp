@@ -314,6 +314,7 @@ export default function InventoryPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Product</TableHead>
+                <TableHead>Unit</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Created At</TableHead>
                 {role !== "user" && (
@@ -329,6 +330,9 @@ export default function InventoryPage() {
                       <Package className="h-4 w-4 text-muted-foreground" />
                       {p.name}
                     </div>
+                  </TableCell>
+                   <TableCell>
+                    <span className="font-bold text-sm">{p.unit ?? "Piece"}</span>
                   </TableCell>
                   <TableCell>
                     <span className="font-bold text-lg">{p.stocks ?? 0}</span>

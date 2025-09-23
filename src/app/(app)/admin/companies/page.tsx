@@ -52,145 +52,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-
-function MobileCompanyCard({
-  company,
-  onEdit,
-  onDelete,
-  getClientInfo,
-}: {
-  company: Company;
-  onEdit: (c: Company) => void;
-  onDelete: (c: Company) => void;
-  getClientInfo: (c: any) => { name: string; email?: string };
-}) {
-  const { name, email } = getClientInfo(
-    company.selectedClient || (company as any).client
-  );
-
-  const [open, setOpen] = React.useState(false);
-
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader className="p-4 pb-2 bg-gray-200">
-        {/* TOP: essential info only */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <CardTitle className="text-base leading-tight truncate">
-              {company?.businessName || "—"}
-            </CardTitle>
-            <CardDescription className="mt-1 text-xs">
-              {company?.businessType || "—"}
-            </CardDescription>
-
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {/* Client name */}
-              <span className="text-[11px] px-2 py-0.5 rounded bg-secondary">
-                {name || "N/A"}
-              </span>
-              {/* Phone (if available) */}
-              {company?.mobileNumber ? (
-                <span className="text-[11px] px-2 py-0.5 rounded bg-secondary">
-                  {company.mobileNumber}
-                </span>
-              ) : null}
-              {/* GST (show only if present) */}
-              {company?.gstin ? (
-                <span className="text-[11px] px-2 py-0.5 rounded bg-secondary">
-                  GST: {company.gstin}
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Toggle more/less */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            aria-expanded={open}
-            onClick={() => setOpen((p) => !p)}
-            aria-label={open ? "Hide details" : "Show details"}
-            title={open ? "Hide details" : "Show details"}
-          >
-            {open ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="m18 15-6-6-6 6" />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            )}
-          </Button>
-        </div>
-      </CardHeader>
-
-      {/* COLLAPSIBLE DETAILS */}
-      <CardContent
-        className={`px-4  bg-gray-300 pb-4 pt-2 transition-[grid-template-rows] duration-200 ${
-          open ? "grid grid-rows-[1fr]" : "grid grid-rows-[0fr]"
-        }`}
-      >
-        <div className="overflow-hidden">
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Registration No.</span>
-              <span className="font-mono text-xs bg-secondary px-2 py-0.5 rounded">
-                {company?.registrationNumber || "—"}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Client Email</span>
-              <span className="truncate max-w-[55%] text-right">
-                {email || "—"}
-              </span>
-            </div>
-
-            {/* Actions inside the expanded section */}
-            <div className="pt-1 flex items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onEdit(company)}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => onDelete(company)}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { Badge } from "@/components/ui/badge";
 
 export default function AdminCompaniesPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL as string;
@@ -233,7 +95,7 @@ export default function AdminCompaniesPage() {
       const companiesData = await companiesRes.json();
       const clientsData = await clientsRes.json();
 
-      setCompanies(companiesData);
+      setCompanies(companiesData.reverse());
       setClients(clientsData);
     } catch (error) {
       toast({
@@ -396,7 +258,7 @@ export default function AdminCompaniesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-4xl  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
+        <DialogContent className="md:max-w-4xl max-w-sm  grid-rows-[auto,1fr,auto] max-h-[90vh] p-0">
           <DialogHeader className="p-6">
             <DialogTitle>
               {selectedCompany ? "Edit Company" : "Create New Company"}
@@ -441,21 +303,6 @@ export default function AdminCompaniesPage() {
           </div>
         ) : companies.length > 0 ? (
           <>
-            {/* 📱 Mobile (< sm): always show the compact card with down-arrow */}
-            <div className="sm:hidden space-y-4">
-              {companies.map((company) => (
-                <MobileCompanyCard
-                  key={company._id}
-                  company={company}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  getClientInfo={(c: any) =>
-                    getClientInfo((c as any) || (company as any).client)
-                  }
-                />
-              ))}
-            </div>
-
             {/* 💻 sm aur upar: card/list toggle follow kare */}
             <div className="hidden sm:block">
               {viewMode === "card" ? (
@@ -557,6 +404,131 @@ export default function AdminCompaniesPage() {
                   </CardContent>
                 </Card>
               )}
+            </div>
+
+            {/* 📱 Mobile view */}
+            <div className="sm:hidden space-y-4 pt-4">
+              {companies.map((company) => {
+                const clientInfo = getClientInfo(
+                  company.selectedClient || company.client
+                );
+
+                return (
+                  <Card key={company._id} className="overflow-hidden">
+                    <CardContent className="p-0">
+                      {/* Header Section */}
+                      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-4 border-b">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-lg truncate text-gray-900 dark:text-white">
+                              {company.businessName}
+                            </h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {company.businessType}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="secondary"
+                            className="flex-shrink-0 ml-2"
+                          >
+                            Client
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Company Details */}
+                      <div className="p-4 space-y-3">
+                        {/* Assigned Client */}
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 flex-shrink-0 mt-0.5">
+                            <User className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              Assigned Client
+                            </p>
+                            <p className="text-sm font-medium truncate dark:text-white">
+                              {clientInfo.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {clientInfo.email}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Contact Info */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50 flex-shrink-0">
+                            <Phone className="h-3 w-3 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              Contact
+                            </p>
+                            <p className="text-sm font-medium dark:text-white">
+                              {company.mobileNumber}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Identifiers - Horizontal Layout */}
+                        <div className="flex gap-2 items-start">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50 flex-shrink-0">
+                                <Hash className="h-2.5 w-2.5 text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                Registration
+                              </p>
+                            </div>
+                            <p className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded truncate w-full">
+                              {company.registrationNumber}
+                            </p>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50 flex-shrink-0">
+                                <FileTextIcon className="h-2.5 w-2.5 text-orange-600 dark:text-orange-400" />
+                              </div>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                GSTIN
+                              </p>
+                            </div>
+                            <p className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded truncate w-full">
+                              {company.gstin || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions Footer */}
+                      <div className="border-t bg-gray-50 dark:bg-gray-800/50 p-3">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(company)}
+                            className=" flex items-center justify-center gap-1 text-xs py-2"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            onClick={() => handleDelete(company)}
+                            className="flex items-center justify-center gap-1 text-xs py-2 bg-red-900 hover:bg-red-800 text-white"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </>
         ) : (

@@ -47,7 +47,7 @@ export default function AnalyticsDashboardPage() {
   const [clients, setClients] = React.useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = React.useState<string>("");
   const [isClientsLoading, setIsClientsLoading] = React.useState(true);
-  const [tabValue, setTabValue] = React.useState("dashboard"); 
+  const [tabValue, setTabValue] = React.useState("dashboard");
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = React.useState<string>("");
   const [isCompaniesLoading, setIsCompaniesLoading] = React.useState(false);
@@ -183,7 +183,7 @@ export default function AnalyticsDashboardPage() {
             Select a client and company to view their detailed dashboard.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex md:flex-row flex-col items-center text-start gap-4">
           {isClientsLoading ? (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -197,7 +197,7 @@ export default function AnalyticsDashboardPage() {
               placeholder="Select a client..."
               searchPlaceholder="Search clients..."
               noResultsText="No clients found."
-              className="w-[250px]"
+              className="w-[40vh] md:w-auto"
             />
           )}
           {selectedClientId &&
@@ -215,7 +215,7 @@ export default function AnalyticsDashboardPage() {
                   placeholder="Select a company..."
                   searchPlaceholder="Search companies..."
                   noResultsText="No companies found."
-                  className="w-[250px]"
+                  className="w-[40vh] md:w-auto"
                 />
               )
             ))}
@@ -232,9 +232,9 @@ export default function AnalyticsDashboardPage() {
         </Card>
       )}
 
-{selectedClient && (
-  <Tabs value={tabValue} onValueChange={setTabValue}>
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
+      {selectedClient && (
+        <Tabs value={tabValue} onValueChange={setTabValue}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
             {/* Tabs - scrollable on mobile */}
             <div className="overflow-x-auto pb-2 sm:block">
               <TabsList className="hidden sm:flex w-max space-x-1 flex-wrap sm:flex-nowrap">
@@ -300,50 +300,63 @@ export default function AnalyticsDashboardPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TabsList>
-             {/* Mobile Tabs Dropdown */}
-<div className="flex sm:hidden">
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button
-        variant="outline"
-        size="sm"
-        className="flex items-center gap-1 w-full justify-between"
-      >
-      <List className="mr-2 h-2w-4"/>
-        <span>Select Section</span>
-        <ChevronDown className="h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent className="w-48">
-      <DropdownMenuItem onClick={() => setTabValue("dashboard")}>
-        <LayoutGrid className="mr-2 h-4 w-4" />
-        Dashboard
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => setTabValue("transactions")}>
-        <ArrowRightLeft className="mr-2 h-4 w-4" />
-        Transactions
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => setTabValue("companies")}>
-         <Building className="mr-2 h-4 w-4" />
-        Companies
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => setTabValue("users")}>
-        <Users className="mr-2 h-4 w-4" />
-        Users
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => setTabValue("profitandloss")}>
-        <BarChart  className="mr-2 h-4 w-4" />
-        Profit & Loss
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => setTabValue("balancesheet")}>
-          <FileText  className="mr-2 h-4 w-4" />
-        Balance Sheet
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-</div>
+              {/* Mobile Tabs Dropdown */}
+              <div className="flex sm:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1 w-full justify-between"
+                    >
+                      <List className="mr-2 h-4 w-4" />
+                      <span>
+                        {tabValue === "dashboard" && "Dashboard"}
+                        {tabValue === "transactions" && "Transactions"}
+                        {tabValue === "companies" && "Companies"}
+                        {tabValue === "users" && "Users"}
+                        {tabValue === "profitandloss" && "Profit & Loss"}
+                        {tabValue === "balancesheet" && "Balance Sheet"}
+                      </span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-48">
+                    <DropdownMenuItem onClick={() => setTabValue("dashboard")}>
+                      <LayoutGrid className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setTabValue("transactions")}
+                    >
+                      <ArrowRightLeft className="mr-2 h-4 w-4" />
+                      Transactions
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTabValue("companies")}>
+                      <Building className="mr-2 h-4 w-4" />
+                      Companies
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTabValue("users")}>
+                      <Users className="mr-2 h-4 w-4" />
+                      Users
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setTabValue("profitandloss")}
+                    >
+                      <BarChart className="mr-2 h-4 w-4" />
+                      Profit & Loss
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setTabValue("balancesheet")}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Balance Sheet
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-                 
+
             {/* Action buttons - stacked on mobile */}
             {/* <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
               <Button variant="outline" size="sm" className="w-full sm:w-auto">

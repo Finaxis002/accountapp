@@ -202,48 +202,112 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
                         <p className="text-muted-foreground text-center py-8">No companies found for this client.</p>
                     )}
 
-                    {/* Mobile View - Card View */}
-                    <div className="sm:hidden">
-                        {companies.map(company => (
-                            <div key={company._id} className="p-4 mb-4 border border-gray-300 rounded-lg shadow-sm">
-                                <div className="flex justify-between">
-                                    <div>
-                                        <div className="font-semibold">{company.businessName}</div>
-                                        <div className="text-xs text-muted-foreground">{company.businessType}</div>
-                                    </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onClick={() => handleEdit(company)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                                <div className="text-sm">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Phone className="h-4 w-4 text-muted-foreground"/>
-                                        <span>{company.mobileNumber}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Mail className="h-4 w-4 text-muted-foreground"/>
-                                        <span>{company.emailId || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Hash className="h-4 w-4 text-muted-foreground"/>
-                                        <span className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                                            {company.registrationNumber}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-muted-foreground"/>
-                                        <span className="font-mono bg-green-500/10 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
-                                            {company.gstin || 'N/A'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                   <div className='sm:hidden space-y-4'>
+  {companies.map(company => (
+    <div key={company._id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 p-4">
+      
+      {/* Header Section */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+            {company.businessName}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {company.businessType}
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => handleEdit(company)}>
+              <Edit className="mr-2 h-4 w-4" /> 
+              Edit Company
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleDelete(company)} 
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> 
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Contact Information */}
+      <div className="space-y-2 mb-3">
+        <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-[80px]">
+            <Phone className="h-4 w-4" />
+            <span>Phone:</span>
+          </div>
+          <span className="text-gray-900 dark:text-white font-medium">
+            {company.mobileNumber}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-[80px]">
+            <Mail className="h-4 w-4" />
+            <span>Email:</span>
+          </div>
+          <span className="text-gray-900 dark:text-white truncate">
+            {company.emailId || 'N/A'}
+          </span>
+        </div>
+      </div>
+
+      {/* Identifiers */}
+      <div className="space-y-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-[80px]">
+            <Hash className="h-4 w-4" />
+            <span>Reg No:</span>
+          </div>
+          <span className="font-mono bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-md text-xs">
+            {company.registrationNumber}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-[80px]">
+            <FileText className="h-4 w-4" />
+            <span>GSTIN:</span>
+          </div>
+          <span className="font-mono bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-md text-xs">
+            {company.gstin || 'N/A'}
+          </span>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-gray-800 mt-3">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex-1 h-9 text-xs"
+          onClick={() => handleEdit(company)}
+        >
+          <Edit className="h-3.5 w-3.5 mr-1" />
+          Edit
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="flex-1 h-9 text-xs dark:bg-gray-700 text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+          onClick={() => handleDelete(company)}
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          Delete
+        </Button>
+      </div>
+    </div>
+  ))}
+</div>
                 </CardContent>
             </Card>
 

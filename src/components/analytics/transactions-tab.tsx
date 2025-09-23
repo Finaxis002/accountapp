@@ -507,7 +507,7 @@ const handleTabChange = (tab: string) => {
             </TabsList>
           </div>
 <div className="block sm:hidden">
-  <div className="flex items-center justify-between px-3 py-2 bg-white border-b">
+  <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 border-b">
    
     <div
       className="flex items-center"
@@ -517,49 +517,49 @@ const handleTabChange = (tab: string) => {
       <ChevronDown className="ml-2 text-sm" />
     </div>
 
-    {/* Dropdown Menu */}
-    {isDropdownOpen && (
-      <div className="absolute bg-white shadow-lg rounded mt-2 w-40 z-10">
-        <ul className="space-y-2 p-2">
-          <li
-            className="cursor-pointer hover:bg-gray-200 p-2 rounded"
-            onClick={() => handleTabChange("all")}
-          >
-            All
-          </li>
-          <li
-            className="cursor-pointer hover:bg-gray-200 p-2 rounded"
-            onClick={() => handleTabChange("sales")}
-          >
-            Sales
-          </li>
-          <li
-            className="cursor-pointer hover:bg-gray-200 p-2 rounded"
-            onClick={() => handleTabChange("purchases")}
-          >
-            Purchases
-          </li>
-          <li
-            className="cursor-pointer hover:bg-gray-200 p-2 rounded"
-            onClick={() => handleTabChange("receipts")}
-          >
-            Receipts
-          </li>
-          <li
-            className="cursor-pointer hover:bg-gray-200 p-2 rounded"
-            onClick={() => handleTabChange("payments")}
-          >
-            Payments
-          </li>
-          <li
-            className="cursor-pointer hover:bg-gray-200 p-2 rounded"
-            onClick={() => handleTabChange("journals")}
-          >
-            Journals
-          </li>
-        </ul>
-      </div>
-    )}
+   {/* Dropdown Menu */}
+{isDropdownOpen && (
+  <div className="absolute bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg mt-2 w-48 z-10 border border-gray-200 dark:border-gray-700">
+    <ul className="space-y-1 p-2">
+      <li
+        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+        onClick={() => handleTabChange("all")}
+      >
+        All
+      </li>
+      <li
+        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+        onClick={() => handleTabChange("sales")}
+      >
+        Sales
+      </li>
+      <li
+        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+        onClick={() => handleTabChange("purchases")}
+      >
+        Purchases
+      </li>
+      <li
+        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+        onClick={() => handleTabChange("receipts")}
+      >
+        Receipts
+      </li>
+      <li
+        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+        onClick={() => handleTabChange("payments")}
+      >
+        Payments
+      </li>
+      <li
+        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+        onClick={() => handleTabChange("journals")}
+      >
+        Journals
+      </li>
+    </ul>
+  </div>
+)}
   </div>
 </div>
 
