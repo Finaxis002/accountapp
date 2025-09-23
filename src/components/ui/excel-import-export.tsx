@@ -1,9 +1,17 @@
 "use client";
 
 import * as React from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload, CheckCircle, FileText } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Download, Upload, FileText, CheckCircle, X } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface ExcelImportExportProps {
@@ -27,6 +35,7 @@ export function ExcelImportExport({
   const [importFile, setImportFile] = React.useState<File | null>(null);
   const [importPreview, setImportPreview] = React.useState<any[]>([]);
   const [isImporting, setIsImporting] = React.useState(false);
+   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Function to download an empty Excel template
   const handleDownloadTemplate = () => {
@@ -154,9 +163,11 @@ export function ExcelImportExport({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 sm:gap-3 items-start sm:items-center">
+    <>
+    {/* Desktop View  */}
+    <div className=" hidden md:flex flex-col sm:flex-row gap-3 sm:gap-3 items-start sm:items-center">
       {/* Left Group: Download + Import */}
-      <div className="flex xs:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+      <div className="flex xs:flex-row gap-4 sm:gap-3 w-full sm:w-auto">
         <Button
           onClick={handleDownloadTemplate}
           variant="outline"
@@ -218,5 +229,123 @@ export function ExcelImportExport({
         </div>
       )}
     </div>
+
+    {/* Mobile View - Icon Button with Dialog */}
+      <div className="sm:hidden">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 w-10 p-0 rounded-full"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-center">Import/Export</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Download Template Section */}
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm">Download Template</h3>
+                <Button
+                  onClick={handleDownloadTemplate}
+                  variant="outline"
+                  className="w-full justify-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Excel Template
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Download the template file to fill in your data
+                </p>
+              </div>
+
+              {/* Import Section */}
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm">Import Data</h3>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  className="hidden"
+                  id="mobile-import-file"
+                  onChange={(e) => {
+                    handleImportFile(e);
+                    // Keep dialog open after file selection
+                  }}
+                />
+                <label
+                  htmlFor="mobile-import-file"
+                  className="inline-flex items-center gap-2 cursor-pointer bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-medium py-2 px-4 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors w-full justify-center"
+                >
+                  <Upload className="h-4 w-4" />
+                  Choose Excel File
+                </label>
+              </div>
+
+              {/* File Preview in Dialog */}
+              {importFile && (
+                <div className="space-y-3 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-green-800 dark:text-green-300 truncate">
+                        {importFile.name}
+                      </p>
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        {Math.round(importFile.size / 1024)} KB
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        handleConfirmImport();
+                        setIsDialogOpen(false);
+                      }}
+                      disabled={isImporting}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
+                    >
+                      {isImporting ? (
+                        <div className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent" />
+                      ) : (
+                        <CheckCircle className="h-3 w-3" />
+                      )}
+                      Confirm Import
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelImport}
+                      disabled={isImporting}
+                      className="px-3"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Close Button */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="mt-2"
+              >
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+    </>
+
+
   );
 }

@@ -820,7 +820,7 @@ export default function InventoryPage() {
             </div>
 
             {/* Buttons Section */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-3 items-start sm:items-center">
+            <div className="flex  sm:flex-row gap-3 sm:gap-3 items-start sm:items-center">
               <ExcelImportExport
                 templateData={[{ "Item Name": "", Stock: "", Unit: "" }]}
                 templateFileName="product_template.xlsx"
