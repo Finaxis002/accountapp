@@ -679,10 +679,7 @@ export function VendorSettings() {
                       <p className="text-sm text-muted-foreground mb-6 max-w-md">
                         You can create vendors, but viewing existing vendor details requires additional permissions.
                       </p>
-                      <Button onClick={() => handleOpenForm()}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Create New Vendor
-                      </Button>
+                      
                     </div>
                   </div>
                 </div>
