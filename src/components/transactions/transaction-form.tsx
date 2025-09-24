@@ -716,6 +716,7 @@ export function TransactionForm({
         const res = await fetch(`${baseURL}/api/units`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log("units fetched :", res)
         if (res.ok) {
           const units = await res.json();
           setExistingUnits(units);
@@ -1486,16 +1487,18 @@ export function TransactionForm({
           }
         }
 
-        const inv = data?.entry?.invoiceNumber;
-        toast({
-          title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
-          description: inv
-            ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
-            : `Your ${values.type} entry has been recorded.`,
-        });
-
-        onFormSubmit();
       }
+
+      // Success toast and form close for all transactions
+      const inv = values.type === "sales" ? data?.entry?.invoiceNumber : undefined;
+      toast({
+        title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
+        description: inv
+          ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
+          : `Your ${values.type} entry has been recorded.`,
+      });
+
+      onFormSubmit();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -2167,11 +2170,17 @@ export function TransactionForm({
                                     aria-expanded={unitOpen}
                                     className="w-full h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 justify-between"
                                   >
-                                    {field.value
-                                      ? field.value === "Other"
-                                        ? "Other (Custom)"
-                                        : field.value
-                                      : "Select unit..."}
+                                    {(() => {
+                                      const otherUnit = form.watch(`items.${index}.otherUnit`);
+                                      if (field.value === "Other" && otherUnit) {
+                                        return otherUnit;
+                                      }
+                                      return field.value
+                                        ? field.value === "Other"
+                                          ? "Other (Custom)"
+                                          : field.value
+                                        : "Select unit...";
+                                    })()}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                   </Button>
                                 </FormControl>
@@ -2182,146 +2191,29 @@ export function TransactionForm({
                                   <CommandList>
                                     <CommandEmpty>No unit found.</CommandEmpty>
                                     <CommandGroup>
-                                      <CommandItem
-                                        value="Piece"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Piece"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Piece"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Piece
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Kg"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Kg"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Kg"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Kg
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Litre"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Litre"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Litre"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Litre
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Box"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Box"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Box"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Box
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Meter"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Meter"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Meter"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Meter
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Dozen"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Dozen"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Dozen"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Dozen
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Pack"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Pack"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Pack"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Pack
-                                      </CommandItem>
+                                      {unitTypes.filter(u => u !== "Other").map((unit) => (
+                                        <CommandItem
+                                          key={unit}
+                                          value={unit}
+                                          onSelect={() => {
+                                            form.setValue(
+                                              `items.${index}.unitType`,
+                                              unit
+                                            );
+                                            setUnitOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              field.value === unit
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            )}
+                                          />
+                                          {unit}
+                                        </CommandItem>
+                                      ))}
                                       {existingUnits.map((unit) => (
                                         <CommandItem
                                           key={unit._id}
