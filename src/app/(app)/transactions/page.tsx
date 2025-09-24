@@ -410,7 +410,7 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCompanyId, toast, baseURL]);
+  }, [selectedCompanyId, toast, baseURL, canSales, canPurchases, canReceipt, canPayment, canJournal]);
 
   const productNameById = React.useMemo(() => {
     const m = new Map<string, string>();
