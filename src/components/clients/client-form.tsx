@@ -705,7 +705,6 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="contents"
-                onSelect={(e) => e.preventDefault()}
                 onKeyDown={(e) => {
                   // Prevent form selection on Tab key
                   if (e.key === "Tab") {
@@ -1359,7 +1358,6 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="contents"
-        onSelect={(e) => e.preventDefault()}
         onKeyDown={(e) => {
           // Prevent form selection on Tab key
           if (e.key === "Tab") {
