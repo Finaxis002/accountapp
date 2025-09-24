@@ -588,7 +588,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     {children}
                   </main>
                 </div>
-                {showSupportIcon && <FloatingSupportIcon />}
+                {showSupportIcon &&  pathname === "/profile" && <FloatingSupportIcon />}
               </div>
             </SidebarProvider>
           </SupportProvider>
