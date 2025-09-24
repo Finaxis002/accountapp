@@ -1397,6 +1397,7 @@ export function TransactionForm({
             });
           }
 
+
           // Send WhatsApp message if party has contact number
           // if (partyDoc?.contactNumber) {
           //   try {
@@ -1418,6 +1419,7 @@ export function TransactionForm({
           //   }
           // }
           // Send WhatsApp message if party has contact number
+
 
           if (partyDoc?.contactNumber) {
             try {
@@ -1452,6 +1454,7 @@ export function TransactionForm({
                 });
               }
 
+
               // Add service items
               if (serviceLines.length > 0) {
                 serviceLines.forEach((item) => {
@@ -1466,11 +1469,14 @@ export function TransactionForm({
               }
 
               // await axios.post('http://localhost:8745/send-whatsapp', {
+
               await axios.post("/send-whatsapp", {
                 phoneNumber: partyDoc.contactNumber,
                 transactionDetails: invoiceDetails,
                 messageType: "detailed_invoice",
               });
+
+
 
               toast({
                 title: "WhatsApp message sent",
@@ -3211,6 +3217,7 @@ export function TransactionForm({
                           disabled={!!transactionToEdit}
                         >
                           Sales
+
                         </SelectItem>
                       )}
                       {canPurchases && (
@@ -3221,6 +3228,7 @@ export function TransactionForm({
                           Purchases
                         </SelectItem>
                       )}
+
                       {canReceipt && (
                         <SelectItem
                           value="receipt"
@@ -3263,6 +3271,7 @@ export function TransactionForm({
                         <TabsTrigger
                           value="sales"
                           disabled={!!transactionToEdit}
+
                         >
                           Sales
                         </TabsTrigger>
@@ -3296,6 +3305,7 @@ export function TransactionForm({
                           value="journal"
                           disabled={!!transactionToEdit}
                         >
+
                           Journal
                         </TabsTrigger>
                       )}
@@ -3348,14 +3358,18 @@ export function TransactionForm({
                             name="date"
                             render={({ field }) => (
                               <FormItem className="flex flex-col">
+
                                  <FormLabel className="mb-2">Transaction Date</FormLabel>
+
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <FormControl>
                                       <Button
                                         variant={"outline"}
                                         className={cn(
+
                                           "w-full px-3 py-2 h-10 text-left font-normal",
+
                                           !field.value &&
                                             "text-muted-foreground"
                                         )}
