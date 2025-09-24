@@ -1396,6 +1396,30 @@ export function TransactionForm({
             });
           }
 
+
+          // Send WhatsApp message if party has contact number
+          // if (partyDoc?.contactNumber) {
+          //   try {
+          //     await axios.post('http://localhost:8745/send-whatsapp', {
+          //       phoneNumber: partyDoc.contactNumber,
+          //       message: "your invoice is generated"
+          //     });
+          //     toast({
+          //       title: "WhatsApp message sent",
+          //       description: `Sent to ${partyDoc.contactNumber}`,
+          //     });
+          //   } catch (error) {
+          //     console.error('Error sending WhatsApp message:', error);
+          //     toast({
+          //       variant: "destructive",
+          //       title: "WhatsApp message failed",
+          //       description: "Failed to send WhatsApp message.",
+          //     });
+          //   }
+          // }
+          // Send WhatsApp message if party has contact number
+
+
           if (partyDoc?.contactNumber) {
             try {
               // Prepare detailed invoice message
@@ -1429,6 +1453,7 @@ export function TransactionForm({
                 });
               }
 
+
               // Add service items
               if (serviceLines.length > 0) {
                 serviceLines.forEach((item) => {
@@ -1442,25 +1467,14 @@ export function TransactionForm({
                 });
               }
 
+              // await axios.post('http://localhost:8745/send-whatsapp', {
 
-    // Add service items
-    if (serviceLines.length > 0) {
-      serviceLines.forEach(item => {
-        const service = services.find(s => s._id === item.service);
-        invoiceDetails.items.push({
-          name: service?.serviceName || "Service",
-          quantity: 1,
-          price: item.amount,
-          amount: item.amount
-        });
-      });
-    }
-                // await axios.post('http://localhost:8745/send-whatsapp', {
               await axios.post("/send-whatsapp", {
                 phoneNumber: partyDoc.contactNumber,
                 transactionDetails: invoiceDetails,
                 messageType: "detailed_invoice",
               });
+
 
 
               toast({
@@ -1485,6 +1499,7 @@ export function TransactionForm({
             ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
             : `Your ${values.type} entry has been recorded.`,
         });
+
 
         onFormSubmit();
       }
@@ -1880,14 +1895,14 @@ export function TransactionForm({
           name="date"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Transaction Date</FormLabel>
+              <FormLabel className="mb-2">Transaction Date</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
+                        "w-full px-3 py-2 h-10 text-left font-normal",
                         !field.value && "text-muted-foreground"
                       )}
                     >
@@ -1917,6 +1932,7 @@ export function TransactionForm({
           )}
         />
       </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <FormField
         control={form.control}
         name="party"
@@ -1968,10 +1984,10 @@ export function TransactionForm({
         name="paymentMethod"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs">Payment Method</FormLabel>
+            <FormLabel >Payment Method</FormLabel>
             <Select value={field.value} onValueChange={field.onChange}>
               <FormControl>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger >
                   <SelectValue placeholder="Select Payment Method" />
                 </SelectTrigger>
               </FormControl>
@@ -1987,6 +2003,7 @@ export function TransactionForm({
           </FormItem>
         )}
       />
+      </div>
 
       {paymentMethod !== "Cash" && (
         <FormField
@@ -3085,14 +3102,14 @@ export function TransactionForm({
           name="date"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Transaction Date</FormLabel>
+               <FormLabel className="mb-2">Transaction Date</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
+                        "w-full px-3 py-2 h-10 text-left font-normal",
                         !field.value && "text-muted-foreground"
                       )}
                     >
@@ -3309,6 +3326,7 @@ export function TransactionForm({
                           disabled={!!transactionToEdit}
                         >
                           Sales
+
                         </SelectItem>
                       )}
                       {canPurchases && (
@@ -3319,6 +3337,7 @@ export function TransactionForm({
                           Purchases
                         </SelectItem>
                       )}
+
                       {canReceipt && (
                         <SelectItem
                           value="receipt"
@@ -3361,6 +3380,7 @@ export function TransactionForm({
                         <TabsTrigger
                           value="sales"
                           disabled={!!transactionToEdit}
+
                         >
                           Sales
                         </TabsTrigger>
@@ -3394,6 +3414,7 @@ export function TransactionForm({
                           value="journal"
                           disabled={!!transactionToEdit}
                         >
+
                           Journal
                         </TabsTrigger>
                       )}
@@ -3446,14 +3467,18 @@ export function TransactionForm({
                             name="date"
                             render={({ field }) => (
                               <FormItem className="flex flex-col">
-                                <FormLabel>Transaction Date</FormLabel>
+
+                                 <FormLabel className="mb-2">Transaction Date</FormLabel>
+
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <FormControl>
                                       <Button
                                         variant={"outline"}
                                         className={cn(
-                                          "w-full pl-3 text-left font-normal",
+
+                                          "w-full px-3 py-2 h-10 text-left font-normal",
+
                                           !field.value &&
                                             "text-muted-foreground"
                                         )}
