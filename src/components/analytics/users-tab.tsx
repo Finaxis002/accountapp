@@ -293,7 +293,7 @@ export function UsersTab({
         </div>
 
         {/* Actions Section */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+        {/* <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
           <div className="text-xs text-muted-foreground">
             {user.companies?.length || 0} company{(user.companies?.length || 0) !== 1 ? 's' : ''}
           </div>
@@ -319,7 +319,7 @@ export function UsersTab({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </div> */}
       </div>
     );
   })}
@@ -332,7 +332,7 @@ export function UsersTab({
                       <TableHead>User</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Assigned Companies</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      {/* <TableHead className="text-right">Actions</TableHead> */}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -399,7 +399,7 @@ export function UsersTab({
                             </div>
                           </TableCell>
 
-                          <TableCell className="text-right">
+                          {/* <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon">
@@ -421,7 +421,7 @@ export function UsersTab({
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          </TableCell>
+                          </TableCell> */}
                         </TableRow>
                       );
                     })}

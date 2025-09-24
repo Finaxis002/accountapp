@@ -9,7 +9,8 @@ const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 export async function loginMasterAdmin(
   username?: string,
-  password?: string
+  password?: string,
+  captchaToken?: string
 ): Promise<User | null> {
   if (!username || !password)
     throw new Error("Username and password are required.");
@@ -18,7 +19,7 @@ export async function loginMasterAdmin(
     const res = await fetch(`${baseURL}/api/master-admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, captchaToken }),
     });
 
     const data = await res.json();
@@ -158,12 +159,13 @@ export function getCurrentUser():
 export async function loginClientBySlug(
   slug: string,
   clientUsername: string,
-  password: string
+  password: string,
+  captchaToken?: string
 ) {
   const res = await fetch(`${baseURL}/api/clients/${slug}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientUsername, password }),
+    body: JSON.stringify({ clientUsername, password, captchaToken }),
   });
 
   const data = await res.json();
@@ -204,11 +206,11 @@ export async function requestClientOtp(slug: string, clientUsername: string) {
 }
 
 
-export async function loginClientBySlugWithOtp(slug: string, clientUsername: string, otp: string) {
+export async function loginClientBySlugWithOtp(slug: string, clientUsername: string, otp: string, captchaToken?: string) {
   const res = await fetch(`${baseURL}/api/clients/${slug}/login-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientUsername, otp }),
+    body: JSON.stringify({ clientUsername, otp, captchaToken }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "OTP login failed");
@@ -238,11 +240,11 @@ export async function loginClientBySlugWithOtp(slug: string, clientUsername: str
 
 
 // lib/auth.ts
-export async function loginUser(userId: string, password: string) {
+export async function loginUser(userId: string, password: string, captchaToken?: string) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, password }),
+    body: JSON.stringify({ userId, password, captchaToken }),
   });
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));

@@ -312,7 +312,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
             </Card>
 
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-               <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0 overflow-y-auto">
+               <DialogContent className="sm:max-w-4xl p-0 overflow-y-hidden">
                     <DialogHeader className="p-6 ">
                         <DialogTitle>
                             {selectedCompany ? "Edit Company" : "Create New Company"}
