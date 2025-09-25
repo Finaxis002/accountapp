@@ -924,7 +924,7 @@ export function CompanyForm({
                 ) : (
                   <Button
                     type="button"
-                    onClick={() => form.handleSubmit(onSubmit)()}
+                    onClick={form.handleSubmit(onSubmit)}
                     disabled={isSubmitting}
                     className="flex-1 bg-primary hover:bg-primary/90 transition-colors text-sm"
                   >

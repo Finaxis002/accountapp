@@ -192,18 +192,6 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
         </SidebarMenuItem>
       )}
 
-      {/* Companies — show when permission allows */}
-      {permissions && permissions.canCreateCompanies && (
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={isActive("/companies")} tooltip="Companies">
-            <Link href="/companies">
-              <Building />
-              <span>Companies</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      )}
-
       {/* Users — show for admins OR when permission allows */}
       {canSeeUsers && (
         <SidebarMenuItem>
