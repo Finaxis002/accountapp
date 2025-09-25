@@ -1052,6 +1052,67 @@ export function TransactionForm({
   </table>`;
   }
 
+  const handleFormSubmit = form.handleSubmit(async (values) => {
+    await onSubmit(values);
+  });
+
+  const scrollToFirstError = () => {
+    const errors = form.formState.errors;
+
+    // Define the order of fields to check for errors (top to bottom)
+    const fieldOrder = [
+      'company',
+      'date',
+      'party',
+      'paymentMethod',
+      'bank',
+      'items.0.product',
+      'items.0.quantity',
+      'items.0.unitType',
+      'items.0.otherUnit',
+      'items.0.pricePerUnit',
+      'items.0.amount',
+      'items.0.gstPercentage',
+      'items.0.lineTax',
+      'items.0.lineTotal',
+      'items.0.description',
+      'totalAmount',
+      'taxAmount',
+      'invoiceTotal',
+      'referenceNumber',
+      'description',
+      'narration',
+      'fromAccount',
+      'toAccount',
+      'notes'
+    ];
+
+    // Find the first field in order that has an error
+    for (const fieldName of fieldOrder) {
+      if (errors[fieldName as keyof typeof errors]) {
+        let selector = `[name="${fieldName}"]`;
+
+        // Handle array fields like items.0.product
+        if (fieldName.includes('.')) {
+          const parts = fieldName.split('.');
+          if (parts[0] === 'items') {
+            selector = `[name="items.${parts[1]}.${parts[2]}"]`;
+          }
+        }
+
+        const errorElement = document.querySelector(selector) as HTMLElement;
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Focus the field after scrolling
+          setTimeout(() => {
+            errorElement.focus();
+          }, 500);
+          break; // Stop after finding the first error
+        }
+      }
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
@@ -2931,7 +2992,7 @@ export function TransactionForm({
               )}
             />
 
-            <FormField
+            {/* <FormField
               control={form.control}
               name="dontSendInvoice"
               render={({ field }) => (
@@ -2954,7 +3015,7 @@ export function TransactionForm({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
           </div>
         </div>
       )}
@@ -3173,7 +3234,15 @@ export function TransactionForm({
     <>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const isValid = await form.trigger();
+            if (!isValid) {
+              scrollToFirstError();
+              return;
+            }
+            await form.handleSubmit(onSubmit)(e);
+          }}
           className="contents"
           onSelect={(e) => e.preventDefault()}
           onKeyDown={(e) => {

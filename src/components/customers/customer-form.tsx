@@ -49,11 +49,7 @@ const formSchema = z
   .object({
     name: z.string().min(2, "Customer name is required."),
     contactNumber: z.string().optional(),
-    email: z
-      .string()
-      .email("Invalid email address.")
-      .optional()
-      .or(z.literal("")),
+    email: z.string().min(1, "Email is required.").email("Invalid email address."),
     address: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),

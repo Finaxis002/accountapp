@@ -109,8 +109,12 @@ export function Combobox({
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault(); // Prevent form submission
-                if (open && filteredOptions.length > 0) {
-                  handleSelect(filteredOptions[0].value);
+                if (open) {
+                  if (showCreateOption) {
+                    handleCreate();
+                  } else if (filteredOptions.length > 0) {
+                    handleSelect(filteredOptions[0].value);
+                  }
                 }
               }
             }}
