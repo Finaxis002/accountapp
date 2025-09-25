@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PlusCircle, Building, Edit, Trash2, List, LayoutGrid, Loader2, User, Phone, Hash, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CompanyForm } from '@/components/companies/company-form';
-import type { Company } from "@/lib/types";
+import type { Company, Client } from "@/lib/types";
 import { CompanyCard } from '@/components/companies/company-card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import { usePermissions } from '@/contexts/permission-context';
 
 export default function CompaniesPage() {
     const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -24,8 +25,11 @@ export default function CompaniesPage() {
     const [isAlertOpen, setIsAlertOpen] = React.useState(false);
     const [selectedCompany, setSelectedCompany] = React.useState<Company | null>(null);
     const [companyToDelete, setCompanyToDelete] = React.useState<Company | null>(null);
-    const [viewMode, setViewMode] = React.useState<'card' | 'list'>('card');
+    const [viewMode, setViewMode] = React.useState<'card' | 'list'>('list');
+    const [clients, setClients] = React.useState<Client[]>([]);
     const { toast } = useToast();
+    const { permissions } = usePermissions();
+    console.log("Permissions:", permissions);
 
     const fetchCompanies = React.useCallback(async () => {
         setIsLoading(true);
@@ -54,21 +58,45 @@ export default function CompaniesPage() {
         }
     }, [toast]);
 
+    const fetchClient = React.useCallback(async () => {
+        // For clients, we don't need to fetch client data since they can't select clients
+        // Just set empty array
+        setClients([]);
+    }, []);
+
     React.useEffect(() => {
         fetchCompanies();
-    }, [fetchCompanies]);
+        fetchClient();
+    }, [fetchCompanies, fetchClient]);
 
     const handleAddNew = () => {
+        console.log("Add Company button clicked");
         setSelectedCompany(null);
         setIsDialogOpen(true);
     };
 
     const handleEdit = (company: Company) => {
+        if (!permissions?.canUpdateCompanies) {
+            toast({
+                variant: "destructive",
+                title: "Permission denied",
+                description: "You don't have permission to update companies.",
+            });
+            return;
+        }
         setSelectedCompany(company);
         setIsDialogOpen(true);
     };
-    
+
     const handleDelete = (company: Company) => {
+        if (!permissions?.canUpdateCompanies) {
+            toast({
+                variant: "destructive",
+                title: "Permission denied",
+                description: "You don't have permission to delete companies.",
+            });
+            return;
+        }
         setCompanyToDelete(company);
         setIsAlertOpen(true);
     };
@@ -128,22 +156,24 @@ export default function CompaniesPage() {
                             <List className="h-4 w-4" />
                         </Button>
                     </div>
-                    <Button onClick={handleAddNew}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Company
-                    </Button>
+                    {permissions?.canCreateCompanies && (
+                        <Button onClick={() => { console.log("Button onClick triggered"); handleAddNew(); }}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Company
+                        </Button>
+                    )}
                 </div>
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-xl">
+               <DialogContent className="md:max-w-4xl max-w-sm  grid-rows-[auto,1fr,auto] max-h-[90vh] p-4">
                 <DialogHeader>
                     <DialogTitle>{selectedCompany ? 'Edit Company' : 'Add New Company'}</DialogTitle>
                     <DialogDescription>
                     {selectedCompany ? `Update the details for ${selectedCompany.businessName}.` : 'Fill in the form below to add a new company.'}
                     </DialogDescription>
                 </DialogHeader>
-                <CompanyForm company={selectedCompany || undefined} onFormSubmit={onFormSubmit} />
+                <CompanyForm company={selectedCompany || undefined} clients={clients} onFormSubmit={onFormSubmit} />
                 </DialogContent>
             </Dialog>
 
@@ -173,11 +203,11 @@ export default function CompaniesPage() {
                     viewMode === 'card' ? (
                          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {companies.map(company => (
-                               <CompanyCard 
-                                    key={company._id} 
+                               <CompanyCard
+                                    key={company._id}
                                     company={company}
-                                    onEdit={() => handleEdit(company)}
-                                    onDelete={() => handleDelete(company)}
+                                    onEdit={permissions?.canUpdateCompanies ? () => handleEdit(company) : undefined}
+                                    onDelete={permissions?.canUpdateCompanies ? () => handleDelete(company) : undefined}
                                 />
                             ))}
                         </div>
@@ -190,7 +220,9 @@ export default function CompaniesPage() {
                                         <TableHead>Owner & Contact</TableHead>
                                         <TableHead>Registration No.</TableHead>
                                         <TableHead>GSTIN</TableHead>
+                                        {permissions?.canUpdateCompanies && (
                                         <TableHead className="text-right">Actions</TableHead>
+                                        )}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -207,22 +239,22 @@ export default function CompaniesPage() {
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                             {/* <TableCell>
+                                             <TableCell>
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-2">
                                                         <div className="p-1 bg-blue-500/10 rounded-md">
                                                            <User className="h-3 w-3 text-blue-500" />
                                                         </div>
-                                                        <span className="text-sm">{company.companyOwner}</span>
+                                                        <span className="text-sm">{company.emailId}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="p-1 bg-green-500/10 rounded-md">
                                                             <Phone className="h-3 w-3 text-green-500" />
                                                         </div>
-                                                        <span className="text-sm text-muted-foreground">{company.contactNumber}</span>
+                                                        <span className="text-sm text-muted-foreground">{company.mobileNumber}</span>
                                                     </div>
                                                 </div>
-                                            </TableCell> */}
+                                            </TableCell>
                                             <TableCell>
                                                  <div className="flex flex-col gap-1">
                                                     <Badge variant="outline" className="font-mono bg-secondary/50">
@@ -243,21 +275,23 @@ export default function CompaniesPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                 <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent>
-                                                        <DropdownMenuItem onClick={() => handleEdit(company)}>
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive">
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                {permissions?.canUpdateCompanies && (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent>
+                                                            <DropdownMenuItem onClick={() => handleEdit(company)}>
+                                                                <Edit className="mr-2 h-4 w-4" /> Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}

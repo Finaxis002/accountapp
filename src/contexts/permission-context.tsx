@@ -6,14 +6,17 @@ import { useToast } from '@/hooks/use-toast';
 import type { Client } from '@/lib/types';
 import { getCurrentUser } from '@/lib/auth';
 
-type Permissions = Partial<Pick<Client, 
-    'canCreateUsers' | 
+type Permissions = Partial<Pick<Client,
+    'canCreateUsers' |
     'canCreateProducts' |
     'canCreateCustomers' |
     'canCreateVendors' |
-    'canSendInvoiceEmail' | 
-    'canSendInvoiceWhatsapp' | 
-    'maxCompanies' | 
+    'canCreateCompanies' |
+    'canCreateInventory' |
+    'canUpdateCompanies' |
+    'canSendInvoiceEmail' |
+    'canSendInvoiceWhatsapp' |
+    'maxCompanies' |
     'maxUsers' |
     'maxInventories'
 >>;
@@ -58,8 +61,11 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
           setPermissions({
               canCreateUsers: clientData.canCreateUsers,
               canCreateProducts: clientData.canCreateProducts,
-               canCreateCustomers: clientData.canCreateCustomers,
+              canCreateCustomers: clientData.canCreateCustomers,
               canCreateVendors: clientData.canCreateVendors,
+              canCreateCompanies: clientData.canCreateCompanies,
+              canCreateInventory: clientData.canCreateInventory,
+              canUpdateCompanies: clientData.canUpdateCompanies,
               canSendInvoiceEmail: clientData.canSendInvoiceEmail,
               canSendInvoiceWhatsapp: clientData.canSendInvoiceWhatsapp,
           });

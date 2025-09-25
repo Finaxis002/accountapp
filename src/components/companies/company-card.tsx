@@ -30,7 +30,7 @@ interface CompanyCardProps {
   company: Company;
   clientName?: string;
   onEdit?: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 }
 
 export function CompanyCard({
@@ -197,19 +197,22 @@ export function CompanyCard({
           </ScrollArea>
         </CardContent>
         <CardFooter className="mt-auto border-t p-2 flex justify-end gap-1">
-         <Button variant="ghost" size="sm" onClick={() => handleEdit(company)}>
+          {onEdit && (
+            <Button variant="ghost" size="sm" onClick={onEdit}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </Button>
+          )}
 
-            <Edit className="mr-2 h-4 w-4" /> Edit
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={onDelete}
-          >
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </Button>
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          )}
         </CardFooter>
       </Card>
 
