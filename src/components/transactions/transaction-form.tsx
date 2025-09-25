@@ -1871,7 +1871,7 @@ export function TransactionForm({
     );
   }
 
-  // Must have at least one transaction-create permission AND at least one entity-create permission.
+  // Must have at least one transaction-create permission.
   const hasAnyTxnCreate =
     canSales || canPurchases || canReceipt || canPayment || canJournal;
 
@@ -1879,7 +1879,7 @@ export function TransactionForm({
     canCreateCustomer || canCreateVendor || canCreateInventory;
 
   const canOpenForm =
-    isSuper || !!transactionToEdit || (hasAnyTxnCreate && hasAnyEntityCreate);
+    isSuper || !!transactionToEdit || hasAnyTxnCreate;
 
   if (!canOpenForm) {
     return (

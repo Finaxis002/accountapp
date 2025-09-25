@@ -129,10 +129,11 @@ export type Client = {
   canSendInvoiceWhatsapp?: boolean;
   canCreateUsers?: boolean;
   canCreateProducts?: boolean;
-   canCreateCustomers?: boolean;
+  canCreateCustomers?: boolean;
   canCreateVendors?: boolean;
-   canCreateCompanies?: boolean;  // Added
-  canUpdateCompanies?: boolean;    // Added
+  canCreateCompanies?: boolean;
+  canCreateInventory?: boolean;
+  canUpdateCompanies?: boolean;
   slug?:string;
 };
 
