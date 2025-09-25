@@ -1517,7 +1517,16 @@ export function ClientForm({ client, onFormSubmit }: ClientFormProps) {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1 (555) 123-4567" {...field} />
+                      <Input placeholder="+1 (555) 123-4567" {...field} 
+                        {...field}
+          onChange={(e) => {
+            const newPhone = e.target.value.replace(/[^0-9]/g, "");
+            if (newPhone === e.target.value) {
+              field.onChange(newPhone);
+            } else {
+              console.log("Only numeric characters are allowed");
+            }
+          }} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
