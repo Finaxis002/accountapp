@@ -114,12 +114,10 @@ const unitTypes = [
 type UnitType = (typeof unitTypes)[number] | string;
 const STANDARD_GST = 18; // default "Standard"
 const GST_OPTIONS = [
-  { label: "Standard (18%)", value: "18" },
   { label: "0%", value: "0" },
   { label: "5%", value: "5" },
-  { label: "12%", value: "12" },
-
-  { label: "28%", value: "28" },
+  { label: "Standard (18%)", value: "18" },
+  { label: "40%", value: "40" },
 ] as const;
 
 type StockItemInput = { product: string; quantity: number };
@@ -312,6 +310,7 @@ export function TransactionForm({
   const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer"];
   const [existingUnits, setExistingUnits] = React.useState<any[]>([]);
   const [unitOpen, setUnitOpen] = React.useState(false);
+  const [originalQuantities, setOriginalQuantities] = React.useState<Map<string, number>>(new Map());
 
   const { selectedCompanyId } = useCompany();
   const { permissions: userCaps } = useUserPermissions();
@@ -889,6 +888,15 @@ export function TransactionForm({
     }
 
     replace(itemsToSet);
+
+    // Store original quantities for stock updates
+    const origMap = new Map<string, number>();
+    itemsToSet.forEach((item: any) => {
+      if (item.product) {
+        origMap.set(item.product, Number(item.quantity) || 0);
+      }
+    });
+    setOriginalQuantities(origMap);
   }, [transactionToEdit, form, replace]);
 
   React.useEffect(() => {
@@ -900,7 +908,7 @@ export function TransactionForm({
   }, [allowedTypes, transactionToEdit, form]);
 
   // async function updateStock(token: string, items: Item[]) {
-  async function updateStock(token: string, items: StockItemInput[]) {
+  async function updateStock(token: string, items: StockItemInput[], action: "increase" | "decrease" = "decrease") {
     try {
       const res = await fetch(`${baseURL}/api/products/update-stock`, {
         method: "POST",
@@ -908,7 +916,7 @@ export function TransactionForm({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, action }),
       });
       if (!res.ok) {
         const errorData = await res.json();
@@ -1282,15 +1290,52 @@ export function TransactionForm({
         );
       }
 
-      // If it's a sale and was successful, update stock
-      if (values.type === "sales" && productLines.length) {
-        await updateStock(
-          token,
-          productLines.map((p) => ({
+      // Update stock for sales (decrease) and purchases (increase)
+      if ((values.type === "sales" || values.type === "purchases") && productLines.length) {
+        let stockUpdates: { product: string; quantity: number; action: "increase" | "decrease" }[] = [];
+
+        if (transactionToEdit) {
+          // For updates, calculate differences
+          for (const newItem of productLines) {
+            const productId = newItem.product!;
+            const newQty = Number(newItem.quantity) || 0;
+            const oldQty = originalQuantities.get(productId) || 0;
+            const diff = newQty - oldQty;
+
+            if (diff !== 0) {
+              let action: "increase" | "decrease";
+              if (values.type === "sales") {
+                action = diff > 0 ? "decrease" : "increase";
+              } else {
+                action = diff > 0 ? "increase" : "decrease";
+              }
+              stockUpdates.push({
+                product: productId,
+                quantity: Math.abs(diff),
+                action
+              });
+            }
+          }
+        } else {
+          // For new transactions
+          const action = values.type === "sales" ? "decrease" : "increase";
+          stockUpdates = productLines.map((p) => ({
             product: p.product!,
             quantity: Number(p.quantity) || 0,
-          }))
-        );
+            action
+          }));
+        }
+
+        // Group by action and call updateStock
+        const decreaseItems = stockUpdates.filter(u => u.action === "decrease").map(u => ({ product: u.product, quantity: u.quantity }));
+        const increaseItems = stockUpdates.filter(u => u.action === "increase").map(u => ({ product: u.product, quantity: u.quantity }));
+
+        if (decreaseItems.length > 0) {
+          await updateStock(token, decreaseItems, "decrease");
+        }
+        if (increaseItems.length > 0) {
+          await updateStock(token, increaseItems, "increase");
+        }
       }
 
       // 🔽 SEND INVOICE PDF BY EMAIL (Sales only)
@@ -1997,7 +2042,12 @@ export function TransactionForm({
                 // onChange={field.onChange}
                 onChange={(value) => {
                   field.onChange(value);
-                  handlePartyChange(value); // Fetch balance when party is selected
+                  // Only fetch balance for sales and receipt, not for purchases/payment
+                  if (type === "sales" || type === "receipt") {
+                    handlePartyChange(value);
+                  } else {
+                    setBalance(null);
+                  }
                 }}
                 placeholder="Select or create..."
                 searchPlaceholder="Search..."
