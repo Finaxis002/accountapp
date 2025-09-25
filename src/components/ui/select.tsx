@@ -82,6 +82,11 @@ const SelectContent = React.forwardRef<
       )}
       position={position}
       onWheel={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.stopPropagation();
+        }
+      }}
       {...props}
     >
       <SelectScrollUpButton />

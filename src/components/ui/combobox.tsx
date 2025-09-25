@@ -47,18 +47,33 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("");
+  const [filteredOptions, setFilteredOptions] = React.useState(options);
+  const [updateKey, setUpdateKey] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const selectedOption = options.find((option) => option.value === value);
+
+  React.useEffect(() => {
+    setSearchValue(selectedOption?.label || "");
+  }, [value, selectedOption?.label]);
 
   const handleCreate = async () => {
     if (onCreate && searchValue) {
         setOpen(false); // close immediately
         await onCreate(searchValue);
         setSearchValue("");
+        setFilteredOptions(options);
+        setUpdateKey(prev => prev + 1);
     }
   }
 
   const handleInputChange = (text: string) => {
     setSearchValue(text);
+    setFilteredOptions(options.filter(option =>
+      typeof option.label === 'string' &&
+      (text === "" || option.label.toLowerCase().includes(text.toLowerCase()))
+    ));
+    setUpdateKey(prev => prev + 1);
     if (!open) {
       setOpen(true);
     }
@@ -66,7 +81,10 @@ export function Combobox({
 
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);
-    setSearchValue("");
+    const newSelected = options.find((option) => option.value === selectedValue);
+    setSearchValue(newSelected?.label || "");
+    setFilteredOptions(options);
+    setUpdateKey(prev => prev + 1);
     setOpen(false);
   }
 
@@ -76,15 +94,7 @@ export function Combobox({
     }
   }, [open]);
 
-  const filteredOptions = options.filter(option =>
-    typeof option.label === 'string' &&
-    (searchValue === "" || option.label.toLowerCase().includes(searchValue.toLowerCase()))
-  );
-
   const showCreateOption = creatable && searchValue && !filteredOptions.some(opt => opt.label.toLowerCase() === searchValue.toLowerCase());
-
-  const selectedOption = options.find((option) => option.value === value);
-  const displayValue = open ? searchValue : (selectedOption ? selectedOption.label : searchValue);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -93,10 +103,18 @@ export function Combobox({
           <input
             ref={inputRef}
             type="text"
-            value={displayValue}
+            value={searchValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onClick={() => setOpen(true)}
-            placeholder={placeholder}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent form submission
+                if (open && filteredOptions.length > 0) {
+                  handleSelect(filteredOptions[0].value);
+                }
+              }
+            }}
+            placeholder={searchValue ? "" : placeholder}
             disabled={disabled}
             className={cn(
               "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
