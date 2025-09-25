@@ -316,10 +316,7 @@ function SupportPanel(): React.JSX.Element {
                 <span className="font-semibold mr-1">Response Time:</span> 
                 Typically within 24 hours
               </p>
-              <p className="text-xs text-gray-600 flex items-center">
-                <span className="font-semibold mr-1">Emergency:</span> 
-                For urgent issues, please call +91-7999858202
-              </p>
+             
             </div>
           </div>
         </div>

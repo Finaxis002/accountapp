@@ -45,19 +45,56 @@ const gstRegistrationTypes = [
   "Unknown",
 ] as const;
 
+// const formSchema = z
+//   .object({
+//     name: z.string().min(2, "Customer name is required."),
+//     contactNumber: z.string().optional(),
+//     email: z
+//       .string()
+//       .email("Invalid email address.")
+//       .optional()
+//       .or(z.literal("")),
+//     address: z.string().optional(),
+//     city: z.string().optional(),
+//     state: z.string().optional(),
+//     gstin: z.string().optional().or(z.literal("")), // will validate conditionally
+//     gstRegistrationType: z.enum(gstRegistrationTypes).default("Unregistered"),
+//     pan: z
+//       .string()
+//       .length(10, "PAN must be 10 characters.")
+//       .optional()
+//       .or(z.literal("")),
+//     isTDSApplicable: z.boolean().default(false),
+//     tdsRate: z.coerce.number().optional(),
+//     tdsSection: z.string().optional(),
+//   })
+//   .superRefine((data, ctx) => {
+//     const needsGstin = data.gstRegistrationType !== "Unregistered";
+//     if (needsGstin) {
+//       const v = (data.gstin || "").trim();
+//       if (v.length !== 15) {
+//         ctx.addIssue({
+//           code: z.ZodIssueCode.custom,
+//           path: ["gstin"],
+//           message:
+//             "GSTIN must be 15 characters for the selected registration type.",
+//         });
+//       }
+//     }
+//   });
+
 const formSchema = z
   .object({
     name: z.string().min(2, "Customer name is required."),
-    contactNumber: z.string().optional(),
+    contactNumber: z.string().min(1, "Contact number is required."),
     email: z
       .string()
-      .email("Invalid email address.")
-      .optional()
-      .or(z.literal("")),
+      .min(1, "Email address is required.") // ✅ Check for empty first
+      .email("Invalid email address."),    // ✅ Then validate email format
     address: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
-    gstin: z.string().optional().or(z.literal("")), // will validate conditionally
+    gstin: z.string().optional().or(z.literal("")),
     gstRegistrationType: z.enum(gstRegistrationTypes).default("Unregistered"),
     pan: z
       .string()
@@ -76,8 +113,7 @@ const formSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["gstin"],
-          message:
-            "GSTIN must be 15 characters for the selected registration type.",
+          message: "GSTIN must be 15 characters for the selected registration type.",
         });
       }
     }
@@ -238,7 +274,7 @@ export function CustomerForm({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Customer Name</FormLabel>
+                  <FormLabel>Customer Name<span className="text-red-600">*</span></FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. John Doe" {...field} />
                   </FormControl>
@@ -252,7 +288,7 @@ export function CustomerForm({
                 name="contactNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mobile Number / Whatsapp</FormLabel>
+                    <FormLabel>Mobile Number / Whatsapp<span className="text-red-600">*</span></FormLabel>
                     <FormControl>
                       <Input placeholder="e.g. 9876543210" {...field} />
                     </FormControl>
@@ -265,7 +301,7 @@ export function CustomerForm({
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email ID</FormLabel>
+                    <FormLabel>Email ID<span className="text-red-600">*</span></FormLabel>
                     <FormControl>
                       <Input
                         type="email"

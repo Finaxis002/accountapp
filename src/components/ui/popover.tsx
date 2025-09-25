@@ -27,7 +27,7 @@ const PopoverContent = React.forwardRef<
 
     if (deltaY > 10) { // Threshold to detect scrolling
       setIsScrolling(true)
-      e.preventDefault() // Prevent popover from closing
+      e.preventDefault() // This might be causing the focus issue
     }
   }
 
@@ -45,10 +45,13 @@ const PopoverContent = React.forwardRef<
           "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           className
         )}
-        style={{ touchAction: 'auto' }}
+        // Remove or modify these handlers that interfere with focus
         onWheel={(e) => e.stopPropagation()}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
+        onTouchMove={(e) => {
+          handleTouchMove(e)
+          // Don't prevent default here as it interferes with focus
+        }}
         onTouchEnd={handleTouchEnd}
         {...props}
       />
@@ -58,4 +61,3 @@ const PopoverContent = React.forwardRef<
 PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
 export { Popover, PopoverTrigger, PopoverContent }
-

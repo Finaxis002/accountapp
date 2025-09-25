@@ -42,17 +42,18 @@ export function Combobox({
     noResultsText = "No results found.",
     creatable = false,
     onCreate,
-     disabled = false,
+      disabled = false,
     className,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleCreate = async () => {
     if (onCreate && searchValue) {
+        setOpen(false); // close immediately
         await onCreate(searchValue);
         setSearchValue("");
-        setOpen(false);
     }
   }
 
@@ -69,6 +70,12 @@ export function Combobox({
     setOpen(false);
   }
 
+  React.useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
+
   const filteredOptions = options.filter(option =>
     typeof option.label === 'string' &&
     (searchValue === "" || option.label.toLowerCase().includes(searchValue.toLowerCase()))
@@ -77,13 +84,14 @@ export function Combobox({
   const showCreateOption = creatable && searchValue && !filteredOptions.some(opt => opt.label.toLowerCase() === searchValue.toLowerCase());
 
   const selectedOption = options.find((option) => option.value === value);
-  const displayValue = selectedOption ? selectedOption.label : searchValue;
+  const displayValue = open ? searchValue : (selectedOption ? selectedOption.label : searchValue);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className="relative">
           <input
+            ref={inputRef}
             type="text"
             value={displayValue}
             onChange={(e) => handleInputChange(e.target.value)}
@@ -98,13 +106,8 @@ export function Combobox({
           <ChevronsUpDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 pointer-events-none" />
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <Command>
-          <CommandInput
-            placeholder={searchPlaceholder}
-            value={searchValue}
-            onValueChange={handleInputChange}
-          />
           <CommandList>
             <CommandEmpty>
                 {showCreateOption ? (

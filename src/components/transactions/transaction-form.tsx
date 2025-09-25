@@ -716,6 +716,7 @@ export function TransactionForm({
         const res = await fetch(`${baseURL}/api/units`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log("units fetched :", res);
         if (res.ok) {
           const units = await res.json();
           setExistingUnits(units);
@@ -1396,7 +1397,6 @@ export function TransactionForm({
             });
           }
 
-
           // Send WhatsApp message if party has contact number
           // if (partyDoc?.contactNumber) {
           //   try {
@@ -1418,7 +1418,6 @@ export function TransactionForm({
           //   }
           // }
           // Send WhatsApp message if party has contact number
-
 
           if (partyDoc?.contactNumber) {
             try {
@@ -1453,7 +1452,6 @@ export function TransactionForm({
                 });
               }
 
-
               // Add service items
               if (serviceLines.length > 0) {
                 serviceLines.forEach((item) => {
@@ -1475,8 +1473,6 @@ export function TransactionForm({
                 messageType: "detailed_invoice",
               });
 
-
-
               toast({
                 title: "WhatsApp message sent",
                 description: `Invoice details sent to ${partyDoc.contactNumber}`,
@@ -1491,18 +1487,19 @@ export function TransactionForm({
             }
           }
         }
-
-        const inv = data?.entry?.invoiceNumber;
-        toast({
-          title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
-          description: inv
-            ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
-            : `Your ${values.type} entry has been recorded.`,
-        });
-
-
-        onFormSubmit();
       }
+
+      // Success toast and form close for all transactions
+      const inv =
+        values.type === "sales" ? data?.entry?.invoiceNumber : undefined;
+      toast({
+        title: `Transaction ${transactionToEdit ? "Updated" : "Submitted"}!`,
+        description: inv
+          ? `Your ${values.type} entry has been recorded. Invoice #${inv}.`
+          : `Your ${values.type} entry has been recorded.`,
+      });
+
+      onFormSubmit();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -1559,12 +1556,6 @@ export function TransactionForm({
     });
     setIsPartyDialogOpen(false);
   };
-
-  // remaining balance to display live in receipt tab
-  // const remainingAfterReceipt =
-  //   balance != null && type === "receipt"
-  //     ? Math.max(0, Number(balance) - Number(receiptAmountWatch || 0))
-  //     : null;
 
   const handlePartyChange = async (partyId: string) => {
     if (!partyId) return;
@@ -1933,76 +1924,76 @@ export function TransactionForm({
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <FormField
-        control={form.control}
-        name="party"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{partyLabel}</FormLabel>
-            <Combobox
-              options={partyOptions}
-              value={field.value || ""}
-              // onChange={field.onChange}
-              onChange={(value) => {
-                field.onChange(value);
-                handlePartyChange(value); // Fetch balance when party is selected
-              }}
-              placeholder="Select or create..."
-              searchPlaceholder="Search..."
-              noResultsText="No results found."
-              creatable={partyCreatable} // ⬅️ was always true
-              onCreate={async (name) => {
-                if (!partyCreatable) {
-                  toast({
-                    variant: "destructive",
-                    title: "Permission denied",
-                    description:
-                      type === "sales" || type === "receipt"
-                        ? "You don't have permission to create customers."
-                        : "You don't have permission to create vendors.",
-                  });
-                  return ""; // do NOT open dialog
-                }
-                handleTriggerCreateParty(name); // ⬅️ only when allowed
-                return "";
-              }}
-            />
+        <FormField
+          control={form.control}
+          name="party"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{partyLabel}</FormLabel>
+              <Combobox
+                options={partyOptions}
+                value={field.value || ""}
+                // onChange={field.onChange}
+                onChange={(value) => {
+                  field.onChange(value);
+                  handlePartyChange(value); // Fetch balance when party is selected
+                }}
+                placeholder="Select or create..."
+                searchPlaceholder="Search..."
+                noResultsText="No results found."
+                creatable={partyCreatable} // ⬅️ was always true
+                onCreate={async (name) => {
+                  if (!partyCreatable) {
+                    toast({
+                      variant: "destructive",
+                      title: "Permission denied",
+                      description:
+                        type === "sales" || type === "receipt"
+                          ? "You don't have permission to create customers."
+                          : "You don't have permission to create vendors.",
+                    });
+                    return ""; // do NOT open dialog
+                  }
+                  handleTriggerCreateParty(name); // ⬅️ only when allowed
+                  return "";
+                }}
+              />
 
-            <FormMessage />
-            {/* Display balance if available */}
-            {balance != null && balance > 0 && (
-              <div className="text-red-500 text-sm mt-2">
-                Balance: ₹{balance.toFixed(2)}
-              </div>
-            )}
-          </FormItem>
-        )}
-      />
+              <FormMessage />
+              {/* Display balance if available */}
+              {balance != null && balance > 0 && (
+                <div className="text-red-500 text-sm mt-2">
+                  Balance: ₹{balance.toFixed(2)}
+                </div>
+              )}
+            </FormItem>
+          )}
+        />
 
-      <FormField
-        control={form.control}
-        name="paymentMethod"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel >Payment Method</FormLabel>
-            <Select value={field.value} onValueChange={field.onChange}>
-              <FormControl>
-                <SelectTrigger >
-                  <SelectValue placeholder="Select Payment Method" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method} value={method}>
-                    {method}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <FormField
+          control={form.control}
+          name="paymentMethod"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Payment Method</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Payment Method" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {paymentMethods.map((method) => (
+                    <SelectItem key={method} value={method}>
+                      {method}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
       {paymentMethod !== "Cash" && (
@@ -2174,11 +2165,22 @@ export function TransactionForm({
                                     aria-expanded={unitOpen}
                                     className="w-full h-9 text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 justify-between"
                                   >
-                                    {field.value
-                                      ? field.value === "Other"
-                                        ? "Other (Custom)"
-                                        : field.value
-                                      : "Select unit..."}
+                                    {(() => {
+                                      const otherUnit = form.watch(
+                                        `items.${index}.otherUnit`
+                                      );
+                                      if (
+                                        field.value === "Other" &&
+                                        otherUnit
+                                      ) {
+                                        return otherUnit;
+                                      }
+                                      return field.value
+                                        ? field.value === "Other"
+                                          ? "Other (Custom)"
+                                          : field.value
+                                        : "Select unit...";
+                                    })()}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                   </Button>
                                 </FormControl>
@@ -2189,146 +2191,31 @@ export function TransactionForm({
                                   <CommandList>
                                     <CommandEmpty>No unit found.</CommandEmpty>
                                     <CommandGroup>
-                                      <CommandItem
-                                        value="Piece"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Piece"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Piece"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Piece
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Kg"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Kg"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Kg"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Kg
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Litre"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Litre"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Litre"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Litre
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Box"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Box"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Box"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Box
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Meter"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Meter"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Meter"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Meter
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Dozen"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Dozen"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Dozen"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Dozen
-                                      </CommandItem>
-                                      <CommandItem
-                                        value="Pack"
-                                        onSelect={() => {
-                                          form.setValue(
-                                            `items.${index}.unitType`,
-                                            "Pack"
-                                          );
-                                          setUnitOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === "Pack"
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        Pack
-                                      </CommandItem>
+                                      {unitTypes
+                                        .filter((u) => u !== "Other")
+                                        .map((unit) => (
+                                          <CommandItem
+                                            key={unit}
+                                            value={unit}
+                                            onSelect={() => {
+                                              form.setValue(
+                                                `items.${index}.unitType`,
+                                                unit
+                                              );
+                                              setUnitOpen(false);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                field.value === unit
+                                                  ? "opacity-100"
+                                                  : "opacity-0"
+                                              )}
+                                            />
+                                            {unit}
+                                          </CommandItem>
+                                        ))}
                                       {existingUnits.map((unit) => (
                                         <CommandItem
                                           key={unit._id}
@@ -3102,7 +2989,7 @@ export function TransactionForm({
           name="date"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-               <FormLabel className="mb-2">Transaction Date</FormLabel>
+              <FormLabel className="mb-2">Transaction Date</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
@@ -3147,10 +3034,20 @@ export function TransactionForm({
               <Combobox
                 options={partyOptions}
                 value={field.value || ""}
-                // onChange={field.onChange}
+                // onChange={(value) => {
+                //   field.onChange(value);
+                //   handlePartyChange(value); // <-- fetch and setBalance
+                // }}
                 onChange={(value) => {
                   field.onChange(value);
-                  handlePartyChange(value); // <-- fetch and setBalance
+
+                  // Only fetch balance for receipt transactions, not for payments
+                  if (type === "receipt") {
+                    handlePartyChange(value);
+                  } else {
+                    // For payment transactions, reset balance and don't show error
+                    setBalance(null);
+                  }
                 }}
                 placeholder="Select or create..."
                 searchPlaceholder="Search..."
@@ -3326,7 +3223,6 @@ export function TransactionForm({
                           disabled={!!transactionToEdit}
                         >
                           Sales
-
                         </SelectItem>
                       )}
                       {canPurchases && (
@@ -3380,7 +3276,6 @@ export function TransactionForm({
                         <TabsTrigger
                           value="sales"
                           disabled={!!transactionToEdit}
-
                         >
                           Sales
                         </TabsTrigger>
@@ -3414,7 +3309,6 @@ export function TransactionForm({
                           value="journal"
                           disabled={!!transactionToEdit}
                         >
-
                           Journal
                         </TabsTrigger>
                       )}
@@ -3467,8 +3361,9 @@ export function TransactionForm({
                             name="date"
                             render={({ field }) => (
                               <FormItem className="flex flex-col">
-
-                                 <FormLabel className="mb-2">Transaction Date</FormLabel>
+                                <FormLabel className="mb-2">
+                                  Transaction Date
+                                </FormLabel>
 
                                 <Popover>
                                   <PopoverTrigger asChild>
@@ -3476,7 +3371,6 @@ export function TransactionForm({
                                       <Button
                                         variant={"outline"}
                                         className={cn(
-
                                           "w-full px-3 py-2 h-10 text-left font-normal",
 
                                           !field.value &&
