@@ -199,6 +199,11 @@ export function ProductStock() {
     };
 
     setProducts((prev) => [...prev, serviceAsProduct]);
+    setIsAddServiceOpen(false); // close service dialog
+    toast({
+      title: "Service Created!",
+      description: `${newService.serviceName} added.`,
+    });
   };
 
   const filteredProducts = products.filter((p) =>
@@ -317,6 +322,7 @@ export function ProductStock() {
                       <TableRow>
                         <TableHead>Item</TableHead>
                         <TableHead>Stock</TableHead>
+                        <TableHead>Unit</TableHead>
                         {role !== "user" ? (
                           <TableHead className="text-right">Actions</TableHead>
                         ) : null}
@@ -344,6 +350,17 @@ export function ProductStock() {
                             ) : (
                               <span className="font-bold text-lg">
                                 {product.stocks ?? 0}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {product.type === "service" ? (
+                              <span className="text-muted-foreground text-xs">
+                                N/A
+                              </span>
+                            ) : (
+                              <span className="font-bold text-sm">
+                                {product.unit ?? "NA"}
                               </span>
                             )}
                           </TableCell>

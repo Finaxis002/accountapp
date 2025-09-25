@@ -51,9 +51,9 @@ export function Combobox({
 
   const handleCreate = async () => {
     if (onCreate && searchValue) {
+        setOpen(false); // close immediately
         await onCreate(searchValue);
         setSearchValue("");
-        setOpen(false);
     }
   }
 
