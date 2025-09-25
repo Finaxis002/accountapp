@@ -86,11 +86,13 @@ const gstRegistrationTypes = [
 const formSchema = z
   .object({
     name: z.string().min(2, "Customer name is required."),
+
     contactNumber: z.string().min(1, "Contact number is required."),
     email: z
       .string()
       .min(1, "Email address is required.") // ✅ Check for empty first
       .email("Invalid email address."),    // ✅ Then validate email format
+
     address: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
