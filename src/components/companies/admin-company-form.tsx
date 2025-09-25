@@ -449,7 +449,7 @@ export function AdminCompanyForm({
     <>
       <div className="w-full max-w-5xl mx-auto px-4 md:px-8 overflow-y-auto max-h-[80vh] md:block">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4">
             {/* Mobile Stepper - Vertical */}
             <div className="md:hidden flex flex-col space-y-3 pb-2">
               {[
@@ -914,7 +914,8 @@ export function AdminCompanyForm({
                   </Button>
                 ) : (
                   <Button
-                    type="submit"
+                    type="button"
+                    onClick={() => form.handleSubmit(onSubmit)()}
                     disabled={isSubmitting}
                     className="flex-1 bg-primary hover:bg-primary/90 transition-colors text-sm"
                   >
@@ -973,7 +974,8 @@ export function AdminCompanyForm({
                   </Button>
                 ) : (
                   <Button
-                    type="submit"
+                    type="button"
+                    onClick={() => form.handleSubmit(onSubmit)()}
                     disabled={isSubmitting}
                     className="bg-primary hover:bg-primary/90 transition-colors min-w-[10rem]"
                   >

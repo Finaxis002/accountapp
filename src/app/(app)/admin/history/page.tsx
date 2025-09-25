@@ -158,7 +158,7 @@ const HistoryPage = () => {
       setNotifications(apiNotifications);
     } catch (error) {
       console.error("Error fetching notifications", error);
-      setError("No Notifications found for this client");
+      // setError("No Notifications found for this client");
     } finally {
       setNotificationsLoading(false);
     }
