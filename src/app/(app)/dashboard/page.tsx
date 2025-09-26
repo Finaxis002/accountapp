@@ -198,7 +198,10 @@ export default function DashboardPage() {
         0
       );
 
-      const companiesCount = selectedCompanyId ? 1 : companiesData?.length || 0;
+      // const companiesCount = selectedCompanyId ? 1 : companiesData?.length || 0;
+
+
+       const companiesCount = companiesData?.length || 0;
 
       setCompanyData({
         totalSales,
