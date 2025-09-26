@@ -140,6 +140,7 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       "gstin",
       "client",
     ];
+    
     const first = (...vals: any[]) => vals.find(v => {
       if (v === null || v === undefined) return false;
       if (typeof v === "string") return v.trim().length > 0;
@@ -213,13 +214,26 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
         idOf(t.company)
       );
 
-      const partyName = first(
-        nameOf(t.party),
-        t.partyName,
-        t.customerName,
-        t.vendorName,
-        idOf(t.party)
-      );
+      let partyName = "";
+
+if (txType === "purchases" || txType === "payments") {
+  partyName = first(
+    t.vendorName,
+    t.supplierName,
+    nameOf(t.vendor),
+    idOf(t.vendor),
+    " "
+  );
+}else {
+  // For sales, receipts, journals → keep party
+  partyName = first(
+    nameOf(t.party),
+    t.partyName,
+    t.customerName,
+    idOf(t.party),
+    " "
+  );
+}
 
       const gstin = first(
         gstinOf(t.party),
@@ -395,16 +409,24 @@ export function ExportTransactions({ selectedClientId, companyMap, defaultCompan
       const sheetName = (t: TxType) =>
         t.charAt(0).toUpperCase() + t.slice(1);
 
-      chosen.forEach((t) => {
-        const rows = byType[t];
-        if (rows.length === 0) {
-          const ws = XLSX.utils.aoa_to_sheet([HEADERS]);
-          XLSX.utils.book_append_sheet(wb, ws, sheetName(t));
-          return;
-        }
-        const ws = XLSX.utils.json_to_sheet(rows, { header: HEADERS });
-        XLSX.utils.book_append_sheet(wb, ws, sheetName(t));
-      });
+ // ✅ Multi-sheet export per type
+for (const t of chosen) {
+  const rows = byType[t];
+  if (!rows || rows.length === 0) continue;
+
+  const dynamicHeaders = [...HEADERS];
+  if (t === "purchases" || t === "payments") dynamicHeaders[0] = "vendor";
+
+  const finalRows = rows.map(r => {
+    if (t === "purchases" || t === "payments") {
+      return { ...r, vendor: r.party }; // vendor as party
+    }
+    return r;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(finalRows, { header: dynamicHeaders });
+  XLSX.utils.book_append_sheet(wb, ws, sheetName(t)); // sheet name = Sales / Purchases / etc.
+}
 
       const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" });
       const blob = new Blob(
