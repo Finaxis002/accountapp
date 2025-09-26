@@ -32,10 +32,12 @@ export function CompanySwitcher() {
         }
         const data = await res.json();
         setCompanies(data);
-        if (data.length > 0 && !selectedCompanyId) {
-          setSelectedCompanyId(data[0]._id);
+        const savedCompanyId = localStorage.getItem("selectedCompanyId");
+        if (data.length > 0) {
+          const defaultCompany = savedCompanyId ? savedCompanyId : data[0]._id;
+          setSelectedCompanyId(defaultCompany);
         }
-      } catch (error) {
+      }  catch (error) {
         toast({
           variant: "destructive",
           title: "Failed to load companies",
@@ -51,10 +53,10 @@ export function CompanySwitcher() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast, baseURL]);
 
-  const handleCompanyChange = (companyId: string) => {
-    // When "All" is selected, you might want to set selectedCompanyId to null or a special value
-    setSelectedCompanyId(companyId === "all" ? null : companyId);
-  };
+ const handleCompanyChange = (companyId: string) => {
+  setSelectedCompanyId(companyId === "all" ? null : companyId);
+  localStorage.setItem("selectedCompanyId", companyId === "all" ? "" : companyId);
+};
 
   // Add "All" option to the beginning of the list
   const companyOptions = [

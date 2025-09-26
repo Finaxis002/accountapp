@@ -390,8 +390,8 @@ export default function InventoryPage() {
                   </TableHead>
                 )}
                 <TableHead>Product</TableHead>
-                <TableHead>Unit</TableHead>
                 <TableHead>Stock</TableHead>
+                <TableHead>Unit</TableHead>
                 <TableHead>Created At</TableHead>
                 {role !== "user" && (
                   <TableHead className="text-right">Actions</TableHead>
@@ -417,12 +417,13 @@ export default function InventoryPage() {
                       {p.name}
                     </div>
                   </TableCell>
-                   <TableCell>
-                    <span className="font-bold text-sm">{p.unit ?? "Piece"}</span>
-                  </TableCell>
                   <TableCell>
                     <span className="font-bold text-lg">{p.stocks ?? 0}</span>
                   </TableCell>
+                   <TableCell>
+                    <span className="font-bold text-sm">{p.unit ?? "Piece"}</span>
+                  </TableCell>
+                  
 
                   <TableCell>
                     {p.createdAt
