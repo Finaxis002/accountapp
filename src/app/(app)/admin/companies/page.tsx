@@ -70,6 +70,22 @@ export default function AdminCompaniesPage() {
   const [viewMode, setViewMode] = React.useState<"card" | "list">("list");
   const { toast } = useToast();
 
+  const role = localStorage.getItem("role");
+
+  // Check if user is master admin
+  if (role !== "masterAdmin") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-muted-foreground">Access Denied</h2>
+          <p className="text-muted-foreground">
+            You don't have permission to access this page. Only master admins can manage all companies.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const fetchAllData = React.useCallback(async () => {
     setIsLoading(true);
     try {
