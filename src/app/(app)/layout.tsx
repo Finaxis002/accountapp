@@ -583,7 +583,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </header>
                   <main
                     ref={contentRef}
-                    className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto"
+                    className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto pt-20 md:pt-0"
                   >
                     {children}
                   </main>
