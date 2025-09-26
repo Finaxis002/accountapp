@@ -476,7 +476,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="flex min-h-screen w-full bg-background text-foreground overflow-x-hidden">
                 {showAppSidebar ? <AppSidebar /> : <UserSidebar />}
                 <div className="flex-1 flex flex-col w-full">
-                  <header className="flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 sticky top-0 md:static z-20">
+                  <header className=" fixed md:relative flex h-16 items-center justify-between gap-4 border-b border-border/40 bg-card px-4 md:px-6 w-full top-0 z-20">
                     <div className="flex items-center gap-2 md:gap-4">
                       <SidebarTrigger className="md:hidden" />
                       <div className="hidden md:block">
@@ -583,7 +583,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </header>
                   <main
                     ref={contentRef}
-                    className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden"
+                    className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto"
                   >
                     {children}
                   </main>
