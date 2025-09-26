@@ -41,6 +41,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from "../ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 import { usePermissions } from "@/contexts/permission-context";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
 
@@ -50,6 +51,7 @@ export function AppSidebar() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { permissions, isLoading: permissionsLoading } = usePermissions();
 const { permissions: userCaps, isLoading } = useUserPermissions();
+  const { isMobile, setOpenMobile } = useSidebar();
   useEffect(() => {
     setCurrentUser(getCurrentUser());
   }, []);
@@ -88,7 +90,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
           isActive={isActive("/admin/dashboard")}
           tooltip="Dashboard"
         >
-          <Link href="/admin/dashboard">
+          <Link href="/admin/dashboard" onClick={() => isMobile && setOpenMobile(false)}>
             <LayoutGrid />
             <span>Dashboard</span>
           </Link>
@@ -100,7 +102,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
           isActive={isActive("/admin/client-management")}
           tooltip="Client Management"
         >
-          <Link href="/admin/client-management">
+          <Link href="/admin/client-management" onClick={() => isMobile && setOpenMobile(false)}>
             <Users />
             <span>Client Management</span>
           </Link>
@@ -112,7 +114,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
           isActive={isActive("/admin/companies")}
           tooltip="Companies"
         >
-          <Link href="/admin/companies">
+          <Link href="/admin/companies" onClick={() => isMobile && setOpenMobile(false)}>
             <Building />
             <span>Companies</span>
           </Link>
@@ -125,7 +127,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
           isActive={isActive("/admin/analytics")}
           tooltip="Analytics"
         >
-          <Link href="/admin/analytics">
+          <Link href="/admin/analytics" onClick={() => isMobile && setOpenMobile(false)}>
             <BarChart2 />
             <span>Analytics</span>
           </Link>
@@ -149,7 +151,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
           isActive={isActive("/admin/settings")}
           tooltip="Settings"
         >
-          <Link href="/admin/settings">
+          <Link href="/admin/settings" onClick={() => isMobile && setOpenMobile(false)}>
             <Settings />
             <span>Settings</span>
           </Link>
@@ -163,7 +165,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       {/* Dashboard */}
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/dashboard")} tooltip="Dashboard">
-          <Link href="/dashboard">
+          <Link href="/dashboard" onClick={() => isMobile && setOpenMobile(false)}>
             <LayoutGrid />
             <span>Dashboard</span>
           </Link>
@@ -173,7 +175,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       {/* Transactions */}
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/transactions")} tooltip="Transactions">
-          <Link href="/transactions">
+          <Link href="/transactions" onClick={() => isMobile && setOpenMobile(false)}>
             <ArrowRightLeft />
             <span>Transactions</span>
           </Link>
@@ -184,7 +186,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       { canSeeInventory && (
         <SidebarMenuItem>
           <SidebarMenuButton asChild isActive={isActive("/inventory")} tooltip="Inventory">
-            <Link href="/inventory">
+            <Link href="/inventory" onClick={() => isMobile && setOpenMobile(false)}>
               <Package />
               <span>Inventory</span>
             </Link>
@@ -196,7 +198,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       {permissions && permissions.canCreateCompanies && (
         <SidebarMenuItem>
           <SidebarMenuButton asChild isActive={isActive("/companies")} tooltip="Companies">
-            <Link href="/companies">
+            <Link href="/companies" onClick={() => isMobile && setOpenMobile(false)}>
               <Building />
               <span>Companies</span>
             </Link>
@@ -208,7 +210,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       {canSeeUsers && (
         <SidebarMenuItem>
           <SidebarMenuButton asChild isActive={isActive("/users")} tooltip="Users">
-            <Link href="/users">
+            <Link href="/users" onClick={() => isMobile && setOpenMobile(false)}>
               <Users />
               <span>Users</span>
             </Link>
@@ -246,7 +248,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
                 asChild
                 isActive={isActive("/reports/profit-loss")}
               >
-                <Link href="/reports/profit-loss">Profit & Loss</Link>
+                <Link href="/reports/profit-loss" onClick={() => isMobile && setOpenMobile(false)}>Profit & Loss</Link>
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
             <SidebarMenuSubItem>
@@ -254,7 +256,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
                 asChild
                 isActive={isActive("/reports/balance-sheet")}
               >
-                <Link href="/reports/balance-sheet">Balance Sheet</Link>
+                <Link href="/reports/balance-sheet" onClick={() => isMobile && setOpenMobile(false)}>Balance Sheet</Link>
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
           </SidebarMenuSub>

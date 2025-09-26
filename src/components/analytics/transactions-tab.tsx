@@ -11,7 +11,7 @@ import {
 import { DataTable } from "@/components/transactions/data-table";
 import { columns as makeTxColumns } from "@/components/transactions/columns";
 import { TransactionsTable } from "@/components/transactions/TransactionsTable";
-import { ChevronDown } from "lucide-react"; 
+import { ChevronDown } from "lucide-react";
 import type { Client, Transaction } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Package, Server } from "lucide-react";
@@ -60,12 +60,12 @@ export function TransactionsTab({
   const [journals, setJournals] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
-const [selectedTab, setSelectedTab] = React.useState("all");
+  const [selectedTab, setSelectedTab] = React.useState("all");
   const [isItemsDialogOpen, setIsItemsDialogOpen] = React.useState(false);
   const [itemsToView, setItemsToView] = React.useState<any[]>([]);
   const [productsList, setProductsList] = React.useState<any[]>([]);
   const [servicesList, setServicesList] = React.useState<any[]>([]);
-const [isDropdownOpen, setIsDropdownOpen] = React.useState(false); 
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const productNameById = React.useMemo(() => {
     const m = new Map<string, string>();
     for (const p of productsList) {
@@ -99,17 +99,17 @@ const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
     const svcArr = Array.isArray(tx.services)
       ? tx.services
       : Array.isArray(tx.service)
-        ? tx.service
-        : [];
+      ? tx.service
+      : [];
 
     const svcs = svcArr.map((s: any) => {
       const id =
         typeof s.service === "object"
           ? s.service._id
           : s.service ??
-          (typeof s.serviceName === "object"
-            ? s.serviceName._id
-            : s.serviceName);
+            (typeof s.serviceName === "object"
+              ? s.serviceName._id
+              : s.serviceName);
 
       const name =
         (id && serviceNameById.get(String(id))) ||
@@ -333,9 +333,9 @@ const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
           !companyId
             ? arr
             : arr.filter(
-              (doc: any) =>
-                idOf(doc.company?._id ?? doc.company) === companyId
-            );
+                (doc: any) =>
+                  idOf(doc.company?._id ?? doc.company) === companyId
+              );
 
         setSales(filterByCompany(salesArr, selectedCompanyId));
         setPurchases(filterByCompany(purchasesArr, selectedCompanyId));
@@ -429,7 +429,7 @@ const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
         onDelete: handleAction,
         companyMap,
         serviceNameById,
-        onSendInvoice: () => { },
+        onSendInvoice: () => {},
         hideActions: true,
       }),
     [onPreview, handleViewItems, handleAction, companyMap, serviceNameById]
@@ -442,126 +442,156 @@ const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
       ),
     [sales, purchases, receipts, payments, journals]
   );
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = React.useState(false);
-  React.useEffect(() => {
-    const media = window.matchMedia(query);
-    const listener = () => setMatches(media.matches);
-    listener();
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
-  }, [query]);
-  return matches;
-}
- 
+  function useMediaQuery(query: string): boolean {
+    const [matches, setMatches] = React.useState(false);
+    React.useEffect(() => {
+      const media = window.matchMedia(query);
+      const listener = () => setMatches(media.matches);
+      listener();
+      media.addEventListener("change", listener);
+      return () => media.removeEventListener("change", listener);
+    }, [query]);
+    return matches;
+  }
+
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-const renderContent = (data: Transaction[]) => {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
+  const renderContent = (data: Transaction[]) => {
+    if (isLoading) {
+      return (
+        <Card>
+          <CardContent className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
+      );
+    }
 
-  if (isMobile) {
-    // 📱 Mobile → Card layout
-    return (
-      <TransactionsTable
-        data={data}
-        companyMap={companyMap}
-        serviceNameById={serviceNameById}
-        onPreview={onPreview}
-        onEdit={handleAction}
-        onDelete={handleAction}
-        onViewItems={handleViewItems}
-        onSendInvoice={() => {}}
-        hideActions={true}
-      />
-    );
-  }
+    if (isMobile) {
+      // 📱 Mobile → Card layout
+      return (
+        <TransactionsTable
+          data={data}
+          companyMap={companyMap}
+          serviceNameById={serviceNameById}
+          onPreview={onPreview}
+          onEdit={handleAction}
+          onDelete={handleAction}
+          onViewItems={handleViewItems}
+          onSendInvoice={() => {}}
+          hideActions={true}
+        />
+      );
+    }
 
-  // 🖥 Desktop → DataTable
-  return <DataTable columns={tableColumns} data={data} />;
-};
-const handleTabChange = (tab: string) => {
-  setSelectedTab(tab);    
-  setIsDropdownOpen(false); 
-};
+    // 🖥 Desktop → DataTable
+    return <DataTable columns={tableColumns} data={data} />;
+  };
+  const handleTabChange = (tab: string) => {
+    setSelectedTab(tab);
+    setIsDropdownOpen(false);
+  };
   return (
     <>
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-
         <div className="flex items-center justify-between mb-3">
           <div className="hidden sm:block">
             <TabsList className="flex space-x-1 overflow-x-auto">
-              <TabsTrigger value="all" className="flex items-center px-3 py-1.5 text-sm">All</TabsTrigger>
-              <TabsTrigger value="sales" className="flex items-center px-3 py-1.5 text-sm">Sales</TabsTrigger>
-              <TabsTrigger value="purchases" className="flex items-center px-3 py-1.5 text-sm">Purchases</TabsTrigger>
-              <TabsTrigger value="receipts" className="flex items-center px-3 py-1.5 text-sm">Receipts</TabsTrigger>
-              <TabsTrigger value="payments" className="flex items-center px-3 py-1.5 text-sm">Payments</TabsTrigger>
-              <TabsTrigger value="journals" className="flex items-center px-3 py-1.5 text-sm">Journals</TabsTrigger>
+              <TabsTrigger
+                value="all"
+                className="flex items-center px-3 py-1.5 text-sm"
+              >
+                All
+              </TabsTrigger>
+              <TabsTrigger
+                value="sales"
+                className="flex items-center px-3 py-1.5 text-sm"
+              >
+                Sales
+              </TabsTrigger>
+              <TabsTrigger
+                value="purchases"
+                className="flex items-center px-3 py-1.5 text-sm"
+              >
+                Purchases
+              </TabsTrigger>
+              <TabsTrigger
+                value="receipts"
+                className="flex items-center px-3 py-1.5 text-sm"
+              >
+                Receipts
+              </TabsTrigger>
+              <TabsTrigger
+                value="payments"
+                className="flex items-center px-3 py-1.5 text-sm"
+              >
+                Payments
+              </TabsTrigger>
+              <TabsTrigger
+                value="journals"
+                className="flex items-center px-3 py-1.5 text-sm"
+              >
+                Journals
+              </TabsTrigger>
             </TabsList>
           </div>
-<div className="block sm:hidden">
-  <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 border-b">
-   
-    <div
-      className="flex items-center"
-      onClick={() => setIsDropdownOpen((prev) => !prev)}
-    >
-      <span className="text-sm">{selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1)}</span>
-      <ChevronDown className="ml-2 text-sm" />
-    </div>
+          <div className="block sm:hidden">
+            <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 border-b">
+              <div
+                className="flex items-center"
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+              >
+                <span className="text-sm">
+                  {selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1)}
+                </span>
+                <ChevronDown className="ml-2 text-sm" />
+              </div>
 
-   {/* Dropdown Menu */}
-{isDropdownOpen && (
-  <div className="absolute bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg mt-2 w-48 z-10 border border-gray-200 dark:border-gray-700">
-    <ul className="space-y-1 p-2">
-      <li
-        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-        onClick={() => handleTabChange("all")}
-      >
-        All
-      </li>
-      <li
-        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-        onClick={() => handleTabChange("sales")}
-      >
-        Sales
-      </li>
-      <li
-        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-        onClick={() => handleTabChange("purchases")}
-      >
-        Purchases
-      </li>
-      <li
-        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-        onClick={() => handleTabChange("receipts")}
-      >
-        Receipts
-      </li>
-      <li
-        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-        onClick={() => handleTabChange("payments")}
-      >
-        Payments
-      </li>
-      <li
-        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-        onClick={() => handleTabChange("journals")}
-      >
-        Journals
-      </li>
-    </ul>
-  </div>
-)}
-  </div>
-</div>
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg mt-2 w-48 z-10 border border-gray-200 dark:border-gray-700">
+                  <ul className="space-y-1 p-2">
+                    <li
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+                      onClick={() => handleTabChange("all")}
+                    >
+                      All
+                    </li>
+                    <li
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+                      onClick={() => handleTabChange("sales")}
+                    >
+                      Sales
+                    </li>
+                    <li
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+                      onClick={() => handleTabChange("purchases")}
+                    >
+                      Purchases
+                    </li>
+                    <li
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+                      onClick={() => handleTabChange("receipts")}
+                    >
+                      Receipts
+                    </li>
+                    <li
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+                      onClick={() => handleTabChange("payments")}
+                    >
+                      Payments
+                    </li>
+                    <li
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+                      onClick={() => handleTabChange("journals")}
+                    >
+                      Journals
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
 
           <ExportTransactions
             selectedClientId={selectedClient._id}
@@ -615,9 +645,9 @@ const handleTabChange = (tab: string) => {
                   const isService = item.itemType === "service";
                   const qty =
                     !isService &&
-                      item.quantity !== undefined &&
-                      item.quantity !== null &&
-                      !isNaN(Number(item.quantity))
+                    item.quantity !== undefined &&
+                    item.quantity !== null &&
+                    !isNaN(Number(item.quantity))
                       ? item.quantity
                       : "—";
                   const rate = !isService

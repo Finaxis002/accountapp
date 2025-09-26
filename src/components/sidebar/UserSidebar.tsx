@@ -36,11 +36,13 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser, logout } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { useUserPermissions } from "@/contexts/user-permissions-context"; // 👈 user-level caps
+import { useSidebar } from "@/components/ui/sidebar";
 
 export default function UserSidebar() {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { permissions: userCaps, isLoading } = useUserPermissions();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const roleLower = (currentUser?.role ?? "").toLowerCase();
   const dashboardHref =
@@ -83,7 +85,7 @@ export default function UserSidebar() {
             isActive={isActive(dashboardHref)}
             tooltip="Dashboard"
           >
-            <Link href={dashboardHref}>
+            <Link href={dashboardHref} onClick={() => isMobile && setOpenMobile(false)}>
               <LayoutGrid />
               <span>Dashboard</span>
             </Link>
@@ -97,7 +99,7 @@ export default function UserSidebar() {
             isActive={isActive("/transactions")}
             tooltip="Transactions"
           >
-            <Link href="/transactions">
+            <Link href="/transactions" onClick={() => isMobile && setOpenMobile(false)}>
               <ArrowRightLeft />
               <span>Transactions</span>
             </Link>
@@ -118,7 +120,7 @@ export default function UserSidebar() {
                   isActive={isActive("/inventory")}
                   tooltip="Inventory"
                 >
-                  <Link href="/inventory">
+                  <Link href="/inventory" onClick={() => isMobile && setOpenMobile(false)}>
                     <Package />
                     <span>Inventory</span>
                   </Link>

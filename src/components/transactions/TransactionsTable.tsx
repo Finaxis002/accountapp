@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Transaction } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = React.useState(false);
@@ -59,14 +60,14 @@ export function TransactionsTable({
         {data.map((tx) => {
           const party =
             (tx.party as any)?.name || (tx.vendor as any)?.vendorName || "N/A";
-         const companyId =
-  typeof tx.company === "object" && tx.company !== null
-    ? (tx.company as any)._id
-    : tx.company ?? null;
+          const companyId =
+            typeof tx.company === "object" && tx.company !== null
+              ? (tx.company as any)._id
+              : tx.company ?? null;
 
-const companyName = companyId
-  ? companyMap.get(companyId as string) ?? "N/A"
-  : "N/A";
+          const companyName = companyId
+            ? companyMap.get(companyId as string) ?? "N/A"
+            : "N/A";
           return (
             <Card key={tx._id} className="rounded-xl shadow">
               <CardContent className="p-4 space-y-3">
@@ -85,30 +86,46 @@ const companyName = companyId
                 </div>
 
                 {/* Amount + Date */}
-              
-  <div className="flex flex-col">
-    <span className="text-sm font-medium text-muted-foreground">Amount</span>
-    <span className="font-bold text-green-600">
-      ₹
-      {new Intl.NumberFormat("en-IN", { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
-      }).format(Number(tx.totalAmount ?? (tx as any).amount ?? 0))}
-    </span>
-  </div>
-  <div className="flex flex-col text-right">
-    <span className="text-sm font-medium text-muted-foreground">Date</span>
-    <span className="text-sm text-muted-foreground">
-      {new Intl.DateTimeFormat("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(new Date(tx.date))}
-    </span>
-  </div>
+
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Amount
+                  </span>
+                  <span className="font-bold text-green-600">
+                    ₹
+                    {new Intl.NumberFormat("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(
+                      Number(tx.totalAmount ?? (tx as any).amount ?? 0)
+                    )}
+                  </span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Date
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {new Intl.DateTimeFormat("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    }).format(new Date(tx.date))}
+                  </span>
+                </div>
 
                 {/* Type */}
-                <Badge>{tx.type}</Badge>
+                <Badge
+                  className={cn(
+                    tx.type === "sales" && "bg-green-100 text-green-800 border-green-200",
+                    tx.type === "purchases" && "bg-blue-100 text-blue-800 border-blue-200",
+                    tx.type === "receipt" && "bg-yellow-100 text-yellow-800 border-yellow-200",
+                    tx.type === "payment" && "bg-red-100 text-red-800 border-red-200",
+                    tx.type === "journal" && "bg-purple-100 text-purple-800 border-purple-200"
+                  )}
+                >
+                  {tx.type}
+                </Badge>
 
                 {/* Actions */}
                 {!hideActions && (
