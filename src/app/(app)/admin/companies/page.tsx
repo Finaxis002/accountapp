@@ -537,7 +537,7 @@ export default function AdminCompaniesPage() {
                           <Button
                             size="sm"
                             onClick={() => handleDelete(company)}
-                            className="flex items-center justify-center gap-1 text-xs py-2 bg-red-900 hover:bg-red-800 text-white"
+                            className="flex items-center justify-center gap-1 text-xs py-2 bg-red-700 hover:bg-red-800 text-white"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
