@@ -92,14 +92,16 @@ export default function AdminCompaniesPage() {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
 
-      const [companiesRes, clientsRes] = await Promise.all([
-        fetch(`${baseURL}/api/companies/all`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${baseURL}/api/clients`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+    const [companiesRes, clientsRes] = await Promise.all([
+      fetch(`${baseURL}/api/companies/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      }),
+      fetch(`${baseURL}/api/clients`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      }),
+    ]);
 
       if (!companiesRes.ok || !clientsRes.ok) {
         const errorData = !companiesRes.ok
@@ -319,7 +321,7 @@ export default function AdminCompaniesPage() {
           </div>
         ) : companies.length > 0 ? (
           <>
-            {/* 💻 sm aur upar: card/list toggle follow kare */}
+            {/* 💻 Desktop View */}
             <div className="hidden sm:block">
               {viewMode === "card" ? (
                 renderCardGrid("grid gap-6 md:grid-cols-1 lg:grid-cols-2")
