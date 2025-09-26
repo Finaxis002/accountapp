@@ -203,94 +203,88 @@ export default function CompaniesPage() {
                     viewMode === 'card' ? (
                          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {companies.map(company => (
-                                <div>
-  <div className="space-y-4 p-2">
-    {companies.map(company => (
-      <Card key={company._id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200">
-        <div className="p-4">
-          {/* Header Section */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Building className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold text-lg">{company.businessName}</p>
-                <p className="text-xs text-muted-foreground">{company.businessType}</p>
-              </div>
-            </div>
-            {permissions?.canUpdateCompanies && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleEdit(company)}>
-                    <Edit className="mr-2 h-4 w-4" /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+                              <Card key={company._id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200">
+                                <div className="p-4">
+                                  {/* Header Section */}
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2 bg-primary/10 rounded-lg">
+                                        <Building className="h-5 w-5 text-primary" />
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-lg">{company.businessName}</p>
+                                        <p className="text-xs text-muted-foreground">{company.businessType}</p>
+                                      </div>
+                                    </div>
+                                    {permissions?.canUpdateCompanies && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem onClick={() => handleEdit(company)}>
+                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleDelete(company)} className="text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
+                                  </div>
 
-          {/* Contact Information */}
-          <div className="space-y-2 mb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1 bg-blue-500/10 rounded-md">
-                <User className="h-3 w-3 text-blue-500" />
-              </div>
-              <span className="text-sm">{company.emailId}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="p-1 bg-green-500/10 rounded-md">
-                <Phone className="h-3 w-3 text-green-500" />
-              </div>
-              <span className="text-sm text-muted-foreground">{company.mobileNumber}</span>
-            </div>
-          </div>
+                                  {/* Contact Information */}
+                                  <div className="space-y-2 mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1 bg-blue-500/10 rounded-md">
+                                        <User className="h-3 w-3 text-blue-500" />
+                                      </div>
+                                      <span className="text-sm">{company.emailId}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1 bg-green-500/10 rounded-md">
+                                        <Phone className="h-3 w-3 text-green-500" />
+                                      </div>
+                                      <span className="text-sm text-muted-foreground">{company.mobileNumber}</span>
+                                    </div>
+                                  </div>
 
-          {/* Registration & GST Details */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground mb-1">Registration No.</span>
-              <Badge variant="outline" className="font-mono bg-secondary/50 text-xs justify-start w-fit">
-                <Hash className="mr-1 h-3 w-3" />
-                {company.registrationNumber}
-              </Badge>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground mb-1">GSTIN</span>
-              {company.gstin ? (
-                <Badge variant="outline" className="font-mono bg-yellow-50 text-yellow-700 text-xs justify-start w-fit ">
-                  <FileText className="mr-1 h-3 w-3" />
-                  {company.gstin}
-                </Badge>
-              ) : (
-                <span className="text-sm text-muted-foreground">N/A</span>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Status Indicator (Optional) */}
-        <div className="bg-muted/30 px-4 py-2 border-t">
-          <div className="flex items-center justify-between text-xs">
-            {/* <span className="text-muted-foreground">Last updated: {new Date(company.crea).toLocaleDateString()}</span> */}
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span>Active</span>
-            </div>
-          </div>
-        </div>
-      </Card>
-    ))}
-  </div>
-</div>
+                                  {/* Registration & GST Details */}
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex flex-col">
+                                      <span className="text-xs text-muted-foreground mb-1">Registration No.</span>
+                                      <Badge variant="outline" className="font-mono bg-secondary/50 text-xs justify-start w-fit">
+                                        <Hash className="mr-1 h-3 w-3" />
+                                        {company.registrationNumber}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-xs text-muted-foreground mb-1">GSTIN</span>
+                                      {company.gstin ? (
+                                        <Badge variant="outline" className="font-mono bg-yellow-50 text-yellow-700 text-xs justify-start w-fit ">
+                                          <FileText className="mr-1 h-3 w-3" />
+                                          {company.gstin}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground">N/A</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Status Indicator (Optional) */}
+                                <div className="bg-muted/30 px-4 py-2 border-t">
+                                  <div className="flex items-center justify-between text-xs">
+                                    {/* <span className="text-muted-foreground">Last updated: {new Date(company.crea).toLocaleDateString()}</span> */}
+                                    <div className="flex items-center gap-1">
+                                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                                      <span>Active</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </Card>
                             ))}
                         </div>
                     ) : (

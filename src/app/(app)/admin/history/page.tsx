@@ -32,12 +32,94 @@ import {
   UserCheck,
   Building2,
   BadgeCheck,
+  CalendarClock,
+  Ban,
+  Infinity as InfinityIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
+type Validity = {
+  enabled: boolean;
+  status:
+    | "active"
+    | "expired"
+    | "suspended"
+    | "unlimited"
+    | "unknown"
+    | "disabled";
+  expiresAt?: string | null;
+  startAt?: string | null;
+};
+
+function toValidity(raw: any): Validity {
+  // Unwrap common API shapes
+  const v = raw?.validity ?? raw?.data ?? raw ?? {};
+  const allowed = new Set([
+    "active",
+    "expired",
+    "suspended",
+    "unlimited",
+    "unknown",
+    "disabled",
+  ]);
+  const status = allowed.has(v?.status) ? v.status : "unknown";
+  return {
+    enabled: status === "active" || status === "unlimited",
+    status,
+    expiresAt: v?.expiresAt ?? null,
+    startAt: v?.startAt ?? null,
+  };
+}
+
+function StatusBadge({ validity }: { validity?: Validity }) {
+  const enabled = validity?.enabled ?? false;
+  const label = enabled ? "Active" : "Expired";
+  const className = enabled
+    ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60"
+    : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60";
+
+  return (
+    <Badge className={className}>
+      {label}
+    </Badge>
+  );
+}
+
 // Client Type based on your API response
+interface Client {
+  _id: string;
+  clientUsername: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  maxCompanies: number;
+  userLimit: number;
+  createdAt: string;
+  updatedAt: string;
+  businessName?: string;
+}
+
+interface Notification {
+  _id: string;
+  title: string;
+  message: string;
+  type: string;
+  action: string;
+  entityId: string;
+  entityType: string;
+  recipient: any;
+  triggeredBy: any;
+  client: {
+    _id: string;
+    businessName?: string;
+  };
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Client {
   _id: string;
   clientUsername: string;
@@ -73,6 +155,8 @@ interface Notification {
 const HistoryPage = () => {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [clients, setClients] = useState<Client[]>([]);
+  const [validityByClient, setValidityByClient] = useState<Record<string, Validity>>({});
+  const [isValidityLoading, setIsValidityLoading] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,6 +204,71 @@ const HistoryPage = () => {
     };
     fetchClients();
   }, [baseURL]);
+
+  // Fetch validities for all clients
+  useEffect(() => {
+    const fetchValidities = async () => {
+      if (clients.length === 0) return;
+      setIsValidityLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const results = await Promise.allSettled(
+          clients.map(async (client) => {
+            const vr = await fetch(`${baseURL}/api/account/${client._id}/validity`, {
+              headers: { Authorization: `Bearer ${token}` },
+              cache: "no-store",
+            });
+
+            // Treat 404 as "no validity yet" rather than throwing
+            if (vr.status === 404) return { id: client._id, validity: null };
+
+            if (!vr.ok) {
+              const body = await vr.text().catch(() => "");
+              throw new Error(
+                `GET validity ${vr.status} for ${client.clientUsername}: ${body}`
+              );
+            }
+
+            // Unwrap to inner doc
+            const json = await vr.json(); // { ok, validity }
+            return { id: client._id, validity: toValidity(json) };
+          })
+        );
+
+        const map: Record<string, Validity> = {};
+        for (const r of results) {
+          if (r.status === "fulfilled") {
+            map[r.value.id] = r.value.validity ?? {
+              enabled: false,
+              status: "unknown",
+              expiresAt: null,
+              startAt: null,
+            };
+          } else {
+            console.warn("[validity] fetch failed:", r.reason);
+          }
+        }
+        // Ensure all clients have an entry
+        clients.forEach((client) => {
+          if (!map[client._id]) {
+            map[client._id] = {
+              enabled: false,
+              status: "unknown",
+              expiresAt: null,
+              startAt: null,
+            };
+          }
+        });
+        setValidityByClient(map);
+      } catch (error) {
+        console.error("Error fetching validities", error);
+      } finally {
+        setIsValidityLoading(false);
+      }
+    };
+    fetchValidities();
+  }, [clients, baseURL]);
   
   const token = localStorage.getItem("token");
   
@@ -257,13 +406,22 @@ const HistoryPage = () => {
     }
   };
 
-  // Filter clients based on search query
-  const filteredClients = clients.filter(client => 
-    client.clientUsername.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.contactName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (client.businessName && client.businessName.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filter clients based on search query and status
+  const filteredClients = clients.filter(client => {
+    const matchesSearch = client.clientUsername.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.contactName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (client.businessName && client.businessName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const validity = validityByClient[client._id];
+    const isActive = validity?.enabled ?? false;
+
+    const matchesStatus = statusFilter === "all" ||
+      (statusFilter === "active" && isActive) ||
+      (statusFilter === "inactive" && !isActive);
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 dark:from-gray-900 dark:via-blue-950/20 dark:to-indigo-950/30 p-6">
@@ -397,9 +555,14 @@ const HistoryPage = () => {
                       <CalendarDays className="h-4 w-4 mr-1.5" />
                       <span>Joined {formatDate(client.createdAt)}</span>
                     </div>
-                    <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60">
-                      Active
-                    </Badge>
+                    {isValidityLoading && !validityByClient[client._id] ? (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span className="text-sm">Loading…</span>
+                      </div>
+                    ) : (
+                      <StatusBadge validity={validityByClient[client._id]} />
+                    )}
                   </div>
                 </div>
                 
