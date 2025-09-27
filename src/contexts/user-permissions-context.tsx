@@ -86,10 +86,10 @@ export function UserPermissionsProvider({ children }: { children: React.ReactNod
       if (!token) throw new Error("Authentication token not found.");
 
       // ✅ BYPASS: enforce caps only for 'user'
-      if (currentRole && currentRole !== "user") {
-        setPermissions(ALL_ALLOWED);
-        return;
-      }
+      // if (currentRole && currentRole !== "user") {
+      //   setPermissions(ALL_ALLOWED);
+      //   return;
+      // }
 
       // Only role === 'user' comes here
       const res = await fetch(`${baseURL}/api/user-permissions/me/effective`, {
