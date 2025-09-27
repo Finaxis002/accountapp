@@ -61,7 +61,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
   const canSeeUsers =
     roleLower === "admin" || (!!permissions && permissions.canCreateUsers);
 
-  const canSeeInventory = roleLower === "admin" || (!!userCaps && userCaps.canCreateInventory)
+  const canSeeInventory = roleLower === "admin" || (!!userCaps && userCaps.canCreateInventory) || roleLower === "customer";
 
 
   const isActive = (path: string) => {
