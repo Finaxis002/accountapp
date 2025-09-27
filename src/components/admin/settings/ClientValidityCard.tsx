@@ -240,7 +240,7 @@ export function ClientValidityCard({
       // 2) Expiry change (exactDate takes precedence over extend)
       if (draft.exactDate) {
         const start = new Date();
-        const target = new Date(`${draft.exactDate}T23:59:59`);
+       const target = new Date(`${draft.exactDate}T00:00:00`);
         const ms = target.getTime() - start.getTime();
         const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
         const r = await fetch(`${baseURL}/api/account/${clientId}/validity`, {
@@ -396,7 +396,7 @@ export function ClientValidityCard({
 
         <Separator className="dark:bg-gray-700" />
 
-        {/* Extend form */}
+        {/* Extend form
         <div className="space-y-3">
           <Label className="text-sm text-muted-foreground dark:text-gray-300">
             Extend Validity
@@ -441,24 +441,23 @@ export function ClientValidityCard({
               <span className="font-medium dark:text-white">{fmtDate(previewDate)}</span>
             </div>
 
-            <Button
-              onClick={() => {
-                setDraft((d) => ({
-                  ...d,
-                  extend: { amount: Number(amount), unit },
-                }));
-                setExtendDirty(false);
-              }}
-              disabled={loading || saving}
-              className="dark:bg-blue-600 w-[20vh] dark:hover:bg-blue-700 dark:text-white"
-            >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Extend
-            </Button>
+           <Button
+  onClick={async () => {  // ✅ add async
+    setDraft((d) => ({
+      ...d,
+      extend: { amount: Number(amount), unit },
+    }));
+    setExtendDirty(false);
+    await commitChanges(); // ✅ ab allowed
+  }}
+  disabled={loading || saving}
+  className="dark:bg-blue-600 w-[20vh] dark:hover:bg-blue-700 dark:text-white"
+>
+  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+  Extend
+</Button>
           </div>
-        </div>
+        </div> */}
 
         {/* Exact date setter */}
         <div className="space-y-3">
