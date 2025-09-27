@@ -129,7 +129,7 @@ export function CompanyCard({
           </Button>
         )}
 
-        {onDelete && (
+        {/* {onDelete && (
           <Button
             variant="ghost"
             size="sm"
@@ -138,7 +138,7 @@ export function CompanyCard({
           >
             <Trash2 className="mr-2 h-4 w-4" /> Delete
           </Button>
-        )}
+        )} */}
       </CardFooter>
     </Card>
   );
