@@ -50,6 +50,8 @@ import Notification from "@/components/notifications/Notification";
 import HistoryPage from "./admin/history/page";
 import { SupportProvider } from "@/contexts/support-context";
 import { FloatingSupportIcon } from "@/components/support/FloatingSupportIcon";
+import { useSocket } from "@/hooks/useSocket";
+import { NotificationProvider } from "@/contexts/notification-context";
 
 type Decoded = { exp: number; id: string; role: string }; // 🆕
 
@@ -63,6 +65,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [searchTerm, setSearchTerm] = useState(""); // Store search term
   const [highlightCount, setHighlightCount] = useState(0); // Tracks the number of highlighted words
   const [currentHighlightIndex, setCurrentHighlightIndex] = useState(0); // Tracks current highlight index
+  const { socket } = useSocket(process.env.NEXT_PUBLIC_BASE_URL);
   // ✅ treat these as public routes: do NOT wrap, do NOT redirect
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -278,7 +281,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, [isAuthRoute, handleLogout]);
 
-  // ⛔️ On auth routes, render ONLY the auth page (no sidebar/header/guard)
+  //  On auth routes, render ONLY the auth page (no sidebar/header/guard)
   if (isAuthRoute) {
     return <>{children}</>;
   }
@@ -472,6 +475,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <PermissionProvider>
         <UserPermissionsProvider>
           <SupportProvider>
+             <NotificationProvider>
             <SidebarProvider>
               <div className="flex min-h-screen w-full bg-background text-foreground overflow-x-hidden">
                 {showAppSidebar ? <AppSidebar /> : <UserSidebar />}
@@ -537,7 +541,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </Button>
 
                       <ThemeToggle />
-                      {role !== "user" && role !== "master" && <Notification />}
+                      {role !== "user" && role !== "master" && <Notification socket={socket} />}
 
                       {role === "master" && (
                         <div
@@ -591,6 +595,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {showSupportIcon &&  pathname === "/profile" && <FloatingSupportIcon />}
               </div>
             </SidebarProvider>
+            </NotificationProvider>
           </SupportProvider>
         </UserPermissionsProvider>
       </PermissionProvider>

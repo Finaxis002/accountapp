@@ -195,7 +195,7 @@ const { permissions: userCaps, isLoading } = useUserPermissions();
       )}
 
       {/* Companies — show when permission allows */}
-      {permissions && permissions.canCreateCompanies && (
+      {permissions && (permissions.canCreateCompanies || permissions.canUpdateCompanies) && (
         <SidebarMenuItem>
           <SidebarMenuButton asChild isActive={isActive("/companies")} tooltip="Companies">
             <Link href="/companies" onClick={() => isMobile && setOpenMobile(false)}>
