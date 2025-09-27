@@ -6,8 +6,10 @@
 // import { Button } from "@/components/ui/button";
 // import { Separator } from "@/components/ui/separator";
 // import axios from "axios";
+// import { Socket } from "socket.io-client";
+// import SocketListener from "./SocketListener";
 
-// interface Notification {
+// interface NotificationData {
 //   _id: string;
 //   title: string;
 //   message: string;
@@ -20,8 +22,6 @@
 //   client: string;
 //   read: boolean;
 //   metadata: {
-//     createdAt: string;
-//     updatedAt: string;
 //     __v: number;
 //   };
 // }
@@ -330,8 +330,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import axios from "axios";
+import { Socket } from "socket.io-client";
+import SocketListener from "./SocketListener";
 
-interface Notification {
+interface NotificationData {
   _id: string;
   title: string;
   message: string;
@@ -351,18 +353,19 @@ interface Notification {
   createdAt:string;
 }
 
-const Notification = () => {
+const Notification = ({ socket }: { socket: Socket | null }) => {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [badgeCount, setBadgeCount] = useState(0);
 
 
 const fetchNotifications = async () => {
   try {
     setIsLoading(true);
-    console.log("🔍 Starting fetchNotifications...");
+    console.log("🔍 Starting fetchNotifications...", new Date().toISOString());
     
     const token = localStorage.getItem("token");
     console.log("🔑 Token exists:", !!token);
@@ -400,7 +403,7 @@ const fetchNotifications = async () => {
       return;
     }
     
-    let notificationsData: Notification[] = [];
+    let notificationsData: NotificationData[] = [];
     let apiUrl = "";
     
     // Determine the correct API endpoint based on user role
@@ -510,6 +513,8 @@ const fetchNotifications = async () => {
     
     console.log("📊 Final notifications count:", uniqueNotifications.length);
     setNotifications(uniqueNotifications);
+    const unreadCount = uniqueNotifications.filter(n => !n.read).length;
+    setBadgeCount(unreadCount);
     setIsLoading(false);
     
   } catch (err: any) {
@@ -532,12 +537,23 @@ const fetchNotifications = async () => {
     setIsLoading(false);
   }
 };
-  // Fetch notifications when the component mounts or when sheet opens
+  // Fetch notifications when the component mounts
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  // Fetch notifications when the sheet opens (refresh data)
   useEffect(() => {
     if (isOpen) {
       fetchNotifications();
     }
   }, [isOpen]);
+
+  const handleNewNotification = () => {
+    console.log("🔔 New notification received, incrementing badge count");
+    setBadgeCount(prev => prev + 1);
+  };
+
 
  
 
@@ -655,17 +671,19 @@ const formatDate = (dateString: string) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </Button>
-      </SheetTrigger>
+    <>
+      <SocketListener socket={socket} onNotification={fetchNotifications} />
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Button>
+        </SheetTrigger>
       <SheetContent className="sm:max-w-md">
         <SheetHeader className="pb-4">
           <SheetTitle>Notifications</SheetTitle>
@@ -748,7 +766,8 @@ const formatDate = (dateString: string) => {
         </div>
       </SheetContent>
     </Sheet>
-  );
+  </>
+);
 };
 
 export default Notification;

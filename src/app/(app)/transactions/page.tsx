@@ -124,6 +124,8 @@ export default function TransactionsPage() {
   const { permissions: userCaps, role } = useUserPermissions(); // ensure your hook exposes role; otherwise get it from your auth context
   const isSuper = role === "master" || role === "client";
 
+  console.log("useUserPermissions :", userCaps)
+
   const canSales = isSuper || !!userCaps?.canCreateSaleEntries;
   const canPurchases = isSuper || !!userCaps?.canCreatePurchaseEntries;
   const canReceipt = isSuper || !!userCaps?.canCreateReceiptEntries;

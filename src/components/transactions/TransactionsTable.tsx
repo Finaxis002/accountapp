@@ -6,7 +6,7 @@ import { columns } from "./columns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Package } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,16 +68,34 @@ export function TransactionsTable({
           const companyName = companyId
             ? companyMap.get(companyId as string) ?? "N/A"
             : "N/A";
+
+          const showViewItems = tx.type === "sales" || tx.type === "purchases";
           return (
             <Card key={tx._id} className="rounded-xl shadow">
               <CardContent className="p-4 space-y-3">
                 {/* Party + Description */}
-                <div>
+                <div className="flex justify-between items-start">
+                <div className="flex-1">
                   <div className="font-semibold">{party}</div>
                   <p className="text-sm text-muted-foreground">
                     {tx.description || tx.narration || ""}
                   </p>
                 </div>
+
+                 {/* View Items Button */}
+                  {showViewItems && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onViewItems(tx)}
+                  className="ml-2 p-2 h-8 w-8"
+                  title="View items"
+                >
+                 <Package className="h-4 w-4" />
+                </Button>
+                 )}
+                </div>
+                 
 
                 {/* Company */}
                 <div className="text-sm">
