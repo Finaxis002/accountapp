@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { CalendarIcon, Loader2, PlusCircle, Trash2, Copy } from "lucide-react";
 import { format } from "date-fns";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -335,6 +335,8 @@ export function TransactionForm({
       taxAmount: 0, // <-- NEW
       invoiceTotal: 0,
       notes: "",
+       paymentMethod: "",
+       bank: "",
     },
   });
 
@@ -357,7 +359,7 @@ export function TransactionForm({
   const gstEnabled = !!(companyGSTIN && String(companyGSTIN).trim());
 
   const role = localStorage.getItem("role");
-  const isSuper = role === "master" || role === "client";
+  const isSuper = role === "master" || role === "customer";
 
   const canSales = isSuper || !!userCaps?.canCreateSaleEntries;
   const canPurchases = isSuper || !!userCaps?.canCreatePurchaseEntries;
@@ -380,7 +382,7 @@ export function TransactionForm({
     return arr;
   }, [canSales, canPurchases, canReceipt, canPayment, canJournal]);
 
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields, append, remove, replace, insert } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -877,6 +879,8 @@ export function TransactionForm({
       fromAccount: (transactionToEdit as any).debitAccount,
       toAccount: (transactionToEdit as any).creditAccount,
       notes: (transactionToEdit as any).notes || "",
+      paymentMethod: (transactionToEdit as any).paymentMethod || "",
+       bank: (transactionToEdit as any).bank || "",
     });
 
     // Show notes section if there are existing notes
@@ -1741,6 +1745,7 @@ export function TransactionForm({
     }
   };
 
+  
   const handleProductCreated = (newProduct: Product) => {
     setProducts((prev) => [...prev, newProduct]);
 
@@ -2153,6 +2158,19 @@ export function TransactionForm({
         {fields.map((item, index) => (
           <Card key={item.id} className="relative">
             <CardContent className="p-4 space-y-4">
+             <div className="flex gap-4 items-center">
+               <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-10 h-6 w-6"
+                onClick={() => {
+                  const currentItem = form.getValues(`items.${index}`);
+                  insert(index + 1, { ...currentItem });
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
@@ -2163,6 +2181,7 @@ export function TransactionForm({
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
+             </div>
 
               {item.itemType === "product" ? (
                 <>
@@ -3686,3 +3705,7 @@ export function TransactionForm({
     </>
   );
 }
+function insert(arg0: number, arg1: { itemType: "product" | "service"; amount: number; product?: string | undefined; service?: string | undefined; quantity?: number | undefined; unitType?: string | undefined; otherUnit?: string | undefined; pricePerUnit?: number | undefined; description?: string | undefined; gstPercentage?: number | undefined; lineTax?: number | undefined; lineTotal?: number | undefined; }) {
+  throw new Error("Function not implemented.");
+}
+
