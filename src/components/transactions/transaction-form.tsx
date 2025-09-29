@@ -357,7 +357,7 @@ export function TransactionForm({
   const gstEnabled = !!(companyGSTIN && String(companyGSTIN).trim());
 
   const role = localStorage.getItem("role");
-  const isSuper = role === "master" || role === "client";
+  const isSuper = role === "master" || role === "customer";
 
   const canSales = isSuper || !!userCaps?.canCreateSaleEntries;
   const canPurchases = isSuper || !!userCaps?.canCreatePurchaseEntries;
