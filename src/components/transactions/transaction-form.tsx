@@ -1745,6 +1745,7 @@ export function TransactionForm({
     }
   };
 
+  
   const handleProductCreated = (newProduct: Product) => {
     setProducts((prev) => [...prev, newProduct]);
 
