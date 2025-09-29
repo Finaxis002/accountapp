@@ -862,10 +862,12 @@ export function TransactionForm({
     // reset the form with normalized items
     form.reset({
       type: transactionToEdit.type,
-      company:
-        typeof transactionToEdit.company === "object"
-          ? transactionToEdit.company._id
-          : (transactionToEdit.company as any),
+       company:
+  transactionToEdit?.company && typeof transactionToEdit.company === "object"
+    ? transactionToEdit.company._id || ""
+    : typeof transactionToEdit?.company === "string"
+    ? transactionToEdit.company === "all" ? "" : transactionToEdit.company
+    : "",
       date: new Date(transactionToEdit.date),
       totalAmount:
         transactionToEdit.totalAmount || (transactionToEdit as any).amount,
