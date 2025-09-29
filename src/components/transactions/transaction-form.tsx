@@ -1231,7 +1231,7 @@ export function TransactionForm({
           taxAmount: uiTax,
           paymentMethod: values.paymentMethod,
           invoiceTotal: uiInvoiceTotal,
-          bank: values.bank,
+          bank: values.bank || undefined,
           notes: values.notes || "",
         };
       }
