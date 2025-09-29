@@ -216,7 +216,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
             {company.businessType}
           </p>
         </div>
-        <DropdownMenu>
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               <MoreHorizontal className="h-4 w-4" />
@@ -235,7 +235,7 @@ export function CompaniesTab({ selectedClientId, selectedClient }: CompaniesTabP
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu> */}
       </div>
 
       {/* Contact Information */}
