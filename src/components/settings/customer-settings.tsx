@@ -82,10 +82,13 @@ export function CustomerSettings() {
   const [isLoadingCompanies, setIsLoadingCompanies] = React.useState(true);
   const { toast } = useToast();
 
+  const role = localStorage.getItem('role');
+  const isCustomer = role === "customer";
+
   // Permission checks
   const { permissions: userCaps } = useUserPermissions();
-  const canShowCustomers = !!userCaps?.canShowCustomers;
-  const canCreateCustomers = !!userCaps?.canCreateCustomers;
+  const canShowCustomers = !!userCaps?.canShowCustomers || isCustomer;
+  const canCreateCustomers = !!userCaps?.canCreateCustomers || isCustomer;
 
   const fetchCompanies = React.useCallback(async () => {
     setIsLoadingCompanies(true);
