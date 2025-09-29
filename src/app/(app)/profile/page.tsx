@@ -178,7 +178,7 @@ export default function ProfilePage() {
     });
   }
 
-  if (role !== "user" && allow(userCaps?.canCreateInventory, userCaps?.canCreateInventory)) {
+  if (role !== "user" ){
     memberTabs.push({
       value: "banks",
       label: "Banks",
