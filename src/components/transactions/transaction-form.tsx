@@ -307,7 +307,7 @@ export function TransactionForm({
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [showNotes, setShowNotes] = React.useState(false);
-  const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer"];
+  const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer", "Cheque"];
   const [existingUnits, setExistingUnits] = React.useState<any[]>([]);
   const [unitOpen, setUnitOpen] = React.useState(false);
   const [originalQuantities, setOriginalQuantities] = React.useState<Map<string, number>>(new Map());
