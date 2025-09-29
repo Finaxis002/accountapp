@@ -70,6 +70,8 @@ export function CompanySwitcher() {
     })),
   ];
 
+
+  
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground w-full max-w-sm">
