@@ -729,179 +729,451 @@ export function TransactionForm({
     fetchUnits();
   }, [baseURL]);
 
-  React.useEffect(() => {
-    if (!transactionToEdit) return;
 
-    // ---------- helpers ----------
-    const toProductItem = (p: any) => ({
-      itemType: "product" as const,
-      product:
-        typeof p.product === "object"
-          ? String(p.product._id)
-          : String(p.product || ""),
-      quantity: p.quantity ?? 1,
-      unitType: p.unitType ?? "Piece",
-      otherUnit: p.otherUnit ?? " ",
-      pricePerUnit: p.pricePerUnit ?? 0,
-      description: p.description ?? "",
-      amount:
-        typeof p.amount === "number"
-          ? p.amount
-          : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
-      gstPercentage: p.gstPercentage ?? 18, // Ensure GST is set
-      lineTax: p.lineTax ?? 0, // Ensure lineTax is set
-      lineTotal: p.lineTotal ?? p.amount, // Ensure lineTotal is set correctly
-    });
-
-    const toServiceId = (s: any) => {
-      // handle both new and legacy shapes
-      const raw =
-        (s.service &&
-          (typeof s.service === "object" ? s.service._id : s.service)) ??
-        (s.serviceName &&
-          (typeof s.serviceName === "object"
-            ? s.serviceName._id
-            : s.serviceName));
-
-      return raw ? String(raw) : "";
-    };
-
-    const toServiceItem = (s: any) => ({
-      itemType: "service" as const,
-      service: toServiceId(s),
-      description: s.description ?? "",
-      amount: Number(s.amount || 0),
-      gstPercentage: s.gstPercentage ?? 18, // Ensure GST is included for services
-      lineTax: s.lineTax ?? 0, // Ensure lineTax is set for services
-      lineTotal: s.lineTotal ?? s.amount, // Ensure lineTotal is set correctly for services
-    });
-
-    const toUnifiedItem = (i: any) => ({
-      itemType:
-        (i.itemType as "product" | "service") ??
-        (i.product || i.productId ? "product" : "service"),
-      product:
-        typeof i.product === "object"
-          ? String(i.product._id)
-          : String(i.product || ""),
-      service: toServiceId(i),
-      quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
-      unitType: i.unitType ?? "Piece",
-      otherUnit: i.otherUnit ?? " ",
-      pricePerUnit: i.pricePerUnit ?? undefined,
-      description: i.description ?? "",
-      amount:
-        typeof i.amount === "number"
-          ? i.amount
-          : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
-      gstPercentage: i.gstPercentage ?? 18, // Ensure GST is set for both products and services
-      lineTax: i.lineTax ?? 0, // Ensure lineTax is set
-      lineTotal: i.lineTotal ?? i.amount, // Ensure lineTotal is set correctly
-    });
-
-    // ---------- choose source ----------
-    let itemsToSet: any[] = [];
-
-    // 1) New unified shape already on the doc
-    if (
-      Array.isArray((transactionToEdit as any).items) &&
-      (transactionToEdit as any).items.length
-    ) {
-      itemsToSet = (transactionToEdit as any).items.map(toUnifiedItem);
-    } else {
-      // 2) Legacy/new arrays
-      const prodArr = Array.isArray((transactionToEdit as any).products)
-        ? (transactionToEdit as any).products.map(toProductItem)
-        : [];
-
-      // NEW: read plural `services`
-      const svcPlural = Array.isArray((transactionToEdit as any).services)
-        ? (transactionToEdit as any).services.map(toServiceItem)
-        : [];
-
-      // Legacy: some data used `service` (singular)
-      const svcLegacy = Array.isArray((transactionToEdit as any).service)
-        ? (transactionToEdit as any).service.map(toServiceItem)
-        : [];
-
-      itemsToSet = [...prodArr, ...svcPlural, ...svcLegacy];
-    }
-
-    // sales/purchases need at least one row
-    if (
-      (!itemsToSet || itemsToSet.length === 0) &&
-      (transactionToEdit.type === "sales" ||
-        transactionToEdit.type === "purchases")
-    ) {
-      itemsToSet = [
-        {
-          itemType: "product" as const,
-          product: "",
-          quantity: 1,
-          pricePerUnit: 0,
-          unitType: "Piece",
-          otherUnit: " ",
-          amount: 0,
-          description: "",
-        },
-      ];
-    }
-
-    // party/vendor id
-    let partyId: string | undefined;
-    if ((transactionToEdit as any).party) {
-      partyId =
-        typeof (transactionToEdit as any).party === "object"
-          ? (transactionToEdit as any).party._id
-          : (transactionToEdit as any).party;
-    } else if ((transactionToEdit as any).vendor) {
-      partyId =
-        typeof (transactionToEdit as any).vendor === "object"
-          ? (transactionToEdit as any).vendor._id
-          : (transactionToEdit as any).vendor;
-    }
-
-    // reset the form with normalized items
-    form.reset({
-      type: transactionToEdit.type,
-      company:
-        typeof transactionToEdit.company === "object"
-          ? transactionToEdit.company._id
-          : (transactionToEdit.company as any),
-      date: new Date(transactionToEdit.date),
-      totalAmount:
-        transactionToEdit.totalAmount || (transactionToEdit as any).amount,
-      items: itemsToSet,
-      description: transactionToEdit.description || "",
-      narration: (transactionToEdit as any).narration || "",
-      party: partyId,
-      referenceNumber: (transactionToEdit as any).referenceNumber,
-      fromAccount: (transactionToEdit as any).debitAccount,
-      toAccount: (transactionToEdit as any).creditAccount,
-      notes: (transactionToEdit as any).notes || "",
-      paymentMethod: (transactionToEdit as any).paymentMethod || "",
-       bank: (transactionToEdit as any).bank || "",
-    });
-
-    // Show notes section if there are existing notes
-    if (
-      (transactionToEdit as any).notes &&
-      (transactionToEdit as any).notes.trim()
-    ) {
-      setShowNotes(true);
-    }
-
-    replace(itemsToSet);
-
-    // Store original quantities for stock updates
-    const origMap = new Map<string, number>();
-    itemsToSet.forEach((item: any) => {
-      if (item.product) {
-        origMap.set(item.product, Number(item.quantity) || 0);
+  // Add this helper function before the useEffect
+const createSafeTransactionCopy = (transaction: any) => {
+  try {
+    // First try the simple method
+    return JSON.parse(JSON.stringify(transaction));
+  } catch (error) {
+    console.warn('JSON parse failed, using manual copy:', error);
+    
+    // Manual copy for problematic data
+    const safeCopy: any = {};
+    const simpleFields = [
+      '_id', 'type', 'description', 'narration', 'referenceNumber', 
+      'paymentMethod', 'bank', 'debitAccount', 'creditAccount', 'notes'
+    ];
+    
+    // Copy simple fields
+    simpleFields.forEach(field => {
+      if (transaction[field] !== undefined) {
+        safeCopy[field] = transaction[field];
       }
     });
-    setOriginalQuantities(origMap);
-  }, [transactionToEdit, form, replace]);
+    
+    // Handle company
+    if (transaction.company) {
+      safeCopy.company = typeof transaction.company === 'object' 
+        ? { ...transaction.company }
+        : transaction.company;
+    }
+    
+    // Handle party/vendor
+    if (transaction.party) {
+      safeCopy.party = typeof transaction.party === 'object'
+        ? { ...transaction.party }
+        : transaction.party;
+    } else if (transaction.vendor) {
+      safeCopy.vendor = typeof transaction.vendor === 'object'
+        ? { ...transaction.vendor }
+        : transaction.vendor;
+    }
+    
+    // Handle date
+    safeCopy.date = transaction.date || new Date();
+    
+    // Handle amounts
+    safeCopy.totalAmount = transaction.totalAmount || transaction.amount || 0;
+    
+    // Handle items arrays (simplified)
+    if (Array.isArray(transaction.items)) {
+      safeCopy.items = transaction.items.map((item: any) => ({ ...item }));
+    }
+    if (Array.isArray(transaction.products)) {
+      safeCopy.products = transaction.products.map((product: any) => ({ ...product }));
+    }
+    if (Array.isArray(transaction.services)) {
+      safeCopy.services = transaction.services.map((service: any) => ({ ...service }));
+    }
+    if (Array.isArray(transaction.service)) {
+      safeCopy.service = transaction.service.map((service: any) => ({ ...service }));
+    }
+    
+    return safeCopy;
+  }
+};
+
+
+React.useEffect(() => {
+  if (!transactionToEdit) return;
+
+  const loadTransactionData = () => {
+    try {
+      // Create a safe copy using a more robust method
+      const safeTransactionData = createSafeTransactionCopy(transactionToEdit);
+
+      if (!safeTransactionData) {
+        throw new Error('Failed to create safe copy of transaction data');
+      }
+
+      // ---------- helpers ----------
+      const toProductItem = (p: any) => ({
+        itemType: "product" as const,
+        product:
+          typeof p.product === "object"
+            ? String(p.product?._id || "")
+            : String(p.product || ""),
+        quantity: p.quantity ?? 1,
+        unitType: p.unitType ?? "Piece",
+        otherUnit: p.otherUnit ?? " ",
+        pricePerUnit: p.pricePerUnit ?? 0,
+        description: p.description ?? "",
+        amount:
+          typeof p.amount === "number"
+            ? p.amount
+            : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
+        gstPercentage: p.gstPercentage ?? 18,
+        lineTax: p.lineTax ?? 0,
+        lineTotal: p.lineTotal ?? p.amount,
+      });
+
+      const toServiceId = (s: any) => {
+        const raw =
+          (s.service &&
+            (typeof s.service === "object" ? s.service._id : s.service)) ??
+          (s.serviceName &&
+            (typeof s.serviceName === "object"
+              ? s.serviceName._id
+              : s.serviceName));
+
+        return raw ? String(raw) : "";
+      };
+
+      const toServiceItem = (s: any) => ({
+        itemType: "service" as const,
+        service: toServiceId(s),
+        description: s.description ?? "",
+        amount: Number(s.amount || 0),
+        gstPercentage: s.gstPercentage ?? 18,
+        lineTax: s.lineTax ?? 0,
+        lineTotal: s.lineTotal ?? s.amount,
+      });
+
+      const toUnifiedItem = (i: any) => ({
+        itemType:
+          (i.itemType as "product" | "service") ??
+          (i.product || i.productId ? "product" : "service"),
+        product:
+          typeof i.product === "object"
+            ? String(i.product?._id || "")
+            : String(i.product || ""),
+        service: toServiceId(i),
+        quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
+        unitType: i.unitType ?? "Piece",
+        otherUnit: i.otherUnit ?? " ",
+        pricePerUnit: i.pricePerUnit ?? undefined,
+        description: i.description ?? "",
+        amount:
+          typeof i.amount === "number"
+            ? i.amount
+            : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
+        gstPercentage: i.gstPercentage ?? 18,
+        lineTax: i.lineTax ?? 0,
+        lineTotal: i.lineTotal ?? i.amount,
+      });
+
+      // ---------- choose source ----------
+      let itemsToSet: any[] = [];
+
+      // 1) New unified shape already on the doc
+      if (
+        Array.isArray(safeTransactionData.items) &&
+        safeTransactionData.items.length
+      ) {
+        itemsToSet = safeTransactionData.items.map(toUnifiedItem);
+      } else {
+        // 2) Legacy/new arrays
+        const prodArr = Array.isArray(safeTransactionData.products)
+          ? safeTransactionData.products.map(toProductItem)
+          : [];
+
+        // NEW: read plural `services`
+        const svcPlural = Array.isArray(safeTransactionData.services)
+          ? safeTransactionData.services.map(toServiceItem)
+          : [];
+
+        // Legacy: some data used `service` (singular)
+        const svcLegacy = Array.isArray(safeTransactionData.service)
+          ? safeTransactionData.service.map(toServiceItem)
+          : [];
+
+        itemsToSet = [...prodArr, ...svcPlural, ...svcLegacy];
+      }
+
+      // sales/purchases need at least one row
+      if (
+        (!itemsToSet || itemsToSet.length === 0) &&
+        (safeTransactionData.type === "sales" ||
+          safeTransactionData.type === "purchases")
+      ) {
+        itemsToSet = [
+          {
+            itemType: "product" as const,
+            product: "",
+            quantity: 1,
+            pricePerUnit: 0,
+            unitType: "Piece",
+            otherUnit: " ",
+            amount: 0,
+            description: "",
+          },
+        ];
+      }
+
+      // party/vendor id
+      let partyId: string | undefined;
+      if (safeTransactionData.party) {
+        partyId =
+          typeof safeTransactionData.party === "object"
+            ? safeTransactionData.party?._id
+            : safeTransactionData.party;
+      } else if (safeTransactionData.vendor) {
+        partyId =
+          typeof safeTransactionData.vendor === "object"
+            ? safeTransactionData.vendor?._id
+            : safeTransactionData.vendor;
+      }
+
+      // Handle date safely
+      let transactionDate: Date;
+      try {
+        transactionDate = new Date(safeTransactionData.date);
+        if (isNaN(transactionDate.getTime())) {
+          transactionDate = new Date();
+        }
+      } catch {
+        transactionDate = new Date();
+      }
+
+      // reset the form with normalized items
+      form.reset({
+        type: safeTransactionData.type || defaultType,
+        company:
+          typeof safeTransactionData.company === "object"
+            ? safeTransactionData.company?._id
+            : safeTransactionData.company || selectedCompanyId || "",
+        date: transactionDate,
+        totalAmount:
+          safeTransactionData.totalAmount || safeTransactionData.amount || 0,
+        items: itemsToSet,
+        description: safeTransactionData.description || "",
+        narration: safeTransactionData.narration || "",
+        party: partyId || "",
+        referenceNumber: safeTransactionData.referenceNumber || "",
+        fromAccount: safeTransactionData.debitAccount || "",
+        toAccount: safeTransactionData.creditAccount || "",
+        notes: safeTransactionData.notes || "",
+        paymentMethod: safeTransactionData.paymentMethod || "",
+        bank: safeTransactionData.bank || "",
+      });
+
+      // Show notes section if there are existing notes
+      if (safeTransactionData.notes && safeTransactionData.notes.trim()) {
+        setShowNotes(true);
+      }
+
+      replace(itemsToSet);
+
+      // Store original quantities for stock updates
+      const origMap = new Map<string, number>();
+      itemsToSet.forEach((item: any) => {
+        if (item.product) {
+          origMap.set(item.product, Number(item.quantity) || 0);
+        }
+      });
+      setOriginalQuantities(origMap);
+
+    } catch (error) {
+      console.error('Error loading transaction data:', error);
+      console.error('Transaction data that caused error:', transactionToEdit);
+      
+      toast({
+        variant: "destructive",
+        title: "Error loading transaction",
+        description: "There was a problem loading the transaction data. Please try again.",
+      });
+    }
+  };
+
+  // Add a small delay to ensure the form is ready
+  const timer = setTimeout(loadTransactionData, 100);
+  return () => clearTimeout(timer);
+}, [transactionToEdit, form, replace, toast, defaultType, selectedCompanyId]);
+
+  // React.useEffect(() => {
+  //   if (!transactionToEdit) return;
+
+  //   // ---------- helpers ----------
+  //   const toProductItem = (p: any) => ({
+  //     itemType: "product" as const,
+  //     product:
+  //       typeof p.product === "object"
+  //         ? String(p.product._id)
+  //         : String(p.product || ""),
+  //     quantity: p.quantity ?? 1,
+  //     unitType: p.unitType ?? "Piece",
+  //     otherUnit: p.otherUnit ?? " ",
+  //     pricePerUnit: p.pricePerUnit ?? 0,
+  //     description: p.description ?? "",
+  //     amount:
+  //       typeof p.amount === "number"
+  //         ? p.amount
+  //         : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
+  //     gstPercentage: p.gstPercentage ?? 18, // Ensure GST is set
+  //     lineTax: p.lineTax ?? 0, // Ensure lineTax is set
+  //     lineTotal: p.lineTotal ?? p.amount, // Ensure lineTotal is set correctly
+  //   });
+
+  //   const toServiceId = (s: any) => {
+  //     // handle both new and legacy shapes
+  //     const raw =
+  //       (s.service &&
+  //         (typeof s.service === "object" ? s.service._id : s.service)) ??
+  //       (s.serviceName &&
+  //         (typeof s.serviceName === "object"
+  //           ? s.serviceName._id
+  //           : s.serviceName));
+
+  //     return raw ? String(raw) : "";
+  //   };
+
+  //   const toServiceItem = (s: any) => ({
+  //     itemType: "service" as const,
+  //     service: toServiceId(s),
+  //     description: s.description ?? "",
+  //     amount: Number(s.amount || 0),
+  //     gstPercentage: s.gstPercentage ?? 18, // Ensure GST is included for services
+  //     lineTax: s.lineTax ?? 0, // Ensure lineTax is set for services
+  //     lineTotal: s.lineTotal ?? s.amount, // Ensure lineTotal is set correctly for services
+  //   });
+
+  //   const toUnifiedItem = (i: any) => ({
+  //     itemType:
+  //       (i.itemType as "product" | "service") ??
+  //       (i.product || i.productId ? "product" : "service"),
+  //     product:
+  //       typeof i.product === "object"
+  //         ? String(i.product._id)
+  //         : String(i.product || ""),
+  //     service: toServiceId(i),
+  //     quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
+  //     unitType: i.unitType ?? "Piece",
+  //     otherUnit: i.otherUnit ?? " ",
+  //     pricePerUnit: i.pricePerUnit ?? undefined,
+  //     description: i.description ?? "",
+  //     amount:
+  //       typeof i.amount === "number"
+  //         ? i.amount
+  //         : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
+  //     gstPercentage: i.gstPercentage ?? 18, // Ensure GST is set for both products and services
+  //     lineTax: i.lineTax ?? 0, // Ensure lineTax is set
+  //     lineTotal: i.lineTotal ?? i.amount, // Ensure lineTotal is set correctly
+  //   });
+
+  //   // ---------- choose source ----------
+  //   let itemsToSet: any[] = [];
+
+  //   // 1) New unified shape already on the doc
+  //   if (
+  //     Array.isArray((transactionToEdit as any).items) &&
+  //     (transactionToEdit as any).items.length
+  //   ) {
+  //     itemsToSet = (transactionToEdit as any).items.map(toUnifiedItem);
+  //   } else {
+  //     // 2) Legacy/new arrays
+  //     const prodArr = Array.isArray((transactionToEdit as any).products)
+  //       ? (transactionToEdit as any).products.map(toProductItem)
+  //       : [];
+
+  //     // NEW: read plural `services`
+  //     const svcPlural = Array.isArray((transactionToEdit as any).services)
+  //       ? (transactionToEdit as any).services.map(toServiceItem)
+  //       : [];
+
+  //     // Legacy: some data used `service` (singular)
+  //     const svcLegacy = Array.isArray((transactionToEdit as any).service)
+  //       ? (transactionToEdit as any).service.map(toServiceItem)
+  //       : [];
+
+  //     itemsToSet = [...prodArr, ...svcPlural, ...svcLegacy];
+  //   }
+
+  //   // sales/purchases need at least one row
+  //   if (
+  //     (!itemsToSet || itemsToSet.length === 0) &&
+  //     (transactionToEdit.type === "sales" ||
+  //       transactionToEdit.type === "purchases")
+  //   ) {
+  //     itemsToSet = [
+  //       {
+  //         itemType: "product" as const,
+  //         product: "",
+  //         quantity: 1,
+  //         pricePerUnit: 0,
+  //         unitType: "Piece",
+  //         otherUnit: " ",
+  //         amount: 0,
+  //         description: "",
+  //       },
+  //     ];
+  //   }
+
+  //   // party/vendor id
+  //   let partyId: string | undefined;
+  //   if ((transactionToEdit as any).party) {
+  //     partyId =
+  //       typeof (transactionToEdit as any).party === "object"
+  //         ? (transactionToEdit as any).party._id
+  //         : (transactionToEdit as any).party;
+  //   } else if ((transactionToEdit as any).vendor) {
+  //     partyId =
+  //       typeof (transactionToEdit as any).vendor === "object"
+  //         ? (transactionToEdit as any).vendor._id
+  //         : (transactionToEdit as any).vendor;
+  //   }
+
+  //   // reset the form with normalized items
+  //   form.reset({
+  //     type: transactionToEdit.type,
+  //     company:
+  //       typeof transactionToEdit.company === "object"
+  //         ? transactionToEdit.company._id
+  //         : (transactionToEdit.company as any),
+  //     date: new Date(transactionToEdit.date),
+  //     totalAmount:
+  //       transactionToEdit.totalAmount || (transactionToEdit as any).amount,
+  //     items: itemsToSet,
+  //     description: transactionToEdit.description || "",
+  //     narration: (transactionToEdit as any).narration || "",
+  //     party: partyId,
+  //     referenceNumber: (transactionToEdit as any).referenceNumber,
+  //     fromAccount: (transactionToEdit as any).debitAccount,
+  //     toAccount: (transactionToEdit as any).creditAccount,
+  //     notes: (transactionToEdit as any).notes || "",
+  //     paymentMethod: (transactionToEdit as any).paymentMethod || "",
+  //      bank: (transactionToEdit as any).bank || "",
+  //   });
+
+  //   // Show notes section if there are existing notes
+  //   if (
+  //     (transactionToEdit as any).notes &&
+  //     (transactionToEdit as any).notes.trim()
+  //   ) {
+  //     setShowNotes(true);
+  //   }
+
+  //   replace(itemsToSet);
+
+  //   // Store original quantities for stock updates
+  //   const origMap = new Map<string, number>();
+  //   itemsToSet.forEach((item: any) => {
+  //     if (item.product) {
+  //       origMap.set(item.product, Number(item.quantity) || 0);
+  //     }
+  //   });
+  //   setOriginalQuantities(origMap);
+  // }, [transactionToEdit, form, replace]);
 
   React.useEffect(() => {
     if (transactionToEdit) return; // don't change type while editing
@@ -1233,7 +1505,8 @@ export function TransactionForm({
           taxAmount: uiTax,
           paymentMethod: values.paymentMethod,
           invoiceTotal: uiInvoiceTotal,
-          bank: values.bank,
+          // bank: values.bank,
+           ...(values.bank && { bank: values.bank }),
           notes: values.notes || "",
         };
       }
