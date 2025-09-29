@@ -90,10 +90,21 @@ export default function UsersPage() {
       if (!usersRes.ok || !companiesRes.ok) {
         throw new Error("Failed to fetch data");
       }
-      const usersData = await usersRes.json();
-      const companiesData = await companiesRes.json();
-      setUsers(usersData);
-      setCompanies(companiesData);
+     const usersData = await usersRes.json();
+const companiesData = await companiesRes.json();
+
+// token decode karke current admin ka userId nikal lo
+const payload = JSON.parse(atob(token.split(".")[1]));
+const currentUserId = payload.userId || payload.id || payload._id;
+
+// filter: apna khud ka record hata do (sirf agar role = admin hai)
+let filteredUsers = usersData;
+if (payload.role === "admin") {
+  filteredUsers = usersData.filter((u: any) => u._id !== currentUserId);
+}
+
+setUsers(filteredUsers);
+setCompanies(companiesData);
     } catch (err: any) {
       toast({
         variant: "destructive",
