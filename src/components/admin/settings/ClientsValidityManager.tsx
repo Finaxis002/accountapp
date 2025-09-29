@@ -407,17 +407,21 @@ export function ClientsValidityManager({ onClientClick }: ClientsValidityManager
           const v = validityByClient[c._id];
           return (
             <Card key={c._id} className="border p-4 mb-4">
-              <CardHeader className="flex justify-between items-center">
+              <div className="flex justify-between items-center mb-4">
                 <div className="text-lg font-medium">{c.clientUsername}</div>
                 <StatusBadge validity={v} />
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="flex justify-between items-center ">
+                <div >
                 <div className="text-sm mb-2">{c.contactName}</div>
                 <div className="text-sm mb-2">{fmt(v?.expiresAt)}</div>
-                <Button size="sm" onClick={() => handleManage(c)} className="w-3/4 mx-auto">
+                </div>
+                <div>
+                <Button size="sm" onClick={() => handleManage(c)} className=" mx-auto">
                   <ShieldCheck className="h-3.5 w-3.5" /> Manage
                 </Button>
-              </CardContent>
+                </div>
+              </div>
             </Card>
           );
         })
