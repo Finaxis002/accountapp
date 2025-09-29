@@ -335,6 +335,8 @@ export function TransactionForm({
       taxAmount: 0, // <-- NEW
       invoiceTotal: 0,
       notes: "",
+       paymentMethod: "",
+       bank: "",
     },
   });
 
@@ -877,6 +879,8 @@ export function TransactionForm({
       fromAccount: (transactionToEdit as any).debitAccount,
       toAccount: (transactionToEdit as any).creditAccount,
       notes: (transactionToEdit as any).notes || "",
+      paymentMethod: (transactionToEdit as any).paymentMethod || "",
+       bank: (transactionToEdit as any).bank || "",
     });
 
     // Show notes section if there are existing notes
