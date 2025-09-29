@@ -104,9 +104,15 @@ const renderNotes = (
         // Check for color in strong element
         const style = strongEl.getAttribute("style");
         if (style) {
-          const colorMatch = style.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          const colorMatch = style.match(
+            /color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/
+          );
           if (colorMatch) {
-            textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+            textColor = [
+              parseInt(colorMatch[1]),
+              parseInt(colorMatch[2]),
+              parseInt(colorMatch[3]),
+            ];
           }
         }
       }
@@ -118,13 +124,25 @@ const renderNotes = (
       // Check for color and background in paragraph itself
       const paraStyle = el.getAttribute("style");
       if (paraStyle) {
-        const colorMatch = paraStyle.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        const colorMatch = paraStyle.match(
+          /color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/
+        );
         if (colorMatch) {
-          textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+          textColor = [
+            parseInt(colorMatch[1]),
+            parseInt(colorMatch[2]),
+            parseInt(colorMatch[3]),
+          ];
         }
-        const bgMatch = paraStyle.match(/background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        const bgMatch = paraStyle.match(
+          /background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/
+        );
         if (bgMatch) {
-          bgColor = [parseInt(bgMatch[1]), parseInt(bgMatch[2]), parseInt(bgMatch[3])];
+          bgColor = [
+            parseInt(bgMatch[1]),
+            parseInt(bgMatch[2]),
+            parseInt(bgMatch[3]),
+          ];
         }
       }
 
@@ -146,7 +164,13 @@ const renderNotes = (
           bgX = startX;
         }
         pdfDoc.setFillColor(...bgColor);
-        pdfDoc.rect(bgX - 2, currentY - fontSize * 0.3, bgWidth + 4, totalHeight + 2, "F");
+        pdfDoc.rect(
+          bgX - 2,
+          currentY - fontSize * 0.3,
+          bgWidth + 4,
+          totalHeight + 2,
+          "F"
+        );
       }
 
       for (let line of lines) {
@@ -163,7 +187,12 @@ const renderNotes = (
           else if (align === "right") underlineX = x - textWidth;
           pdfDoc.setLineWidth(0.5);
           pdfDoc.setDrawColor(...textColor); // Use same color for underline
-          pdfDoc.line(underlineX, currentY + 1, underlineX + textWidth, currentY + 1);
+          pdfDoc.line(
+            underlineX,
+            currentY + 1,
+            underlineX + textWidth,
+            currentY + 1
+          );
           pdfDoc.setDrawColor(0, 0, 0); // Reset to black
         }
 
@@ -198,9 +227,15 @@ const renderNotes = (
           // Check for color in strong element
           const style = strongEl.getAttribute("style");
           if (style) {
-            const colorMatch = style.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            const colorMatch = style.match(
+              /color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/
+            );
             if (colorMatch) {
-              textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+              textColor = [
+                parseInt(colorMatch[1]),
+                parseInt(colorMatch[2]),
+                parseInt(colorMatch[3]),
+              ];
             }
           }
         }
@@ -213,14 +248,26 @@ const renderNotes = (
         const liStyle = li.getAttribute("style");
         if (liStyle) {
           if (!strongEl) {
-            const colorMatch = liStyle.match(/color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            const colorMatch = liStyle.match(
+              /color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/
+            );
             if (colorMatch) {
-              textColor = [parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3])];
+              textColor = [
+                parseInt(colorMatch[1]),
+                parseInt(colorMatch[2]),
+                parseInt(colorMatch[3]),
+              ];
             }
           }
-          const bgMatch = liStyle.match(/background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          const bgMatch = liStyle.match(
+            /background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)/
+          );
           if (bgMatch) {
-            bgColor = [parseInt(bgMatch[1]), parseInt(bgMatch[2]), parseInt(bgMatch[3])];
+            bgColor = [
+              parseInt(bgMatch[1]),
+              parseInt(bgMatch[2]),
+              parseInt(bgMatch[3]),
+            ];
           }
         }
 
@@ -243,7 +290,13 @@ const renderNotes = (
             bgX = startX;
           }
           pdfDoc.setFillColor(...bgColor);
-          pdfDoc.rect(bgX - 2, currentY - fontSize * 0.3, bgWidth + 4, totalHeight + 2, "F");
+          pdfDoc.rect(
+            bgX - 2,
+            currentY - fontSize * 0.3,
+            bgWidth + 4,
+            totalHeight + 2,
+            "F"
+          );
         }
 
         for (let line of lines) {
@@ -260,7 +313,12 @@ const renderNotes = (
             else if (align === "right") underlineX = x - textWidth;
             pdfDoc.setLineWidth(0.5);
             pdfDoc.setDrawColor(...textColor); // Use same color for underline
-            pdfDoc.line(underlineX, currentY + 1, underlineX + textWidth, currentY + 1);
+            pdfDoc.line(
+              underlineX,
+              currentY + 1,
+              underlineX + textWidth,
+              currentY + 1
+            );
             pdfDoc.setDrawColor(0, 0, 0); // Reset to black
           }
 
@@ -2644,15 +2702,22 @@ export const generatePdfForTemplate7 = async (
     doc.setFontSize(9);
     doc.text(invoiceData.invoiceTo.name, infoBlockX, rightY + 5);
     doc.setTextColor(...SECONDARY_GRAY);
-    doc.text(invoiceData.invoiceTo.address, infoBlockX, rightY + 9);
-    if (invoiceData.invoiceTo.email)
-      doc.text(invoiceData.invoiceTo.email, infoBlockX, rightY + 13);
-    if (invoiceData.invoiceTo.gstin)
-      doc.text(
-        `GSTIN: ${invoiceData.invoiceTo.gstin}`,
-        infoBlockX,
-        rightY + 17
-      );
+    const maxAddressWidth = infoBlockWidth - 2; // Leave some padding
+    const addressLines = doc.splitTextToSize(
+      invoiceData.invoiceTo.address,
+      maxAddressWidth +10
+    );
+    doc.text(addressLines, infoBlockX, rightY + 9);
+    let addressYOffset = 4 + (addressLines.length - 1) * 5;
+
+   if (invoiceData.invoiceTo.email)
+  doc.text(invoiceData.invoiceTo.email, infoBlockX, rightY + 9 + addressYOffset);
+if (invoiceData.invoiceTo.gstin)
+  doc.text(
+    `GSTIN: ${invoiceData.invoiceTo.gstin}`,
+    infoBlockX,
+    rightY + 9 + addressYOffset + (invoiceData.invoiceTo.email ? 4 : 0)
+  );
   };
 
   const drawTableHead = (): number => {
@@ -2750,7 +2815,7 @@ export const generatePdfForTemplate7 = async (
     doc.text("SUBTOTAL", totalsBlockX, yTotals);
     doc.setFont("helvetica", "bold");
     doc.text(money(subtotal), totalsBlockX + totalsBlockWidth, yTotals, {
-      align: "right",
+      align: "right"
     });
 
     if (gstEnabled) {
@@ -2768,7 +2833,7 @@ export const generatePdfForTemplate7 = async (
 
     // Grand Total - Highlighted
     doc.setFillColor(...PRIMARY_BLUE);
-    doc.rect(totalsBlockX - 5, yTotals - 7, totalsBlockWidth + 10, 10, "F");
+    doc.rect(totalsBlockX - 5, yTotals - 7, totalsBlockWidth + 5, 10, "F");
 
     doc.setFontSize(12);
     doc.setTextColor(...WHITE);
@@ -2776,7 +2841,7 @@ export const generatePdfForTemplate7 = async (
     doc.text("GRAND TOTAL", totalsBlockX - 2, yTotals);
     doc.text(
       money(invoiceTotal),
-      totalsBlockX + totalsBlockWidth + 3,
+      totalsBlockX + totalsBlockWidth-2 ,
       yTotals,
       {
         align: "right",
