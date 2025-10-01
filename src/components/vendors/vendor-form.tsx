@@ -90,13 +90,6 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  React.useEffect(() => {
-    const current = (form.getValues("state") || "").trim().toLowerCase();
-    const found = indiaStates.find((s) => s.name.toLowerCase() === current);
-    setStateCode(found?.isoCode ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const stateOptions = React.useMemo(
     () =>
       indiaStates
@@ -113,10 +106,6 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [stateCode]);
 
-  // when state changes, clear the city field
-  React.useEffect(() => {
-    form.setValue("city", "", { shouldValidate: true });
-  }, [stateCode]);
 
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
@@ -224,6 +213,8 @@ export function VendorForm({ vendor, initialName, onSuccess }: VendorFormProps) 
                             );
                             // store STATE NAME in your form (backend unchanged)
                             field.onChange(selected?.name || "");
+                            // clear city when state changes
+                            form.setValue("city", "", { shouldValidate: true });
                           }}
                           placeholder="Select state"
                           searchPlaceholder="Type a state…"
