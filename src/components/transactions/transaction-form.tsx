@@ -546,8 +546,6 @@ export function TransactionForm({
 
         if (res.ok) {
           const data = await res.json();
-          // console.log("Fetch Bank Response :", data);
-
           // Check the actual structure of the response
           let banksData = data;
 
@@ -599,22 +597,14 @@ export function TransactionForm({
   // Use useEffect to fetch banks when the selected company in the FORM changes
   React.useEffect(() => {
     if (selectedCompanyIdWatch) {
-      // console.log(
-      //   "Fetching banks for selected company in form:",
-      //   selectedCompanyIdWatch
-      // );
+     
       fetchBanks(selectedCompanyIdWatch);
     } else {
       setBanks([]); // Clear banks if no company is selected in the form
     }
   }, [selectedCompanyIdWatch, fetchBanks]); // Use selectedCompanyIdWatch instead of selectedCompanyId
 
-  // Add another useEffect to log banks after they update
-  // React.useEffect(() => {
-  //   console.log("Banks state updated:", banks);
-  // }, [banks]);
-
-  // console.log("selectedCompanyId :", selectedCompanyId);
+ 
 
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
@@ -1001,179 +991,7 @@ React.useEffect(() => {
   return () => clearTimeout(timer);
 }, [transactionToEdit, form, replace, toast, defaultType, selectedCompanyId]);
 
-  // React.useEffect(() => {
-  //   if (!transactionToEdit) return;
-
-  //   // ---------- helpers ----------
-  //   const toProductItem = (p: any) => ({
-  //     itemType: "product" as const,
-  //     product:
-  //       typeof p.product === "object"
-  //         ? String(p.product._id)
-  //         : String(p.product || ""),
-  //     quantity: p.quantity ?? 1,
-  //     unitType: p.unitType ?? "Piece",
-  //     otherUnit: p.otherUnit ?? " ",
-  //     pricePerUnit: p.pricePerUnit ?? 0,
-  //     description: p.description ?? "",
-  //     amount:
-  //       typeof p.amount === "number"
-  //         ? p.amount
-  //         : Number(p.quantity || 0) * Number(p.pricePerUnit || 0),
-  //     gstPercentage: p.gstPercentage ?? 18, // Ensure GST is set
-  //     lineTax: p.lineTax ?? 0, // Ensure lineTax is set
-  //     lineTotal: p.lineTotal ?? p.amount, // Ensure lineTotal is set correctly
-  //   });
-
-  //   const toServiceId = (s: any) => {
-  //     // handle both new and legacy shapes
-  //     const raw =
-  //       (s.service &&
-  //         (typeof s.service === "object" ? s.service._id : s.service)) ??
-  //       (s.serviceName &&
-  //         (typeof s.serviceName === "object"
-  //           ? s.serviceName._id
-  //           : s.serviceName));
-
-  //     return raw ? String(raw) : "";
-  //   };
-
-  //   const toServiceItem = (s: any) => ({
-  //     itemType: "service" as const,
-  //     service: toServiceId(s),
-  //     description: s.description ?? "",
-  //     amount: Number(s.amount || 0),
-  //     gstPercentage: s.gstPercentage ?? 18, // Ensure GST is included for services
-  //     lineTax: s.lineTax ?? 0, // Ensure lineTax is set for services
-  //     lineTotal: s.lineTotal ?? s.amount, // Ensure lineTotal is set correctly for services
-  //   });
-
-  //   const toUnifiedItem = (i: any) => ({
-  //     itemType:
-  //       (i.itemType as "product" | "service") ??
-  //       (i.product || i.productId ? "product" : "service"),
-  //     product:
-  //       typeof i.product === "object"
-  //         ? String(i.product._id)
-  //         : String(i.product || ""),
-  //     service: toServiceId(i),
-  //     quantity: i.quantity ?? (i.itemType === "service" ? undefined : 1),
-  //     unitType: i.unitType ?? "Piece",
-  //     otherUnit: i.otherUnit ?? " ",
-  //     pricePerUnit: i.pricePerUnit ?? undefined,
-  //     description: i.description ?? "",
-  //     amount:
-  //       typeof i.amount === "number"
-  //         ? i.amount
-  //         : Number(i.quantity || 0) * Number(i.pricePerUnit || 0),
-  //     gstPercentage: i.gstPercentage ?? 18, // Ensure GST is set for both products and services
-  //     lineTax: i.lineTax ?? 0, // Ensure lineTax is set
-  //     lineTotal: i.lineTotal ?? i.amount, // Ensure lineTotal is set correctly
-  //   });
-
-  //   // ---------- choose source ----------
-  //   let itemsToSet: any[] = [];
-
-  //   // 1) New unified shape already on the doc
-  //   if (
-  //     Array.isArray((transactionToEdit as any).items) &&
-  //     (transactionToEdit as any).items.length
-  //   ) {
-  //     itemsToSet = (transactionToEdit as any).items.map(toUnifiedItem);
-  //   } else {
-  //     // 2) Legacy/new arrays
-  //     const prodArr = Array.isArray((transactionToEdit as any).products)
-  //       ? (transactionToEdit as any).products.map(toProductItem)
-  //       : [];
-
-  //     // NEW: read plural `services`
-  //     const svcPlural = Array.isArray((transactionToEdit as any).services)
-  //       ? (transactionToEdit as any).services.map(toServiceItem)
-  //       : [];
-
-  //     // Legacy: some data used `service` (singular)
-  //     const svcLegacy = Array.isArray((transactionToEdit as any).service)
-  //       ? (transactionToEdit as any).service.map(toServiceItem)
-  //       : [];
-
-  //     itemsToSet = [...prodArr, ...svcPlural, ...svcLegacy];
-  //   }
-
-  //   // sales/purchases need at least one row
-  //   if (
-  //     (!itemsToSet || itemsToSet.length === 0) &&
-  //     (transactionToEdit.type === "sales" ||
-  //       transactionToEdit.type === "purchases")
-  //   ) {
-  //     itemsToSet = [
-  //       {
-  //         itemType: "product" as const,
-  //         product: "",
-  //         quantity: 1,
-  //         pricePerUnit: 0,
-  //         unitType: "Piece",
-  //         otherUnit: " ",
-  //         amount: 0,
-  //         description: "",
-  //       },
-  //     ];
-  //   }
-
-  //   // party/vendor id
-  //   let partyId: string | undefined;
-  //   if ((transactionToEdit as any).party) {
-  //     partyId =
-  //       typeof (transactionToEdit as any).party === "object"
-  //         ? (transactionToEdit as any).party._id
-  //         : (transactionToEdit as any).party;
-  //   } else if ((transactionToEdit as any).vendor) {
-  //     partyId =
-  //       typeof (transactionToEdit as any).vendor === "object"
-  //         ? (transactionToEdit as any).vendor._id
-  //         : (transactionToEdit as any).vendor;
-  //   }
-
-  //   // reset the form with normalized items
-  //   form.reset({
-  //     type: transactionToEdit.type,
-  //     company:
-  //       typeof transactionToEdit.company === "object"
-  //         ? transactionToEdit.company._id
-  //         : (transactionToEdit.company as any),
-  //     date: new Date(transactionToEdit.date),
-  //     totalAmount:
-  //       transactionToEdit.totalAmount || (transactionToEdit as any).amount,
-  //     items: itemsToSet,
-  //     description: transactionToEdit.description || "",
-  //     narration: (transactionToEdit as any).narration || "",
-  //     party: partyId,
-  //     referenceNumber: (transactionToEdit as any).referenceNumber,
-  //     fromAccount: (transactionToEdit as any).debitAccount,
-  //     toAccount: (transactionToEdit as any).creditAccount,
-  //     notes: (transactionToEdit as any).notes || "",
-  //     paymentMethod: (transactionToEdit as any).paymentMethod || "",
-  //      bank: (transactionToEdit as any).bank || "",
-  //   });
-
-  //   // Show notes section if there are existing notes
-  //   if (
-  //     (transactionToEdit as any).notes &&
-  //     (transactionToEdit as any).notes.trim()
-  //   ) {
-  //     setShowNotes(true);
-  //   }
-
-  //   replace(itemsToSet);
-
-  //   // Store original quantities for stock updates
-  //   const origMap = new Map<string, number>();
-  //   itemsToSet.forEach((item: any) => {
-  //     if (item.product) {
-  //       origMap.set(item.product, Number(item.quantity) || 0);
-  //     }
-  //   });
-  //   setOriginalQuantities(origMap);
-  // }, [transactionToEdit, form, replace]);
+ 
 
   React.useEffect(() => {
     if (transactionToEdit) return; // don't change type while editing
@@ -1780,28 +1598,8 @@ React.useEffect(() => {
             });
           }
 
+         
           // Send WhatsApp message if party has contact number
-          // if (partyDoc?.contactNumber) {
-          //   try {
-          //     await axios.post('http://localhost:8745/send-whatsapp', {
-          //       phoneNumber: partyDoc.contactNumber,
-          //       message: "your invoice is generated"
-          //     });
-          //     toast({
-          //       title: "WhatsApp message sent",
-          //       description: `Sent to ${partyDoc.contactNumber}`,
-          //     });
-          //   } catch (error) {
-          //     console.error('Error sending WhatsApp message:', error);
-          //     toast({
-          //       variant: "destructive",
-          //       title: "WhatsApp message failed",
-          //       description: "Failed to send WhatsApp message.",
-          //     });
-          //   }
-          // }
-          // Send WhatsApp message if party has contact number
-
           if (partyDoc?.contactNumber) {
             try {
               // Prepare detailed invoice message
