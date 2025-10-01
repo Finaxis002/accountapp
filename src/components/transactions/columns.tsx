@@ -35,6 +35,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import {FaClock} from "react-icons/fa";
+
+import { PaymentMethodCell } from "./payment-method-cell";
 
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
@@ -280,6 +283,66 @@ export const columns = ({
       },
     },
 
+    // payment method
+    //  {
+    //   accessorKey: "paymentMethod",
+    //   header: "Payment Method",
+    //   cell: ({ row }) => {
+    //     const paymentMethod = (row.original as any).paymentMethod;
+        
+    //     if (!paymentMethod) {
+    //       return <span className="text-muted-foreground">-</span>;
+    //     }
+
+    //     const paymentMethodStyles: Record<string, string> = {
+    //       Cash: "bg-green-500/20 text-green-700 dark:text-green-300",
+    //       Credit: "bg-orange-500/20 text-red-700 dark:text-red-300 rounded",
+    //       UPI: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
+    //       "Bank Transfer": "bg-purple-500/20 text-purple-700 dark:text-purple-300",
+    //       Cheque: "bg-gray-500/20 text-gray-700 dark:text-gray-300",
+    //     };
+
+    //     return (
+    //        <>
+    //     <div className="flex items-center gap-1">
+    //       <Badge
+    //         variant="outline"
+    //         className={paymentMethodStyles[paymentMethod] ?? "bg-gray-500/20 text-gray-700 dark:text-gray-300"}
+    //       >
+    //         {paymentMethod}
+    //       </Badge>
+    //       {paymentMethod === "Credit" && (
+    //         <button
+    //           onClick={() => setShowReminderPopup(true)}
+    //           className="p-1 hover:bg-orange-100 dark:hover:bg-orange-900 rounded transition-colors"
+    //           title="View credit reminder details"
+    //         >
+    //           <FaClock className="h-4 w-4 text-orange-500" />
+    //         </button>
+    //       )}
+    //     </div>
+
+    //     {/* Credit Reminder Popup */}
+    //     {paymentMethod === "Credit" && (
+    //       <CreditReminderPopup
+    //         isOpen={showReminderPopup}
+    //         onClose={() => setShowReminderPopup(false)}
+    //         transaction={transaction}
+    //         party={(transaction as any).party || (transaction as any).vendor}
+    //       />
+    //     )}
+    //   </>
+    //     );
+    //   },
+    // },
+  // In your columns configuration:
+{
+  accessorKey: "paymentMethod",
+  header: "Payment Method",
+  cell: ({ row }) => {
+    return <PaymentMethodCell transaction={row.original} />;
+  },
+},
     // AMOUNT
     {
       accessorKey: "totalAmount",
