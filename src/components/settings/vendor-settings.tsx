@@ -90,10 +90,14 @@ export function VendorSettings() {
     null
   );
 
+
+const role = localStorage.getItem('role');
+  const isCustomer = role === "customer";
+
   // Permission checks
   const { permissions: userCaps } = useUserPermissions();
-  const canShowVendors = !!userCaps?.canShowVendors;
-  const canCreateVendors = !!userCaps?.canCreateVendors;
+  const canShowVendors = !!userCaps?.canShowVendors || isCustomer;
+  const canCreateVendors = !!userCaps?.canCreateVendors || isCustomer;
 
   const fetchCompanies = React.useCallback(async () => {
     setIsLoadingCompanies(true);

@@ -133,7 +133,7 @@ export default function ProfilePage() {
 
   const memberTabs: TabItem[] = [permissionsTab];
 
-  if (allow(permissions?.canCreateVendors, userCaps?.canCreateVendors)) {
+  if (isClient || allow(permissions?.canCreateVendors, userCaps?.canCreateVendors)) {
     memberTabs.push({
       value: "vendors",
       label: "Vendors",
@@ -142,7 +142,7 @@ export default function ProfilePage() {
     });
   }
 
-  if (allow(permissions?.canCreateCustomers, userCaps?.canCreateCustomers)) {
+  if (isClient || allow(permissions?.canCreateCustomers, userCaps?.canCreateCustomers)) {
     memberTabs.push({
       value: "customers",
       label: "Customers",

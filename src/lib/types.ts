@@ -6,6 +6,7 @@ export type Product = {
   type?: 'product' | 'service';
   stocks?: number;
   unit?: string;
+  hsn?: string;
   createdByClient: string;   // <-- required
   createdAt?: string;
   updatedAt?: string;
@@ -17,6 +18,7 @@ export type Product = {
 export type Service = {
     _id: string;
     serviceName:string;
+    sac?: string;
     createdByClient: string;
     createdAt?: string;
     updatedAt?: string;
@@ -31,10 +33,12 @@ export type Item = {
   quantity?: number;
   unitType?: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
   pricePerUnit?: number;
+  hsnCode?: string;
   // Service fields
   service?: Service;
   serviceName?: Service;
   description?: string;
+  sacCode?: string;
   // Common field
   amount: number;
 }
@@ -78,6 +82,7 @@ export type Transaction = {
    // For Receipts/Payments
    referenceNumber?: string;
    notes?: string;
+   shippingAddress?: ShippingAddress | string | null;
  };
 
 export type Kpi = {
@@ -271,4 +276,20 @@ export type Vendor = Party & {
     | "Unknown";
   pan?: string;
   isTDSApplicable?: boolean;
+};
+
+export type ShippingAddress = {
+  _id: string;
+  party: string;
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  contactNumber: string;
+  createdByClient: string;
+  createdByUser: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
 };
