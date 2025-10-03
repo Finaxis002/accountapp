@@ -25,7 +25,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Loader2, PlusCircle, Trash2, Copy, Pencil } from "lucide-react";
+import {
+  CalendarIcon,
+  Loader2,
+  PlusCircle,
+  Trash2,
+  Copy,
+  Pencil,
+} from "lucide-react";
 import { format } from "date-fns";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -56,15 +63,13 @@ import { ProductForm } from "../products/product-form";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
-import {
-  generatePdfForTemplate1,
-  generatePdfForTemplate2,
-  generatePdfForTemplate3,
-  generatePdfForTemplate4,
-  generatePdfForTemplate5,
-  generatePdfForTemplate6,
-  generatePdfForTemplate7,
-} from "@/lib/pdf-templates";
+import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
+import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
+import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
+import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
+import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
+import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
+import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 import { getUnifiedLines } from "@/lib/getUnifiedLines";
 
 import QuillEditor from "@/components/ui/quill-editor";
@@ -225,14 +230,16 @@ const formSchema = z
     // Shipping address fields
     sameAsBilling: z.boolean().optional(),
     shippingAddress: z.string().optional(),
-    shippingAddressDetails: z.object({
-      label: z.string().optional(),
-      address: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-      pincode: z.string().optional(),
-      contactNumber: z.string().optional(),
-    }).optional(),
+    shippingAddressDetails: z
+      .object({
+        label: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        pincode: z.string().optional(),
+        contactNumber: z.string().optional(),
+      })
+      .optional(),
   })
   .refine(
     (data) => {
@@ -322,14 +329,20 @@ export function TransactionForm({
   const paymentMethods = ["Cash", "Credit", "UPI", "Bank Transfer", "Cheque"];
   const [existingUnits, setExistingUnits] = React.useState<any[]>([]);
   const [unitOpen, setUnitOpen] = React.useState(false);
-  const [originalQuantities, setOriginalQuantities] = React.useState<Map<string, number>>(new Map());
+  const [originalQuantities, setOriginalQuantities] = React.useState<
+    Map<string, number>
+  >(new Map());
 
   // Shipping address states
   const [shippingAddresses, setShippingAddresses] = React.useState<any[]>([]);
-  const [isShippingAddressDialogOpen, setIsShippingAddressDialogOpen] = React.useState(false);
-  const [selectedShippingAddress, setSelectedShippingAddress] = React.useState<any>(null);
-  const [isEditShippingAddressDialogOpen, setIsEditShippingAddressDialogOpen] = React.useState(false);
-  const [editingShippingAddress, setEditingShippingAddress] = React.useState<any>(null);
+  const [isShippingAddressDialogOpen, setIsShippingAddressDialogOpen] =
+    React.useState(false);
+  const [selectedShippingAddress, setSelectedShippingAddress] =
+    React.useState<any>(null);
+  const [isEditShippingAddressDialogOpen, setIsEditShippingAddressDialogOpen] =
+    React.useState(false);
+  const [editingShippingAddress, setEditingShippingAddress] =
+    React.useState<any>(null);
   const [editAddressForm, setEditAddressForm] = React.useState({
     label: "",
     address: "",
@@ -377,13 +390,14 @@ export function TransactionForm({
 
   // Shipping address state and city dropdowns
   const indiaStates = React.useMemo(() => State.getStatesOfCountry("IN"), []);
-  const [shippingStateCode, setShippingStateCode] = React.useState<string | null>(null);
-
-
-  
+  const [shippingStateCode, setShippingStateCode] = React.useState<
+    string | null
+  >(null);
 
   React.useEffect(() => {
-    const currentStateName = form.getValues("shippingAddressDetails.state")?.trim();
+    const currentStateName = form
+      .getValues("shippingAddressDetails.state")
+      ?.trim();
     if (!currentStateName) {
       setShippingStateCode(null);
       return;
@@ -687,31 +701,37 @@ export function TransactionForm({
 
 
   // Fetch shipping addresses when party changes
-  const fetchShippingAddresses = React.useCallback(async (partyId: string) => {
-    if (!partyId) {
-      setShippingAddresses([]);
-      return;
-    }
+  const fetchShippingAddresses = React.useCallback(
+    async (partyId: string) => {
+      if (!partyId) {
+        setShippingAddresses([]);
+        return;
+      }
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Authentication token not found.");
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("Authentication token not found.");
 
-      const res = await fetch(`${baseURL}/api/shipping-addresses/party/${partyId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        const res = await fetch(
+          `${baseURL}/api/shipping-addresses/party/${partyId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-      if (res.ok) {
-        const data = await res.json();
-        setShippingAddresses(data.shippingAddresses || []);
-      } else {
+        if (res.ok) {
+          const data = await res.json();
+          setShippingAddresses(data.shippingAddresses || []);
+        } else {
+          setShippingAddresses([]);
+        }
+      } catch (error) {
+        console.error("Error fetching shipping addresses:", error);
         setShippingAddresses([]);
       }
-    } catch (error) {
-      console.error("Error fetching shipping addresses:", error);
-      setShippingAddresses([]);
-    }
-  }, [baseURL]);
+    },
+    [baseURL]
+  );
 
   // Add another useEffect to log banks after they update
   // React.useEffect(() => {
@@ -967,46 +987,58 @@ export function TransactionForm({
     }
 
     // reset the form with normalized items
-  // reset the form with normalized items
-form.reset({
-  type: transactionToEdit.type,
-  company:
-    transactionToEdit?.company && typeof transactionToEdit.company === "object"
-      ? transactionToEdit.company._id || ""
-      : typeof transactionToEdit?.company === "string"
-      ? transactionToEdit.company === "all" ? "" : transactionToEdit.company
-      : "",
-  date: new Date(transactionToEdit.date),
-  totalAmount:
-    transactionToEdit.totalAmount || (transactionToEdit as any).amount,
-  items: itemsToSet,
-  description: transactionToEdit.description || "",
-  narration: (transactionToEdit as any).narration || "",
-  party: partyId,
-  referenceNumber: (transactionToEdit as any).referenceNumber,
-  fromAccount: (transactionToEdit as any).debitAccount,
-  toAccount: (transactionToEdit as any).creditAccount,
-  paymentMethod: (transactionToEdit as any).paymentMethod || "",
-  bank: typeof (transactionToEdit as any).bank === 'object' ? (transactionToEdit as any).bank._id : (transactionToEdit as any).bank || "",
-  notes: (transactionToEdit as any).notes || "",
-  sameAsBilling: !(transactionToEdit as any).shippingAddress,
-  shippingAddress: (transactionToEdit as any).shippingAddress?._id || (transactionToEdit as any).shippingAddress || "",
-  shippingAddressDetails: (transactionToEdit as any).shippingAddress ? {
-    label: (transactionToEdit as any).shippingAddress.label || "",
-    address: (transactionToEdit as any).shippingAddress.address || "",
-    city: (transactionToEdit as any).shippingAddress.city || "",
-    state: (transactionToEdit as any).shippingAddress.state || "",
-    pincode: (transactionToEdit as any).shippingAddress.pincode || "",
-    contactNumber: (transactionToEdit as any).shippingAddress.contactNumber || "",
-  } : {
-    label: "",
-    address: "",
-    city: "",
-    state: "",
-    pincode: "",
-    contactNumber: "",
-  },
-});
+    // reset the form with normalized items
+    form.reset({
+      type: transactionToEdit.type,
+      company:
+        transactionToEdit?.company &&
+        typeof transactionToEdit.company === "object"
+          ? transactionToEdit.company._id || ""
+          : typeof transactionToEdit?.company === "string"
+          ? transactionToEdit.company === "all"
+            ? ""
+            : transactionToEdit.company
+          : "",
+      date: new Date(transactionToEdit.date),
+      totalAmount:
+        transactionToEdit.totalAmount || (transactionToEdit as any).amount,
+      items: itemsToSet,
+      description: transactionToEdit.description || "",
+      narration: (transactionToEdit as any).narration || "",
+      party: partyId,
+      referenceNumber: (transactionToEdit as any).referenceNumber,
+      fromAccount: (transactionToEdit as any).debitAccount,
+      toAccount: (transactionToEdit as any).creditAccount,
+      paymentMethod: (transactionToEdit as any).paymentMethod || "",
+      bank:
+        typeof (transactionToEdit as any).bank === "object"
+          ? (transactionToEdit as any).bank._id
+          : (transactionToEdit as any).bank || "",
+      notes: (transactionToEdit as any).notes || "",
+      sameAsBilling: !(transactionToEdit as any).shippingAddress,
+      shippingAddress:
+        (transactionToEdit as any).shippingAddress?._id ||
+        (transactionToEdit as any).shippingAddress ||
+        "",
+      shippingAddressDetails: (transactionToEdit as any).shippingAddress
+        ? {
+            label: (transactionToEdit as any).shippingAddress.label || "",
+            address: (transactionToEdit as any).shippingAddress.address || "",
+            city: (transactionToEdit as any).shippingAddress.city || "",
+            state: (transactionToEdit as any).shippingAddress.state || "",
+            pincode: (transactionToEdit as any).shippingAddress.pincode || "",
+            contactNumber:
+              (transactionToEdit as any).shippingAddress.contactNumber || "",
+          }
+        : {
+            label: "",
+            address: "",
+            city: "",
+            state: "",
+            pincode: "",
+            contactNumber: "",
+          },
+    });
     // Show notes section if there are existing notes
     if (
       (transactionToEdit as any).notes &&
@@ -1035,23 +1067,22 @@ form.reset({
     }
   }, [allowedTypes, transactionToEdit, form]);
 
-
   // Add this useEffect to handle bank selection after banks are loaded
-React.useEffect(() => {
-  if (transactionToEdit && banks.length > 0) {
-    const bankValue = form.getValues("bank");
-    if (bankValue) {
-      // Check if the bank value exists in the banks list
-      const bankExists = banks.some(bank => bank._id === bankValue);
-      if (!bankExists) {
-        console.log("Bank not found in available banks, clearing value");
-        form.setValue("bank", "");
-      } else {
-        console.log("Bank found, keeping value:", bankValue);
+  React.useEffect(() => {
+    if (transactionToEdit && banks.length > 0) {
+      const bankValue = form.getValues("bank");
+      if (bankValue) {
+        // Check if the bank value exists in the banks list
+        const bankExists = banks.some((bank) => bank._id === bankValue);
+        if (!bankExists) {
+          console.log("Bank not found in available banks, clearing value");
+          form.setValue("bank", "");
+        } else {
+          console.log("Bank found, keeping value:", bankValue);
+        }
       }
     }
-  }
-}, [banks, transactionToEdit, form]);
+  }, [banks, transactionToEdit, form]);
 
   // Fetch shipping addresses when party changes
   React.useEffect(() => {
@@ -1067,7 +1098,9 @@ React.useEffect(() => {
     if (transactionToEdit && shippingAddresses.length > 0) {
       const shippingAddrId = form.getValues("shippingAddress");
       if (shippingAddrId && shippingAddrId !== "new") {
-        const selectedAddr = shippingAddresses.find(addr => addr._id === shippingAddrId);
+        const selectedAddr = shippingAddresses.find(
+          (addr) => addr._id === shippingAddrId
+        );
         if (selectedAddr) {
           form.setValue("shippingAddressDetails", {
             label: selectedAddr.label,
@@ -1079,7 +1112,8 @@ React.useEffect(() => {
           });
           // Update state code for city dropdown
           const found = indiaStates.find(
-            (s) => s.name.toLowerCase() === (selectedAddr.state || "").toLowerCase()
+            (s) =>
+              s.name.toLowerCase() === (selectedAddr.state || "").toLowerCase()
           );
           setShippingStateCode(found?.isoCode || null);
         }
@@ -1088,7 +1122,11 @@ React.useEffect(() => {
   }, [transactionToEdit, shippingAddresses, form, indiaStates]);
 
   // async function updateStock(token: string, items: Item[]) {
-  async function updateStock(token: string, items: StockItemInput[], action: "increase" | "decrease" = "decrease") {
+  async function updateStock(
+    token: string,
+    items: StockItemInput[],
+    action: "increase" | "decrease" = "decrease"
+  ) {
     try {
       const res = await fetch(`${baseURL}/api/products/update-stock`, {
         method: "POST",
@@ -1249,30 +1287,30 @@ React.useEffect(() => {
 
     // Define the order of fields to check for errors (top to bottom)
     const fieldOrder = [
-      'company',
-      'date',
-      'party',
-      'paymentMethod',
-      'bank',
-      'items.0.product',
-      'items.0.quantity',
-      'items.0.unitType',
-      'items.0.otherUnit',
-      'items.0.pricePerUnit',
-      'items.0.amount',
-      'items.0.gstPercentage',
-      'items.0.lineTax',
-      'items.0.lineTotal',
-      'items.0.description',
-      'totalAmount',
-      'taxAmount',
-      'invoiceTotal',
-      'referenceNumber',
-      'description',
-      'narration',
-      'fromAccount',
-      'toAccount',
-      'notes'
+      "company",
+      "date",
+      "party",
+      "paymentMethod",
+      "bank",
+      "items.0.product",
+      "items.0.quantity",
+      "items.0.unitType",
+      "items.0.otherUnit",
+      "items.0.pricePerUnit",
+      "items.0.amount",
+      "items.0.gstPercentage",
+      "items.0.lineTax",
+      "items.0.lineTotal",
+      "items.0.description",
+      "totalAmount",
+      "taxAmount",
+      "invoiceTotal",
+      "referenceNumber",
+      "description",
+      "narration",
+      "fromAccount",
+      "toAccount",
+      "notes",
     ];
 
     // Find the first field in order that has an error
@@ -1281,16 +1319,16 @@ React.useEffect(() => {
         let selector = `[name="${fieldName}"]`;
 
         // Handle array fields like items.0.product
-        if (fieldName.includes('.')) {
-          const parts = fieldName.split('.');
-          if (parts[0] === 'items') {
+        if (fieldName.includes(".")) {
+          const parts = fieldName.split(".");
+          if (parts[0] === "items") {
             selector = `[name="items.${parts[1]}.${parts[2]}"]`;
           }
         }
 
         const errorElement = document.querySelector(selector) as HTMLElement;
         if (errorElement) {
-          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
           // Focus the field after scrolling
           setTimeout(() => {
             errorElement.focus();
@@ -1376,7 +1414,10 @@ React.useEffect(() => {
         } else if (values.shippingAddress && values.shippingAddress !== "new") {
           // Use existing shipping address
           shippingAddressId = values.shippingAddress;
-        } else if (values.shippingAddress === "new" && values.shippingAddressDetails) {
+        } else if (
+          values.shippingAddress === "new" &&
+          values.shippingAddressDetails
+        ) {
           // Create new shipping address
           try {
             const shippingPayload = {
@@ -1389,21 +1430,27 @@ React.useEffect(() => {
               contactNumber: values.shippingAddressDetails.contactNumber || "",
             };
 
-            const shippingRes = await fetch(`${baseURL}/api/shipping-addresses`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(shippingPayload),
-            });
+            const shippingRes = await fetch(
+              `${baseURL}/api/shipping-addresses`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(shippingPayload),
+              }
+            );
 
             if (shippingRes.ok) {
               const shippingData = await shippingRes.json();
               shippingAddressId = shippingData.shippingAddress._id;
 
               // Add to local state for future use
-              setShippingAddresses(prev => [...prev, shippingData.shippingAddress]);
+              setShippingAddresses((prev) => [
+                ...prev,
+                shippingData.shippingAddress,
+              ]);
             } else {
               throw new Error("Failed to create shipping address");
             }
@@ -1412,7 +1459,8 @@ React.useEffect(() => {
             toast({
               variant: "destructive",
               title: "Shipping Address Error",
-              description: "Failed to save shipping address. Transaction will proceed without it.",
+              description:
+                "Failed to save shipping address. Transaction will proceed without it.",
             });
           }
         }
@@ -1523,8 +1571,15 @@ React.useEffect(() => {
       }
 
       // Update stock for sales (decrease) and purchases (increase)
-      if ((values.type === "sales" || values.type === "purchases") && productLines.length) {
-        let stockUpdates: { product: string; quantity: number; action: "increase" | "decrease" }[] = [];
+      if (
+        (values.type === "sales" || values.type === "purchases") &&
+        productLines.length
+      ) {
+        let stockUpdates: {
+          product: string;
+          quantity: number;
+          action: "increase" | "decrease";
+        }[] = [];
 
         if (transactionToEdit) {
           // For updates, calculate differences
@@ -1544,7 +1599,7 @@ React.useEffect(() => {
               stockUpdates.push({
                 product: productId,
                 quantity: Math.abs(diff),
-                action
+                action,
               });
             }
           }
@@ -1554,13 +1609,17 @@ React.useEffect(() => {
           stockUpdates = productLines.map((p) => ({
             product: p.product!,
             quantity: Number(p.quantity) || 0,
-            action
+            action,
           }));
         }
 
         // Group by action and call updateStock
-        const decreaseItems = stockUpdates.filter(u => u.action === "decrease").map(u => ({ product: u.product, quantity: u.quantity }));
-        const increaseItems = stockUpdates.filter(u => u.action === "increase").map(u => ({ product: u.product, quantity: u.quantity }));
+        const decreaseItems = stockUpdates
+          .filter((u) => u.action === "decrease")
+          .map((u) => ({ product: u.product, quantity: u.quantity }));
+        const increaseItems = stockUpdates
+          .filter((u) => u.action === "increase")
+          .map((u) => ({ product: u.product, quantity: u.quantity }));
 
         if (decreaseItems.length > 0) {
           await updateStock(token, decreaseItems, "decrease");
@@ -1913,7 +1972,6 @@ React.useEffect(() => {
       // Reset shipping address selection
       form.setValue("shippingAddress", "");
       form.setValue("sameAsBilling", true);
-
     } catch (error) {
       setBalance(null);
       toast({
@@ -1961,7 +2019,6 @@ React.useEffect(() => {
     }
   };
 
-  
   const handleProductCreated = (newProduct: Product) => {
     setProducts((prev) => [...prev, newProduct]);
 
@@ -2144,8 +2201,7 @@ React.useEffect(() => {
   const hasAnyEntityCreate =
     canCreateCustomer || canCreateVendor || canCreateInventory;
 
-  const canOpenForm =
-    isSuper || !!transactionToEdit || hasAnyTxnCreate;
+  const canOpenForm = isSuper || !!transactionToEdit || hasAnyTxnCreate;
 
   if (!canOpenForm) {
     return (
@@ -2412,7 +2468,9 @@ React.useEffect(() => {
                         field.onChange(checked);
                         if (checked) {
                           // Populate with party's billing address
-                          const selectedParty = parties.find(p => p._id === form.getValues("party"));
+                          const selectedParty = parties.find(
+                            (p) => p._id === form.getValues("party")
+                          );
                           if (selectedParty) {
                             form.setValue("shippingAddressDetails", {
                               label: "Billing Address",
@@ -2454,88 +2512,94 @@ React.useEffect(() => {
 
             {!form.watch("sameAsBilling") && (
               <div className="space-y-4">
-               <FormField
-  control={form.control}
-  name="shippingAddress"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Shipping Address</FormLabel>
-      <Select
-        onValueChange={(value) => {
-          field.onChange(value);
-          if (value && value !== "new") {
-            const selectedAddr = shippingAddresses.find(addr => addr._id === value);
-            if (selectedAddr) {
-              form.setValue("shippingAddressDetails", {
-                label: selectedAddr.label,
-                address: selectedAddr.address,
-                city: selectedAddr.city,
-                state: selectedAddr.state,
-                pincode: selectedAddr.pincode || "",
-                contactNumber: selectedAddr.contactNumber || "",
-              });
-              // Update state code for city dropdown
-              const found = indiaStates.find(
-                (s) => s.name.toLowerCase() === (selectedAddr.state || "").toLowerCase()
-              );
-              setShippingStateCode(found?.isoCode || null);
-            }
-          } else if (value === "new") {
-            // Clear details for new address
-            form.setValue("shippingAddressDetails", {
-              label: "",
-              address: "",
-              city: "",
-              state: "",
-              pincode: "",
-              contactNumber: "",
-            });
-            setShippingStateCode(null);
-          }
-        }}
-        value={field.value}
-      >
-        <FormControl>
-          <SelectTrigger>
-            <SelectValue placeholder="Select saved address or create new" />
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
-          {shippingAddresses.map((addr) => (
-            <SelectItem key={addr._id} value={addr._id}>
-              <div className="flex items-center justify-between w-full">
-                <span>{addr.label} - {addr.address}, {addr.city}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:bg-muted"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingShippingAddress(addr);
-                    setEditAddressForm({
-                      label: addr.label || "",
-                      address: addr.address || "",
-                      city: addr.city || "",
-                      state: addr.state || "",
-                      pincode: addr.pincode || "",
-                      contactNumber: addr.contactNumber || "",
-                    });
-                    setIsEditShippingAddressDialogOpen(true);
-                  }}
-                >
-                
-                </Button>
-              </div>
-            </SelectItem>
-          ))}
-          <SelectItem value="new">+ Create New Address</SelectItem>
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+                <FormField
+                  control={form.control}
+                  name="shippingAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Shipping Address</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          if (value && value !== "new") {
+                            const selectedAddr = shippingAddresses.find(
+                              (addr) => addr._id === value
+                            );
+                            if (selectedAddr) {
+                              form.setValue("shippingAddressDetails", {
+                                label: selectedAddr.label,
+                                address: selectedAddr.address,
+                                city: selectedAddr.city,
+                                state: selectedAddr.state,
+                                pincode: selectedAddr.pincode || "",
+                                contactNumber: selectedAddr.contactNumber || "",
+                              });
+                              // Update state code for city dropdown
+                              const found = indiaStates.find(
+                                (s) =>
+                                  s.name.toLowerCase() ===
+                                  (selectedAddr.state || "").toLowerCase()
+                              );
+                              setShippingStateCode(found?.isoCode || null);
+                            }
+                          } else if (value === "new") {
+                            // Clear details for new address
+                            form.setValue("shippingAddressDetails", {
+                              label: "",
+                              address: "",
+                              city: "",
+                              state: "",
+                              pincode: "",
+                              contactNumber: "",
+                            });
+                            setShippingStateCode(null);
+                          }
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select saved address or create new" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {shippingAddresses.map((addr) => (
+                            <SelectItem key={addr._id} value={addr._id}>
+                              <div className="flex items-center justify-between w-full">
+                                <span>
+                                  {addr.label} - {addr.address}, {addr.city}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-muted"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingShippingAddress(addr);
+                                    setEditAddressForm({
+                                      label: addr.label || "",
+                                      address: addr.address || "",
+                                      city: addr.city || "",
+                                      state: addr.state || "",
+                                      pincode: addr.pincode || "",
+                                      contactNumber: addr.contactNumber || "",
+                                    });
+                                    setIsEditShippingAddressDialogOpen(true);
+                                  }}
+                                ></Button>
+                              </div>
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="new">
+                            + Create New Address
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {form.watch("shippingAddress") === "new" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
@@ -2546,7 +2610,10 @@ React.useEffect(() => {
                         <FormItem>
                           <FormLabel>Address Label</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Home, Office, Warehouse" {...field} />
+                            <Input
+                              placeholder="e.g., Home, Office, Warehouse"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -2578,7 +2645,7 @@ React.useEffect(() => {
                         </FormItem>
                       )}
                     />
-                      <FormField
+                    <FormField
                       control={form.control}
                       name="shippingAddressDetails.state"
                       render={({ field }) => (
@@ -2601,7 +2668,9 @@ React.useEffect(() => {
                                 (s) => s.isoCode === iso
                               );
                               field.onChange(selected?.name || "");
-                              form.setValue("shippingAddressDetails.city", "", { shouldValidate: true });
+                              form.setValue("shippingAddressDetails.city", "", {
+                                shouldValidate: true,
+                              });
                             }}
                             placeholder="Select state"
                             searchPlaceholder="Type a state…"
@@ -2628,19 +2697,26 @@ React.useEffect(() => {
                             }
                             onChange={(v) => field.onChange(v)}
                             placeholder={
-                              shippingStateCode ? "Select city" : "Select a state first"
+                              shippingStateCode
+                                ? "Select city"
+                                : "Select a state first"
                             }
                             searchPlaceholder="Type a city…"
                             noResultsText={
-                              shippingStateCode ? "No cities found." : "Select a state first"
+                              shippingStateCode
+                                ? "No cities found."
+                                : "Select a state first"
                             }
-                            disabled={!shippingStateCode || shippingCityOptions.length === 0}
+                            disabled={
+                              !shippingStateCode ||
+                              shippingCityOptions.length === 0
+                            }
                           />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  
+
                     <FormField
                       control={form.control}
                       name="shippingAddressDetails.pincode"
@@ -2659,33 +2735,35 @@ React.useEffect(() => {
               </div>
             )}
 
-
-            {form.watch("shippingAddress") && form.watch("shippingAddress") !== "new" && (
-  <Button
-    type="button"
-    variant="outline"
-    size="sm"
-    className="mt-2"
-    onClick={() => {
-      const selectedAddr = shippingAddresses.find(addr => addr._id === form.watch("shippingAddress"));
-      if (selectedAddr) {
-        setEditingShippingAddress(selectedAddr);
-        setEditAddressForm({
-          label: selectedAddr.label || "",
-          address: selectedAddr.address || "",
-          city: selectedAddr.city || "",
-          state: selectedAddr.state || "",
-          pincode: selectedAddr.pincode || "",
-          contactNumber: selectedAddr.contactNumber || "",
-        });
-        setIsEditShippingAddressDialogOpen(true);
-      }
-    }}
-  >
-    <Pencil className="h-4 w-4 mr-2" />
-    Edit Address
-  </Button>
-)}
+            {form.watch("shippingAddress") &&
+              form.watch("shippingAddress") !== "new" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    const selectedAddr = shippingAddresses.find(
+                      (addr) => addr._id === form.watch("shippingAddress")
+                    );
+                    if (selectedAddr) {
+                      setEditingShippingAddress(selectedAddr);
+                      setEditAddressForm({
+                        label: selectedAddr.label || "",
+                        address: selectedAddr.address || "",
+                        city: selectedAddr.city || "",
+                        state: selectedAddr.state || "",
+                        pincode: selectedAddr.pincode || "",
+                        contactNumber: selectedAddr.contactNumber || "",
+                      });
+                      setIsEditShippingAddressDialogOpen(true);
+                    }
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Address
+                </Button>
+              )}
           </div>
         </>
       )}
@@ -2698,30 +2776,30 @@ React.useEffect(() => {
         {fields.map((item, index) => (
           <Card key={item.id} className="relative">
             <CardContent className="p-4 space-y-4">
-             <div className="flex gap-4 items-center">
-               <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-10 h-6 w-6"
-                onClick={() => {
-                  const currentItem = form.getValues(`items.${index}`);
-                  insert(index + 1, { ...currentItem });
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 h-6 w-6"
-                onClick={() => remove(index)}
-                disabled={fields.length <= 1}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-             </div>
+              <div className="flex gap-4 items-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-10 h-6 w-6"
+                  onClick={() => {
+                    const currentItem = form.getValues(`items.${index}`);
+                    insert(index + 1, { ...currentItem });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 h-6 w-6"
+                  onClick={() => remove(index)}
+                  disabled={fields.length <= 1}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
 
               {item.itemType === "product" ? (
                 <>
@@ -2781,7 +2859,6 @@ React.useEffect(() => {
                     />
                   </div>
 
-                  {/* Product Details - Compact Grid */}
                   {/* Product Details - Responsive Layout */}
                   <div className="grid grid-cols-2 md:flex md:flex-wrap items-end md:gap-3 gap-2 md:p-4 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                     {/* Quantity */}
@@ -3035,9 +3112,30 @@ React.useEffect(() => {
                       />
                     </div>
 
-                    {/* GST % */}
                     {gstEnabled && (
                       <>
+                        {/* HSN Code */}
+                        <div className="min-w-[100px] flex-1">
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              HSN Code
+                            </FormLabel>
+                            <div className="h-9 flex items-center px-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
+                              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                {(() => {
+                                  const selectedProduct = products.find(
+                                    (p) =>
+                                      p._id ===
+                                      form.watch(`items.${index}.product`)
+                                  );
+                                  return selectedProduct?.hsn || "-";
+                                })()}
+                              </span>
+                            </div>
+                          </FormItem>
+                        </div>
+
+                        {/* GST % */}
                         <div className="min-w-[100px] flex-1">
                           <FormField
                             control={form.control}
@@ -3200,7 +3298,7 @@ React.useEffect(() => {
                   {/* Service Details */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                     {/* Amount */}
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-2">
                       <FormField
                         control={form.control}
                         name={`items.${index}.amount`}
@@ -3233,7 +3331,7 @@ React.useEffect(() => {
                     </div>
 
                     {/* Description */}
-                    <div className="md:col-span-4">
+                    <div className="md:col-span-3">
                       <FormField
                         control={form.control}
                         name={`items.${index}.description`}
@@ -3257,6 +3355,27 @@ React.useEffect(() => {
 
                     {gstEnabled && (
                       <>
+                        {/* SAC Code */}
+                        <div className="md:col-span-2">
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              SAC Code
+                            </FormLabel>
+                            <div className="h-9 flex items-center px-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
+                              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                {(() => {
+                                  const selectedService = services.find(
+                                    (s) =>
+                                      s._id ===
+                                      form.watch(`items.${index}.service`)
+                                  );
+                                  return selectedService?.sac || "-";
+                                })()}
+                              </span>
+                            </div>
+                          </FormItem>
+                        </div>
+
                         {/* GST % */}
                         <div className="md:col-span-2">
                           <FormField
@@ -4242,7 +4361,10 @@ React.useEffect(() => {
           />
         </DialogContent>
       </Dialog>
-      <Dialog open={isEditShippingAddressDialogOpen} onOpenChange={setIsEditShippingAddressDialogOpen}>
+      <Dialog
+        open={isEditShippingAddressDialogOpen}
+        onOpenChange={setIsEditShippingAddressDialogOpen}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Shipping Address</DialogTitle>
@@ -4257,7 +4379,12 @@ React.useEffect(() => {
                 <Input
                   placeholder="e.g., Home, Office, Warehouse"
                   value={editAddressForm.label}
-                  onChange={(e) => setEditAddressForm(prev => ({ ...prev, label: e.target.value }))}
+                  onChange={(e) =>
+                    setEditAddressForm((prev) => ({
+                      ...prev,
+                      label: e.target.value,
+                    }))
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -4265,7 +4392,12 @@ React.useEffect(() => {
                 <Input
                   placeholder="Contact number"
                   value={editAddressForm.contactNumber}
-                  onChange={(e) => setEditAddressForm(prev => ({ ...prev, contactNumber: e.target.value }))}
+                  onChange={(e) =>
+                    setEditAddressForm((prev) => ({
+                      ...prev,
+                      contactNumber: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -4274,7 +4406,12 @@ React.useEffect(() => {
               <Textarea
                 placeholder="Full address"
                 value={editAddressForm.address}
-                onChange={(e) => setEditAddressForm(prev => ({ ...prev, address: e.target.value }))}
+                onChange={(e) =>
+                  setEditAddressForm((prev) => ({
+                    ...prev,
+                    address: e.target.value,
+                  }))
+                }
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4284,15 +4421,17 @@ React.useEffect(() => {
                   options={shippingStateOptions}
                   value={
                     shippingStateOptions.find(
-                      (o) => o.label.toLowerCase() === editAddressForm.state.toLowerCase()
+                      (o) =>
+                        o.label.toLowerCase() ===
+                        editAddressForm.state.toLowerCase()
                     )?.value ?? ""
                   }
                   onChange={(iso) => {
                     const selected = indiaStates.find((s) => s.isoCode === iso);
-                    setEditAddressForm(prev => ({
+                    setEditAddressForm((prev) => ({
                       ...prev,
                       state: selected?.name || "",
-                      city: "" // Reset city when state changes
+                      city: "", // Reset city when state changes
                     }));
                   }}
                   placeholder="Select state"
@@ -4306,18 +4445,28 @@ React.useEffect(() => {
                   options={shippingCityOptions}
                   value={
                     shippingCityOptions.find(
-                      (o) => o.label.toLowerCase() === editAddressForm.city.toLowerCase()
+                      (o) =>
+                        o.label.toLowerCase() ===
+                        editAddressForm.city.toLowerCase()
                     )?.value ?? ""
                   }
-                  onChange={(v) => setEditAddressForm(prev => ({ ...prev, city: v }))}
+                  onChange={(v) =>
+                    setEditAddressForm((prev) => ({ ...prev, city: v }))
+                  }
                   placeholder={
-                    editAddressForm.state ? "Select city" : "Select a state first"
+                    editAddressForm.state
+                      ? "Select city"
+                      : "Select a state first"
                   }
                   searchPlaceholder="Type a city…"
                   noResultsText={
-                    editAddressForm.state ? "No cities found." : "Select a state first"
+                    editAddressForm.state
+                      ? "No cities found."
+                      : "Select a state first"
                   }
-                  disabled={!editAddressForm.state || shippingCityOptions.length === 0}
+                  disabled={
+                    !editAddressForm.state || shippingCityOptions.length === 0
+                  }
                 />
               </div>
             </div>
@@ -4326,7 +4475,12 @@ React.useEffect(() => {
               <Input
                 placeholder="Pincode"
                 value={editAddressForm.pincode}
-                onChange={(e) => setEditAddressForm(prev => ({ ...prev, pincode: e.target.value }))}
+                onChange={(e) =>
+                  setEditAddressForm((prev) => ({
+                    ...prev,
+                    pincode: e.target.value,
+                  }))
+                }
               />
             </div>
           </div>
@@ -4343,33 +4497,40 @@ React.useEffect(() => {
               onClick={async () => {
                 try {
                   const token = localStorage.getItem("token");
-                  if (!token) throw new Error("Authentication token not found.");
+                  if (!token)
+                    throw new Error("Authentication token not found.");
 
                   const updatedAddress = {
                     ...editingShippingAddress,
                     ...editAddressForm,
                   };
 
-                  const res = await fetch(`${baseURL}/api/shipping-addresses/${editingShippingAddress._id}`, {
-                    method: "PUT",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(updatedAddress),
-                  });
+                  const res = await fetch(
+                    `${baseURL}/api/shipping-addresses/${editingShippingAddress._id}`,
+                    {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify(updatedAddress),
+                    }
+                  );
 
                   if (res.ok) {
                     const data = await res.json();
                     // Update the address in the local state
-                    setShippingAddresses(prev =>
-                      prev.map(addr =>
-                        addr._id === editingShippingAddress._id ? data.shippingAddress : addr
+                    setShippingAddresses((prev) =>
+                      prev.map((addr) =>
+                        addr._id === editingShippingAddress._id
+                          ? data.shippingAddress
+                          : addr
                       )
                     );
                     toast({
                       title: "Address Updated",
-                      description: "Shipping address has been updated successfully.",
+                      description:
+                        "Shipping address has been updated successfully.",
                     });
                     setIsEditShippingAddressDialogOpen(false);
                   } else {
@@ -4391,154 +4552,196 @@ React.useEffect(() => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditShippingAddressDialogOpen} onOpenChange={setIsEditShippingAddressDialogOpen}>
-  <DialogContent className="sm:max-w-lg">
-    <DialogHeader>
-      <DialogTitle>Edit Shipping Address</DialogTitle>
-      <DialogDescription>
-        Update the shipping address details.
-      </DialogDescription>
-    </DialogHeader>
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Address Label</label>
-          <Input
-            placeholder="e.g., Home, Office, Warehouse"
-            value={editAddressForm.label}
-            onChange={(e) => setEditAddressForm(prev => ({ ...prev, label: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Contact Number</label>
-          <Input
-            placeholder="Contact number"
-            value={editAddressForm.contactNumber}
-            onChange={(e) => setEditAddressForm(prev => ({ ...prev, contactNumber: e.target.value }))}
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Address</label>
-        <Textarea
-          placeholder="Full address"
-          value={editAddressForm.address}
-          onChange={(e) => setEditAddressForm(prev => ({ ...prev, address: e.target.value }))}
-        />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">State</label>
-          <Combobox
-            options={shippingStateOptions}
-            value={
-              shippingStateOptions.find(
-                (o) => o.label.toLowerCase() === editAddressForm.state.toLowerCase()
-              )?.value ?? ""
-            }
-            onChange={(iso) => {
-              const selected = indiaStates.find((s) => s.isoCode === iso);
-              setEditAddressForm(prev => ({
-                ...prev,
-                state: selected?.name || "",
-                city: "" // Reset city when state changes
-              }));
-            }}
-            placeholder="Select state"
-            searchPlaceholder="Type a state…"
-            noResultsText="No states found."
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">City</label>
-          <Combobox
-            options={shippingCityOptions}
-            value={
-              shippingCityOptions.find(
-                (o) => o.label.toLowerCase() === editAddressForm.city.toLowerCase()
-              )?.value ?? ""
-            }
-            onChange={(v) => setEditAddressForm(prev => ({ ...prev, city: v }))}
-            placeholder={
-              editAddressForm.state ? "Select city" : "Select a state first"
-            }
-            searchPlaceholder="Type a city…"
-            noResultsText={
-              editAddressForm.state ? "No cities found." : "Select a state first"
-            }
-            disabled={!editAddressForm.state || shippingCityOptions.length === 0}
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Pincode</label>
-        <Input
-          placeholder="Pincode"
-          value={editAddressForm.pincode}
-          onChange={(e) => setEditAddressForm(prev => ({ ...prev, pincode: e.target.value }))}
-        />
-      </div>
-    </div>
-    <div className="flex justify-end gap-2 mt-6">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setIsEditShippingAddressDialogOpen(false)}
+      <Dialog
+        open={isEditShippingAddressDialogOpen}
+        onOpenChange={setIsEditShippingAddressDialogOpen}
       >
-        Cancel
-      </Button>
-      <Button
-        type="button"
-        onClick={async () => {
-          try {
-            const token = localStorage.getItem("token");
-            if (!token) throw new Error("Authentication token not found.");
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Shipping Address</DialogTitle>
+            <DialogDescription>
+              Update the shipping address details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Address Label</label>
+                <Input
+                  placeholder="e.g., Home, Office, Warehouse"
+                  value={editAddressForm.label}
+                  onChange={(e) =>
+                    setEditAddressForm((prev) => ({
+                      ...prev,
+                      label: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Contact Number</label>
+                <Input
+                  placeholder="Contact number"
+                  value={editAddressForm.contactNumber}
+                  onChange={(e) =>
+                    setEditAddressForm((prev) => ({
+                      ...prev,
+                      contactNumber: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Address</label>
+              <Textarea
+                placeholder="Full address"
+                value={editAddressForm.address}
+                onChange={(e) =>
+                  setEditAddressForm((prev) => ({
+                    ...prev,
+                    address: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">State</label>
+                <Combobox
+                  options={shippingStateOptions}
+                  value={
+                    shippingStateOptions.find(
+                      (o) =>
+                        o.label.toLowerCase() ===
+                        editAddressForm.state.toLowerCase()
+                    )?.value ?? ""
+                  }
+                  onChange={(iso) => {
+                    const selected = indiaStates.find((s) => s.isoCode === iso);
+                    setEditAddressForm((prev) => ({
+                      ...prev,
+                      state: selected?.name || "",
+                      city: "", // Reset city when state changes
+                    }));
+                  }}
+                  placeholder="Select state"
+                  searchPlaceholder="Type a state…"
+                  noResultsText="No states found."
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">City</label>
+                <Combobox
+                  options={shippingCityOptions}
+                  value={
+                    shippingCityOptions.find(
+                      (o) =>
+                        o.label.toLowerCase() ===
+                        editAddressForm.city.toLowerCase()
+                    )?.value ?? ""
+                  }
+                  onChange={(v) =>
+                    setEditAddressForm((prev) => ({ ...prev, city: v }))
+                  }
+                  placeholder={
+                    editAddressForm.state
+                      ? "Select city"
+                      : "Select a state first"
+                  }
+                  searchPlaceholder="Type a city…"
+                  noResultsText={
+                    editAddressForm.state
+                      ? "No cities found."
+                      : "Select a state first"
+                  }
+                  disabled={
+                    !editAddressForm.state || shippingCityOptions.length === 0
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Pincode</label>
+              <Input
+                placeholder="Pincode"
+                value={editAddressForm.pincode}
+                onChange={(e) =>
+                  setEditAddressForm((prev) => ({
+                    ...prev,
+                    pincode: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditShippingAddressDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem("token");
+                  if (!token)
+                    throw new Error("Authentication token not found.");
 
-            const updatedAddress = {
-              ...editingShippingAddress,
-              ...editAddressForm,
-            };
+                  const updatedAddress = {
+                    ...editingShippingAddress,
+                    ...editAddressForm,
+                  };
 
-            const res = await fetch(`${baseURL}/api/shipping-addresses/${editingShippingAddress._id}`, {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(updatedAddress),
-            });
+                  const res = await fetch(
+                    `${baseURL}/api/shipping-addresses/${editingShippingAddress._id}`,
+                    {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify(updatedAddress),
+                    }
+                  );
 
-            if (res.ok) {
-              const data = await res.json();
-              // Update the address in the local state
-              setShippingAddresses(prev =>
-                prev.map(addr =>
-                  addr._id === editingShippingAddress._id ? data.shippingAddress : addr
-                )
-              );
-              toast({
-                title: "Address Updated",
-                description: "Shipping address has been updated successfully.",
-              });
-              setIsEditShippingAddressDialogOpen(false);
-            } else {
-              throw new Error("Failed to update shipping address");
-            }
-          } catch (error) {
-            console.error("Error updating shipping address:", error);
-            toast({
-              variant: "destructive",
-              title: "Update Failed",
-              description: "Failed to update shipping address.",
-            });
-          }
-        }}
-      >
-        Save Changes
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog>
+                  if (res.ok) {
+                    const data = await res.json();
+                    // Update the address in the local state
+                    setShippingAddresses((prev) =>
+                      prev.map((addr) =>
+                        addr._id === editingShippingAddress._id
+                          ? data.shippingAddress
+                          : addr
+                      )
+                    );
+                    toast({
+                      title: "Address Updated",
+                      description:
+                        "Shipping address has been updated successfully.",
+                    });
+                    setIsEditShippingAddressDialogOpen(false);
+                  } else {
+                    throw new Error("Failed to update shipping address");
+                  }
+                } catch (error) {
+                  console.error("Error updating shipping address:", error);
+                  toast({
+                    variant: "destructive",
+                    title: "Update Failed",
+                    description: "Failed to update shipping address.",
+                  });
+                }
+              }}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

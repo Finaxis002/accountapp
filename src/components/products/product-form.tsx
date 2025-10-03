@@ -52,6 +52,7 @@ const formSchema = z.object({
   stocks: z.coerce.number().min(0, "Stock cannot be negative.").optional(),
   unit: z.string().min(1, "Unit is required.").optional(),
   customUnit: z.string().optional(),
+  hsn: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -149,6 +150,7 @@ export function ProductForm({
       stocks: product?.stocks ?? 0,
       unit: getDefaultUnit(product?.unit),
       customUnit: getDefaultCustomUnit(product?.unit),
+      hsn: product?.hsn || "",
     },
   });
 
@@ -440,6 +442,19 @@ export function ProductForm({
               )}
             />
           )}
+          <FormField
+            control={form.control}
+            name="hsn"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>HSN Code</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter HSN code" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <div className="flex justify-end pt-4">
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               {isSubmitting && (

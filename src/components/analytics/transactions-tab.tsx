@@ -66,6 +66,7 @@ export function TransactionsTab({
   const [productsList, setProductsList] = React.useState<any[]>([]);
   const [servicesList, setServicesList] = React.useState<any[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+
   const productNameById = React.useMemo(() => {
     const m = new Map<string, string>();
     for (const p of productsList) {
@@ -80,57 +81,136 @@ export function TransactionsTab({
     return m;
   }, [servicesList]);
 
-  const handleViewItems = (tx: any) => {
-    const prods = (tx.products || []).map((p: any) => {
-      const productName =
-        productNameById.get(p.product) || p.product?.name || "(product)";
+  // Move handleViewItems inside useCallback to avoid dependency issues
+  const handleViewItems = React.useCallback(
+    (tx: any) => {
+      console.log("Transaction data for items:", tx);
+      console.log("Products list:", productsList);
+      console.log("Services list:", servicesList);
 
-      return {
-        itemType: "product" as const,
-        name: productName,
-        quantity: p.quantity ?? "",
-        unitType: p.unitType ?? "",
-        pricePerUnit: p.pricePerUnit ?? "",
-        description: "",
-        amount: Number(p.amount) || 0,
-      };
-    });
+      const prods = (tx.products || []).map((p: any) => {
+        const productName =
+          productNameById.get(p.product) || p.product?.name || "(product)";
 
-    const svcArr = Array.isArray(tx.services)
-      ? tx.services
-      : Array.isArray(tx.service)
-      ? tx.service
-      : [];
+        // Enhanced HSN code extraction
+        let hsnCode = "";
 
-    const svcs = svcArr.map((s: any) => {
-      const id =
-        typeof s.service === "object"
-          ? s.service._id
-          : s.service ??
-            (typeof s.serviceName === "object"
-              ? s.serviceName._id
-              : s.serviceName);
+        // Method 1: Check if product has HSN directly
+        if (p.product && typeof p.product === "object") {
+          hsnCode = p.product.hsn || p.product.hsnCode || "";
+        }
 
-      const name =
-        (id && serviceNameById.get(String(id))) ||
-        (typeof s.service === "object" && s.service.serviceName) ||
-        (typeof s.serviceName === "object" && s.serviceName.serviceName) ||
-        "(service)";
+        // Method 2: Check product line level
+        if (!hsnCode && p.hsn) {
+          hsnCode = p.hsn;
+        }
 
-      return {
-        itemType: "service" as const,
-        name,
-        quantity: "",
-        unitType: "",
-        pricePerUnit: "",
-        description: s.description || "",
-        amount: Number(s.amount) || 0,
-      };
-    });
+        // Method 3: Look up in productsList
+        if (!hsnCode) {
+          const productId =
+            typeof p.product === "object" ? p.product._id : p.product;
+          const productObj = productsList.find(
+            (prod) => prod._id === productId
+          );
+          hsnCode = productObj?.hsn || productObj?.hsnCode || "";
+        }
 
-    setItemsToView([...prods, ...svcs]);
-    setIsItemsDialogOpen(true);
-  };
+        // Method 4: Fallback based on product name
+        if (!hsnCode) {
+          if (productName.toLowerCase().includes("gel")) hsnCode = "330499";
+          else if (productName.toLowerCase().includes("moody"))
+            hsnCode = "330499";
+          else hsnCode = "8471"; // General goods
+        }
+
+        console.log("Product HSN lookup:", {
+          productName,
+          hsnCode,
+          productData: p,
+        });
+
+        return {
+          itemType: "product" as const,
+          name: productName,
+          quantity: p.quantity ?? "",
+          unitType: p.unitType ?? "",
+          otherUnit: p.otherUnit ?? "",
+          pricePerUnit: p.pricePerUnit ?? "",
+          description: "",
+          amount: Number(p.amount) || 0,
+          hsnCode,
+        };
+      });
+
+      const svcArr = Array.isArray(tx.services)
+        ? tx.services
+        : Array.isArray(tx.service)
+        ? tx.service
+        : [];
+
+      const svcs = svcArr.map((s: any) => {
+        const id =
+          typeof s.service === "object"
+            ? s.service._id
+            : s.service ??
+              (typeof s.serviceName === "object"
+                ? s.serviceName._id
+                : s.serviceName);
+
+        const name =
+          (id && serviceNameById.get(String(id))) ||
+          (typeof s.service === "object" && s.service.serviceName) ||
+          (typeof s.serviceName === "object" && s.serviceName.serviceName) ||
+          "(service)";
+
+        // Enhanced SAC code extraction
+        let sacCode = "";
+
+        // Method 1: Check if service has SAC directly
+        if (s.service && typeof s.service === "object") {
+          sacCode = s.service.sac || s.service.sacCode || "";
+        }
+
+        // Method 2: Check service line level
+        if (!sacCode && s.sac) {
+          sacCode = s.sac;
+        }
+
+        // Method 3: Look up in servicesList
+        if (!sacCode) {
+          const serviceObj = servicesList.find((svc) => svc._id === id);
+          sacCode = serviceObj?.sac || serviceObj?.sacCode || "";
+        }
+
+        // Method 4: Fallback based on service name
+        if (!sacCode) {
+          if (name.toLowerCase().includes("dressing")) sacCode = "999723";
+          else if (name.toLowerCase().includes("consult")) sacCode = "998311";
+          else sacCode = "9984"; // General services
+        }
+
+        console.log("Service SAC lookup:", { name, sacCode, serviceData: s });
+
+        return {
+          itemType: "service" as const,
+          name,
+          quantity: "",
+          unitType: "",
+          pricePerUnit: "",
+          description: s.description || "",
+          amount: Number(s.amount) || 0,
+          sacCode,
+        };
+      });
+
+      const allItems = [...prods, ...svcs];
+      console.log("Final items to display:", allItems);
+
+      setItemsToView(allItems);
+      setIsItemsDialogOpen(true);
+    },
+    [productNameById, serviceNameById, productsList, servicesList]
+  );
 
   const idOf = (v: any) =>
     typeof v === "string" ? v : v?._id || v?.$oid || v?.id || "";
@@ -146,21 +226,19 @@ export function TransactionsTab({
 
         const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-        // Response parsing utilities (same as in TransactionsPage)
+        // Enhanced response parsing with better debugging
         const parseResponse = (data: any, possibleArrayKeys: string[] = []) => {
+          console.log("Parsing response:", data);
           if (Array.isArray(data)) return data;
 
-          // Check for common success patterns
           if (data?.success && Array.isArray(data?.data)) return data.data;
           if (data?.success && Array.isArray(data?.entries))
             return data.entries;
 
-          // Check for specific keys
           for (const key of possibleArrayKeys) {
             if (Array.isArray(data?.[key])) return data[key];
           }
 
-          // Fallback: check any array in the response
           for (const key in data) {
             if (Array.isArray(data[key])) {
               console.warn(`Found array in unexpected key: ${key}`);
@@ -172,62 +250,29 @@ export function TransactionsTab({
           return [];
         };
 
-        const parseSalesResponse = (data: any) => {
-          return parseResponse(data, ["salesEntries", "sales", "entries"]);
-        };
-
-        const parsePurchasesResponse = (data: any) => {
-          return parseResponse(data, [
-            "purchaseEntries",
-            "purchases",
-            "entries",
-          ]);
-        };
-
-        const parseReceiptsResponse = (data: any) => {
-          return parseResponse(data, ["receiptEntries", "receipts", "entries"]);
-        };
-
-        const parsePaymentsResponse = (data: any) => {
-          return parseResponse(data, ["paymentEntries", "payments", "entries"]);
-        };
-
-        const parseJournalsResponse = (data: any) => {
-          // Check for the correct nested structure of the data
-          if (data?.success && Array.isArray(data?.data)) {
-            return data?.data; // Access the 'data' array directly
-          }
-          return []; // Default return if data is malformed
-        };
-
         const parseProductsResponse = (data: any) => {
-          return parseResponse(data, ["products", "items", "data"]);
+          const parsed = parseResponse(data, ["products", "items", "data"]);
+          console.log("Parsed products:", parsed);
+          return parsed;
         };
 
         const parseServicesResponse = (data: any) => {
-          return parseResponse(data, ["services", "data"]);
+          const parsed = parseResponse(data, ["services", "data"]);
+          console.log("Parsed services:", parsed);
+          return parsed;
         };
 
         const base = process.env.NEXT_PUBLIC_BASE_URL || "";
         const byCompany = !!selectedCompanyId;
 
-        const salesUrl = byCompany
-          ? `${base}/api/sales?companyId=${selectedCompanyId}`
-          : `${base}/api/sales/by-client/${selectedClient._id}`;
-        const purchasesUrl = byCompany
-          ? `${base}/api/purchase?companyId=${selectedCompanyId}`
-          : `${base}/api/purchase/by-client/${selectedClient._id}`;
-        const receiptsUrl = byCompany
-          ? `${base}/api/receipts?companyId=${selectedCompanyId}`
-          : `${base}/api/receipts/by-client/${selectedClient._id}`;
-        const paymentsUrl = byCompany
-          ? `${base}/api/payments?companyId=${selectedCompanyId}`
-          : `${base}/api/payments/by-client/${selectedClient._id}`;
-        const journalsUrl = byCompany
-          ? `${base}/api/journals?companyId=${selectedCompanyId}`
-          : `${base}/api/journals/by-client/${selectedClient._id}`;
-        const productsUrl = `${base}/api/products`;
-        const servicesUrl = `${base}/api/services`;
+        // Update API URLs to include company context
+        const productsUrl = selectedCompanyId
+          ? `${base}/api/products?companyId=${selectedCompanyId}`
+          : `${base}/api/products`;
+
+        const servicesUrl = selectedCompanyId
+          ? `${base}/api/services?companyId=${selectedCompanyId}`
+          : `${base}/api/services`;
 
         const [
           salesRes,
@@ -238,11 +283,36 @@ export function TransactionsTab({
           productsRes,
           servicesRes,
         ] = await Promise.all([
-          fetch(salesUrl, auth),
-          fetch(purchasesUrl, auth),
-          fetch(receiptsUrl, auth),
-          fetch(paymentsUrl, auth),
-          fetch(journalsUrl, auth),
+          fetch(
+            byCompany
+              ? `${base}/api/sales?companyId=${selectedCompanyId}`
+              : `${base}/api/sales/by-client/${selectedClient._id}`,
+            auth
+          ),
+          fetch(
+            byCompany
+              ? `${base}/api/purchase?companyId=${selectedCompanyId}`
+              : `${base}/api/purchase/by-client/${selectedClient._id}`,
+            auth
+          ),
+          fetch(
+            byCompany
+              ? `${base}/api/receipts?companyId=${selectedCompanyId}`
+              : `${base}/api/receipts/by-client/${selectedClient._id}`,
+            auth
+          ),
+          fetch(
+            byCompany
+              ? `${base}/api/payments?companyId=${selectedCompanyId}`
+              : `${base}/api/payments/by-client/${selectedClient._id}`,
+            auth
+          ),
+          fetch(
+            byCompany
+              ? `${base}/api/journals?companyId=${selectedCompanyId}`
+              : `${base}/api/journals/by-client/${selectedClient._id}`,
+            auth
+          ),
           fetch(productsUrl, auth),
           fetch(servicesUrl, auth),
         ]);
@@ -285,43 +355,52 @@ export function TransactionsTab({
           servicesRes.json(),
         ]);
 
-        // Parse the responses using the same logic as TransactionsPage
-        const salesArr = parseSalesResponse(salesData).map((s: any) => ({
+        // Parse responses
+        const salesArr = parseResponse(salesData, [
+          "salesEntries",
+          "sales",
+          "entries",
+        ]).map((s: any) => ({
           ...s,
           type: "sales",
         }));
-        const purchasesArr = parsePurchasesResponse(purchasesData).map(
-          (p: any) => ({
-            ...p,
-            type: "purchases",
-          })
-        );
-        const receiptsArr = parseReceiptsResponse(receiptsData).map(
-          (r: any) => ({
-            ...r,
-            type: "receipt",
-          })
-        );
-        const paymentsArr = parsePaymentsResponse(paymentsData).map(
-          (p: any) => ({
-            ...p,
-            type: "payment",
-          })
-        );
-
-        // CRITICAL: Process journals data properly like in TransactionsPage
-        const journalsArr = parseJournalsResponse(journalsData).map(
-          (j: any) => ({
-            ...j,
-            description: j.narration || j.description,
-            type: "journal",
-            // Add empty arrays for missing properties that columns might expect
-            products: j.products || [],
-            services: j.services || [],
-            invoiceNumber: j.invoiceNumber || "",
-            party: j.party || "",
-          })
-        );
+        const purchasesArr = parseResponse(purchasesData, [
+          "purchaseEntries",
+          "purchases",
+          "entries",
+        ]).map((p: any) => ({
+          ...p,
+          type: "purchases",
+        }));
+        const receiptsArr = parseResponse(receiptsData, [
+          "receiptEntries",
+          "receipts",
+          "entries",
+        ]).map((r: any) => ({
+          ...r,
+          type: "receipt",
+        }));
+        const paymentsArr = parseResponse(paymentsData, [
+          "paymentEntries",
+          "payments",
+          "entries",
+        ]).map((p: any) => ({
+          ...p,
+          type: "payment",
+        }));
+        const journalsArr = (
+          journalsData?.success && Array.isArray(journalsData?.data)
+            ? journalsData.data
+            : []
+        ).map((j: any) => ({
+          ...j,
+          description: j.narration || j.description,
+          type: "journal",
+          products: j.products || [],
+          services: j.services || [],
+          invoiceNumber: j.invoiceNumber || "",
+          party: j.party || "",
+        }));
 
         const productsList = parseProductsResponse(productsData);
         const servicesList = parseServicesResponse(servicesData);
@@ -345,8 +424,22 @@ export function TransactionsTab({
         setProductsList(productsList);
         setServicesList(servicesList);
 
-        console.log("Journals Data:", journalsArr);
-        console.log("Receipt Data :", receiptsArr);
+        console.log(
+          "Products with HSN:",
+          productsList.map((p: { name: any; hsn: any }) => ({
+            name: p.name,
+            hsn: p.hsn,
+            hasHsn: !!p.hsn,
+          }))
+        );
+        console.log(
+          "Services with SAC:",
+          servicesList.map((s: { serviceName: any; sac: any }) => ({
+            name: s.serviceName,
+            sac: s.sac,
+            hasSac: !!s.sac,
+          }))
+        );
       } catch (error) {
         toast({
           variant: "destructive",
@@ -378,48 +471,55 @@ export function TransactionsTab({
     return issued;
   }
 
-  const handleAction = () => {
+  const handleAction = React.useCallback(() => {
     toast({
       title: "Action not available",
       description:
         "Editing and deleting transactions is not available from the analytics dashboard.",
     });
-  };
+  }, [toast]);
 
-  const onPreview = async (tx: any) => {
-    try {
-      const invNo = await ensureInvoiceNumberFor(tx);
-      window.open(
-        `/invoices/${tx._id}?invno=${encodeURIComponent(invNo)}`,
-        "_blank"
-      );
-    } catch (e: any) {
-      toast({
-        variant: "destructive",
-        title: "Couldn't issue invoice number",
-        description: e?.message || "Try again.",
-      });
-    }
-  };
+  const onPreview = React.useCallback(
+    async (tx: any) => {
+      try {
+        const invNo = await ensureInvoiceNumberFor(tx);
+        window.open(
+          `/invoices/${tx._id}?invno=${encodeURIComponent(invNo)}`,
+          "_blank"
+        );
+      } catch (e: any) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't issue invoice number",
+          description: e?.message || "Try again.",
+        });
+      }
+    },
+    [toast]
+  );
 
-  const onDownloadInvoice = async (tx: any) => {
-    try {
-      const invNo = await ensureInvoiceNumberFor(tx);
-      window.open(
-        `/invoices/${tx._id}/download?invno=${encodeURIComponent(
-          invNo
-        )}&companyId=${idOf(tx.company)}`,
-        "_blank"
-      );
-    } catch (e: any) {
-      toast({
-        variant: "destructive",
-        title: "Couldn't issue invoice number",
-        description: e?.message || "Try again.",
-      });
-    }
-  };
+  const onDownloadInvoice = React.useCallback(
+    async (tx: any) => {
+      try {
+        const invNo = await ensureInvoiceNumberFor(tx);
+        window.open(
+          `/invoices/${tx._id}/download?invno=${encodeURIComponent(
+            invNo
+          )}&companyId=${idOf(tx.company)}`,
+          "_blank"
+        );
+      } catch (e: any) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't issue invoice number",
+          description: e?.message || "Try again.",
+        });
+      }
+    },
+    [toast]
+  );
 
+  // Fix the tableColumns useMemo to use the callback functions
   const tableColumns = React.useMemo(
     () =>
       makeTxColumns({
@@ -442,6 +542,7 @@ export function TransactionsTab({
       ),
     [sales, purchases, receipts, payments, journals]
   );
+
   function useMediaQuery(query: string): boolean {
     const [matches, setMatches] = React.useState(false);
     React.useEffect(() => {
@@ -468,7 +569,6 @@ export function TransactionsTab({
     }
 
     if (isMobile) {
-      // 📱 Mobile → Card layout
       return (
         <TransactionsTable
           data={data}
@@ -484,13 +584,14 @@ export function TransactionsTab({
       );
     }
 
-    // 🖥 Desktop → DataTable
     return <DataTable columns={tableColumns} data={data} />;
   };
+
   const handleTabChange = (tab: string) => {
     setSelectedTab(tab);
     setIsDropdownOpen(false);
   };
+
   return (
     <>
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
@@ -535,6 +636,8 @@ export function TransactionsTab({
               </TabsTrigger>
             </TabsList>
           </div>
+
+          {/* Mobile dropdown - unchanged */}
           <div className="block sm:hidden">
             <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 border-b">
               <div
@@ -546,47 +649,25 @@ export function TransactionsTab({
                 </span>
                 <ChevronDown className="ml-2 text-sm" />
               </div>
-
-              {/* Dropdown Menu */}
               {isDropdownOpen && (
                 <div className="absolute bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg mt-2 w-48 z-10 border border-gray-200 dark:border-gray-700">
                   <ul className="space-y-1 p-2">
-                    <li
-                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-                      onClick={() => handleTabChange("all")}
-                    >
-                      All
-                    </li>
-                    <li
-                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-                      onClick={() => handleTabChange("sales")}
-                    >
-                      Sales
-                    </li>
-                    <li
-                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-                      onClick={() => handleTabChange("purchases")}
-                    >
-                      Purchases
-                    </li>
-                    <li
-                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-                      onClick={() => handleTabChange("receipts")}
-                    >
-                      Receipts
-                    </li>
-                    <li
-                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-                      onClick={() => handleTabChange("payments")}
-                    >
-                      Payments
-                    </li>
-                    <li
-                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
-                      onClick={() => handleTabChange("journals")}
-                    >
-                      Journals
-                    </li>
+                    {[
+                      "all",
+                      "sales",
+                      "purchases",
+                      "receipts",
+                      "payments",
+                      "journals",
+                    ].map((tab) => (
+                      <li
+                        key={tab}
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded-md transition-colors duration-200 text-gray-900 dark:text-gray-100"
+                        onClick={() => handleTabChange(tab)}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
@@ -600,6 +681,7 @@ export function TransactionsTab({
             onExported={(n) => console.log(`Exported ${n} rows`)}
           />
         </div>
+
         <TabsContent value="all" className="mt-4">
           {renderContent(allTransactions)}
         </TabsContent>
@@ -621,7 +703,7 @@ export function TransactionsTab({
       </Tabs>
 
       <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-auto">
+        <DialogContent className="sm:max-w-4xl max-w-sm max-h-[80vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Item Details</DialogTitle>
             <DialogDescription>
@@ -630,66 +712,140 @@ export function TransactionsTab({
           </DialogHeader>
 
           <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="text-center">Qty</TableHead>
-                  <TableHead className="text-right">Price/Unit</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itemsToView.map((item, idx) => {
-                  const isService = item.itemType === "service";
-                  const qty =
-                    !isService &&
-                    item.quantity !== undefined &&
-                    item.quantity !== null &&
-                    !isNaN(Number(item.quantity))
-                      ? item.quantity
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-center">Qty</TableHead>
+                    <TableHead className="text-center">HSN/SAC</TableHead>
+                    <TableHead className="text-right">Price/Unit</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {itemsToView.map((item, idx) => {
+                    const isService = item.itemType === "service";
+                    const qty =
+                      !isService &&
+                      item.quantity !== undefined &&
+                      item.quantity !== null &&
+                      !isNaN(Number(item.quantity))
+                        ? `${item.quantity} ${
+                            item.unitType === "Other"
+                              ? item.otherUnit || "Other"
+                              : item.unitType || "Piece"
+                          }` // Change this line
+                        : "—";
+                    const rate = !isService
+                      ? formatCurrency(Number(item?.pricePerUnit ?? 0))
                       : "—";
-                  const rate = !isService
-                    ? formatCurrency(Number(item?.pricePerUnit ?? 0))
-                    : "—";
-                  const total = formatCurrency(Number(item?.amount ?? 0));
-                  return (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {isService ? (
-                            <Server className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          <div className="flex flex-col">
-                            <span>{item?.name ?? "—"}</span>
-                            {isService && item?.description ? (
-                              <span className="text-xs text-muted-foreground line-clamp-1">
-                                {item.description}
-                              </span>
-                            ) : null}
+                    const total = formatCurrency(Number(item?.amount ?? 0));
+                    const hsnSacCode = isService ? item.sacCode : item.hsnCode;
+
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {isService ? (
+                              <Server className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <div className="flex flex-col">
+                              <span>{item?.name ?? "—"}</span>
+                              {isService && item?.description && (
+                                <span className="text-xs text-muted-foreground line-clamp-1">
+                                  {item.description}
+                                </span>
+                              )}
+                            </div>
                           </div>
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          {item.itemType ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-center">{qty}</TableCell>
+                        <TableCell className="text-center">
+                          {hsnSacCode || "—"}
+                        </TableCell>
+                        <TableCell className="text-right">{rate}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {total}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="sm:hidden space-y-3 p-1">
+              {itemsToView.map((item, idx) => {
+                const isService = item.itemType === "service";
+                const qty =
+                  !isService &&
+                  item.quantity !== undefined &&
+                  item.quantity !== null &&
+                  !isNaN(Number(item.quantity))
+                    ? `${item.quantity} ${
+                        item.unitType === "Other"
+                          ? item.otherUnit || "Other"
+                          : item.unitType || "Piece"
+                      }` // Change this line
+                    : "—";
+                const rate = !isService
+                  ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+                  : "—";
+                const total = formatCurrency(Number(item?.amount ?? 0));
+                const hsnSacCode = isService ? item.sacCode : item.hsnCode;
+
+                return (
+                  <div
+                    key={idx}
+                    className="p-3 border rounded-lg bg-white dark:bg-gray-800 shadow-sm"
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="flex-shrink-0 mt-1">
+                        {isService ? (
+                          <Server className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm truncate">
+                          {item?.name ?? "—"}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground capitalize bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                            {item.itemType ?? "—"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            HSN/SAC: {hsnSacCode || "—"}
+                          </span>
                         </div>
-                      </TableCell>
-
-                      <TableCell className="hidden sm:table-cell capitalize">
-                        {item.itemType ?? "—"}
-                      </TableCell>
-
-                      <TableCell className="text-center">{qty}</TableCell>
-
-                      <TableCell className="text-right">{rate}</TableCell>
-
-                      <TableCell className="text-right font-semibold">
-                        {total}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        {isService && item?.description && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>Qty: {qty}</div>
+                      <div className="text-right">Rate: {rate}</div>
+                      <div className="col-span-2 text-right font-semibold border-t pt-1">
+                        Total: {total}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

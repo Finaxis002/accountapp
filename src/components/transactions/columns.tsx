@@ -639,7 +639,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import type { Transaction, Company, Party } from "@/lib/types";
-import { generatePdfForTemplate1 } from "@/lib/pdf-templates";
+import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
+// import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
+// import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
+// import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
+// import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
+// import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
+// import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 import { getUnifiedLines } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import {
