@@ -514,11 +514,7 @@ export function ProductForm({
                             <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
                               {hsn.description}
                             </div>
-                            {hsn.chapter && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Chapter {hsn.chapter}: {hsn.chapterDescription}
-                              </div>
-                            )}
+                           
                           </div>
                         ))}
                       </div>
