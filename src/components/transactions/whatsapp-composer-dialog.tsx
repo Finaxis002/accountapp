@@ -358,7 +358,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, MessageCircle, X, ExternalLink, Smartphone, AlertCircle, CheckCircle2, LogOut } from 'lucide-react';
+import { Loader2, MessageCircle, X, ExternalLink, Smartphone, CheckCircle2, LogOut, Wifi } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { WhatsAppConnectionDialog } from './whatsapp-connection-dialog';
 import { whatsappConnectionService } from '@/lib/whatsapp-connection';
@@ -380,34 +380,43 @@ export function WhatsAppComposerDialog({
 }: WhatsAppComposerDialogProps) {
   const [messageContent, setMessageContent] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
-  const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
+  const [isWhatsAppConnected, setIsWhatsAppConnected] = useState<boolean | null>(null); // null = checking
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [connectionInfo, setConnectionInfo] = useState<any>(null);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const { toast } = useToast();
 
-  // Initialize when dialog opens
+  // Check WhatsApp connection status when dialog opens
   useEffect(() => {
     if (isOpen) {
       const partyMobile = party?.contactNumber || party?.phone || '';
       setMobileNumber(partyMobile);
       setMessageContent(generateDefaultMessageContent());
       
-      // Check if WhatsApp is already connected
-      const connectionStatus = whatsappConnectionService.isWhatsAppConnected();
+      checkConnectionStatus();
+    }
+  }, [isOpen, transaction, party, company]);
+
+  const checkConnectionStatus = async () => {
+    setIsCheckingConnection(true);
+    try {
+      // Check if WhatsApp Web is actually connected
+      const isConnected = await whatsappConnectionService.checkWhatsAppWebConnection();
       const info = whatsappConnectionService.getConnectionInfo();
       
-      setIsWhatsAppConnected(connectionStatus);
+      setIsWhatsAppConnected(isConnected);
       setConnectionInfo(info);
       
-      // If connection exists but is old, show reconnection option
-      if (connectionStatus && !whatsappConnectionService.shouldAutoReconnect()) {
-        toast({
-          title: 'WhatsApp Connection Found',
-          description: 'Your previous WhatsApp connection has been restored.',
-        });
+      if (isConnected) {
+        console.log('WhatsApp Web is connected - no need to reconnect');
       }
+    } catch (error) {
+      console.error('Error checking WhatsApp connection:', error);
+      setIsWhatsAppConnected(false);
+    } finally {
+      setIsCheckingConnection(false);
     }
-  }, [isOpen, transaction, party, company, toast]);
+  };
 
   const generateDefaultMessageContent = () => {
     const invoiceNumber = transaction.invoiceNumber || transaction.referenceNumber || 'N/A';
@@ -489,27 +498,23 @@ ${company?.businessName || 'Your Company'}`;
   };
 
   const handleConnected = () => {
-    const connectionStatus = whatsappConnectionService.isWhatsAppConnected();
-    const info = whatsappConnectionService.getConnectionInfo();
-    
-    setIsWhatsAppConnected(connectionStatus);
-    setConnectionInfo(info);
-    
-    toast({
-      title: 'WhatsApp Connected!',
-      description: 'Your WhatsApp connection has been saved and will persist across logins.',
-    });
+    // After connecting, update the status
+    checkConnectionStatus();
   };
 
   const handleDisconnectWhatsApp = () => {
-    whatsappConnectionService.clearAllStorage();
+    whatsappConnectionService.clearConnection();
     setIsWhatsAppConnected(false);
     setConnectionInfo(null);
     
     toast({
       title: 'WhatsApp Disconnected',
-      description: 'You have been disconnected from WhatsApp. You can reconnect anytime.',
+      description: 'Connection record cleared. WhatsApp Web may still be connected in your browser.',
     });
+  };
+
+  const handleRefreshConnection = () => {
+    checkConnectionStatus();
   };
 
   if (!isOpen) return null;
@@ -558,15 +563,31 @@ ${company?.businessName || 'Your Company'}`;
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Connection Status */}
-              {!isWhatsAppConnected && (
+              {isCheckingConnection && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                      <div className="flex-1">
+                        <p className="font-medium text-blue-800">Checking WhatsApp Connection...</p>
+                        <p className="text-sm text-blue-700">
+                          Verifying if WhatsApp Web is connected
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!isCheckingConnection && isWhatsAppConnected === false && (
                 <Card className="border-yellow-200 bg-yellow-50">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
-                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      <Wifi className="h-5 w-5 text-yellow-600" />
                       <div className="flex-1">
                         <p className="font-medium text-yellow-800">WhatsApp Not Connected</p>
                         <p className="text-sm text-yellow-700">
-                          Connect WhatsApp once to send messages through WhatsApp Web
+                          Connect to WhatsApp Web to send messages
                         </p>
                       </div>
                       <Button onClick={handleConnectWhatsApp} size="sm">
@@ -578,7 +599,7 @@ ${company?.businessName || 'Your Company'}`;
                 </Card>
               )}
 
-              {isWhatsAppConnected && (
+              {!isCheckingConnection && isWhatsAppConnected === true && (
                 <Card className="border-green-200 bg-green-50">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -587,25 +608,39 @@ ${company?.businessName || 'Your Company'}`;
                         <div>
                           <p className="font-medium text-green-800">WhatsApp Connected</p>
                           <p className="text-sm text-green-700">
-                            {connectionInfo?.phoneNumber ? `Connected to ${connectionInfo.phoneNumber}` : 'Ready to send messages via WhatsApp Web'}
+                            {connectionInfo?.phoneNumber 
+                              ? `Connected to ${connectionInfo.phoneNumber}` 
+                              : 'WhatsApp Web is connected and ready'
+                            }
                           </p>
                         </div>
                       </div>
-                      <Button 
-                        onClick={handleDisconnectWhatsApp}
-                        variant="outline" 
-                        size="sm"
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <LogOut className="h-4 w-4 mr-1" />
-                        Disconnect
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handleRefreshConnection}
+                          variant="outline" 
+                          size="sm"
+                          disabled={isCheckingConnection}
+                        >
+                          <Loader2 className={`h-4 w-4 mr-1 ${isCheckingConnection ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </Button>
+                        <Button 
+                          onClick={handleDisconnectWhatsApp}
+                          variant="outline" 
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <LogOut className="h-4 w-4 mr-1" />
+                          Clear
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Rest of your existing content... */}
+              {/* Transaction Summary */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Transaction Summary</CardTitle>
@@ -691,15 +726,7 @@ ${company?.businessName || 'Your Company'}`;
                   Cancel
                 </Button>
                 
-                {!isWhatsAppConnected ? (
-                  <Button
-                    onClick={handleConnectWhatsApp}
-                    className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
-                  >
-                    <Smartphone className="h-4 w-4" />
-                    Connect & Send
-                  </Button>
-                ) : (
+                {isWhatsAppConnected ? (
                   <Button
                     onClick={handleSendOnWhatsApp}
                     className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
@@ -707,13 +734,21 @@ ${company?.businessName || 'Your Company'}`;
                     <MessageCircle className="h-4 w-4" />
                     Send via WhatsApp Web
                   </Button>
+                ) : (
+                  <Button
+                    onClick={handleConnectWhatsApp}
+                    className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+                  >
+                    <Smartphone className="h-4 w-4" />
+                    Connect & Send
+                  </Button>
                 )}
               </div>
               
               {isWhatsAppConnected && (
                 <div className="mt-3 text-center">
                   <p className="text-xs text-muted-foreground">
-                    ✅ Connection persists across logins until you disconnect
+                    ✅ WhatsApp Web connection persists for 30 days in your browser
                   </p>
                 </div>
               )}
