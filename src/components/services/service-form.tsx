@@ -28,6 +28,7 @@ interface ServiceFormProps {
 
 const formSchema = z.object({
   serviceName: z.string().min(2, "Service name is required."),
+  sac: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -45,6 +46,7 @@ export function ServiceForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       serviceName: service?.serviceName || "",
+      sac: (service as any)?.sac || "",
     },
   });
 
@@ -52,6 +54,7 @@ export function ServiceForm({
     if (service) {
       form.reset({
         serviceName: service.serviceName,
+        sac: (service as any).sac,
       });
     }
   }, [service, form]);
@@ -154,6 +157,19 @@ export function ServiceForm({
                     placeholder="e.g. Annual Maintenance Contract"
                     {...field}
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="sac"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>SAC Code</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter SAC code" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

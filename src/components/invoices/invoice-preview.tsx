@@ -12,15 +12,22 @@ import {
 import { Download, FileText, Loader2, Edit } from "lucide-react";
 import type { Company, Party, Transaction } from "@/lib/types";
 import { DialogFooter } from "../ui/dialog";
-import {
-  generatePdfForTemplate1,
-  generatePdfForTemplate2,
-  generatePdfForTemplate3,
-  generatePdfForTemplate4,
-  generatePdfForTemplate5,
-  generatePdfForTemplate6,
-  generatePdfForTemplate7,
-} from "@/lib/pdf-templates";
+// import {
+//   generatePdfForTemplate1,
+//   generatePdfForTemplate2,
+//   generatePdfForTemplate3,
+//   generatePdfForTemplate4,
+//   generatePdfForTemplate5,
+//   generatePdfForTemplate6,
+//   generatePdfForTemplate7,
+// } from "@/lib/pdf-templates";
+import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
+import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
+import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
+import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
+import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
+import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
+import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 
@@ -73,6 +80,11 @@ export function InvoicePreview({
         // ✅ forward serviceNameById to the PDF generators
         let docPromise: Promise<jsPDF>;
 
+        // Extract shipping address from transaction
+        const shippingAddress = transaction?.shippingAddress && typeof transaction.shippingAddress === 'object'
+          ? transaction.shippingAddress as any
+          : null;
+
         switch (selectedTemplate) {
           case "template1":
             docPromise = Promise.resolve(
@@ -80,7 +92,8 @@ export function InvoicePreview({
                 transaction,
                 company,
                 party,
-                serviceNameById
+                serviceNameById,
+                shippingAddress
               )
             );
             break;
@@ -90,7 +103,8 @@ export function InvoicePreview({
                 transaction,
                 company,
                 party,
-                serviceNameById
+                serviceNameById,
+                shippingAddress
               )
             );
             break;
@@ -99,7 +113,8 @@ export function InvoicePreview({
               transaction,
               company,
               party,
-              serviceNameById
+              serviceNameById,
+              shippingAddress
             );
             break;
           case "template4":
@@ -108,7 +123,8 @@ export function InvoicePreview({
                 transaction,
                 company,
                 party,
-                serviceNameById
+                serviceNameById,
+                shippingAddress
               )
             );
             break;
@@ -118,7 +134,8 @@ export function InvoicePreview({
                 transaction,
                 company,
                 party,
-                serviceNameById
+                serviceNameById,
+                shippingAddress
               )
             );
             break;
@@ -128,7 +145,8 @@ export function InvoicePreview({
                 transaction,
                 company,
                 party,
-                serviceNameById
+                serviceNameById,
+                shippingAddress
               )
             );
             break;
@@ -138,7 +156,8 @@ export function InvoicePreview({
                 transaction,
                 company,
                 party,
-                serviceNameById
+                serviceNameById,
+                shippingAddress
               )
             );
             break;
@@ -147,7 +166,8 @@ export function InvoicePreview({
               transaction,
               company,
               party,
-              serviceNameById
+              serviceNameById,
+              shippingAddress
             );
         }
 

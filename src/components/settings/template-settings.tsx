@@ -21,15 +21,13 @@ import { Button } from "@/components/ui/button";
 import { Save, Loader2, Eye, Check, Laptop, Monitor } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import {
-  generatePdfForTemplate1,
-  generatePdfForTemplate2,
-  generatePdfForTemplate3,
-  generatePdfForTemplate4,
-  generatePdfForTemplate5,
-  generatePdfForTemplate6,
-  generatePdfForTemplate7,
-} from "@/lib/pdf-templates";
+import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
+import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
+import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
+import { generatePdfForTemplate4 } from "@/lib/pdf-template4"; 
+import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
+import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
+import { generatePdfForTemplate7 } from "@/lib/pdf-template7";  
 import jsPDF from "jspdf";
 import type { Company, Party, Transaction } from "@/lib/types";
 
