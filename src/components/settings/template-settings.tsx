@@ -67,6 +67,7 @@ const dummyParty: Party = {
 const dummyTransaction: Transaction = {
   _id: "trans1",
   date: new Date(),
+  dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
   invoiceNumber: "INV-2023-001",
   items: [
     {
