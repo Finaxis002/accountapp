@@ -909,12 +909,37 @@ export const columns = ({
     },
 
     // AMOUNT
+    // {
+    //   accessorKey: "totalAmount",
+    //   header: ({ column }) => (
+    //     <Button
+    //       variant="ghost"
+    //       onClick={() => column.toggleSorting(column.getIsSomePageRowsSelected() === "asc")}
+    //       className="text-right w-full justify-end px-0"
+    //     >
+    //       Amount
+    //       <ArrowUpDown className="ml-2 h-4 w-4" />
+    //     </Button>
+    //   ),
+    //   meta: { label: "Amount" },
+    //   cell: ({ row }) => {
+    //     const amount = parseFloat(
+    //       String(row.original.totalAmount || (row.original as any).amount || 0)
+    //     );
+    //     const formatted = new Intl.NumberFormat("en-IN", {
+    //       style: "currency",
+    //       currency: "INR",
+    //     }).format(amount);
+
+    //     return <div className="text-right font-medium">{formatted}</div>;
+    //   },
+    // },
     {
       accessorKey: "totalAmount",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSomePageRowsSelected() === "asc")}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="text-right w-full justify-end px-0"
         >
           Amount
