@@ -84,6 +84,7 @@ export type Transaction = {
    referenceNumber?: string;
    notes?: string;
    shippingAddress?: ShippingAddress | string | null;
+   bank?: Bank | string | null;
  };
 
 export type Kpi = {
@@ -290,6 +291,23 @@ export type ShippingAddress = {
   contactNumber: string;
   createdByClient: string;
   createdByUser: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+};
+
+export type Bank = {
+  _id: string;
+  client: string;
+  user: string;
+  company: string;
+  bankName: string;
+  managerName: string;
+  contactNumber: string;
+  email: string;
+  city: string;
+  ifscCode: string;
+  branchAddress: string;
   createdAt: string;
   updatedAt: string;
   __v: number;

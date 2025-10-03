@@ -1,4 +1,4 @@
-import type { Company, Party, Transaction, ShippingAddress } from "@/lib/types";
+import type { Company, Party, Transaction, ShippingAddress, Bank } from "@/lib/types";
 import { getUnifiedLines } from "./getUnifiedLines";
 export { getUnifiedLines };
 
@@ -386,4 +386,10 @@ export const getBillingAddress = (party?: Party | null): string => {
 export const getShippingAddress = (shippingAddress?: ShippingAddress | null, billingAddress?: string): string => {
   if (!shippingAddress) return billingAddress || "Address not available";
   return [shippingAddress.address, shippingAddress.city, shippingAddress.state, shippingAddress.pincode].filter(Boolean).join(", ");
+};
+
+export const getBankDetails = (bank?: Bank | string | null): string => {
+  if (!bank) return "Bank details not available";
+  if (typeof bank === "string") return bank;
+  return [bank.bankName, bank.branchAddress, bank.city, `IFSC: ${bank.ifscCode}`].filter(Boolean).join(", ");
 };
