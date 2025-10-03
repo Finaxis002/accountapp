@@ -13,6 +13,7 @@ export function getUnifiedLines(
     gstPercentage?: number;
     lineTax?: number;
     lineTotal?: number;
+    code?: string;
   }> = [];
 
   const num = (n: any, d = 0) => (n == null || n === "" ? d : Number(n));
@@ -52,7 +53,8 @@ export function getUnifiedLines(
       amount,
       gstPercentage: gstPercentage > 0 ? gstPercentage : undefined,
       lineTax: lineTax > 0 ? lineTax : undefined,
-      lineTotal: lineTotal > 0 ? lineTotal : amount
+      lineTotal: lineTotal > 0 ? lineTotal : amount,
+      code: isService ? row.sac : row.hsn
     });
   };
 
@@ -87,7 +89,8 @@ export function getUnifiedLines(
       amount,
       gstPercentage: gstPercentage > 0 ? gstPercentage : undefined,
       lineTax: lineTax > 0 ? lineTax : undefined,
-      lineTotal
+      lineTotal,
+      code: undefined
     });
   }
 

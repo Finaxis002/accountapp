@@ -108,6 +108,7 @@ export const generatePdfForTemplate3 = async (
   const itemsForTable = lines.map((l: any, index: number) => ({
     sno: (index + 1).toString(),
     description: `${l.name}${l.description ? " — " + l.description : ""}`,
+    code: l.code || "",
     quantity: l.quantity || 1,
     pricePerUnit: Number(l.pricePerUnit || l.amount || 0),
     amount: Number(l.amount || 0),
@@ -124,6 +125,7 @@ export const generatePdfForTemplate3 = async (
     itemsForTable.push({
       sno: "1",
       description: transaction.description || "Item",
+      code: "",
       quantity: 1,
       pricePerUnit: amount,
       amount,
@@ -160,7 +162,8 @@ export const generatePdfForTemplate3 = async (
   // Columns
   const colSNo = m;
   const colItem = colSNo + 20;
-  const colQty = colItem + 40;
+  const colCode = colItem + 30;
+  const colQty = colCode + 20;
   const colRate = pw - m - 110; // (kept if you want to show rate separately)
   const colAmount = pw - m - 80;
   const colGST = pw - m - 50;
@@ -292,6 +295,7 @@ export const generatePdfForTemplate3 = async (
 
     doc.text("S.No.", colSNo, y);
     doc.text("ITEM", colItem, y);
+    doc.text("HSN/SAC", colCode, y);
     doc.text("QTY", colQty, y, { align: "right" });
     doc.text("PRICE", colAmount, y, { align: "right" }); // keep aligned to the “amount” column
     doc.text("GST%", colGST, y, { align: "right" });
@@ -313,7 +317,7 @@ export const generatePdfForTemplate3 = async (
     doc.text(it.sno, colSNo, y);
 
     // Description (truncate to fit one line)
-    const maxDescWidth = colQty - colItem - 5;
+    const maxDescWidth = colCode - colItem - 5;
     let description = it.description;
     if (doc.getTextWidth(description) > maxDescWidth) {
       // rough clamp based on width
@@ -326,6 +330,9 @@ export const generatePdfForTemplate3 = async (
       description = description.trimEnd() + "...";
     }
     doc.text(description, colItem, y);
+
+    // HSN/SAC
+    doc.text(it.code, colCode, y);
 
     // Right-aligned numeric columns
     doc.text(String(it.quantity), colQty, y, { align: "right" });

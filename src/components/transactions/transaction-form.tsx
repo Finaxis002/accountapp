@@ -210,6 +210,7 @@ const formSchema = z
     company: z.string().min(1, "Please select a company."),
     party: z.string().optional(),
     date: z.date({ required_error: "A date is required." }),
+    dueDate: z.date().optional(),
     items: z.array(itemSchema).optional(),
     totalAmount: z.coerce
       .number()
@@ -1003,6 +1004,9 @@ export function TransactionForm({
             : transactionToEdit.company
           : "",
       date: new Date(transactionToEdit.date),
+      dueDate: transactionToEdit.dueDate
+        ? new Date(transactionToEdit.dueDate)
+        : undefined,
       totalAmount:
         transactionToEdit.totalAmount || (transactionToEdit as any).amount,
       items: itemsToSet,
@@ -1500,6 +1504,7 @@ export function TransactionForm({
           company: values.company,
           party: values.party,
           date: values.date,
+          dueDate: values.dueDate,
           description: values.description,
           referenceNumber: values.referenceNumber,
           narration: values.narration,
@@ -2261,7 +2266,7 @@ export function TransactionForm({
   const renderSalesPurchasesFields = () => (
     <div className="space-y-4">
       {/* Core Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField
           control={form.control}
           name="company"
@@ -2347,6 +2352,98 @@ export function TransactionForm({
                     }
                     initialFocus
                   />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Add Due Date Field Here */}
+        <FormField
+          control={form.control}
+          name="dueDate"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel className="mb-2">Due Date</FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full px-3 py-2 h-10 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? (
+                        format(field.value, "PPP")
+                      ) : (
+                        <span>Select due date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="flex">
+                    {/* Quick Date Options Sidebar */}
+                    <div className="flex flex-col p-3 border-r bg-muted/50 max-w-min">
+                      <div className="space-y-1 max-w-sm">
+                        {[
+                          { label: "7 Days", days: 7 },
+                          { label: "10 Days", days: 10 },
+                          { label: "15 Days", days: 15 },
+                          { label: "30 Days", days: 30 },
+                          { label: "45 Days", days: 45 },
+                          { label: "60 Days", days: 60 },
+                          { label: "90 Days", days: 90 },
+                        ].map((option) => (
+                          <Button
+                            key={option.days}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start text-xs h-7 px-2"
+                            onClick={() => {
+                              const currentDate =
+                                form.getValues("date") || new Date();
+                              const dueDate = new Date(currentDate);
+                              dueDate.setDate(dueDate.getDate() + option.days);
+                              form.setValue("dueDate", dueDate);
+                            }}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {/* Custom Date Button */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-xs h-7 px-2 mt-2 border-t pt-2"
+                        onClick={() => {
+                          // This will keep the calendar open for custom selection
+                        }}
+                      >
+                        Custom Date
+                      </Button>
+                    </div>
+
+                    {/* Calendar Section */}
+                    <div className="p-3">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) => date < new Date("1900-01-01")}
+                        initialFocus
+                        className="p-0"
+                      />
+                    </div>
+                  </div>
                 </PopoverContent>
               </Popover>
               <FormMessage />
@@ -2475,7 +2572,7 @@ export function TransactionForm({
         <>
           <Separator />
 
-          <div className="space-y-4">
+          <div className="space-y-4 min-h-[20vh]">
             <h3 className="text-base font-medium">Shipping Address</h3>
 
             <FormField
@@ -3988,259 +4085,324 @@ export function TransactionForm({
 
   return (
     <>
-      <Form {...form}>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const isValid = await form.trigger();
-            if (!isValid) {
-              scrollToFirstError();
-              return;
-            }
-            await form.handleSubmit(onSubmit)(e);
-          }}
-          className="contents"
-          onSelect={(e) => e.preventDefault()}
-          onKeyDown={(e) => {
-            // Prevent form selection on Tab key
-            if (e.key === "Tab") {
+      <div className=" max-h-[80vh] overflow-y-auto">
+        <Form {...form}>
+          <form
+            onSubmit={async (e) => {
               e.preventDefault();
-              // Find next focusable element
-              const focusableElements = document.querySelectorAll(
-                'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
-              );
-              const currentIndex = Array.from(focusableElements).indexOf(
-                document.activeElement as Element
-              );
-              const nextIndex = e.shiftKey
-                ? currentIndex - 1
-                : currentIndex + 1;
-              if (nextIndex >= 0 && nextIndex < focusableElements.length) {
-                (focusableElements[nextIndex] as HTMLElement).focus();
+              const isValid = await form.trigger();
+              if (!isValid) {
+                scrollToFirstError();
+                return;
               }
-            }
-          }}
-        >
-          <ScrollArea className="flex-1 overflow-y-hidden" tabIndex={-1}>
-            <div className="p-6 space-y-6 select-none">
-              <div className="w-full">
-                {/* Mobile Dropdown (hidden on desktop) */}
-                <div className="md:hidden mb-4">
-                  <Select
-                    value={type}
-                    onValueChange={(value) =>
-                      form.setValue("type", value as any)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select transaction type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {canSales && (
-                        <SelectItem
-                          value="sales"
-                          disabled={!!transactionToEdit}
-                        >
-                          Sales
-                        </SelectItem>
-                      )}
-                      {canPurchases && (
-                        <SelectItem
-                          value="purchases"
-                          disabled={!!transactionToEdit}
-                        >
-                          Purchases
-                        </SelectItem>
-                      )}
+              await form.handleSubmit(onSubmit)(e);
+            }}
+            className="contents"
+            onSelect={(e) => e.preventDefault()}
+            onKeyDown={(e) => {
+              // Prevent form selection on Tab key
+              if (e.key === "Tab") {
+                e.preventDefault();
+                // Find next focusable element
+                const focusableElements = document.querySelectorAll(
+                  'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+                );
+                const currentIndex = Array.from(focusableElements).indexOf(
+                  document.activeElement as Element
+                );
+                const nextIndex = e.shiftKey
+                  ? currentIndex - 1
+                  : currentIndex + 1;
+                if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+                  const nextElement = focusableElements[
+                    nextIndex
+                  ] as HTMLElement;
+                  nextElement.focus();
+                  // Scroll the element into view within the ScrollArea
+                  nextElement.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                    inline: "nearest",
+                  });
+                }
+              }
+            }}
+          >
+            <ScrollArea className="flex-1 overflow-auto" tabIndex={-1}>
+              <div className="p-6 space-y-6 select-none">
+                <div className="w-full">
+                  {/* Mobile Dropdown (hidden on desktop) */}
+                  <div className="md:hidden mb-4">
+                    <Select
+                      value={type}
+                      onValueChange={(value) =>
+                        form.setValue("type", value as any)
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select transaction type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {canSales && (
+                          <SelectItem
+                            value="sales"
+                            disabled={!!transactionToEdit}
+                          >
+                            Sales
+                          </SelectItem>
+                        )}
+                        {canPurchases && (
+                          <SelectItem
+                            value="purchases"
+                            disabled={!!transactionToEdit}
+                          >
+                            Purchases
+                          </SelectItem>
+                        )}
 
-                      {canReceipt && (
-                        <SelectItem
-                          value="receipt"
-                          disabled={!!transactionToEdit}
-                        >
-                          Receipt
-                        </SelectItem>
-                      )}
-                      {canPayment && (
-                        <SelectItem
-                          value="payment"
-                          disabled={!!transactionToEdit}
-                        >
-                          Payment
-                        </SelectItem>
-                      )}
-                      {canJournal && (
-                        <SelectItem
-                          value="journal"
-                          disabled={!!transactionToEdit}
-                        >
-                          Journal
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        {canReceipt && (
+                          <SelectItem
+                            value="receipt"
+                            disabled={!!transactionToEdit}
+                          >
+                            Receipt
+                          </SelectItem>
+                        )}
+                        {canPayment && (
+                          <SelectItem
+                            value="payment"
+                            disabled={!!transactionToEdit}
+                          >
+                            Payment
+                          </SelectItem>
+                        )}
+                        {canJournal && (
+                          <SelectItem
+                            value="journal"
+                            disabled={!!transactionToEdit}
+                          >
+                            Journal
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Desktop Tabs (hidden on mobile) */}
-                <div className="hidden md:block">
-                  <Tabs
-                    value={type}
-                    onValueChange={(value) =>
-                      form.setValue("type", value as any)
-                    }
-                    className="w-full"
-                  >
-                    <TabsList className="grid w-full grid-cols-5">
-                      {canSales && (
-                        <TabsTrigger
-                          value="sales"
-                          disabled={!!transactionToEdit}
-                        >
-                          Sales
-                        </TabsTrigger>
-                      )}
-                      {canPurchases && (
-                        <TabsTrigger
-                          value="purchases"
-                          disabled={!!transactionToEdit}
-                        >
-                          Purchases
-                        </TabsTrigger>
-                      )}
-                      {canReceipt && (
-                        <TabsTrigger
-                          value="receipt"
-                          disabled={!!transactionToEdit}
-                        >
-                          Receipt
-                        </TabsTrigger>
-                      )}
-                      {canPayment && (
-                        <TabsTrigger
-                          value="payment"
-                          disabled={!!transactionToEdit}
-                        >
-                          Payment
-                        </TabsTrigger>
-                      )}
-                      {canJournal && (
-                        <TabsTrigger
-                          value="journal"
-                          disabled={!!transactionToEdit}
-                        >
-                          Journal
-                        </TabsTrigger>
-                      )}
-                    </TabsList>
-                  </Tabs>
-                </div>
+                  {/* Desktop Tabs (hidden on mobile) */}
+                  <div className="hidden md:block">
+                    <Tabs
+                      value={type}
+                      onValueChange={(value) =>
+                        form.setValue("type", value as any)
+                      }
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full grid-cols-5">
+                        {canSales && (
+                          <TabsTrigger
+                            value="sales"
+                            disabled={!!transactionToEdit}
+                          >
+                            Sales
+                          </TabsTrigger>
+                        )}
+                        {canPurchases && (
+                          <TabsTrigger
+                            value="purchases"
+                            disabled={!!transactionToEdit}
+                          >
+                            Purchases
+                          </TabsTrigger>
+                        )}
+                        {canReceipt && (
+                          <TabsTrigger
+                            value="receipt"
+                            disabled={!!transactionToEdit}
+                          >
+                            Receipt
+                          </TabsTrigger>
+                        )}
+                        {canPayment && (
+                          <TabsTrigger
+                            value="payment"
+                            disabled={!!transactionToEdit}
+                          >
+                            Payment
+                          </TabsTrigger>
+                        )}
+                        {canJournal && (
+                          <TabsTrigger
+                            value="journal"
+                            disabled={!!transactionToEdit}
+                          >
+                            Journal
+                          </TabsTrigger>
+                        )}
+                      </TabsList>
+                    </Tabs>
+                  </div>
 
-                {/* Tab Content (same for both mobile and desktop) */}
-                <div className="pt-4 md:pt-6">
-                  {type === "sales" && renderSalesPurchasesFields()}
-                  {type === "purchases" && renderSalesPurchasesFields()}
-                  {type === "receipt" && renderReceiptPaymentFields()}
-                  {type === "payment" && renderReceiptPaymentFields()}
-                  {type === "journal" && (
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <h3 className="text-base font-medium pb-2 border-b">
-                          Core Details
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                          <FormField
-                            control={form.control}
-                            name="company"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Company</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a company" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {companies.map((c) => (
-                                      <SelectItem key={c._id} value={c._id}>
-                                        {c.businessName}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="date"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-col">
-                                <FormLabel className="mb-2">
-                                  Transaction Date
-                                </FormLabel>
-
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <FormControl>
-                                      <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                          "w-full px-3 py-2 h-10 text-left font-normal",
-
-                                          !field.value &&
-                                            "text-muted-foreground"
-                                        )}
-                                      >
-                                        {field.value ? (
-                                          format(field.value, "PPP")
-                                        ) : (
-                                          <span>Pick a date</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                    </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    className="w-auto p-0"
-                                    align="start"
+                  {/* Tab Content (same for both mobile and desktop) */}
+                  <div className="pt-4 md:pt-6">
+                    {type === "sales" && renderSalesPurchasesFields()}
+                    {type === "purchases" && renderSalesPurchasesFields()}
+                    {type === "receipt" && renderReceiptPaymentFields()}
+                    {type === "payment" && renderReceiptPaymentFields()}
+                    {type === "journal" && (
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <h3 className="text-base font-medium pb-2 border-b">
+                            Core Details
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            <FormField
+                              control={form.control}
+                              name="company"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Company</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
                                   >
-                                    <Calendar
-                                      mode="single"
-                                      selected={field.value}
-                                      onSelect={field.onChange}
-                                      disabled={(date) =>
-                                        date > new Date() ||
-                                        date < new Date("1900-01-01")
-                                      }
-                                      initialFocus
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a company" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {companies.map((c) => (
+                                        <SelectItem key={c._id} value={c._id}>
+                                          {c.businessName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="date"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                  <FormLabel className="mb-2">
+                                    Transaction Date
+                                  </FormLabel>
+
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant={"outline"}
+                                          className={cn(
+                                            "w-full px-3 py-2 h-10 text-left font-normal",
+
+                                            !field.value &&
+                                              "text-muted-foreground"
+                                          )}
+                                        >
+                                          {field.value ? (
+                                            format(field.value, "PPP")
+                                          ) : (
+                                            <span>Pick a date</span>
+                                          )}
+                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                      className="w-auto p-0"
+                                      align="start"
+                                    >
+                                      <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) =>
+                                          date > new Date() ||
+                                          date < new Date("1900-01-01")
+                                        }
+                                        initialFocus
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-base font-medium pb-2 border-b">
-                          Journal Entry
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div className="space-y-2">
+                          <h3 className="text-base font-medium pb-2 border-b">
+                            Journal Entry
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            <FormField
+                              control={form.control}
+                              name="fromAccount"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Debit Account</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="e.g., Rent Expense"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="toAccount"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Credit Account</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="e.g., Cash"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="totalAmount"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Amount</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="0.00"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <h3 className="text-base font-medium pb-2 border-b">
+                            Additional Details
+                          </h3>
                           <FormField
                             control={form.control}
-                            name="fromAccount"
+                            name="description"
                             render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Debit Account</FormLabel>
+                              <FormItem className="md:col-span-2">
+                                <FormLabel>Narration</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    placeholder="e.g., Rent Expense"
+                                  <Textarea
+                                    placeholder="Describe the transaction..."
                                     {...field}
                                   />
                                 </FormControl>
@@ -4248,98 +4410,47 @@ export function TransactionForm({
                               </FormItem>
                             )}
                           />
-                          <FormField
-                            control={form.control}
-                            name="toAccount"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Credit Account</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="e.g., Cash" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Journal Totals (only for journal type) */}
+                  {type === "journal" && (
+                    <div className="flex justify-end mt-6">
+                      <div className="w-full max-w-sm space-y-3">
+                        <div className="flex items-center justify-between">
+                          <FormLabel className="font-medium">Amount</FormLabel>
                           <FormField
                             control={form.control}
                             name="totalAmount"
                             render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Amount</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="0.00"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
+                              <Input
+                                type="number"
+                                readOnly
+                                className="w-40 text-right bg-muted"
+                                {...field}
+                              />
                             )}
                           />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="text-base font-medium pb-2 border-b">
-                          Additional Details
-                        </h3>
-                        <FormField
-                          control={form.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                              <FormLabel>Narration</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Describe the transaction..."
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* Journal Totals (only for journal type) */}
-                {type === "journal" && (
-                  <div className="flex justify-end mt-6">
-                    <div className="w-full max-w-sm space-y-3">
-                      <div className="flex items-center justify-between">
-                        <FormLabel className="font-medium">Amount</FormLabel>
-                        <FormField
-                          control={form.control}
-                          name="totalAmount"
-                          render={({ field }) => (
-                            <Input
-                              type="number"
-                              readOnly
-                              className="w-40 text-right bg-muted"
-                              {...field}
-                            />
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
+            </ScrollArea>
+            <div className="flex justify-end p-6 border-t bg-background">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {transactionToEdit ? "Save Changes" : "Create Transaction"}
+              </Button>
             </div>
-          </ScrollArea>
-          <div className="flex justify-end p-6 border-t bg-background">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {transactionToEdit ? "Save Changes" : "Create Transaction"}
-            </Button>
-          </div>
-        </form>
-      </Form>
+          </form>
+        </Form>
+      </div>
       <Dialog open={isPartyDialogOpen} onOpenChange={setIsPartyDialogOpen}>
         <DialogContent
           wide

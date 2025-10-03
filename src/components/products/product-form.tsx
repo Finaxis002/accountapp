@@ -14,31 +14,24 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
+  CommandInput,
 } from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/lib/types";
+import { searchHSNCodes, type HSNCode } from "@/lib/hsnProduct";
 
 interface ProductFormProps {
   productType?: string;
@@ -68,6 +61,11 @@ export function ProductForm({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [existingUnits, setExistingUnits] = React.useState<any[]>([]);
   const [unitOpen, setUnitOpen] = React.useState(false);
+  
+  // HSN Search States
+  const [hsnSuggestions, setHsnSuggestions] = React.useState<HSNCode[]>([]);
+  const [showHsnSuggestions, setShowHsnSuggestions] = React.useState(false);
+  const [isLoadingHsnSuggestions, setIsLoadingHsnSuggestions] = React.useState(false);
 
   const handleDeleteUnit = async (unitId: string) => {
     try {
@@ -154,6 +152,38 @@ export function ProductForm({
     },
   });
 
+  // Get the current HSN value from form
+  const hsnValue = form.watch("hsn");
+
+  // Debounced search for HSN codes - FIXED VERSION
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (hsnValue && hsnValue.length >= 2) {
+        setIsLoadingHsnSuggestions(true);
+        const results = searchHSNCodes(hsnValue);
+        setHsnSuggestions(results);
+        setShowHsnSuggestions(true);
+        setIsLoadingHsnSuggestions(false);
+      } else {
+        setShowHsnSuggestions(false);
+        setHsnSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [hsnValue]); // Use hsnValue instead of form.watch("hsn")
+
+  const handleHSNSelect = (hsnCode: HSNCode) => {
+    form.setValue("hsn", hsnCode.code);
+    setShowHsnSuggestions(false);
+  };
+
+  const handleHSNInputBlur = () => {
+    setTimeout(() => {
+      setShowHsnSuggestions(false);
+    }, 200);
+  };
+
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
     try {
@@ -201,16 +231,7 @@ export function ProductForm({
   }
 
   return (
-    <div
-      className="
-        w-full
-        max-w-xs
-        sm:max-w-sm
-        md:max-w-md
-        lg:max-w-lg
-        mx-auto
-      "
-    >
+    <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-2">
           <FormField
@@ -442,6 +463,8 @@ export function ProductForm({
               )}
             />
           )}
+          
+          {/* HSN Code Field with Search */}
           <FormField
             control={form.control}
             name="hsn"
@@ -449,12 +472,80 @@ export function ProductForm({
               <FormItem>
                 <FormLabel>HSN Code</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter HSN code" {...field} />
+                  <div className="relative">
+                    <div className="relative">
+                      <Input 
+                        placeholder="Search HSN code (e.g., 85)"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setShowHsnSuggestions(true);
+                        }}
+                        onBlur={handleHSNInputBlur}
+                        onFocus={() => {
+                          if (field.value && field.value.length >= 2) {
+                            setShowHsnSuggestions(true);
+                          }
+                        }}
+                      />
+                      {isLoadingHsnSuggestions && (
+                        <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                    
+                    {/* HSN Suggestions Dropdown */}
+                    {showHsnSuggestions && hsnSuggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {hsnSuggestions.map((hsn) => (
+                          <div
+                            key={hsn.code}
+                            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer border-b dark:border-gray-700 last:border-b-0 transition-colors"
+                            onClick={() => handleHSNSelect(hsn)}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                {hsn.code}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                                HSN
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                              {hsn.description}
+                            </div>
+                            {hsn.chapter && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Chapter {hsn.chapter}: {hsn.chapterDescription}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* No results message */}
+                    {showHsnSuggestions && hsnValue && hsnValue.length >= 2 && 
+                     hsnSuggestions.length === 0 && !isLoadingHsnSuggestions && (
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-3">
+                        <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                          No matching HSN codes found.
+                        </div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 text-center mt-1">
+                          Please check the code or enter manually.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </FormControl>
                 <FormMessage />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Start typing 2+ characters to see HSN code suggestions
+                </p>
               </FormItem>
             )}
           />
+
           <div className="flex justify-end pt-4">
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               {isSubmitting && (

@@ -19,6 +19,7 @@ const getItemsBodyTemplate2 = (
       [
         "1",
         transaction.description || "Item",
+        "",
         1,
         `${gstPct}%`,
         formatCurrency(amt),
@@ -31,6 +32,7 @@ const getItemsBodyTemplate2 = (
   return lines.map((item: any, index: number) => [
     (index + 1).toString(),
     `${item.name}${item.description ? " - " + item.description : ""}`,
+    item.code || "",
     item.quantity || 1,
     `${item.gstPercentage || 0}%`,
     formatCurrency(Number(item.pricePerUnit || item.amount)),
@@ -158,7 +160,7 @@ export const generatePdfForTemplate2 = (
     autoTable(doc, {
       startY: headerStartY,
       head: [
-        ["S.No.", "Item Description", "Qty", "GST%", "Rate", "Tax", "Total"],
+        ["S.No.", "Item Description", "HSN/SAC", "Qty", "GST%", "Rate", "Tax", "Total"],
       ],
       body: rows,
       theme: "grid",
