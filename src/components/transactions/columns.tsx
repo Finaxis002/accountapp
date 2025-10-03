@@ -599,18 +599,6 @@
 //   return baseColumns;
 // };
 
-
-
-
-
-
-
-
-
-
-
-
-
 "use client";
 
 import { ColumnDef, FilterFn, Row } from "@tanstack/react-table";
@@ -661,6 +649,8 @@ import { useState, useEffect } from "react";
 
 // Import the WhatsApp composer dialog
 import { WhatsAppComposerDialog } from "./whatsapp-composer-dialog";
+import { whatsappConnectionService } from "@/lib/whatsapp-connection";
+
 
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
@@ -715,6 +705,8 @@ export const columns = ({
   onSendWhatsApp,
   hideActions = false,
 }: ColumnsProps): ColumnDef<Transaction>[] => {
+
+  
   const customFilterFn = makeCustomFilterFn(serviceNameById);
 
   const baseColumns: ColumnDef<Transaction>[] = [
@@ -1017,7 +1009,8 @@ export const columns = ({
         // Invoice actions are allowed ONLY for sales
         const isInvoiceable = transaction.type === "sales";
         // WhatsApp allowed for both sales and receipts
-        const isWhatsAppAllowed = transaction.type === "sales" || transaction.type === "receipt";
+        const isWhatsAppAllowed =
+          transaction.type === "sales" || transaction.type === "receipt";
 
         // Extract basic party info from transaction
         const getBasicPartyInfo = () => {
@@ -1025,7 +1018,7 @@ export const columns = ({
           if (pv && typeof pv === "object") {
             return {
               _id: pv._id,
-              name: pv.name || pv.vendorName || 'Customer'
+              name: pv.name || pv.vendorName || "Customer",
             };
           }
           return null;
@@ -1036,29 +1029,33 @@ export const columns = ({
         // Fetch complete party details when needed (for WhatsApp)
         const fetchPartyDetails = async () => {
           if (!basicParty?._id) return;
-          
+
           setIsLoadingParty(true);
           try {
-            const token = localStorage.getItem('token');
-            const baseURL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8745';
-            
-            const response = await fetch(`${baseURL}/api/parties/${basicParty._id}`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
+            const token = localStorage.getItem("token");
+            const baseURL =
+              process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8745";
+
+            const response = await fetch(
+              `${baseURL}/api/parties/${basicParty._id}`,
+              {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
 
             if (response.ok) {
               const data = await response.json();
               setPartyDetails(data);
               return data;
             } else {
-              console.error('Failed to fetch party details for WhatsApp');
+              console.error("Failed to fetch party details for WhatsApp");
               return null;
             }
           } catch (error) {
-            console.error('Error fetching party details for WhatsApp:', error);
+            console.error("Error fetching party details for WhatsApp:", error);
             return null;
           } finally {
             setIsLoadingParty(false);
@@ -1095,37 +1092,68 @@ export const columns = ({
           doc.save(fname);
         };
 
+        // const handleSendWhatsApp = async () => {
+        //   // Fetch party details if we don't have them
+        //   let partyToUse = partyDetails;
+        //   if (!partyToUse && basicParty?._id) {
+        //     partyToUse = await fetchPartyDetails();
+        //   }
+
+        //   if (!partyToUse) {
+        //     toast({
+        //       variant: "destructive",
+        //       title: "Customer Information Missing",
+        //       description: "Unable to find customer details for this transaction.",
+        //     });
+        //     return;
+        //   }
+
+        //   // Check for contact number in the detailed party data
+        //   const hasContactNumber = partyToUse.contactNumber && partyToUse.contactNumber.trim().length > 0;
+
+        //   if (!hasContactNumber) {
+        //     toast({
+        //       variant: "destructive",
+        //       title: "No Contact Number",
+        //       description: "This customer doesn't have a contact number saved. Please add a phone number to send WhatsApp messages.",
+        //     });
+        //     return;
+        //   }
+
+        //   // Open the WhatsApp composer dialog
+        //   setIsWhatsAppDialogOpen(true);
+        // };
+
+        // In your columns component, update the WhatsApp handler:
         const handleSendWhatsApp = async () => {
-          // Fetch party details if we don't have them
-          let partyToUse = partyDetails;
-          if (!partyToUse && basicParty?._id) {
-            partyToUse = await fetchPartyDetails();
-          }
+  // Fetch party details if we don't have them
+  let partyToUse = partyDetails;
+  if (!partyToUse && basicParty?._id) {
+    partyToUse = await fetchPartyDetails();
+  }
 
-          if (!partyToUse) {
-            toast({
-              variant: "destructive",
-              title: "Customer Information Missing",
-              description: "Unable to find customer details for this transaction.",
-            });
-            return;
-          }
+  if (!partyToUse) {
+    toast({
+      variant: "destructive",
+      title: "Customer Information Missing",
+      description: "Unable to find customer details for this transaction.",
+    });
+    return;
+  }
 
-          // Check for contact number in the detailed party data
-          const hasContactNumber = partyToUse.contactNumber && partyToUse.contactNumber.trim().length > 0;
+  // Check if WhatsApp is connected
+  const isConnected = whatsappConnectionService.isWhatsAppConnected();
 
-          if (!hasContactNumber) {
-            toast({
-              variant: "destructive",
-              title: "No Contact Number",
-              description: "This customer doesn't have a contact number saved. Please add a phone number to send WhatsApp messages.",
-            });
-            return;
-          }
+  if (!isConnected) {
+    toast({
+      title: "Connect WhatsApp",
+      description: "Please connect your WhatsApp to send messages.",
+    });
+  }
 
-          // Open the WhatsApp composer dialog
-          setIsWhatsAppDialogOpen(true);
-        };
+  // If connected, open the composer directly
+  setIsWhatsAppDialogOpen(true); // Change this line
+};
 
         return (
           <>
@@ -1151,7 +1179,8 @@ export const columns = ({
                   <FaWhatsapp className="mr-2 h-4 w-4 text-green-600" />
                   <span>
                     {isLoadingParty ? "Loading..." : "Send on WhatsApp"}
-                    {!isWhatsAppAllowed && ` (${transaction.type} not supported)`}
+                    {!isWhatsAppAllowed &&
+                      ` (${transaction.type} not supported)`}
                   </span>
                 </DropdownMenuItem>
 
@@ -1170,7 +1199,9 @@ export const columns = ({
                   disabled={!isInvoiceable}
                 >
                   <Eye className="mr-2 h-4 w-4" />
-                  <span>Preview Invoice {!isInvoiceable && "(Sales only)"}</span>
+                  <span>
+                    Preview Invoice {!isInvoiceable && "(Sales only)"}
+                  </span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
@@ -1178,7 +1209,9 @@ export const columns = ({
                   disabled={!isInvoiceable}
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  <span>Download Invoice {!isInvoiceable && "(Sales only)"}</span>
+                  <span>
+                    Download Invoice {!isInvoiceable && "(Sales only)"}
+                  </span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
@@ -1203,8 +1236,10 @@ export const columns = ({
               isOpen={isWhatsAppDialogOpen}
               onClose={() => setIsWhatsAppDialogOpen(false)}
               transaction={transaction}
-              party={partyDetails || basicParty || { _id: '', name: 'Customer' }}
-              company={buildCompany() || { businessName: 'Company' }}
+              party={
+                partyDetails || basicParty || { _id: "", name: "Customer" }
+              }
+              company={buildCompany() || { businessName: "Company" }}
             />
           </>
         );
