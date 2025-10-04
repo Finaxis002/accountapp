@@ -100,7 +100,7 @@
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
-    return `Rs ${formatted}`;
+    return `Rs. ${formatted}`;
   };
 
   export const renderNotes = (
@@ -533,5 +533,96 @@
       cgstTotal,
       sgstTotal,
       igstTotal,
+    };
+  };
+
+  export const prepareTemplate8Data = (
+    transaction: Transaction,
+    company?: Company | null,
+    party?: Party | null,
+    shippingAddress?: ShippingAddress | null,
+  ) => {
+    const totals = deriveTotals(transaction, company || undefined);
+    const totalTaxable = totals.subtotal;
+    const totalAmount = totals.invoiceTotal;
+    const items = getUnifiedLines(transaction);
+    const totalItems = items.length;
+    const totalQty = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const itemsBody = getItemsBody(transaction);
+
+
+    // Calculate GST for each item with proper party and shipping address context
+    const itemsWithGST = items.map((item) => {
+      const taxableValue = item.amount;
+      const gstRate = item.gstPercentage || 0;
+
+      const gst = calculateGST(
+        taxableValue,
+        gstRate,
+        transaction,
+        company,
+        party,
+        shippingAddress
+      );
+
+      return {
+        ...item,
+        taxableValue,
+        cgst: gst.cgst,
+        sgst: gst.sgst,
+        igst: gst.igst,
+        total: taxableValue + gst.cgst + gst.sgst + gst.igst,
+        isGSTApplicable: gst.isGSTApplicable,
+        isInterstate: gst.isInterstate,
+        gstRate,
+      };
+    });
+
+    // Calculate total GST amounts
+    const totalCGST = itemsWithGST.reduce(
+      (sum, item) => sum + (item.cgst || 0),
+      0
+    );
+    const totalSGST = itemsWithGST.reduce(
+      (sum, item) => sum + (item.sgst || 0),
+      0
+    );
+    const totalIGST = itemsWithGST.reduce(
+      (sum, item) => sum + (item.igst || 0),
+      0
+    );
+
+    // Determine GST type based on actual calculations
+    const isGSTApplicable = itemsWithGST.some((item) => item.isGSTApplicable);
+    const isInterstate = itemsWithGST.some((item) => item.isInterstate);
+    const showIGST = isGSTApplicable && isInterstate;
+    const showCGSTSGST = isGSTApplicable && !isInterstate;
+    const showNoTax = !isGSTApplicable;
+
+    const itemsPerPage = 18;
+    const pages = [];
+    for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
+      pages.push(itemsWithGST.slice(i, i + itemsPerPage));
+    }
+
+    return {
+      totals,
+      totalTaxable,
+      totalAmount,
+      items,
+      totalItems,
+      totalQty,
+      itemsBody,
+      itemsWithGST,
+      totalCGST,
+      totalSGST,
+      totalIGST,
+      isGSTApplicable,
+      isInterstate,
+      showIGST,
+      showCGSTSGST,
+      showNoTax,
+      pages,
+      itemsPerPage,
     };
   };
