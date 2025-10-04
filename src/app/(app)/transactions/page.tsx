@@ -910,7 +910,7 @@ export default function TransactionsPage() {
                       New Transaction
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="  grid-rows-[auto,1fr,auto] max-h-[90vh]  p-0 sm:max-w-6xl max-w-sm">
+                  <DialogContent className="  grid-rows-[auto,1fr,auto]  p-0 sm:max-w-6xl max-w-sm">
                     <DialogHeader className="p-6">
                       <DialogTitle>
                         {transactionToEdit

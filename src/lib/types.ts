@@ -48,6 +48,7 @@ export type Transaction = {
    invoiceNumber?: string | null;
    invoiceYearYY?: number | null;
    date: Date;
+   dueDate: Date;
    party?: {
      email: boolean; _id: string; name: string
    } | string;

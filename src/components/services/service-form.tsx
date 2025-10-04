@@ -17,13 +17,14 @@ import { Loader2, Trash2 } from "lucide-react";
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Service as ApiService } from "@/lib/types";
+import { searchSACCodes, type SACCode } from "@/lib/sacService";
 
 type ServiceInput = Partial<Pick<ApiService, "_id" | "serviceName">>;
 
 interface ServiceFormProps {
   service?: ServiceInput;
   onSuccess: (service: ApiService) => void;
-  onDelete?: (service: ServiceInput) => void; // optional delete callback
+  onDelete?: (service: ServiceInput) => void;
 }
 
 const formSchema = z.object({
@@ -41,6 +42,9 @@ export function ServiceForm({
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [sacSuggestions, setSacSuggestions] = React.useState<SACCode[]>([]);
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = React.useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -50,14 +54,38 @@ export function ServiceForm({
     },
   });
 
+  // Debounced search for SAC codes
   React.useEffect(() => {
-    if (service) {
-      form.reset({
-        serviceName: service.serviceName,
-        sac: (service as any).sac,
-      });
-    }
-  }, [service, form]);
+    const sacValue = form.watch("sac");
+    
+    const timer = setTimeout(() => {
+      if (sacValue && sacValue.length >= 2) {
+        setIsLoadingSuggestions(true);
+        const results = searchSACCodes(sacValue);
+        setSacSuggestions(results);
+        setShowSuggestions(true);
+        setIsLoadingSuggestions(false);
+      } else {
+        setShowSuggestions(false);
+        setSacSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [form.watch("sac")]);
+
+  const sacValue = form.watch("sac") ?? "";
+
+  const handleSACSelect = (sacCode: SACCode) => {
+    form.setValue("sac", sacCode.code);
+    setShowSuggestions(false);
+  };
+
+  const handleSACInputBlur = () => {
+    setTimeout(() => {
+      setShowSuggestions(false);
+    }, 200);
+  };
 
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
@@ -162,6 +190,7 @@ export function ServiceForm({
               </FormItem>
             )}
           />
+          
           <FormField
             control={form.control}
             name="sac"
@@ -169,9 +198,71 @@ export function ServiceForm({
               <FormItem>
                 <FormLabel>SAC Code</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter SAC code" {...field} />
+                  <div className="relative">
+                    <div className="relative">
+                      <Input 
+                        placeholder="Search SAC code (e.g., 9954)"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setShowSuggestions(true);
+                        }}
+                        onBlur={handleSACInputBlur}
+                        onFocus={() => {
+                          if (field.value && field.value.length >= 2) {
+                            setShowSuggestions(true);
+                          }
+                        }}
+                      />
+                      {isLoadingSuggestions && (
+                        <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                    
+                    {/* Suggestions Dropdown */}
+                    {showSuggestions && sacSuggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {sacSuggestions.map((sac) => (
+                          <div
+                            key={sac.code}
+                            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer border-b dark:border-gray-700 last:border-b-0 transition-colors"
+                            onClick={() => handleSACSelect(sac)}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                {sac.code}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                                SAC
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                              {sac.description}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* No results message */}
+                    {showSuggestions && sacValue && sacValue.length >= 2 &&
+                     sacSuggestions.length === 0 && !isLoadingSuggestions && (
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-3">
+                        <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                          No matching SAC codes found.
+                        </div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 text-center mt-1">
+                          Please check the code or enter manually.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </FormControl>
                 <FormMessage />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Start typing 2+ characters to see SAC code suggestions
+                </p>
               </FormItem>
             )}
           />

@@ -116,6 +116,7 @@ export const generatePdfForTemplate1 = (
       "S.No.",
       "QTY",
       "DESCRIPTION",
+      "HSN/SAC",
       "PRICE",
       "GST %",
       "TAX",
