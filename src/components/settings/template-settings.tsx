@@ -94,6 +94,8 @@ const dummyTransaction: Transaction = {
   ],
   type: "sales" as const,
   amount: 2496,
+  fromState: undefined,
+  toState: undefined
 };
 
 const dummyServiceNames = new Map([
