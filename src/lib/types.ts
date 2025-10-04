@@ -311,6 +311,8 @@ export type Bank = {
   city: string;
   ifscCode: string;
   branchAddress: string;
+  accountNumber?: string;
+  upiId?: string;
   createdAt: string;
   updatedAt: string;
   __v: number;

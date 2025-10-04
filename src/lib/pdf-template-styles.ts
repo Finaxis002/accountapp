@@ -15,7 +15,7 @@ export const template8Styles = StyleSheet.create({
   page: {
     flexDirection: "column",
     backgroundColor: "#FFFFFF",
-    padding: 35,
+    padding: 25,
     fontFamily: "Helvetica",
   },
   section: {
@@ -88,13 +88,15 @@ export const template8Styles = StyleSheet.create({
     color: "#FFFFFF",
     paddingLeft:0,
     paddingRight:0,
-    paddingTop:4,
-    paddingBottom:4,
     fontSize: 9,
   },
   tableRow: {
     flexDirection: "row",
-    borderBottom: "0.5px solid #000000",
+    borderBottom: "0.5px solid #b2b2b2",
+  },
+    tableCellHeader: {
+    fontSize: 8,
+    borderRight: "0.5px solid #c4c4c4",
   },
   tableCell: {
     padding: 1,
@@ -156,4 +158,14 @@ export const template8Styles = StyleSheet.create({
     fontSize: 9,
     lineHeight: 1.1,
   },
+currencyText: {
+  fontFamily: 'YourChosenFont', // Use fonts like NotoSans, Roboto, etc.
+},
+smallRs: {
+  fontSize: 8, // Adjust size as needed
+  // You can also add other styling if needed
+  // fontWeight: 'normal',
+  // color: '#666',
+}
+  
 });
