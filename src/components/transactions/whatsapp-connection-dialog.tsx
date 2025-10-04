@@ -335,50 +335,95 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
     });
   };
 
-  const handleConfirmConnection = async () => {
-    try {
-      setIsLoading(true);
+  // const handleConfirmConnection = async () => {
+  //   try {
+  //     setIsLoading(true);
       
-      // Close the WhatsApp Web window if it's open
-      if (whatsappWindow && !whatsappWindow.closed) {
-        whatsappWindow.close();
-      }
+  //     // Close the WhatsApp Web window if it's open
+  //     if (whatsappWindow && !whatsappWindow.closed) {
+  //       whatsappWindow.close();
+  //     }
       
-      // Use the appropriate connection method based on user permissions
-      const phoneNumber = 'connected-phone'; // You can get this from user input if needed
-      let success = false;
+  //     // Use the appropriate connection method based on user permissions
+  //     const phoneNumber = 'connected-phone'; // You can get this from user input if needed
+  //     let success = false;
       
-      if (canManageConnections) {
-        // Customer/admin: Create client connection for the whole team
-        success = await whatsappConnectionService.setClientConnection(phoneNumber);
-      } else {
-        // Regular user: Create personal connection
-        whatsappConnectionService.setPersonalConnection(true, phoneNumber);
-        success = true;
-      }
+  //     if (canManageConnections) {
+  //       // Customer/admin: Create client connection for the whole team
+  //       success = await whatsappConnectionService.setClientConnection(phoneNumber);
+  //     } else {
+  //       // Regular user: Create personal connection
+  //       whatsappConnectionService.setPersonalConnection(true, phoneNumber);
+  //       success = true;
+  //     }
       
-      if (success) {
-        setStep('connected');
-        toast({
-          title: 'WhatsApp Connected!',
-          description: canManageConnections 
-            ? 'WhatsApp is now connected for your entire team.' 
-            : 'Your personal WhatsApp connection is now active.',
-        });
-      } else {
-        throw new Error('Failed to save connection');
-      }
-    } catch (error) {
-      console.error('Error confirming connection:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Connection Failed',
-        description: 'Failed to save connection. Please try again.',
-      });
-    } finally {
-      setIsLoading(false);
+  //     if (success) {
+  //       setStep('connected');
+  //       toast({
+  //         title: 'WhatsApp Connected!',
+  //         description: canManageConnections 
+  //           ? 'WhatsApp is now connected for your entire team.' 
+  //           : 'Your personal WhatsApp connection is now active.',
+  //       });
+  //     } else {
+  //       throw new Error('Failed to save connection');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error confirming connection:', error);
+  //     toast({
+  //       variant: 'destructive',
+  //       title: 'Connection Failed',
+  //       description: 'Failed to save connection. Please try again.',
+  //     });
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  // Update your whatsapp-connection-dialog.tsx to add debugging
+// Simple debug without service changes
+// components/whatsapp-connection-dialog.tsx
+// components/whatsapp-connection-dialog.tsx
+const handleConfirmConnection = async () => {
+  try {
+    setIsLoading(true);
+    
+    // Close the WhatsApp Web window if it's open
+    if (whatsappWindow && !whatsappWindow.closed) {
+      whatsappWindow.close();
     }
-  };
+    
+    const phoneNumber = 'connected-phone';
+    
+    console.log('🔄 Creating WhatsApp connection...');
+    const success = await whatsappConnectionService.setClientConnection(phoneNumber, {
+      clientId: "68da2f33cb8bdf6e3f019a14", // This should come from your auth
+      source: 'connection-dialog'
+    });
+    
+    if (success) {
+      console.log('✅ WhatsApp connection created successfully');
+      setStep('connected');
+      toast({
+        title: 'WhatsApp Connected Successfully!',
+        description: 'Your WhatsApp is now connected and ready to send messages.',
+      });
+    } else {
+      throw new Error('Failed to create WhatsApp connection');
+    }
+    
+  } catch (error: unknown) {
+    console.error('❌ Error confirming connection:', error);
+    toast({
+      variant: 'destructive',
+      title: 'Connection Failed',
+      description: 'Failed to connect WhatsApp. Please try again.',
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleComplete = () => {
     onConnected();

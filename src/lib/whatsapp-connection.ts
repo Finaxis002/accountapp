@@ -157,16 +157,53 @@ class WhatsAppConnectionService {
   private readonly CACHE_DURATION = 60000; // 1 minute cache
 
   // Get current user info
-  private getCurrentUser() {
+  // private getCurrentUser() {
+  //   if (typeof window === 'undefined') return null;
+    
+  //   try {
+  //     const userData = localStorage.getItem('user');
+  //     return userData ? JSON.parse(userData) : null;
+  //   } catch {
+  //     return null;
+  //   }
+  // }
+
+    private getCurrentUser() {
     if (typeof window === 'undefined') return null;
     
     try {
+      // Get user from user object first
       const userData = localStorage.getItem('user');
-      return userData ? JSON.parse(userData) : null;
-    } catch {
+      const user = userData ? JSON.parse(userData) : {};
+      
+      // Combine with individual keys
+      const combinedUser = {
+        ...user,
+        // Add individual keys that might not be in user object
+        id: user.id || localStorage.getItem('id'),
+        _id: user._id || localStorage.getItem('id'),
+        role: user.role || localStorage.getItem('role'),
+        name: user.name || localStorage.getItem('name'),
+        email: user.email || localStorage.getItem('email'),
+        slug: user.slug || localStorage.getItem('slug'),
+        tenantSlug: user.tenantSlug || localStorage.getItem('tenantSlug'),
+        username: user.username || localStorage.getItem('username'),
+        // Look for client_id in various places
+        client_id: user.client_id || localStorage.getItem('client_id'),
+        clientId: user.clientId || localStorage.getItem('clientId'),
+        company_id: user.company_id || localStorage.getItem('company_id'),
+        tenantId: user.tenantId || localStorage.getItem('tenantId'),
+      };
+
+      console.log('🔍 Combined User Data:', combinedUser);
+      return combinedUser;
+
+    } catch (error) {
+      console.error('Error parsing user data:', error);
       return null;
     }
   }
+
 
   // Check if user is customer (boss/admin)
   isCustomerUser(): boolean {
@@ -175,9 +212,35 @@ class WhatsAppConnectionService {
   }
 
   // Get client ID
-  private getClientId(): string | null {
-    const user = this.getCurrentUser();
-    return user?.client_id || null;
+   private getClientId(): string | null {
+    try {
+      // Check individual localStorage keys first
+      const directClientId = localStorage.getItem('client_id') || 
+                            localStorage.getItem('clientId') ||
+                            localStorage.getItem('company_id') ||
+                            localStorage.getItem('tenantId');
+      
+      if (directClientId) {
+        console.log('🔍 Found client ID in localStorage:', directClientId);
+        return directClientId;
+      }
+
+      // Check user object
+      const user = this.getCurrentUser();
+      const userClientId = user?.client_id || 
+                          user?.clientId || 
+                          user?.company_id ||
+                          user?.tenantId ||
+                          user?.id || // Fallback to user ID
+                          user?._id;  // Fallback to user _id
+
+      console.log('🔍 Client ID from user object:', userClientId);
+      return userClientId;
+
+    } catch (error) {
+      console.error('Error getting client ID:', error);
+      return null;
+    }
   }
 
   // ✅ ADD BACK: Synchronous method for backward compatibility
@@ -352,6 +415,37 @@ class WhatsAppConnectionService {
   refreshConnection(): void {
     this.connectionCache = null;
     this.lastChecked = 0;
+  }
+
+   public debugStorage() {
+    const allKeys = Object.keys(localStorage);
+    const relevantKeys = allKeys.filter(key => 
+      key.includes('user') || 
+      key.includes('client') || 
+      key.includes('company') || 
+      key.includes('tenant') ||
+      key.includes('id') ||
+      key.includes('role') ||
+      key === 'token'
+    );
+
+    const storageData: any = {};
+    relevantKeys.forEach(key => {
+      try {
+        const value = localStorage.getItem(key);
+        storageData[key] = value && value.startsWith('{') ? JSON.parse(value) : value;
+      } catch {
+        storageData[key] = localStorage.getItem(key);
+      }
+    });
+
+    return {
+      allRelevantKeys: relevantKeys,
+      storageData,
+      combinedUser: this.getCurrentUser(),
+      clientId: this.getClientId(),
+      canManage: this.canManageConnections(),
+    };
   }
 }
 
