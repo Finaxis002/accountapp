@@ -827,7 +827,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
       </View>
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
         <Text style={template8Styles.normalText}>Branch:</Text>
-        <Text style={template8Styles.normalText}>{bank.branchAddress}</Text>
+        <Text style={[template8Styles.normalText, {display:"flex", justifyContent:"flex-start"}]}>{bank.branchAddress}</Text>
       </View>
       {/* <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
         <Text style={template8Styles.normalText}>Acc. Number:</Text>
@@ -835,7 +835,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
       </View> */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
         <Text style={template8Styles.normalText}>IFSC:</Text>
-        <Text style={template8Styles.normalText}>{bank.ifscCode}</Text>
+        <Text style={[template8Styles.normalText, {display:"flex", justifyContent:"flex-start"}]}>{bank.ifscCode}</Text>
       </View>
       {/* <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <Text style={template8Styles.normalText}>UPI ID:</Text>

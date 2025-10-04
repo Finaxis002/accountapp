@@ -30,7 +30,6 @@ import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
-=======
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import jsPDF from "jspdf";
@@ -44,8 +43,7 @@ type TemplateKey =
   | "template5"
   | "template6"
   | "template7"
-  | "template8";
-
+  | "template8"
   | "template16"
   | "template17";
 
@@ -188,18 +186,7 @@ export function InvoicePreview({
                 )
               );
               break;
-            default:
-              docPromise = generatePdfForTemplate3(
-                transaction,
-                company,
-                party,
-                serviceNameById,
-                shippingAddress
-              );
-          }
-              )
-            );
-            break;
+        
           case "template16":
             docPromise = Promise.resolve(
               generatePdfForTemplate16(
