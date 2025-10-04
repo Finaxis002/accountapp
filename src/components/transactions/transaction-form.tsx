@@ -642,8 +642,6 @@ export function TransactionForm({
 
         if (res.ok) {
           const data = await res.json();
-          // console.log("Fetch Bank Response :", data);
-
           // Check the actual structure of the response
           let banksData = data;
 
@@ -695,15 +693,13 @@ export function TransactionForm({
   // Use useEffect to fetch banks when the selected company in the FORM changes
   React.useEffect(() => {
     if (selectedCompanyIdWatch) {
-      // console.log(
-      //   "Fetching banks for selected company in form:",
-      //   selectedCompanyIdWatch
-      // );
+     
       fetchBanks(selectedCompanyIdWatch);
     } else {
       setBanks([]); // Clear banks if no company is selected in the form
     }
   }, [selectedCompanyIdWatch, fetchBanks]); // Use selectedCompanyIdWatch instead of selectedCompanyId
+
 
   // Fetch shipping addresses when party changes
   const fetchShippingAddresses = React.useCallback(
@@ -744,6 +740,7 @@ export function TransactionForm({
   // }, [banks]);
 
   // console.log("selectedCompanyId :", selectedCompanyId);
+
 
   const fetchInitialData = React.useCallback(async () => {
     setIsLoading(true);
@@ -1098,6 +1095,7 @@ export function TransactionForm({
       fetchShippingAddresses(partyId);
     }
   }, [form.watch("party"), type, fetchShippingAddresses]);
+
 
   // Populate shipping address details when editing and addresses are loaded
   React.useEffect(() => {
@@ -1801,28 +1799,8 @@ export function TransactionForm({
             });
           }
 
+         
           // Send WhatsApp message if party has contact number
-          // if (partyDoc?.contactNumber) {
-          //   try {
-          //     await axios.post('http://localhost:8745/send-whatsapp', {
-          //       phoneNumber: partyDoc.contactNumber,
-          //       message: "your invoice is generated"
-          //     });
-          //     toast({
-          //       title: "WhatsApp message sent",
-          //       description: `Sent to ${partyDoc.contactNumber}`,
-          //     });
-          //   } catch (error) {
-          //     console.error('Error sending WhatsApp message:', error);
-          //     toast({
-          //       variant: "destructive",
-          //       title: "WhatsApp message failed",
-          //       description: "Failed to send WhatsApp message.",
-          //     });
-          //   }
-          // }
-          // Send WhatsApp message if party has contact number
-
           if (partyDoc?.contactNumber) {
             try {
               // Prepare detailed invoice message
