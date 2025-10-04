@@ -8,6 +8,7 @@ export function getUnifiedLines(
     name: string;
     description?: string;
     quantity?: number;
+    unit?: string;
     pricePerUnit?: number;
     amount: number;
     gstPercentage?: number;
@@ -38,7 +39,10 @@ export function getUnifiedLines(
     const quantity = isService ? 1 : num(row.quantity, 1);
     const amount = num(row.amount) || num(row.pricePerUnit) * quantity;
     const pricePerUnit = num(row.pricePerUnit) || (quantity > 0 ? amount / quantity : 0);
-    
+
+    // Extract unit
+    const unit = row.unit || row.unitName || "piece";
+
     // Extract GST information
     const gstPercentage = num(row.gstPercentage);
     const lineTax = num(row.lineTax);
@@ -49,6 +53,7 @@ export function getUnifiedLines(
       name,
       description: row.description || "",
       quantity,
+      unit,
       pricePerUnit,
       amount,
       gstPercentage: gstPercentage > 0 ? gstPercentage : undefined,

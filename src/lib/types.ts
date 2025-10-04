@@ -44,6 +44,8 @@ export type Item = {
 }
 
 export type Transaction = {
+  fromState: any;
+  toState: any;
    _id: string;
    invoiceNumber?: string | null;
    invoiceYearYY?: number | null;
@@ -247,6 +249,7 @@ export type Party = {
   address?: string;
   city?: string;
   state?: string;
+  pincode?: string;
   gstin?: string;
   gstRegistrationType?:
     | "Regular"

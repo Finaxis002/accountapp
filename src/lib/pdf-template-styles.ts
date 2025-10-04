@@ -15,78 +15,94 @@ export const template8Styles = StyleSheet.create({
   page: {
     flexDirection: "column",
     backgroundColor: "#FFFFFF",
-    padding: 40,
+    padding: 35,
     fontFamily: "Helvetica",
   },
   section: {
     marginBottom: 20,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 0,
   },
   title: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#1E74FF",
-    marginBottom: 4,
-  },
-  companyName: {
     fontSize: 14,
     fontWeight: "bold",
-    marginBottom: 16,
+    color: "#2583C6",
+  },
+
+  grayColor:{
+    color:"#262626"
+  },
+  companyName: {
+    fontSize: 12,
+    fontWeight: "bold",
+    marginBottom: 4,
+    color: "#232323",
   },
   addressText: {
-    fontSize: 10,
+    fontSize: 9,
     marginBottom: 3,
     lineHeight: 1.2,
   },
-  boldText: {
-    fontSize: 10,
-    fontWeight: "bold",
-    marginBottom: 3,
+
+  dividerBlue: {
+    borderBottom: "3px solid #2583C6",
+    marginVertical: 3,
   },
-  normalText: {
-    fontSize: 10,
-    marginBottom: 3,
-  },
-  divider: {
-    borderBottom: "0.5px solid #000000",
-    marginVertical: 16,
+  divider:{
+    borderBottom: "3px solid #bfbfbf",
+    marginVertical: 3,
   },
   threeColumn: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 24,
+    height: 180,
   },
   column: {
-    flex: 1,
+    flex: 4,
     marginRight: 20,
   },
   lastColumn: {
     flex: 1,
   },
   columnTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "bold",
-    marginBottom: 3,
+    marginBottom: 6,
+  },
+  normalText: {
+    fontSize: 8,
+    marginBottom: 2,
+  },
+  boldText: {
+    fontSize: 8,
+    fontWeight: "bold",
+    marginBottom: 2,
   },
   table: {
     marginBottom: 16,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#003399",
+    backgroundColor: "#2583C6",
     color: "#FFFFFF",
-    padding: 4,
+    paddingLeft:0,
+    paddingRight:0,
+    paddingTop:4,
+    paddingBottom:4,
+    fontSize: 9,
   },
   tableRow: {
     flexDirection: "row",
     borderBottom: "0.5px solid #000000",
   },
   tableCell: {
-    padding: 4,
+    padding: 1,
     fontSize: 8,
-    borderRight: "0.5px solid #000000",
+    // borderRight: "0.5px solid #000000",
+  },
+  tableCellSize7:{
+    fontSize:7
   },
   tableCellLast: {
     padding: 4,
@@ -129,5 +145,15 @@ export const template8Styles = StyleSheet.create({
   },
   termsSection: {
     fontSize: 8,
+  },
+
+   sectionHeader: {
+    fontSize: 9,
+    marginBottom: 3,
+  },
+ 
+  detailText: {
+    fontSize: 9,
+    lineHeight: 1.1,
   },
 });
