@@ -28,6 +28,8 @@ import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
 import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
+import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
+import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 
@@ -38,7 +40,9 @@ type TemplateKey =
   | "template4"
   | "template5"
   | "template6"
-  | "template7";
+  | "template7"
+  | "template16"
+  | "template17";
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
@@ -161,6 +165,28 @@ export function InvoicePreview({
               )
             );
             break;
+          case "template16":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate16(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress
+              )
+            );
+            break;
+            case "template17":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate17(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress
+              )
+            );
+            break;
           default:
             docPromise = generatePdfForTemplate3(
               transaction,
@@ -266,6 +292,8 @@ export function InvoicePreview({
               <SelectItem value="template5">Refined</SelectItem>
               <SelectItem value="template6">Standard</SelectItem>
               <SelectItem value="template7">Prestige</SelectItem>
+              <SelectItem value="template16">new</SelectItem>
+              <SelectItem value="template17">new2</SelectItem>
             </SelectContent>
           </Select>
         </div>
