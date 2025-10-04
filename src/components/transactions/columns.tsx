@@ -1123,9 +1123,41 @@ export const columns = ({
         //   // Open the WhatsApp composer dialog
         //   setIsWhatsAppDialogOpen(true);
         // };
+////////////////////
 
         // In your columns component, update the WhatsApp handler:
-        const handleSendWhatsApp = async () => {
+//         const handleSendWhatsApp = async () => {
+//   // Fetch party details if we don't have them
+//   let partyToUse = partyDetails;
+//   if (!partyToUse && basicParty?._id) {
+//     partyToUse = await fetchPartyDetails();
+//   }
+
+//   if (!partyToUse) {
+//     toast({
+//       variant: "destructive",
+//       title: "Customer Information Missing",
+//       description: "Unable to find customer details for this transaction.",
+//     });
+//     return;
+//   }
+
+//   // Check if WhatsApp is connected
+//   const isConnected = whatsappConnectionService.isWhatsAppConnected();
+
+//   if (!isConnected) {
+//     toast({
+//       title: "Connect WhatsApp",
+//       description: "Please connect your WhatsApp to send messages.",
+//     });
+//   }
+
+//   // If connected, open the composer directly
+//   setIsWhatsAppDialogOpen(true); // Change this line
+// };
+
+////////////////////
+const handleSendWhatsApp = async () => {
   // Fetch party details if we don't have them
   let partyToUse = partyDetails;
   if (!partyToUse && basicParty?._id) {
@@ -1141,8 +1173,8 @@ export const columns = ({
     return;
   }
 
-  // Check if WhatsApp is connected
-  const isConnected = whatsappConnectionService.isWhatsAppConnected();
+  // ✅ BETTER: Use async method for accurate check
+  const isConnected = await whatsappConnectionService.checkWhatsAppWebConnection();
 
   if (!isConnected) {
     toast({
@@ -1152,8 +1184,9 @@ export const columns = ({
   }
 
   // If connected, open the composer directly
-  setIsWhatsAppDialogOpen(true); // Change this line
+  setIsWhatsAppDialogOpen(true);
 };
+
 
         return (
           <>

@@ -197,7 +197,7 @@ import { whatsappConnectionService } from '@/lib/whatsapp-connection';
 interface WhatsAppConnectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnected: () => void;
+  onConnected: () => (phoneNumber: string) => void;
 }
 
 // Simple QR Code Component - Pure CSS, no dependencies
@@ -262,11 +262,14 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<'initial' | 'opening' | 'qr' | 'connected'>('initial');
   const [whatsappWindow, setWhatsappWindow] = useState<Window | null>(null);
+  const [canManageConnections, setCanManageConnections] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
       setStep('initial');
+      // Check if user can manage connections
+      setCanManageConnections(whatsappConnectionService.canManageConnections());
     }
 
     // Cleanup: close WhatsApp window when component unmounts
@@ -332,20 +335,49 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
     });
   };
 
-  const handleConfirmConnection = () => {
-    // Close the WhatsApp Web window if it's open
-    if (whatsappWindow && !whatsappWindow.closed) {
-      whatsappWindow.close();
+  const handleConfirmConnection = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Close the WhatsApp Web window if it's open
+      if (whatsappWindow && !whatsappWindow.closed) {
+        whatsappWindow.close();
+      }
+      
+      // Use the appropriate connection method based on user permissions
+      const phoneNumber = 'connected-phone'; // You can get this from user input if needed
+      let success = false;
+      
+      if (canManageConnections) {
+        // Customer/admin: Create client connection for the whole team
+        success = await whatsappConnectionService.setClientConnection(phoneNumber);
+      } else {
+        // Regular user: Create personal connection
+        whatsappConnectionService.setPersonalConnection(true, phoneNumber);
+        success = true;
+      }
+      
+      if (success) {
+        setStep('connected');
+        toast({
+          title: 'WhatsApp Connected!',
+          description: canManageConnections 
+            ? 'WhatsApp is now connected for your entire team.' 
+            : 'Your personal WhatsApp connection is now active.',
+        });
+      } else {
+        throw new Error('Failed to save connection');
+      }
+    } catch (error) {
+      console.error('Error confirming connection:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Connection Failed',
+        description: 'Failed to save connection. Please try again.',
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Save connection status
-    whatsappConnectionService.setConnectionStatus(true, 'Your WhatsApp');
-    setStep('connected');
-    
-    toast({
-      title: 'WhatsApp Connected!',
-      description: 'Your WhatsApp Web is now connected and ready to send messages.',
-    });
   };
 
   const handleComplete = () => {
@@ -384,7 +416,9 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
             </Button>
           </div>
           <CardDescription>
-            Connect WhatsApp Web to send messages directly
+            {canManageConnections 
+              ? 'Connect WhatsApp for your entire team' 
+              : 'Connect your personal WhatsApp'}
           </CardDescription>
         </CardHeader>
         
@@ -393,9 +427,14 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
             <div className="space-y-4">
               <div className="text-center">
                 <Smartphone className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Connect WhatsApp Web</h3>
+                <h3 className="font-semibold mb-2">
+                  {canManageConnections ? 'Connect WhatsApp for Team' : 'Connect Your WhatsApp'}
+                </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  We'll open WhatsApp Web automatically. Then scan the QR code with your phone to connect.
+                  {canManageConnections 
+                    ? 'Connect WhatsApp once and your entire team can use it to send messages.'
+                    : 'Connect your WhatsApp to send messages directly to customers.'
+                  }
                 </p>
               </div>
               
@@ -422,6 +461,14 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
                   Open WhatsApp Web Manually
                 </Button>
               </div>
+
+              {canManageConnections && (
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="text-xs text-blue-700 font-medium">
+                    👑 Team Connection: All team members will be able to use this WhatsApp connection
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -488,9 +535,14 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
                 <Button 
                   onClick={handleConfirmConnection}
                   className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+                  disabled={isLoading}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  I'm Connected
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {isLoading ? 'Connecting...' : 'I\'m Connected'}
                 </Button>
               </div>
             </div>
@@ -502,7 +554,10 @@ export function WhatsAppConnectionDialog({ isOpen, onClose, onConnected }: Whats
               <div>
                 <h3 className="font-semibold mb-2">Connected Successfully!</h3>
                 <p className="text-sm text-muted-foreground">
-                  Your WhatsApp Web is now connected. You can send messages directly to customers.
+                  {canManageConnections
+                    ? 'WhatsApp is now connected for your entire team.'
+                    : 'Your WhatsApp is now connected and ready to send messages.'
+                  }
                 </p>
               </div>
               <div className="bg-green-50 p-3 rounded-lg border border-green-200">
