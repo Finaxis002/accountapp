@@ -281,6 +281,8 @@ export type Vendor = Party & {
     | "Unknown";
   pan?: string;
   isTDSApplicable?: boolean;
+  contactNumber?: string; // For vendor compatibility
+  email?: string; // For vendor compatibility
 };
 
 export type ShippingAddress = {
