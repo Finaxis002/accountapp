@@ -177,7 +177,6 @@ export const templateA5Styles = StyleSheet.create({
     flexDirection: "column",
     backgroundColor: "#FFFFFF",
     padding: 20,
-    paddingBottom:30,
     fontSize: 8,
     fontFamily: "Helvetica",
   },
