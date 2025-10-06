@@ -395,7 +395,7 @@ export interface WhatsAppConnection {
   isConnected: boolean;
   lastConnected?: Date;
   phoneNumber?: string;
-  connectedBy?: string; // This should always be string (user ID)
+  connectedBy?: string;
   connectedByName?: string;
   clientId?: string;
   isClientConnection?: boolean;
@@ -407,9 +407,34 @@ export interface WhatsAppConnection {
 
 class WhatsAppConnectionService {
   private readonly STORAGE_KEY = 'whatsapp-connection';
+  private readonly SESSION_KEY = 'whatsapp-session';
   private connectionCache: WhatsAppConnection | null = null;
   private lastChecked: number = 0;
   private readonly CACHE_DURATION = 60000;
+
+  // Get storage key based on client ID for better persistence
+  private getStorageKey(): string {
+    const clientId = this.getClientId();
+    return clientId ? `${this.STORAGE_KEY}-${clientId}` : this.STORAGE_KEY;
+  }
+
+  // Get client ID specifically for storage
+  private getClientId(): string | null {
+    try {
+      const userData = localStorage.getItem('user');
+      const user = userData ? JSON.parse(userData) : {};
+      
+      return user?.client_id || 
+             user?.clientId || 
+             user?.company_id ||
+             user?.tenantId ||
+             localStorage.getItem('client_id') ||
+             localStorage.getItem('clientId');
+    } catch (error) {
+      console.error('Error getting client ID:', error);
+      return null;
+    }
+  }
 
   // Get current user info
   private getCurrentUser() {
@@ -445,7 +470,119 @@ class WhatsAppConnectionService {
     return user?.role === 'customer';
   }
 
-  // ✅ FIXED: Check WhatsApp connection with proper shared user access
+  // Check personal connection using dual storage
+  private hasPersonalConnection(): boolean {
+    const storageKey = this.getStorageKey();
+    
+    // First check sessionStorage (survives page refresh)
+    const sessionStored = sessionStorage.getItem(this.SESSION_KEY);
+    if (sessionStored) {
+      const sessionConnection: WhatsAppConnection = JSON.parse(sessionStored);
+      if (sessionConnection.isConnected) {
+        return true;
+      }
+    }
+    
+    // Then check localStorage (more persistent)
+    const localStored = localStorage.getItem(storageKey);
+    if (!localStored) return false;
+    
+    const localConnection: WhatsAppConnection = JSON.parse(localStored);
+    
+    // Check if connection is still valid (within 30 days)
+    if (localConnection.lastConnected) {
+      const connectionTime = new Date(localConnection.lastConnected).getTime();
+      const currentTime = new Date().getTime();
+      const daysDiff = (currentTime - connectionTime) / (1000 * 60 * 60 * 24);
+      
+      if (daysDiff > 30) {
+        this.clearPersonalConnection();
+        return false;
+      }
+    }
+    
+    return localConnection.isConnected === true;
+  }
+
+  // Get personal connection using dual storage
+  private getPersonalConnection(): WhatsAppConnection {
+    const storageKey = this.getStorageKey();
+    
+    // Prefer session storage first
+    const sessionStored = sessionStorage.getItem(this.SESSION_KEY);
+    if (sessionStored) {
+      return JSON.parse(sessionStored);
+    }
+    
+    // Fall back to local storage
+    const localStored = localStorage.getItem(storageKey);
+    return localStored ? JSON.parse(localStored) : { isConnected: false };
+  }
+
+  // Save personal connection using dual storage
+  setPersonalConnection(connected: boolean, phoneNumber?: string): void {
+    const storageKey = this.getStorageKey();
+    const connection: WhatsAppConnection = {
+      isConnected: connected,
+      lastConnected: connected ? new Date() : undefined,
+      phoneNumber: connected ? phoneNumber : undefined,
+    };
+    
+    console.log('💾 Saving WhatsApp connection:', {
+      storageKey,
+      connected,
+      clientId: this.getClientId()
+    });
+
+    // Store in sessionStorage (survives page refresh)
+    sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(connection));
+    
+    // Also store in localStorage for longer persistence (survives logout)
+    if (connected) {
+      localStorage.setItem(storageKey, JSON.stringify(connection));
+    } else {
+      localStorage.removeItem(storageKey);
+    }
+    
+    this.connectionCache = connection;
+    this.lastChecked = Date.now();
+  }
+
+  // Clear personal connection
+  clearPersonalConnection(): void {
+    const storageKey = this.getStorageKey();
+    localStorage.removeItem(storageKey);
+    sessionStorage.removeItem(this.SESSION_KEY);
+    this.connectionCache = null;
+    
+    console.log('🗑️ Cleared WhatsApp connection for:', storageKey);
+  }
+
+  // Clear all storage (use only for explicit WhatsApp logout)
+  clearAllStorage(): void {
+    // Clear current client connection
+    this.clearPersonalConnection();
+    
+    // Clear any other client connections (optional cleanup)
+    if (typeof window !== 'undefined') {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.STORAGE_KEY)) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log('🗑️ Removed old connection:', key);
+      });
+      
+      sessionStorage.removeItem(this.SESSION_KEY);
+    }
+  }
+
+  // Check WhatsApp connection with proper shared user access
   async checkWhatsAppWebConnection(forceRefresh = false): Promise<boolean> {
     if (!forceRefresh && this.connectionCache && 
         Date.now() - this.lastChecked < this.CACHE_DURATION) {
@@ -491,16 +628,7 @@ class WhatsAppConnectionService {
     }
   }
 
-  // Check personal connection
-  private hasPersonalConnection(): boolean {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    if (!stored) return false;
-    
-    const connection: WhatsAppConnection = JSON.parse(stored);
-    return connection.isConnected === true;
-  }
-
-  // ✅ FIXED: Get connection info with proper access checking and type handling
+  // Get connection info with proper access checking and type handling
   async getConnectionInfo(): Promise<WhatsAppConnection & { connectionType: 'personal' | 'client' | 'none'; hasAccess?: boolean }> {
     try {
       // Check backend connection first
@@ -552,7 +680,7 @@ class WhatsAppConnectionService {
           return {
             isConnected: true,
             phoneNumber: apiConnection.phone_number,
-            connectedBy: connectedById, // Now properly typed as string | undefined
+            connectedBy: connectedById,
             connectedByName: connectedByName,
             clientId: apiConnection.client_id,
             connectionId: apiConnection._id,
@@ -589,25 +717,6 @@ class WhatsAppConnectionService {
     }
   }
 
-  // Get personal connection
-  private getPersonalConnection(): WhatsAppConnection {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    return stored ? JSON.parse(stored) : { isConnected: false };
-  }
-
-  // Save personal connection
-  setPersonalConnection(connected: boolean, phoneNumber?: string): void {
-    const connection: WhatsAppConnection = {
-      isConnected: connected,
-      lastConnected: connected ? new Date() : undefined,
-      phoneNumber: connected ? phoneNumber : undefined,
-    };
-    
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connection));
-    this.connectionCache = connection;
-    this.lastChecked = Date.now();
-  }
-
   // Save client connection (customer only)
   async setClientConnection(phoneNumber: string, connectionData?: any): Promise<boolean> {
     try {
@@ -624,12 +733,6 @@ class WhatsAppConnectionService {
       console.error('Error setting client connection:', error);
       return false;
     }
-  }
-
-  // Clear personal connection
-  clearPersonalConnection(): void {
-    localStorage.removeItem(this.STORAGE_KEY);
-    this.connectionCache = null;
   }
 
   // Clear client connection (customer only)
@@ -669,7 +772,63 @@ class WhatsAppConnectionService {
     this.lastChecked = 0;
   }
 
-  // ✅ NEW: Enhanced debug method to check staff access
+  // NEW: Simple sync method for quick checks
+  isWhatsAppConnected(): boolean {
+    return this.hasPersonalConnection();
+  }
+
+  // NEW: Set connection status (compatible with reference code)
+  setConnectionStatus(connected: boolean, phoneNumber?: string, connectionId?: string): void {
+    this.setPersonalConnection(connected, phoneNumber);
+  }
+
+  // NEW: Method to restore connection when user logs in
+  restoreConnectionOnLogin(): boolean {
+    const wasConnected = this.hasPersonalConnection();
+    
+    if (wasConnected) {
+      console.log('🔄 Restoring WhatsApp connection after login');
+      
+      // Update session storage with current connection info
+      const connectionInfo = this.getPersonalConnection();
+      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(connectionInfo));
+      
+      return true;
+    }
+    
+    return false;
+  }
+
+  // NEW: Debug method to see connection state
+  debugConnections() {
+    if (typeof window === 'undefined') return {};
+    
+    const storageKey = this.getStorageKey();
+    const allConnections: any = {};
+    
+    // Check session storage
+    const sessionStored = sessionStorage.getItem(this.SESSION_KEY);
+    if (sessionStored) {
+      allConnections.sessionStorage = JSON.parse(sessionStored);
+    }
+    
+    // Check local storage
+    const localStored = localStorage.getItem(storageKey);
+    if (localStored) {
+      allConnections.localStorage = JSON.parse(localStored);
+    }
+    
+    return {
+      currentClientId: this.getClientId(),
+      currentStorageKey: storageKey,
+      sessionStorage: allConnections.sessionStorage,
+      localStorage: allConnections.localStorage,
+      isConnected: this.hasPersonalConnection(),
+      connectionCache: this.connectionCache
+    };
+  }
+
+  // Enhanced debug method to check staff access
   public debugStaffAccess() {
     const user = this.getCurrentUser();
     return {
