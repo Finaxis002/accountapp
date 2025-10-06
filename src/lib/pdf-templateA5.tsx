@@ -79,7 +79,7 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
   const colWidthsIGST = ["4%", "25%", "10%", "8%", "10%", "15%", "20%", "12%"];
   const totalColumnIndexIGST = 7;
 
-     const itemsPerPage = 10;
+     const itemsPerPage = 6;
     const pages = [];
     for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
       pages.push(itemsWithGST.slice(i, i + itemsPerPage));
@@ -113,6 +113,7 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
     : showCGSTSGST
     ? totalColumnIndexCGSTSGST
     : totalColumnIndexNoTax;
+    
 
   return (
     <Document>
