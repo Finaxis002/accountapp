@@ -28,8 +28,11 @@ import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
 import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
-
+// priya
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
+
+//amit
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import jsPDF from "jspdf";
@@ -44,9 +47,9 @@ type TemplateKey =
   | "template6"
   | "template7"
   | "template8"
+  | "templateA5"
   | "template16"
   | "template17";
-
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
@@ -69,14 +72,80 @@ export function InvoicePreview({
 }: InvoicePreviewProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [selectedTemplate, setSelectedTemplate] =
-    React.useState<TemplateKey>("template1");
+    React.useState<TemplateKey>("template8");
 
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   // Use the editMode prop instead of internal state
   const [pdfBlob, setPdfBlob] = React.useState<Blob | null>(null);
   const [bank, setBank] = React.useState<any>(null);
+  const [client, setClient] = React.useState<any>(null);
 
+    // Fetch bank details
+  React.useEffect(() => {
+    console.log("transaction.bank:", transaction?.bank);
+    if (transaction?.bank) {
+      if (typeof transaction.bank === "object" && transaction.bank.bankName) {
+        // Already populated Bank object
+        console.log("bank already populated:", transaction.bank);
+        setBank(transaction.bank);
+      } else {
+        // Need to fetch
+        const bankId =
+          typeof transaction.bank === "string"
+            ? transaction.bank
+            : (transaction.bank as any)?.$oid || (transaction.bank as any)?._id;
+        console.log("bankId:", bankId);
+        if (bankId) {
+          fetch(`${baseURL}/api/bank-details/${bankId}`)
+            .then((res) => res.json())
+            .then((data) => {
+              console.log("fetched bank:", data);
+              setBank(data);
+            })
+            .catch((err) => console.error("Failed to fetch bank:", err));
+        }
+      }
+    } else {
+      setBank(null);
+    }
+  }, [transaction?.bank]);
+
+  console.log("bank details:", bank);
+
+  // Fetch client details
+  React.useEffect(() => {
+    console.log("company?.client:", company?.client);
+    if (company?.client) {
+      if (typeof company.client === "object" && company.client.contactName) {
+        // Already populated Client object
+        console.log("client already populated:", company.client);
+        setClient(company.client);
+      } else {
+        // Need to fetch
+        const clientId =
+          typeof company.client === "string"
+            ? company.client
+            : (company.client as any)?.$oid || (company.client as any)?._id;
+        console.log("clientId:", clientId);
+        if (clientId) {
+          fetch(`${baseURL}/api/clients/${clientId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              console.log("fetched client:", data);
+              setClient(data);
+            })
+            .catch((err) => console.error("Failed to fetch client:", err));
+        }
+      }
+    } else {
+      setClient(null);
+    }
+  }, [company?.client]);
 
   React.useEffect(() => {
     let objectUrl: string | null = null;
@@ -92,21 +161,40 @@ export function InvoicePreview({
         let pdfBlob: Blob;
 
         // Extract shipping address from transaction
-        const shippingAddress = transaction?.shippingAddress && typeof transaction.shippingAddress === 'object'
-          ? transaction.shippingAddress as any
-          : null;
+        const shippingAddress =
+          transaction?.shippingAddress &&
+          typeof transaction.shippingAddress === "object"
+            ? (transaction.shippingAddress as any)
+            : null;
 
-        if (selectedTemplate === "template8") {
-          
-          // Template 8 uses react-pdf and returns Blob directly
-          pdfBlob = await generatePdfForTemplate8(
-            transaction,
-            company,
-            party,
-            serviceNameById,
-            shippingAddress,
-            bank
-          );
+        if (
+          selectedTemplate === "template8" ||
+          selectedTemplate === "templateA5"
+        ) {
+          // Template 8 and Template A5 use react-pdf and return Blob directly
+          switch (selectedTemplate) {
+            case "template8":
+              pdfBlob = await generatePdfForTemplate8(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
+            case "templateA5":
+              pdfBlob = await generatePdfForTemplateA5(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+          }
         } else {
           // Other templates use jsPDF
           let docPromise: Promise<jsPDF>;
@@ -187,38 +275,38 @@ export function InvoicePreview({
                 )
               );
               break;
-        
-          case "template16":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate16(
-                transaction,
-                company,
-                party,
-                serviceNameById,
-                shippingAddress
-              )
-            );
-            break;
+
+            case "template16":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate16(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
             case "template17":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate17(
+              docPromise = Promise.resolve(
+                generatePdfForTemplate17(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+            default:
+              docPromise = generatePdfForTemplate3(
                 transaction,
                 company,
                 party,
                 serviceNameById,
                 shippingAddress
-              )
-            );
-            break;
-          default:
-            docPromise = generatePdfForTemplate3(
-              transaction,
-              company,
-              party,
-              serviceNameById,
-              shippingAddress
-            );
-        }
+              );
+          }
 
           const doc = await docPromise;
           pdfBlob = doc.output("blob");
@@ -238,36 +326,8 @@ export function InvoicePreview({
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [selectedTemplate, transaction, company, party, serviceNameById, bank]);
+  }, [selectedTemplate, transaction, company, party, serviceNameById, bank, client]);
 
-  // Fetch bank details
-  React.useEffect(() => {
-    console.log('transaction.bank:', transaction?.bank);
-    if (transaction?.bank) {
-      if (typeof transaction.bank === 'object' && transaction.bank.bankName) {
-        // Already populated Bank object
-        console.log('bank already populated:', transaction.bank);
-        setBank(transaction.bank);
-      } else {
-        // Need to fetch
-        const bankId = typeof transaction.bank === 'string' ? transaction.bank : (transaction.bank as any)?.$oid || (transaction.bank as any)?._id;
-        console.log('bankId:', bankId);
-        if (bankId) {
-          fetch(`${baseURL}/api/bank-details/${bankId}`)
-            .then(res => res.json())
-            .then(data => {
-              console.log('fetched bank:', data);
-              setBank(data);
-            })
-            .catch(err => console.error('Failed to fetch bank:', err));
-        }
-      }
-    } else {
-      setBank(null);
-    }
-  }, [transaction?.bank]);
-
-    console.log("bank details:", bank);
 
 
   const handleDownload = () => {
@@ -288,16 +348,23 @@ export function InvoicePreview({
 
   // If in edit mode, render the enhanced editor
   if (editMode) {
-    console.log('🎨 Edit mode active, PDF blob available:', !!pdfBlob, 'Loading:', isLoading);
+    console.log(
+      "🎨 Edit mode active, PDF blob available:",
+      !!pdfBlob,
+      "Loading:",
+      isLoading
+    );
     return (
-      <div className="max-h-[80vh] overflow-auto"><EnhancedInvoicePreview
-        transaction={transaction}
-        company={company}
-        party={party}
-        serviceNameById={serviceNameById}
-        initialPdfBlob={pdfBlob}
-        onExitEditMode={onCancel}
-      /></div>
+      <div className="max-h-[80vh] overflow-auto">
+        <EnhancedInvoicePreview
+          transaction={transaction}
+          company={company}
+          party={party}
+          serviceNameById={serviceNameById}
+          initialPdfBlob={pdfBlob}
+          onExitEditMode={onCancel}
+        />
+      </div>
     );
   }
 
@@ -331,7 +398,6 @@ export function InvoicePreview({
               Invoice Template
             </label>
           </div>
-          
         </div>
         <div className="w-full sm:w-48">
           <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
@@ -339,14 +405,17 @@ export function InvoicePreview({
               <SelectValue placeholder="Select a template" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="template1">Professional</SelectItem>
+              {/* <SelectItem value="template1">Professional</SelectItem>
               <SelectItem value="template2">Creative</SelectItem>
               <SelectItem value="template3">Modern</SelectItem>
               <SelectItem value="template4">Minimal</SelectItem>
               <SelectItem value="template5">Refined</SelectItem>
               <SelectItem value="template6">Standard</SelectItem>
-              <SelectItem value="template7">Prestige</SelectItem>
+              <SelectItem value="template7">Prestige</SelectItem> */}
+              {/* priya  */}
               <SelectItem value="template8">Template 8</SelectItem>
+              <SelectItem value="templateA5">Template A5</SelectItem>
+              {/* amit  */}
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>
             </SelectContent>

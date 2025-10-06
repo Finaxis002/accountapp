@@ -1,3 +1,4 @@
+
 import type {
   Company,
   Party,
@@ -24,6 +25,7 @@ import {
   calculateGST,
   getUnifiedLines,
   prepareTemplate8Data,
+  numberToWords,
 } from "./pdf-utils";
 import { template8Styles } from "./pdf-template-styles";
 
@@ -61,9 +63,13 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
     showIGST,
     showCGSTSGST,
     showNoTax,
-    pages,
-    itemsPerPage,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+
+    const itemsPerPage = 18;
+    const pages = [];
+    for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
+      pages.push(itemsWithGST.slice(i, i + itemsPerPage));
+    }
 
   console.log("bank details" , bank);
 
@@ -783,6 +789,13 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       <Text>
                         <Text style={template8Styles.smallRs}>Rs</Text>{" "}
                         {totalAmount.toFixed(2)}
+                      </Text>
+                    </View>
+
+                    {/* Total in words */}
+                    <View style={template8Styles.totalsRow}>
+                      <Text style={{ fontSize: 8 , marginTop:4 , marginRight:8 }}>
+                       Total in words : {numberToWords(totalAmount)}
                       </Text>
                     </View>
                   </View>
