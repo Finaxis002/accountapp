@@ -94,41 +94,46 @@ export function InvoicePreview({
           ? transaction.shippingAddress as any
           : null;
 
-        switch (selectedTemplate) {
-          case "template1":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate1(
-                transaction,
-                company,
-                party,
-                serviceNameById,
-                shippingAddress
-              )
-            );
-            break;
-          case "template2":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate2(
-                transaction,
-                company,
-                party,
-                serviceNameById,
-                shippingAddress
-              )
-            );
-            break;
-          case "template3":
-            docPromise = generatePdfForTemplate3(
-              transaction,
-              company,
-              party,
-              serviceNameById,
-              shippingAddress
-            );
-            break;
-          case "template4":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate4(
+        if (selectedTemplate === "template8") {
+          
+          // Template 8 uses react-pdf and returns Blob directly
+          pdfBlob = await generatePdfForTemplate8(
+            transaction,
+            company,
+            party,
+            serviceNameById,
+            shippingAddress,
+            bank
+          );
+        } else {
+          // Other templates use jsPDF
+          let docPromise: Promise<jsPDF>;
+
+          switch (selectedTemplate) {
+            case "template1":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate1(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+            case "template2":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate2(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+            case "template3":
+              docPromise = generatePdfForTemplate3(
                 transaction,
                 company,
                 party,
