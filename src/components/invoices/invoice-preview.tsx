@@ -97,6 +97,7 @@ export function InvoicePreview({
           : null;
 
         if (selectedTemplate === "template8") {
+          
           // Template 8 uses react-pdf and returns Blob directly
           pdfBlob = await generatePdfForTemplate8(
             transaction,

@@ -25,14 +25,6 @@ import {
   getUnifiedLines,
   prepareTemplate8Data,
 } from "./pdf-utils";
-import {
-  ReactElement,
-  JSXElementConstructor,
-  ReactNode,
-  ReactPortal,
-  AwaitedReactNode,
-  Key,
-} from "react";
 import { template8Styles } from "./pdf-template-styles";
 
 const logo = "/assets/invoice-logos/R.png";
@@ -299,7 +291,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       { fontSize: 12 },
                     ]}
                   >
-                    {shippingAddress?.label || "Global Securities"}
+                    {shippingAddress?.label || " "}
                   </Text>
                   <Text
                     style={[
@@ -848,7 +840,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
 </View>
 
                   {/* Stamp */}
-                  <View style={template8Styles.stamp}>
+                  {/* <View style={template8Styles.stamp}>
                     <Text style={template8Styles.stampText}>GLOBAL</Text>
                     <Text style={template8Styles.stampText}>SECURITIES</Text>
                     <Text
@@ -859,7 +851,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                     >
                       AUTHORIZED SIGNATORY
                     </Text>
-                  </View>
+                  </View> */}
                 </View>
 
                 {/* Terms and Conditions */}
