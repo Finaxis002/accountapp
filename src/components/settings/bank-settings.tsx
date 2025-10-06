@@ -67,6 +67,8 @@ interface BankDetail {
   city: string;
   ifscCode?: string;
   branchAddress?: string;
+  accountNumber?: string;
+  upiId?: string;
 }
 
 export function BankSettings() {

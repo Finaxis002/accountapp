@@ -29,6 +29,10 @@ import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 import { generatePdfForTemplate11 } from "@/lib/pdf-template11";
+
+import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
+import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 
@@ -40,8 +44,7 @@ type TemplateKey =
   | "template5"
   | "template6"
    | "template7"
-   | "template11"
- 
+   | "template11";
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
@@ -62,6 +65,7 @@ export function InvoicePreview({
   onSave,
   onCancel,
 }: InvoicePreviewProps) {
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [selectedTemplate, setSelectedTemplate] =
     React.useState<TemplateKey>("template1");
 
@@ -69,6 +73,8 @@ export function InvoicePreview({
   const [isLoading, setIsLoading] = React.useState(true);
   // Use the editMode prop instead of internal state
   const [pdfBlob, setPdfBlob] = React.useState<Blob | null>(null);
+  const [bank, setBank] = React.useState<any>(null);
+
 
   React.useEffect(() => {
     let objectUrl: string | null = null;
@@ -203,7 +209,37 @@ export function InvoicePreview({
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [selectedTemplate, transaction, company, party, serviceNameById]);
+  }, [selectedTemplate, transaction, company, party, serviceNameById, bank]);
+
+  // Fetch bank details
+  React.useEffect(() => {
+    console.log('transaction.bank:', transaction?.bank);
+    if (transaction?.bank) {
+      if (typeof transaction.bank === 'object' && transaction.bank.bankName) {
+        // Already populated Bank object
+        console.log('bank already populated:', transaction.bank);
+        setBank(transaction.bank);
+      } else {
+        // Need to fetch
+        const bankId = typeof transaction.bank === 'string' ? transaction.bank : (transaction.bank as any)?.$oid || (transaction.bank as any)?._id;
+        console.log('bankId:', bankId);
+        if (bankId) {
+          fetch(`${baseURL}/api/bank-details/${bankId}`)
+            .then(res => res.json())
+            .then(data => {
+              console.log('fetched bank:', data);
+              setBank(data);
+            })
+            .catch(err => console.error('Failed to fetch bank:', err));
+        }
+      }
+    } else {
+      setBank(null);
+    }
+  }, [transaction?.bank]);
+
+    console.log("bank details:", bank);
+
 
   const handleDownload = () => {
     if (pdfUrl) {
