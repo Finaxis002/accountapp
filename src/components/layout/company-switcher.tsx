@@ -33,10 +33,13 @@ export function CompanySwitcher() {
         const data = await res.json();
         setCompanies(data);
         const savedCompanyId = localStorage.getItem("selectedCompanyId");
-        if (data.length > 0) {
-          const defaultCompany = savedCompanyId ? savedCompanyId : data[0]._id;
-          setSelectedCompanyId(defaultCompany);
-        }
+       if (data.length > 0) {
+  if (savedCompanyId) {
+    setSelectedCompanyId(savedCompanyId === "all" ? null : savedCompanyId);
+  } else {
+    setSelectedCompanyId(data[0]._id); 
+  }
+}
       }  catch (error) {
         toast({
           variant: "destructive",
@@ -55,7 +58,7 @@ export function CompanySwitcher() {
 
  const handleCompanyChange = (companyId: string) => {
   setSelectedCompanyId(companyId === "all" ? null : companyId);
-  localStorage.setItem("selectedCompanyId", companyId === "all" ? "" : companyId);
+   localStorage.setItem("selectedCompanyId", companyId);
 };
 
   // Add "All" option to the beginning of the list
@@ -67,6 +70,8 @@ export function CompanySwitcher() {
     })),
   ];
 
+
+  
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground w-full max-w-sm">
