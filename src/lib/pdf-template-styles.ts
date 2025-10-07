@@ -2287,7 +2287,7 @@ igstAmount: {
 
   // Add these styles to your templateA5_3Styles
 hsnTaxTable: {
-  border: '1px solid #0371C1',
+  // border: '1px solid #0371C1',
   backgroundColor: '#FFFFFF',
 },
 hsnTaxTableTitle: {
