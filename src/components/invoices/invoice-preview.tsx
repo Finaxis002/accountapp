@@ -35,6 +35,7 @@ import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
 //amit
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
+import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
 import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 
@@ -49,7 +50,8 @@ type TemplateKey =
   | "template8"
   | "templateA5"
   | "template16"
-  | "template17";
+  | "template17"
+  | "template18";
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
@@ -169,7 +171,8 @@ export function InvoicePreview({
 
         if (
           selectedTemplate === "template8" ||
-          selectedTemplate === "templateA5"
+          selectedTemplate === "templateA5" ||
+          selectedTemplate === "template18"
         ) {
           // Template 8 and Template A5 use react-pdf and return Blob directly
           switch (selectedTemplate) {
@@ -194,6 +197,16 @@ export function InvoicePreview({
                 client
               );
               break;
+              case "template18":
+                pdfBlob = await generatePdfForTemplate18(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                );
+                break;
           }
         } else {
           // Other templates use jsPDF
@@ -283,7 +296,8 @@ export function InvoicePreview({
                   company,
                   party,
                   serviceNameById,
-                  shippingAddress
+                  shippingAddress,
+                  bank
                 )
               );
               break;
@@ -418,6 +432,7 @@ export function InvoicePreview({
               {/* amit  */}
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>
+              <SelectItem value="template18">new3</SelectItem>
             </SelectContent>
           </Select>
         </div>

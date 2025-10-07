@@ -1,4 +1,4 @@
-import type { Company, Party, Transaction, ShippingAddress } from "@/lib/types";
+import type { Company, Party, Transaction, ShippingAddress, Bank } from "@/lib/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -7,6 +7,10 @@ import {
     invNo,
     getBillingAddress,
     getShippingAddress,
+    calculateGST,
+    prepareTemplate8Data,
+    formatCurrency,
+    numberToWords,
 } from "./pdf-utils";
 
 // FIX: Interfaces simplified to minimally include 'email' and core fields.
@@ -42,7 +46,8 @@ export const generatePdfForTemplate16 = async (
     company: ExtendedCompany | null | undefined, 
     party: ExtendedParty | null | undefined, 
     serviceNameById?: Map<string, string>,
-    shippingAddressOverride?: ExtendedShippingAddress | null 
+    shippingAddress?: ExtendedShippingAddress | null,
+    bank?: Bank | null
 ): Promise<jsPDF> => {
     
     // --- START: Hardcoded Bank Details (Left UNCHANGED as requested) ---
@@ -65,66 +70,118 @@ export const generatePdfForTemplate16 = async (
     const fmtDate = (d?: string | number | Date | null) =>
         d ? new Intl.DateTimeFormat("en-GB").format(new Date(d)).replace(/\//g, '-') : "N/A"; 
     
-    const numberToWords = (n: number): string => {
-        return "AMOUNT IN WORDS LOGIC REQUIRED HERE."; 
+    // Use the actual numberToWords function from pdf-utils
+    const convertNumberToWords = (n: number): string => {
+        return numberToWords(n);
+    };
+
+    // Helper function to get state code (like template8)
+    const getStateCode = (state: string): string => {
+        const stateCodeMap: { [key: string]: string } = {
+            "Andhra Pradesh": "37",
+            "Arunachal Pradesh": "12",
+            "Assam": "18",
+            "Bihar": "10",
+            "Chhattisgarh": "22",
+            "Goa": "30",
+            "Gujarat": "24",
+            "Haryana": "06",
+            "Himachal Pradesh": "02",
+            "Jharkhand": "20",
+            "Karnataka": "29",
+            "Kerala": "32",
+            "Madhya Pradesh": "462080",
+            "Maharashtra": "27",
+            "Manipur": "14",
+            "Meghalaya": "17",
+            "Mizoram": "15",
+            "Nagaland": "13",
+            "Odisha": "21",
+            "Punjab": "03",
+            "Rajasthan": "08",
+            "Sikkim": "11",
+            "Tamil Nadu": "33",
+            "Telangana": "36",
+            "Tripura": "16",
+            "Uttar Pradesh": "09",
+            "Uttarakhand": "05",
+            "West Bengal": "19",
+            "Delhi": "07",
+            "Chandigarh": "04",
+            "Puducherry": "34",
+            "Ladakh": "38",
+            "Jammu and Kashmir": "01",
+            "Lakshadweep": "31",
+            "Andaman and Nicobar Islands": "35",
+            "Dadra and Nagar Haveli and Daman and Diu": "26"
+        };
+        return stateCodeMap[state] || "";
     };
     
-    // derive lines/totals (DYNAMIC)
-    const { lines, subtotal, tax, invoiceTotal, gstEnabled, totalQuantity, totalItems } = (() => {
-        
-        const L: DynamicLineItem[] = getUnifiedLines(transaction, serviceNameById) as DynamicLineItem[];
-        
-        const finalLines: DynamicLineItem[] = L.length > 0 ? L : (() => {
-            const amount = Number((transaction as any).amount ?? 0);
-            const gstPct = Number((transaction as any)?.gstPercentage ?? 0);
-            const lineTax = (amount * gstPct) / 100;
-            const lineTotal = amount + lineTax;
-            return [{
-                name: transaction.description || "Service Rendered",
-                description: "",
-                quantity: 1,
-                pricePerUnit: amount,
-                amount: amount,
-                gstPercentage: gstPct,
-                lineTax: lineTax,
-                lineTotal: lineTotal,
-                hsnSac: 'N/A', 
-                unit: 'PCS'    
-            } as DynamicLineItem];
-        })();
+    // Use template8 data preparation logic
+    const {
+        totalTaxable,
+        totalAmount,
+        items,
+        totalItems,
+        totalQty,
+        itemsWithGST,
+        totalCGST,
+        totalSGST,
+        totalIGST,
+        isGSTApplicable,
+        isInterstate,
+        showIGST,
+        showCGSTSGST,
+        showNoTax,
+    } = prepareTemplate8Data(transaction, company, party, shippingAddress);
 
-        const cleanedLines = finalLines.map(line => ({
-            ...line,
-            formattedDescription: line.description ? line.description.split('\n').join(' / ') : '',
-            hsnSac: line.hsnSac || 'N/A', 
-            unit: line.unit || 'PCS',
-        }));
+    // Convert itemsWithGST to the format expected by template16
+    const lines = itemsWithGST.map(item => ({
+        name: item.name,
+        description: item.description || "",
+        quantity: item.quantity || 0,
+        pricePerUnit: item.pricePerUnit || 0,
+        amount: item.taxableValue,
+        gstPercentage: item.gstRate,
+        lineTax: item.cgst + item.sgst + item.igst,
+        lineTotal: item.total,
+        hsnSac: item.code || 'N/A',
+        unit: item.unit || 'PCS',
+        formattedDescription: item.description ? item.description.split('\n').join(' / ') : '',
+    }));
 
-        const st = cleanedLines.reduce((s: number, it: any) => s + (Number(it.amount) || 0), 0);
-        const tt = cleanedLines.reduce((s: number, it: any) => s + (Number(it.lineTax) || 0), 0);
-        const gt = cleanedLines.reduce((s: number, it: any) => s + (Number(it.lineTotal) || 0), 0);
-        const tQty = cleanedLines.reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0);
-
-        return {
-            lines: cleanedLines,
-            subtotal: st,
-            tax: tt,
-            invoiceTotal: gt,
-            gstEnabled: tt > 0 && !!_getGSTIN(company)?.trim(),
-            totalQuantity: tQty,
-            totalItems: cleanedLines.length
-        };
-    })();
+    const subtotal = totalTaxable;
+    const tax = totalCGST + totalSGST + totalIGST;
+    const invoiceTotal = totalAmount;
+    const gstEnabled = isGSTApplicable;
+    const totalQuantity = totalQty;
 
     const totalTaxableAmount = money(subtotal);
     const finalTotalAmount = money(invoiceTotal);
     
-    const shippingAddressSource = shippingAddressOverride;
+    const shippingAddressSource = shippingAddress;
     const billingAddress = getBillingAddress(party);
     const shippingAddressStr = getShippingAddress(shippingAddressSource, billingAddress); 
     
     const companyGSTIN = _getGSTIN(company);
     const partyGSTIN = _getGSTIN(party);
+
+    // Define column widths based on GST applicability (like template8)
+    const getColWidths = () => {
+        if (!isGSTApplicable) {
+            // Non-GST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, Total
+            return [32, 122, 50, 50, 30, 70, 60];
+        } else if (showIGST) {
+            // IGST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, IGST%, IGST Amt, Total
+            return [32, 100, 50, 50, 30, 70, 40, 60, 60];
+        } else {
+            // CGST/SGST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, CGST%, CGST Amt, SGST%, SGST Amt, Total
+            return [32, 80, 50, 50, 30, 70, 35, 55, 35, 55, 60];
+        }
+    };
+
+    const colWidths = getColWidths();
 
     // --- Dynamic Invoice Data Object ---
     const invoiceData = {
@@ -133,15 +190,16 @@ export const generatePdfForTemplate16 = async (
         poNumber: transaction.poNumber || "N/A", 
         poDate: fmtDate(transaction.poDate) || "N/A",
         eWayNo: transaction.eWayBillNo || "N/A",
-        // Using 'as any' for stateCode access
-        placeOfSupply: (party as any)?.stateCode ? `${party?.state} (${(party as any)?.stateCode})` : (party?.state || "N/A"), 
+        // Using state code helper like template8
+        placeOfSupply: party?.state ? `${party.state} (${getStateCode(party.state) || "-"})` : "N/A", 
         
         company: {
             name: company?.businessName || "Your Company Name",
             address: company?.address || "Company Address Missing",
             gstin: companyGSTIN || "N/A",
             pan: company?.panNumber || "N/A", 
-            state: company?.stateCode || "N/A", 
+            state: company?.addressState  ? `${company?.addressState } (${getStateCode(company?.addressState ) || "-"})` : "N/A", 
+            city: company?.City ,
             phone: company?.mobileNumber || "N/A",
             email: company?.email || company?.emailId || "N/A", // ADDED EMAIL ACCESS
         },
@@ -150,14 +208,16 @@ export const generatePdfForTemplate16 = async (
             billingAddress: billingAddress,
             gstin: partyGSTIN || "N/A",
             pan: party?.panNumber || "N/A", 
-            state: party?.state || "N/A",
+            state: party?.state ? `${party.state} (${getStateCode(party.state) || "-"})` : "N/A",
             email: party?.email || "N/A", // ADDED EMAIL ACCESS
         },
         shippingAddress: {
             // Using 'as any' for safe access when types conflict (e.g., state, name)
             name: (shippingAddressSource as any)?.name || party?.name || 'Client Name',
             address: shippingAddressStr,
-            state: (shippingAddressSource as any)?.state || party?.state || 'N/A', 
+            state: (shippingAddressSource as any)?.state ? 
+                `${(shippingAddressSource as any).state} (${getStateCode((shippingAddressSource as any).state) || "-"})` : 
+                party?.state ? `${party.state} (${getStateCode(party.state) || "-"})` : 'N/A', 
         }
     };
     
@@ -177,157 +237,168 @@ export const generatePdfForTemplate16 = async (
     doc.setTextColor(...DARK);
 
     // ---------- header drawer (DYNAMIC) ----------
-    let cursorY = M;
-
-    // 1. Company Name & TAX INVOICE Header
+    // Helper to draw company header on each page and return bottom Y
+    const drawStaticHeader = (): number => {
+        let y = M;
+        // Title
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(...DARK);
-    doc.text("TAX INVOICE", M, cursorY);
-    cursorY += 28; // Increased space after title
+        doc.text("TAX INVOICE", M, y);
+        y += 28;
 
-    // 2. Company Details (Left)
+        // Company Details
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    doc.text(invoiceData.company.name.toUpperCase(), M, cursorY);
-    cursorY += 16; // Increased space
+        doc.text(invoiceData.company.name.toUpperCase(), M, y);
+        y += 16;
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    // GSTIN
-    if (invoiceData.company.gstin !== 'N/A') {
-        doc.text(`GSTIN ${invoiceData.company.gstin}`, M, cursorY);
-        cursorY += 14; // Increased line spacing
-    }
-    
-    // Address (Split and place dynamically)
-    const companyAddressLines = doc.splitTextToSize(invoiceData.company.address, 250);
-    if (companyAddressLines.length) {
-        for(let i = 0; i < Math.min(companyAddressLines.length, 2); i++) {
-            doc.text(companyAddressLines[i], M, cursorY);
-            cursorY += 2; // Increased line spacing
+        if (invoiceData.company.gstin !== 'N/A') { doc.text(`GSTIN ${invoiceData.company.gstin}`, M, y); y += 14; }
+        const headerAddr = doc.splitTextToSize(invoiceData.company.address, 250);
+        if (headerAddr.length) {
+            for (let i = 0; i < Math.min(headerAddr.length, 2); i++) { doc.text(headerAddr[i], M, y); y += 2; }
         }
-    }
-    // PAN
-    if (invoiceData.company.pan !== 'N/A') doc.text(`PAN: ${invoiceData.company.pan}`, M, cursorY);
-    cursorY += 14; 
-    // Phone
-    if (invoiceData.company.phone !== 'N/A') doc.text(`Phone: ${invoiceData.company.phone}`, M, cursorY);
-    cursorY += 14;
-    // Email (NEWLY ADDED)
-    if (invoiceData.company.email !== 'N/A') doc.text(`Email: ${invoiceData.company.email}`, M, cursorY);
-    cursorY += 14;
-    // State
-    if (invoiceData.company.state !== 'N/A') doc.text(`State: ${invoiceData.company.state}`, M, cursorY);
-    cursorY += 10; // Extra space before separator
+        y += 12;
+        if (invoiceData.company.city !== 'N/A') { doc.text(`${invoiceData.company.city}`, M, y); }
+        y += 1;
+        if (invoiceData.company.pan !== 'N/A') { doc.text(`PAN: ${invoiceData.company.pan}`, M, y + 11); y += 11; }
+        if (invoiceData.company.phone !== 'N/A') { y += 12; doc.text(`Phone: ${invoiceData.company.phone}`, M, y); }
+        y += 14;
+        if (invoiceData.company.state !== 'N/A') { doc.text(`State: ${invoiceData.company.state}`, M, y); }
 
-    // 3. Logo/Graphic (Right) - Placeholder retained
-    const logoSize = 60;
-    const logoX = getW() - M - logoSize;
+        // Logo
+        const logoSize = 60; const logoX = getW() - M - logoSize;
     doc.setFillColor(242, 133, 49); 
     doc.triangle(logoX + logoSize * 0.4, M, logoX + logoSize, M, logoX + logoSize * 0.4, M + logoSize, 'F');
     doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
     doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, 'F');
 
-
-    // 4. Horizontal Separator Line (Light Gray)
-    cursorY = Math.max(cursorY, M + logoSize + 20); // Ensure cursor is below logo
+        // Separator
+        y = Math.max(y, M + logoSize + 20);
    doc.setDrawColor(0, 110, 200);
     doc.setLineWidth(1.5);
-    doc.line(M, cursorY, getW() - M, cursorY);
-    cursorY += 16; // Increased space after separator
+        doc.line(M, y + 4, getW() - M, y + 4);
+        return y + 16;
+    };
 
+    // Draw header on first page and capture bottom Y
+    let headerBottomY = drawStaticHeader();
 
-    // ---------------- Customer & Invoice Details Block (DYNAMIC) ----------------
-    let detailY = cursorY;
-
-    // LEFT: Customer Details (Billing)
+    // Helper to draw customer + shipping + invoice meta block; returns bottom Y
+    const drawCustomerMetaBlock = (startY: number): number => {
+        let detailY = startY;
+        // LEFT: Customer Details
     let leftY = detailY;
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...DARK);
     doc.setFontSize(10);
     doc.text("Customer Details:", M, leftY);
-    leftY += 16; // Increased space
+        leftY += 16;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.text(invoiceData.invoiceTo.name, M, leftY);
-    leftY += 12; // Increased space
-
-    const billAddressLines = doc.splitTextToSize(invoiceData.invoiceTo.billingAddress, 250);
-    if(billAddressLines.length) doc.text(billAddressLines, M, leftY);
-    leftY += billAddressLines.length * 14; // Increased line height
-
-    // Email (NEWLY ADDED)
-    if(invoiceData.invoiceTo.email !== 'N/A') {
-        doc.text(`Email: ${invoiceData.invoiceTo.email}`, M, leftY);
         leftY += 12;
-    }
+        const billAddressLines = doc.splitTextToSize(invoiceData.invoiceTo.billingAddress, 250);
+        if (billAddressLines.length) doc.text(billAddressLines, M, leftY);
+        leftY += billAddressLines.length * 14;
+        if (invoiceData.invoiceTo.email !== 'N/A') { doc.text(`Email: ${invoiceData.invoiceTo.email}`, M, leftY); leftY += 12; }
+        if (invoiceData.invoiceTo.gstin !== 'N/A') { doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, M, leftY); leftY += 12; }
+        if (invoiceData.invoiceTo.pan !== 'N/A') { doc.text(`PAN: ${invoiceData.invoiceTo.pan}`, M, leftY); leftY += 12; }
+        if (invoiceData.invoiceTo.state !== 'N/A') { doc.text(`State: ${invoiceData.invoiceTo.state}`, M, leftY); leftY += 12; }
+        doc.text(`Place of Supply: ${invoiceData.placeOfSupply}`, M, leftY); leftY += 14;
 
-    if(invoiceData.invoiceTo.gstin !== 'N/A') doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, M, leftY);
-    leftY += 12;
-    if(invoiceData.invoiceTo.pan !== 'N/A') doc.text(`PAN: ${invoiceData.invoiceTo.pan}`, M, leftY);
-    leftY += 12;
-    if(invoiceData.invoiceTo.state !== 'N/A') doc.text(`State: ${invoiceData.invoiceTo.state}`, M, leftY);
-    leftY += 12;
-    doc.text(`Place of Supply: ${invoiceData.placeOfSupply}`, M, leftY);
-    leftY += 14; // Extra space
+        // MIDDLE: Shipping
+        const middleX = M + 200; let middleY = detailY;
+        doc.setFont("helvetica", "bold"); doc.setTextColor(...DARK); doc.setFontSize(10);
+        doc.text("Shipping address:", middleX, middleY); middleY += 16; doc.setFontSize(9); doc.setFont("helvetica", "normal");
+        doc.text(invoiceData.shippingAddress.name, middleX, middleY); middleY += 14;
+        const shipAddressLines = doc.splitTextToSize(invoiceData.shippingAddress.address, 180);
+        if (shipAddressLines.length) doc.text(shipAddressLines, middleX, middleY);
+        middleY += shipAddressLines.length * 12;
+        if (invoiceData.shippingAddress.state !== 'N/A') { doc.text(`State: ${invoiceData.shippingAddress.state}`, middleX, middleY); middleY += 14; }
 
+        // RIGHT: Invoice meta
+        const rightX = getW() - M - 120; let rightY = detailY; doc.setFontSize(9); doc.setFont("helvetica", "bold");
+        const metaLabels = ["Invoice #:", "Invoice Date:", "P.O. No.:", "P.O. Date:", "E-Way No.:"];
+        const metaValues = [invoiceData.invoiceNumber, invoiceData.date, invoiceData.poNumber, invoiceData.poDate, invoiceData.eWayNo];
+        for (let i = 0; i < metaLabels.length; i++) {
+            doc.text(metaLabels[i], rightX, rightY);
+            doc.setFont("helvetica", "normal"); doc.text(metaValues[i], rightX + 60, rightY);
+            doc.setFont("helvetica", "bold"); rightY += 14;
+        }
+        return Math.max(leftY, middleY, rightY) + 10;
+    };
 
-    // MIDDLE: Shipping Address (DYNAMIC)
-    let middleX = M + 200;
-    let middleY = detailY;
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.setFontSize(10);
-    doc.text("Shipping address:", middleX, middleY);
-    middleY += 16; // Increased space
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(invoiceData.shippingAddress.name, middleX, middleY);
-    middleY += 14; // Increased space
-
-    const shipAddressLines = doc.splitTextToSize(invoiceData.shippingAddress.address, 180);
-    if(shipAddressLines.length) doc.text(shipAddressLines, middleX, middleY);
-    middleY += shipAddressLines.length * 12; // Increased line height
-
-    if(invoiceData.shippingAddress.state !== 'N/A') doc.text(`State: ${invoiceData.shippingAddress.state}`, middleX, middleY);
-    middleY += 14;
-
-
-    // RIGHT: Invoice Metadata (DYNAMIC)
-    let rightX = getW() - M - 120;
-    let rightY = detailY ; // Start lower than blocks 
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    const metaLabels = ["Invoice #:", "Invoice Date:", "P.O. No.:", "P.O. Date:", "E-Way No.:"];
-    const metaValues = [
-        invoiceData.invoiceNumber,
-        invoiceData.date,
-        invoiceData.poNumber,
-        invoiceData.poDate,
-        invoiceData.eWayNo,
-    ];
-
-    for (let i = 0; i < metaLabels.length; i++) {
-        doc.text(metaLabels[i], rightX, rightY);
-        doc.setFont("helvetica", "normal");
-        doc.text(metaValues[i], rightX + 60, rightY);
-        doc.setFont("helvetica", "bold");
-        rightY += 14; // Increased line spacing
-    }
-
-    // Set cursor below the longest block
-    cursorY = Math.max(leftY, middleY, rightY) + 10; // Increased space
+    // Draw block on first page and get its bottom for table margin
+    let blockBottomY = drawCustomerMetaBlock(headerBottomY);
+    let cursorY = blockBottomY;
 
 
-    // ---------------- items table (DYNAMIC) ----------------
+    // ---------------- items table (DYNAMIC with GST logic) ----------------
+    
+    // Build dynamic column styles based on GST type
+    const columnStyles: any = {};
+    colWidths.forEach((width, index) => {
+        columnStyles[index] = { 
+            cellWidth: width,
+            halign: index === 0 || index === 2 || index === 4 ? "center" : 
+                   (index >= 3 && index <= 9) ? "right" : "left"
+        };
+    });
+
+    // Build dynamic headers based on GST type
+    const buildHeaders = () => {
+        const baseHeaders = [
+            "Sr. No.",
+            "Name of Product / Service",
+            "HSN /\nSAC",
+            "Rate",
+            "Qty",
+            "Taxable\nValue"
+        ];
+
+        if (showIGST) {
+            return [...baseHeaders, "IGST\n%", "IGST\nAmount", "Total"];
+        } else if (showCGSTSGST) {
+            return [...baseHeaders, "CGST\n%", "CGST\nAmount", "SGST\n%", "SGST\nAmount", "Total"];
+        } else {
+            return [...baseHeaders, "Total"];
+        }
+    };
+
+    // Build dynamic body data based on GST type
+    const buildBodyData = () => {
+        return lines.map((it: DynamicLineItem, i: number) => {
+            const baseData = [
+                i + 1,
+                `${it.name || ""}\n${it.description ? it.description.split('\n').join(' / ') : ""}`,
+                it.hsnSac || "N/A",
+                money(it.pricePerUnit),
+                Number(it.quantity).toFixed(2),
+                money(it.amount)
+            ];
+
+            if (showIGST) {
+                return [...baseData, `${it.gstPercentage || 0}`, money(it.lineTax), money(it.lineTotal)];
+            } else if (showCGSTSGST) {
+                const cgst = (it.lineTax || 0) / 2;
+                const sgst = (it.lineTax || 0) / 2;
+                return [...baseData, `${(it.gstPercentage || 0) / 2}`, money(cgst), `${(it.gstPercentage || 0) / 2}`, money(sgst), money(it.lineTotal)];
+            } else {
+                return [...baseData, money(it.lineTotal)];
+            }
+        });
+    };
+
     autoTable(doc, {
         startY: cursorY,
         styles: {
             font: "helvetica",
             fontSize: 8,
-            cellPadding: 4, // Increased cell padding
+            cellPadding: 4,
             lineColor: BORDER,
             lineWidth: 0.3,
             textColor: DARK,
@@ -337,52 +408,22 @@ export const generatePdfForTemplate16 = async (
             textColor: [255, 255, 255],
             fontStyle: "bold",
             fontSize: 9,
-            minCellHeight: 24 // Increased header height
+            minCellHeight: 24
         },
-        columnStyles: {
-            0: { halign: "center", cellWidth: 32 },
-            1: { cellWidth: 122 },
-            2: { halign: "center", cellWidth: 50 },
-            3: { halign: "right", cellWidth: 50 },
-            4: { halign: "center", cellWidth: 30 },
-            5: { halign: "center", cellWidth: 30 },
-            6: { halign: "right", cellWidth: 70 },
-            7: { halign: "right", cellWidth: 30 },
-            8: { halign: "right", cellWidth: 50 },
-            9: { halign: "right", cellWidth: 60 },
-        },
-        head: [
-            [
-                "Sr. No.",
-                "Name of Product / Service",
-                "HSN /\nSAC",
-                "Rate",
-                "Qty",
-                "Unit",
-                "Taxable\nValue",
-                "IGST\n%",
-                "IGST\nAmount",
-                "Total",
-            ],
-        ],
-        body: lines.map((it: DynamicLineItem, i: number) => [
-            i + 1,
-            `${it.name || ""}\n${it.description ? it.description.split('\n').join(' / ') : ""}`,
-            it.hsnSac || "N/A",
-            money(it.pricePerUnit),
-            Number(it.quantity).toFixed(2),
-            it.unit || 'PCS',
-            money(it.amount),
-            `${it.gstPercentage || 0}`,
-            money(it.lineTax),
-            money(it.lineTotal),
-        ]),
+        columnStyles,
+        head: [buildHeaders()],
+        body: buildBodyData(),
         didParseCell: (d) => {
             if (d.section === "body" && d.column.dataKey === 1) {
                 d.cell.styles.fontSize = 7.5;
             }
         },
-        margin: { left: M, right: M },
+        didDrawPage: () => {
+            // repeat header and customer/meta block on each page
+            const hdrY = drawStaticHeader();
+            drawCustomerMetaBlock(hdrY);
+        },
+        margin: { left: M, right: M, top: blockBottomY },
         theme: 'grid',
     });
 
@@ -392,7 +433,14 @@ export const generatePdfForTemplate16 = async (
     const totalsW = 200;
     const totalsX = getW() - M - totalsW;
 
-    const totalsY = afterTableY + 10; // Increased space
+    // Ensure there is space for totals, else new page with header
+    const pageH = doc.internal.pageSize.getHeight();
+    if (afterTableY + 140 > pageH - M) {
+        doc.addPage();
+        headerBottomY = drawStaticHeader();
+        afterTableY = headerBottomY;
+    }
+    const totalsY = afterTableY + 10;
 
     const putTotalLine = (label: string, val: string, y: number, bold = false) => {
         doc.setFont("helvetica", bold ? "bold" : "normal");
@@ -406,13 +454,36 @@ export const generatePdfForTemplate16 = async (
     // Row 1: Taxable Amount
     doc.setDrawColor(...BORDER);
     doc.setFillColor(255, 255, 255);
-    doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD'); // Increased height
+    doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
     putTotalLine("Taxable Amount", totalTaxableAmount, currentTotalsY + 12);
     currentTotalsY += 18;
 
-    // Row 2: Total Amount (Grand Total)
+    // GST breakdown rows (only if GST is applicable)
+    if (isGSTApplicable) {
+        if (showIGST) {
+            // IGST row
+            doc.setFillColor(255, 255, 255);
+            doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
+            putTotalLine("IGST", money(totalIGST), currentTotalsY + 12);
+            currentTotalsY += 18;
+        } else if (showCGSTSGST) {
+            // CGST row
+            doc.setFillColor(255, 255, 255);
+            doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
+            putTotalLine("CGST", money(totalCGST), currentTotalsY + 12);
+            currentTotalsY += 18;
+            
+            // SGST row
+            doc.setFillColor(255, 255, 255);
+            doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
+            putTotalLine("SGST", money(totalSGST), currentTotalsY + 12);
+            currentTotalsY += 18;
+        }
+    }
+
+    // Final Total Amount (Grand Total)
     doc.setFillColor(240, 240, 240); 
-    doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD'); // Increased height
+    doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
     putTotalLine("Total Amount", finalTotalAmount, currentTotalsY + 12, true);
     currentTotalsY += 24; // Extra space after total
     
@@ -428,7 +499,7 @@ export const generatePdfForTemplate16 = async (
     doc.setFontSize(9);
     doc.text("Total amount (in words):", M , currentTotalsY + 10);
     doc.setFont("helvetica", "normal");
-    doc.text(`INR ${numberToWords(invoiceTotal)}`, M + 110, currentTotalsY + 10);
+    doc.text(`INR ${convertNumberToWords(invoiceTotal)}`, M + 110, currentTotalsY + 10);
     
     cursorY = currentTotalsY + 25;
 
@@ -442,7 +513,8 @@ export const generatePdfForTemplate16 = async (
         const bottomSafe = H - M; 
         if (cursorY + needed > bottomSafe) {
             doc.addPage();
-            return 80; 
+            headerBottomY = drawStaticHeader();
+            return headerBottomY + 10; 
         }
         return cursorY;
     };
@@ -451,24 +523,23 @@ export const generatePdfForTemplate16 = async (
     
     const blockY = cursorY + 10; // Increased space
     
-    // LEFT: Bank Details & UPI
+    // LEFT: Bank Details & UPI (Dynamic)
     let bankY = blockY;
-    const bankDetails = getBankDetails(); // Uses Hardcoded Bank Details
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
     doc.text("Pay using UPI:", M, bankY);
     doc.text("Bank Details:", M + 120, bankY);
-    bankY += 16; // Increased space
+    bankY += 16;
 
     // UPI QR Code (Placeholder)
-    const qrSize = 60; // Increased QR size
+    const qrSize = 60;
     doc.setDrawColor(0, 0, 0);
     doc.setFillColor(240, 240, 240);
     doc.rect(M + 10, bankY, qrSize, qrSize, 'FD'); // QR Code box placeholder
 
-    // Bank Details Table-like layout
+    // Bank Details Table-like layout (Dynamic)
     let bankDetailY = bankY;
     const bankX = M + 120;
     doc.setFontSize(8);
@@ -480,7 +551,16 @@ export const generatePdfForTemplate16 = async (
         doc.text(val, bankX + 50, y);
     };
     
-    putBankDetail("Bank Name:", bankDetails.name, bankDetailY); bankDetailY += 12; // Increased spacing
+    // Use dynamic bank data if available, otherwise fallback to hardcoded
+    const bankDetails = bank && typeof bank === 'object' && bank.bankName ? {
+        name: bank.bankName,
+        branch: (bank as any).branchName || bank.branchAddress || "Branch Name",
+        accNumber: bank.accountNumber || "Account Number",
+        ifsc: bank.ifscCode || "IFSC Code",
+        upiId: bank.upiId || "UPI ID"
+    } : getBankDetails(); // Fallback to hardcoded
+    
+    putBankDetail("Bank Name:", bankDetails.name, bankDetailY); bankDetailY += 12;
     putBankDetail("Branch:", bankDetails.branch, bankDetailY); bankDetailY += 12;
     putBankDetail("Acc. Number:", bankDetails.accNumber, bankDetailY); bankDetailY += 12;
     putBankDetail("IFSC:", bankDetails.ifsc, bankDetailY); bankDetailY += 12;
@@ -505,9 +585,8 @@ export const generatePdfForTemplate16 = async (
     
     
     // ---------------- Terms and Conditions (DYNAMIC Notes) ----------------
-    
     // Footer separator line
-    cursorY = ensureSpace(100); // Ensure enough space for terms
+    cursorY = ensureSpace(120);
     doc.setDrawColor(0, 110, 200);
     doc.setLineWidth(1);
     doc.line(M, cursorY, getW() - M, cursorY);
