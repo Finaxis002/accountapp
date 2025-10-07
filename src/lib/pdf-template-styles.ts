@@ -2100,6 +2100,7 @@ headerCell: {
     width: "12%",
     textAlign: "center",
     padding: 4,
+     backgroundColor: "rgba(3, 113, 193, 0.2)",
     // borderLeft: "1px solid #0371C1",
     // borderRight: "1px solid #0371C1",
   },

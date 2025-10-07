@@ -1153,9 +1153,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                   <View style={template1Styles.bottomSection}>
                     {/* Left Column: Total in words + Terms */}
                     <View style={template1Styles.leftSection}>
-                      <Text style={template1Styles.totalInWords}>
-                        Total in words : {numberToWords(totalAmount)}
-                      </Text>
+                     
 
                       {transaction?.notes ? (
                         (() => {
