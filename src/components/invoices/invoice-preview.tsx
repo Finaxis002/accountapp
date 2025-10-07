@@ -21,7 +21,7 @@ import { DialogFooter } from "../ui/dialog";
 //   generatePdfForTemplate6,
 //   generatePdfForTemplate7,
 // } from "@/lib/pdf-templates";
-import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
+
 import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
 import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
 import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
@@ -29,11 +29,12 @@ import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 // priya
+import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
 import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
 import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
 import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
-
+import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
 //amit
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
@@ -52,6 +53,7 @@ type TemplateKey =
   | "templateA5"
   | "templateA5_3"
   | "templateA5_4"
+  | "template-t3"
   | "template16"
   | "template17";
 
@@ -176,7 +178,8 @@ export function InvoicePreview({
           selectedTemplate === "template8" ||
           selectedTemplate === "templateA5" ||
           selectedTemplate === "templateA5_3"||
-          selectedTemplate === "templateA5_4"
+          selectedTemplate === "templateA5_4"||
+          selectedTemplate === "template-t3"
         ) {
           // Template 8 and Template A5 use react-pdf and return Blob directly
           switch (selectedTemplate) {
@@ -224,6 +227,17 @@ export function InvoicePreview({
               break;
               case "templateA5_4":
               pdfBlob = await generatePdfForTemplateA5_4(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+               case "template-t3":
+              pdfBlob = await generatePdfForTemplatet3(
                 transaction,
                 company,
                 party,
@@ -446,6 +460,7 @@ export function InvoicePreview({
               <SelectItem value="templateA5">Template A5</SelectItem>
               <SelectItem value="templateA5_3">Template A5-3</SelectItem>
               <SelectItem value="templateA5_4">Template A5-4</SelectItem>
+               <SelectItem value="template-t3">Template T3</SelectItem>
               {/* amit  */}
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>

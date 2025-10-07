@@ -2343,3 +2343,164 @@ hsnTaxTotalCell: {
 },
 });
 
+
+
+
+export const template_t3 = StyleSheet.create({
+    page: {
+      flexDirection: 'column',
+      backgroundColor: '#FFFFFF',
+      padding: 20,
+      fontSize: 9,
+      fontFamily: 'Helvetica',
+      paddingHorizontal:100
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+      alignItems:"center",
+    },
+    companyInfo: {
+      flex: 1,
+      alignItems:"center",
+      textAlign:"center",
+      width:"100%"
+    },
+    companyName: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      marginBottom: 4,
+    },
+    companyAddress: {
+      fontSize: 9,
+      marginBottom: 2,
+      lineHeight: 1.2,
+    },
+    gstin: {
+      fontSize: 9,
+      fontWeight: 'bold',
+      marginTop: 4,
+    },
+    invoiceNumber: {
+      fontSize: 9,
+      marginBottom: 2,
+    },
+    title: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      marginVertical: 2,
+    },
+    billedToSection: {
+     flexDirection: 'row',
+      justifyContent: 'space-between',
+      // marginBottom: 10,
+      alignItems:"center",
+      gap:4
+    },
+    billedTo: {
+      flex: 2,
+    },
+    invoiceDetails: {
+      flex: 1,
+      alignItems: 'flex-end',
+    },
+    sectionTitle: {
+      fontSize: 10,
+      fontWeight: 'bold',
+      marginBottom: 4,
+    },
+    partyInfo: {
+      fontSize: 9,
+      lineHeight: 1.2,
+    },
+    itemsTable: {
+      width: '100%',
+      borderWidth: 1,
+      borderColor: '#000',
+      marginBottom: 10,
+    },
+    tableHeader: {
+      flexDirection: 'row',
+      backgroundColor: '#f0f0f0',
+      borderBottomWidth: 1,
+      borderBottomColor: '#000',
+    },
+    tableRow: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: '#000',
+      minHeight: 30,
+    },
+    tableCell: {
+      padding: 4,
+      borderRightWidth: 1,
+      borderRightColor: '#000',
+      justifyContent: 'center',
+    },
+    lastCell: {
+      padding: 4,
+      justifyContent: 'center',
+    },
+    srNoCell: {
+      width: '5%',
+      textAlign: 'center',
+    },
+    descriptionCell: {
+      width: '50%',
+    },
+    qtyCell: {
+      width: '10%',
+      textAlign: 'center',
+    },
+    rateCell: {
+      width: '15%',
+      textAlign: 'right',
+      paddingRight: 8,
+    },
+    totalCell: {
+      width: '20%',
+      textAlign: 'right',
+      paddingRight: 8,
+    },
+    itemDescription: {
+      fontSize: 9,
+      lineHeight: 1.2,
+    },
+    itemCode: {
+      fontSize: 8,
+      color: '#666',
+    },
+    hsnCode: {
+      fontSize: 8,
+      fontWeight: 'bold',
+      marginTop: 2,
+    },
+    totalsSection: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      marginTop: 10,
+    },
+    totalsTable: {
+      width: '40%',
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+      paddingHorizontal: 8,
+    },
+    totalLabel: {
+      fontWeight: 'bold',
+    },
+    totalValue: {
+      textAlign: 'right',
+    },
+    footer: {
+      marginTop: 20,
+      fontSize: 8,
+      textAlign: 'center',
+      color: '#666',
+    },
+  });
