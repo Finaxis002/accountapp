@@ -79,11 +79,11 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
   const colWidthsIGST = ["4%", "25%", "10%", "8%", "10%", "15%", "20%", "12%"];
   const totalColumnIndexIGST = 7;
 
-     const itemsPerPage = 6;
-    const pages = [];
-    for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
-      pages.push(itemsWithGST.slice(i, i + itemsPerPage));
-    }
+  const itemsPerPage = 6;
+  const pages = [];
+  for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
+    pages.push(itemsWithGST.slice(i, i + itemsPerPage));
+  }
   // For CGST/SGST (Intrastate)
   const colWidthsCGSTSGST = [
     "4%",
@@ -113,14 +113,29 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
     : showCGSTSGST
     ? totalColumnIndexCGSTSGST
     : totalColumnIndexNoTax;
-    
+
+  // Calculate table width in points (A5: 420pt width, padding 20pt each side, section border 1.5pt each side)
+  const tableWidth = showCGSTSGST ? 495 : showIGST ? 530 : 560;
+
+  // Calculate vertical border positions
+  const borderPositions: number[] = [];
+  let cumulative = 0;
+  for (let i = 0; i < colWidths.length - 1; i++) {
+    cumulative += parseFloat(colWidths[i]);
+    borderPositions.push((cumulative / 100) * tableWidth);
+  }
 
   return (
     <Document>
       {pages.map((pageItems, pageIndex) => {
         const isLastPage = pageIndex === pages.length - 1;
         return (
-          <Page key={pageIndex} size="A5" orientation="landscape" style={templateA5Styles.page}>
+          <Page
+            key={pageIndex}
+            size="A5"
+            orientation="landscape"
+            style={templateA5Styles.page}
+          >
             {/* Header */}
             <View style={templateA5Styles.header}>
               <View style={templateA5Styles.headerLeft}>
@@ -166,8 +181,8 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                   <View style={templateA5Styles.gstRow}>
                     <Text style={templateA5Styles.gstLabel}>GSTIN : </Text>
                     <Text style={templateA5Styles.gstValue}>
-                      {" "}
-                      {company.gstin}{" "}
+                      {"-"}
+                      {company.gstin}{"-"}
                     </Text>
                   </View>
                 )}
@@ -371,76 +386,62 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                 </View>
               </View>
               {/* Items Table */}
-              <View style={templateA5Styles.itemsTable}>
-                {/* Table Header */}
-                <View style={templateA5Styles.itemsTableHeader}>
-                  <Text
-                    style={[
-                      templateA5Styles.srNoHeader,
-                      { width: colWidths[0] },
-                    ]}
-                  >
-                    Sr. No.
-                  </Text>
-                  <Text
-                    style={[
-                      templateA5Styles.productHeader,
-                      { width: colWidths[1] },
-                    ]}
-                  >
-                    Name of Product/Service
-                  </Text>
-                  <Text
-                    style={[
-                      templateA5Styles.hsnHeader,
-                      { width: colWidths[2] },
-                    ]}
-                  >
-                    HSN/SAC
-                  </Text>
-                  <Text
-                    style={[
-                      templateA5Styles.qtyHeader,
-                      { width: colWidths[3] },
-                    ]}
-                  >
-                    Qty
-                  </Text>
-                  <Text
-                    style={[
-                      templateA5Styles.rateHeader,
-                      { width: colWidths[4] },
-                    ]}
-                  >
-                    Rate
-                  </Text>
-                  <Text
-                    style={[
-                      templateA5Styles.taxableHeader,
-                      { width: colWidths[5] },
-                    ]}
-                  >
-                    Taxable Value
-                  </Text>
-
-                  {/* Dynamic GST columns */}
-                  {showIGST ? (
-                    // Interstate - Show IGST columns
-                    <View
+              <View style={templateA5Styles.tableContainer}>
+                <View style={templateA5Styles.itemsTable}>
+                  {/* Table Header */}
+                  <View style={templateA5Styles.itemsTableHeader}>
+                    <Text
                       style={[
-                        templateA5Styles.igstHeader,
-                        { width: colWidths[6] },
+                        templateA5Styles.srNoHeader,
+                        { width: colWidths[0] },
                       ]}
                     >
-                      <Text style={templateA5Styles.igstMainHeader}>IGST</Text>
-                      <View style={templateA5Styles.igstSubHeader}>
-                        <Text style={[templateA5Styles.igstSubPercentage,{borderRight:"1px solid #0371C1"}]}>%</Text>
-                        <Text style={templateA5Styles.igstSubText}>Amount</Text>
-                      </View>
-                    </View>
-                  ) : showCGSTSGST ? (
-                    // Intrastate - Show CGST/SGST columns
-                    <>
+                      Sr. No.
+                    </Text>
+                    <Text
+                      style={[
+                        templateA5Styles.productHeader,
+                        { width: colWidths[1] },
+                      ]}
+                    >
+                      Name of Product/Service
+                    </Text>
+                    <Text
+                      style={[
+                        templateA5Styles.hsnHeader,
+                        { width: colWidths[2] },
+                      ]}
+                    >
+                      HSN/SAC
+                    </Text>
+                    <Text
+                      style={[
+                        templateA5Styles.qtyHeader,
+                        { width: colWidths[3] },
+                      ]}
+                    >
+                      Qty
+                    </Text>
+                    <Text
+                      style={[
+                        templateA5Styles.rateHeader,
+                        { width: colWidths[4] },
+                      ]}
+                    >
+                      Rate
+                    </Text>
+                    <Text
+                      style={[
+                        templateA5Styles.taxableHeader,
+                        { width: colWidths[5] },
+                      ]}
+                    >
+                      Taxable Value
+                    </Text>
+
+                    {/* Dynamic GST columns */}
+                    {showIGST ? (
+                      // Interstate - Show IGST columns
                       <View
                         style={[
                           templateA5Styles.igstHeader,
@@ -448,140 +449,326 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                         ]}
                       >
                         <Text style={templateA5Styles.igstMainHeader}>
-                          CGST
+                          IGST
                         </Text>
                         <View style={templateA5Styles.igstSubHeader}>
-                          <Text style={[templateA5Styles.igstSubPercentage ,{borderRight:"1px solid #0371C1"}]}>%</Text>
+                          <Text
+                            style={[
+                              templateA5Styles.igstSubPercentage,
+                              { borderRight: "1px solid #0371C1" },
+                            ]}
+                          >
+                            %
+                          </Text>
                           <Text style={templateA5Styles.igstSubText}>
                             Amount
                           </Text>
                         </View>
                       </View>
-                      <View
+                    ) : showCGSTSGST ? (
+                      // Intrastate - Show CGST/SGST columns
+                      <>
+                        <View
+                          style={[
+                            templateA5Styles.igstHeader,
+                            { width: colWidths[6] },
+                          ]}
+                        >
+                          <Text style={templateA5Styles.igstMainHeader}>
+                            CGST
+                          </Text>
+                          <View style={templateA5Styles.igstSubHeader}>
+                            <Text
+                              style={[
+                                templateA5Styles.igstSubPercentage,
+                                { borderRight: "1px solid #0371C1" },
+                              ]}
+                            >
+                              %
+                            </Text>
+                            <Text style={templateA5Styles.igstSubText}>
+                              Amount
+                            </Text>
+                          </View>
+                        </View>
+                        <View
+                          style={[
+                            templateA5Styles.igstHeader,
+                            { width: colWidths[7] },
+                          ]}
+                        >
+                          <Text style={templateA5Styles.igstMainHeader}>
+                            SGST
+                          </Text>
+                          <View style={templateA5Styles.igstSubHeader}>
+                            <Text
+                              style={[
+                                templateA5Styles.igstSubPercentage,
+                                { borderRight: "1px solid #0371C1" },
+                              ]}
+                            >
+                              %
+                            </Text>
+                            <Text style={templateA5Styles.igstSubText}>
+                              Amount
+                            </Text>
+                          </View>
+                        </View>
+                      </>
+                    ) : null}
+
+                    {/* Total Column */}
+                    <Text
+                      style={[
+                        templateA5Styles.totalHeader,
+                        { width: colWidths[totalColumnIndex] },
+                      ]}
+                    >
+                      Total
+                    </Text>
+                  </View>
+
+                  {pageItems.map((item, index) => (
+                    <View key={index} style={templateA5Styles.itemsTableRow}>
+                      <Text
                         style={[
-                          templateA5Styles.igstHeader,
-                          { width: colWidths[7] },
+                          templateA5Styles.srNoCell,
+                          { width: colWidths[0] },
                         ]}
                       >
-                        <Text style={templateA5Styles.igstMainHeader}>
-                          SGST
-                        </Text>
-                        <View style={templateA5Styles.igstSubHeader}>
-                          <Text style={[templateA5Styles.igstSubPercentage,{borderRight:"1px solid #0371C1"}]}>%</Text>
-                          <Text style={templateA5Styles.igstSubText}>
-                            Amount
+                        {pageIndex * itemsPerPage + index + 1}
+                      </Text>
+                      <Text
+                        style={[
+                          templateA5Styles.productCell,
+                          { width: colWidths[1] },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text
+                        style={[
+                          templateA5Styles.hsnCell,
+                          { width: colWidths[2] },
+                        ]}
+                      >
+                        {item.code || "-"}
+                      </Text>
+                      <Text
+                        style={[
+                          templateA5Styles.qtyCell,
+                          { width: colWidths[3] },
+                        ]}
+                      >
+                        {item.quantity || 0} {item.unit}
+                      </Text>
+                      <Text
+                        style={[
+                          templateA5Styles.rateCell,
+                          { width: colWidths[4] },
+                        ]}
+                      >
+                        {formatCurrency(item.pricePerUnit || 0)}
+                      </Text>
+                      <Text
+                        style={[
+                          templateA5Styles.taxableCell,
+                          { width: colWidths[5] },
+                        ]}
+                      >
+                        {formatCurrency(item.taxableValue)}
+                      </Text>
+                      {showIGST ? (
+                        <View
+                          style={[
+                            templateA5Styles.igstCell,
+                            { width: colWidths[6] },
+                          ]}
+                        >
+                          <Text style={templateA5Styles.igstPercent}>
+                            {item.gstRate}
+                          </Text>
+                          <Text style={templateA5Styles.igstAmount}>
+                            {formatCurrency(item.igst)}
                           </Text>
                         </View>
-                      </View>
-                    </>
-                  ) : null}
+                      ) : showCGSTSGST ? (
+                        <>
+                          <View
+                            style={[
+                              templateA5Styles.igstCell,
+                              { width: colWidths[6] },
+                            ]}
+                          >
+                            <Text style={templateA5Styles.igstPercent}>
+                              {item.gstRate / 2}
+                            </Text>
+                            <Text style={templateA5Styles.igstAmount}>
+                              {formatCurrency(item.cgst)}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              templateA5Styles.igstCell,
+                              { width: colWidths[7] },
+                            ]}
+                          >
+                            <Text style={templateA5Styles.igstPercent}>
+                              {item.gstRate / 2}
+                            </Text>
+                            <Text style={templateA5Styles.igstAmount}>
+                              {formatCurrency(item.sgst)}
+                            </Text>
+                          </View>
+                        </>
+                      ) : null}
+                      <Text
+                        style={[
+                          templateA5Styles.totalCell,
+                          { width: colWidths[totalColumnIndex] },
+                        ]}
+                      >
+                        {formatCurrency(item.total)}
+                      </Text>
+                    </View>
+                  ))}
 
-                  {/* Total Column */}
-                  <Text
-                    style={[
-                      templateA5Styles.totalHeader,
-                      { width: colWidths[totalColumnIndex] },
-                    ]}
-                  >
-                    Total
-                  </Text>
+                  {isLastPage && (
+                    <View style={templateA5Styles.itemsTableTotalRow}>
+                      <Text
+                        style={[
+                          templateA5Styles.totalLabel,
+                          { width: colWidths[0] },
+                        ]}
+                      ></Text>
+                      <Text
+                        style={[
+                          templateA5Styles.totalEmpty,
+                          { width: colWidths[1] },
+                        ]}
+                      ></Text>
+                      <Text
+                        style={[
+                          templateA5Styles.totalEmpty,
+                          {
+                            width: colWidths[2],
+                            borderRight: "1px solid #0371C1",
+                          },
+                        ]}
+                      >
+                        Total
+                      </Text>
+                      <Text
+                        style={[
+                          templateA5Styles.totalQty,
+                          {
+                            width: colWidths[3],
+                            borderRight: "1px solid #0371C1",
+                          },
+                        ]}
+                      >
+                        {totalQty.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={[
+                          templateA5Styles.totalEmpty,
+                          { width: colWidths[4] },
+                        ]}
+                      ></Text>
+                      <Text
+                        style={[
+                          templateA5Styles.totalTaxable,
+                          {
+                            width: colWidths[5],
+                            borderRight: "1px solid #0371C1",
+                            borderLeft: "1px solid #0371C1",
+                          },
+                        ]}
+                      >
+                        {formatCurrency(totalTaxable)}
+                      </Text>
+                      {showIGST ? (
+                        <View
+                          style={[
+                            templateA5Styles.igstTotal,
+                            { width: colWidths[6] },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              templateA5Styles.totalEmpty,
+                              { width: "30%" },
+                            ]}
+                          ></Text>
+                          <Text
+                            style={[
+                              templateA5Styles.totalIgstAmount,
+                              { borderRight: "1px solid #0371C1" },
+                            ]}
+                          >
+                            {formatCurrency(totalIGST)}
+                          </Text>
+                        </View>
+                      ) : showCGSTSGST ? (
+                        <>
+                          <View
+                            style={[
+                              templateA5Styles.igstTotal,
+                              { width: colWidths[6] },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                templateA5Styles.totalEmpty,
+                                { width: "30%" },
+                              ]}
+                            ></Text>
+                            <Text style={[templateA5Styles.totalIgstAmount]}>
+                              {formatCurrency(totalCGST)}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              templateA5Styles.igstTotal,
+                              { width: colWidths[7] },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                templateA5Styles.totalEmpty,
+                                { width: "30%" },
+                              ]}
+                            ></Text>
+                            <Text
+                              style={[
+                                templateA5Styles.totalIgstAmount,
+                                { borderRight: "1px solid #0371C1" },
+                              ]}
+                            >
+                              {formatCurrency(totalSGST)}
+                            </Text>
+                          </View>
+                        </>
+                      ) : null}
+                      <Text
+                        style={[
+                          templateA5Styles.grandTotal,
+                          { width: colWidths[totalColumnIndex] },
+                        ]}
+                      >
+                        {formatCurrency(totalAmount)}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Vertical borders */}
+                  {borderPositions.map((pos, index) => (
+                    <View
+                      key={index}
+                      style={[templateA5Styles.verticalBorder, { left: pos }]}
+                    />
+                  ))}
                 </View>
-
-                {pageItems.map((item, index) => (
-                  <View key={index} style={templateA5Styles.itemsTableRow}>
-                    <Text style={[templateA5Styles.srNoCell, {width:colWidths[0]} ]}>
-                      {pageIndex * itemsPerPage + index + 1}
-                    </Text>
-                    <Text style={[templateA5Styles.productCell, { width: colWidths[1] },]}>
-                      {item.name}
-                    </Text>
-                    <Text style={[templateA5Styles.hsnCell, {width: colWidths[2]}]}>
-                      {item.code || "-"}
-                    </Text>
-                    <Text style={[templateA5Styles.qtyCell , {width: colWidths[3]}]}>
-                      {item.quantity || 0} {item.unit}
-                    </Text>
-                    <Text style={[templateA5Styles.rateCell, {width: colWidths[4]}]}>
-                      {formatCurrency(item.pricePerUnit || 0)}
-                    </Text>
-                    <Text style={[templateA5Styles.taxableCell , {width: colWidths[5]}]}>
-                      {formatCurrency(item.taxableValue)}
-                    </Text>
-                    {showIGST ? (
-                      <View style={[templateA5Styles.igstCell, { width: colWidths[6] },]}>
-                        <Text style={templateA5Styles.igstPercent}>
-                          {item.gstRate}
-                        </Text>
-                        <Text style={templateA5Styles.igstAmount}>
-                          {formatCurrency(item.igst)}
-                        </Text>
-                      </View>
-                    ) : showCGSTSGST ? (
-                      <>
-                        <View style={[templateA5Styles.igstCell , { width: colWidths[6] },]}>
-                          <Text style={templateA5Styles.igstPercent}>
-                            {(item.gstRate / 2)}
-                          </Text>
-                          <Text style={templateA5Styles.igstAmount}>
-                            {formatCurrency(item.cgst)}
-                          </Text>
-                        </View>
-                        <View style={[templateA5Styles.igstCell , { width: colWidths[7] },]}>
-                          <Text style={templateA5Styles.igstPercent}>
-                            {(item.gstRate / 2)}
-                          </Text>
-                          <Text style={templateA5Styles.igstAmount}>
-                            {formatCurrency(item.sgst)}
-                          </Text>
-                        </View>
-                      </>
-                    ) : null}
-                    <Text style={[templateA5Styles.totalCell, { width: colWidths[totalColumnIndex] }]}>
-                      {formatCurrency(item.total)}
-                    </Text>
-                  </View>
-                ))}
-
-                {isLastPage && (
-                  <View style={templateA5Styles.itemsTableTotalRow}>
-                    <Text style={[templateA5Styles.totalLabel, { width: colWidths[0] }]}></Text>
-                    <Text style={[templateA5Styles.totalEmpty, { width: colWidths[1] }]}></Text>
-                    <Text style={[templateA5Styles.totalEmpty, { width: colWidths[2] , borderRight:"1px solid #0371C1" }]}>Total</Text>
-                    <Text style={[templateA5Styles.totalQty, { width: colWidths[3], borderRight:"1px solid #0371C1" }]}>
-                      {totalQty.toFixed(2)}
-                    </Text>
-                    <Text style={[templateA5Styles.totalEmpty, { width: colWidths[4]}]}></Text>
-                    <Text style={[templateA5Styles.totalTaxable, { width: colWidths[5] , borderRight:"1px solid #0371C1", borderLeft:"1px solid #0371C1" }]}>
-                      {formatCurrency(totalTaxable)}
-                    </Text>
-                    {showIGST ? (
-                      <View style={[templateA5Styles.igstTotal, { width: colWidths[6] }]}>
-                        <Text style={[templateA5Styles.totalEmpty ,{width:"30%"} ]}></Text>
-                        <Text style={[templateA5Styles.totalIgstAmount,{  borderRight:"1px solid #0371C1",}]}>
-                          {formatCurrency(totalIGST)}
-                        </Text>
-                      </View>
-                    ) : showCGSTSGST ? (
-                      <>
-                        <View style={[templateA5Styles.igstTotal, { width: colWidths[6] }]}>
-                          <Text style={[templateA5Styles.totalEmpty, {width:"30%"}]}></Text>
-                          <Text style={[templateA5Styles.totalIgstAmount, ]}>
-                            {formatCurrency(totalCGST)}
-                          </Text>
-                        </View>
-                        <View style={[templateA5Styles.igstTotal, { width: colWidths[7] }]}>
-                          <Text style={[templateA5Styles.totalEmpty, {width:"30%"}]}></Text>
-                          <Text style={[templateA5Styles.totalIgstAmount,{  borderRight:"1px solid #0371C1",}]}>
-                            {formatCurrency(totalSGST)}
-                          </Text>
-                        </View>
-                      </>
-                    ) : null}
-                    <Text style={[templateA5Styles.grandTotal, { width: colWidths[totalColumnIndex] }]}>
-                      {formatCurrency(totalAmount)}
-                    </Text>
-                  </View>
-                )}
               </View>
 
               {isLastPage && (
@@ -616,7 +803,12 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
 
                         return (
                           <View style={templateA5Styles.termsBox}>
-                            <Text style={[templateA5Styles.termLine, { fontWeight: "bold" }]}>
+                            <Text
+                              style={[
+                                templateA5Styles.termLine,
+                                { fontWeight: "bold" },
+                              ]}
+                            >
                               {title}
                             </Text>
                             {listItems.map((item, index) => (
@@ -649,19 +841,32 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                   <View style={templateA5Styles.rightSection}>
                     <View style={templateA5Styles.totalRow}>
                       <Text style={templateA5Styles.label}>Taxable Amount</Text>
-                      <Text style={templateA5Styles.value}>{formatCurrency(totalTaxable)}</Text>
-                    </View>
-
-                    <View style={templateA5Styles.totalRow}>
-                      <Text style={templateA5Styles.label}>Total Tax</Text>
                       <Text style={templateA5Styles.value}>
-                        {formatCurrency(showIGST ? totalIGST : totalCGST + totalSGST)}
+                        {formatCurrency(totalTaxable)}
                       </Text>
                     </View>
 
-                    <View style={[templateA5Styles.totalRow, templateA5Styles.highlightRow]}>
-                      <Text style={templateA5Styles.labelBold}>Total Amount After Tax</Text>
-                      <Text style={templateA5Styles.valueBold}>
+                    {isGSTApplicable && (
+                      <View style={templateA5Styles.totalRow}>
+                        <Text style={templateA5Styles.label}>Total Tax</Text>
+                        <Text style={templateA5Styles.value}>
+                          {formatCurrency(
+                            showIGST ? totalIGST : totalCGST + totalSGST
+                          )}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View
+                      style={[
+                        templateA5Styles.totalRow,
+                        isGSTApplicable ? templateA5Styles.highlightRow : {},
+                      ]}
+                    >
+                      <Text style={isGSTApplicable ? templateA5Styles.labelBold : templateA5Styles.label}>
+                        {isGSTApplicable ? "Total Amount After Tax" : "Total Amount"}
+                      </Text>
+                      <Text style={isGSTApplicable ? templateA5Styles.valueBold : templateA5Styles.value}>
                         {/* <Text style={templateA5Styles.currencySymbol}></Text> */}
                         {formatCurrency(totalAmount)}
                       </Text>
@@ -669,17 +874,23 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
 
                     <View style={templateA5Styles.totalRow}>
                       <Text style={templateA5Styles.label}>
-                        For {company?.businessName || company?.companyName || "Company Name"}
+                        For{"-"}
+                        {company?.businessName ||
+                          company?.companyName ||
+                          "Company Name"}
                       </Text>
                       <Text style={templateA5Styles.value}>(E & O.E.)</Text>
                     </View>
-
-                   
                   </View>
                 </View>
               )}
 
+             
             </View>
+             {/* Page Number */}
+              <Text style={templateA5Styles.pageNumber}>
+                {pageIndex + 1} / {pages.length} page
+              </Text>
           </Page>
         );
       })}
@@ -711,4 +922,3 @@ export const generatePdfForTemplateA5 = async (
 };
 
 export default TemplateA5PDF;
-

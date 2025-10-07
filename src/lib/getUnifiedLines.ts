@@ -17,7 +17,11 @@ export function getUnifiedLines(
     code?: string;
   }> = [];
 
-  const num = (n: any, d = 0) => (n == null || n === "" ? d : Number(n));
+  const num = (n: any, d = 0) => {
+    if (n == null || n === "") return d;
+    const parsed = Number(n);
+    return isNaN(parsed) ? d : parsed;
+  };
 
   const pushRow = (row: any, itemType: "product" | "service") => {
     const isService = itemType === "service";
