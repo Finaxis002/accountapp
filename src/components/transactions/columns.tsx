@@ -1089,7 +1089,7 @@ export const columns = ({
             .toString()
             .slice(-6)
             .toUpperCase()}.pdf`;
-          doc.save(fname);
+          // doc.save(fname);
         };
 
         // const handleSendWhatsApp = async () => {
