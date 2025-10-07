@@ -178,16 +178,7 @@ export function TemplateSettings() {
         let docPromise: Promise<jsPDF>;
 
         switch (selectedTemplate) {
-          case "template1":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate1(
-                dummyTransaction,
-                dummyCompany,
-                dummyParty,
-                dummyServiceNames
-              )
-            );
-            break;
+         
           case "template2":
             docPromise = Promise.resolve(
               generatePdfForTemplate2(
