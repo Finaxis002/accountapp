@@ -31,6 +31,8 @@ import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 // priya
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
 import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
+import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
+import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
 
 //amit
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
@@ -48,6 +50,8 @@ type TemplateKey =
   | "template7"
   | "template8"
   | "templateA5"
+  | "templateA5_3"
+  | "templateA5_4"
   | "template16"
   | "template17";
 
@@ -72,7 +76,7 @@ export function InvoicePreview({
 }: InvoicePreviewProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [selectedTemplate, setSelectedTemplate] =
-    React.useState<TemplateKey>("template8");
+    React.useState<TemplateKey>("template1");
 
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -168,11 +172,24 @@ export function InvoicePreview({
             : null;
 
         if (
+          selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
-          selectedTemplate === "templateA5"
+          selectedTemplate === "templateA5" ||
+          selectedTemplate === "templateA5_3"||
+          selectedTemplate === "templateA5_4"
         ) {
           // Template 8 and Template A5 use react-pdf and return Blob directly
           switch (selectedTemplate) {
+             case "template1":
+              pdfBlob = await generatePdfForTemplate1(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
             case "template8":
               pdfBlob = await generatePdfForTemplate8(
                 transaction,
@@ -194,23 +211,35 @@ export function InvoicePreview({
                 client
               );
               break;
+             case "templateA5_3":
+              pdfBlob = await generatePdfForTemplateA5_3(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+              case "templateA5_4":
+              pdfBlob = await generatePdfForTemplateA5_4(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
           }
         } else {
           // Other templates use jsPDF
           let docPromise: Promise<jsPDF>;
 
           switch (selectedTemplate) {
-            case "template1":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate1(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
+          
             case "template2":
               docPromise = Promise.resolve(
                 generatePdfForTemplate2(
@@ -405,8 +434,8 @@ export function InvoicePreview({
               <SelectValue placeholder="Select a template" />
             </SelectTrigger>
             <SelectContent>
-              {/* <SelectItem value="template1">Professional</SelectItem>
-              <SelectItem value="template2">Creative</SelectItem>
+              <SelectItem value="template1">Template 1</SelectItem>
+             {/*  <SelectItem value="template2">Creative</SelectItem>
               <SelectItem value="template3">Modern</SelectItem>
               <SelectItem value="template4">Minimal</SelectItem>
               <SelectItem value="template5">Refined</SelectItem>
@@ -415,6 +444,8 @@ export function InvoicePreview({
               {/* priya  */}
               <SelectItem value="template8">Template 8</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
+              <SelectItem value="templateA5_3">Template A5-3</SelectItem>
+              <SelectItem value="templateA5_4">Template A5-4</SelectItem>
               {/* amit  */}
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>

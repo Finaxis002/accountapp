@@ -3013,3 +3013,18 @@
 //     return "template1";
 //   }
 // }
+
+// Re-export the template functions
+export { generatePdfForTemplate1 } from "./pdf-template1";
+export { generatePdfForTemplate2 } from "./pdf-template2";
+export { generatePdfForTemplate3 } from "./pdf-template3";
+export { generatePdfForTemplate4 } from "./pdf-template4";
+export { generatePdfForTemplate5 } from "./pdf-template5";
+export { generatePdfForTemplate6 } from "./pdf-template6";
+export { generatePdfForTemplate7 } from "./pdf-template7";
+export { generatePdfForTemplate8 } from "./pdf-template8";
+export { generatePdfForTemplateA5 } from "./pdf-templateA5";
+export { generatePdfForTemplateA5_3 } from "./pdf-templateA5-3";
+export { generatePdfForTemplateA5_4 } from "./pdf-templateA5-4";
+export { generatePdfForTemplate16 } from "./pdf-template16";
+export { generatePdfForTemplate17 } from "./pdf-template17";
