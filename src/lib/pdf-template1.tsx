@@ -116,7 +116,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
     : totalColumnIndexNoTax;
 
   // Calculate table width in points (A5: 420pt width, padding 20pt each side, section border 1.5pt each side)
-  const tableWidth = showCGSTSGST ? 491 : showIGST ? 520 : 550;
+  const tableWidth = showCGSTSGST ? 491 : showIGST ? 520 : 540;
 
   // Calculate vertical border positions
   const borderPositions: number[] = [];
@@ -1080,7 +1080,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                     <Text
                                       style={[
                                         template1Styles.totalIgstAmount,
-                                        { borderRight: "1px solid #0371C1" },
+                                        // { borderRight: "1px solid #0371C1" },
                                       ]}
                                     >
                                       {formatCurrency(totalIGST)}
@@ -1123,9 +1123,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                       <Text
                                         style={[
                                           template1Styles.totalIgstAmount,
-                                          {
-                                            borderRight: "1px solid #0371C1",
-                                          },
+                                         
                                         ]}
                                       >
                                         {formatCurrency(totalSGST)}
