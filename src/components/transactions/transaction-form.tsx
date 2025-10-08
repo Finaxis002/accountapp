@@ -3222,10 +3222,7 @@ export function TransactionForm({
                         )}
                       />
                     </div>
-
-                    {gstEnabled && (
-                      <>
-                        {/* HSN Code */}
+                     {/* HSN Code */}
                         <div className="min-w-[100px] flex-1">
                           <FormItem>
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -3245,6 +3242,10 @@ export function TransactionForm({
                             </div>
                           </FormItem>
                         </div>
+
+                    {gstEnabled && (
+                      <>
+                       
 
                         {/* GST % */}
                         <div className="min-w-[100px] flex-1">
@@ -3463,10 +3464,7 @@ export function TransactionForm({
                         )}
                       />
                     </div>
-
-                    {gstEnabled && (
-                      <>
-                        {/* SAC Code */}
+                      {/* SAC Code */}
                         <div className="md:col-span-2">
                           <FormItem>
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -3486,6 +3484,10 @@ export function TransactionForm({
                             </div>
                           </FormItem>
                         </div>
+
+                    {gstEnabled && (
+                      <>
+                      
 
                         {/* GST % */}
                         <div className="md:col-span-2">
