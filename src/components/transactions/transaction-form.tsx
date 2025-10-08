@@ -1741,7 +1741,20 @@ export function TransactionForm({
             }
 
             const pdfInstance = await pdfDoc;
-            const pdfBase64 = pdfInstance.output("datauristring").split(",")[1];
+            let pdfBase64: string;
+            if (pdfInstance instanceof Blob) {
+              // For @react-pdf/renderer templates (return Blob)
+              const reader = new FileReader();
+              reader.readAsDataURL(pdfInstance);
+              await new Promise<void>((resolve) => {
+                reader.onload = () => resolve();
+              });
+              const dataUrl = reader.result as string;
+              pdfBase64 = dataUrl.split(",")[1];
+            } else {
+              // For jsPDF templates (return jsPDF instance)
+              pdfBase64 = pdfInstance.output("datauristring").split(",")[1];
+            }
 
             const subject = `Invoice From ${
               companyDoc?.businessName ?? "Your Company"

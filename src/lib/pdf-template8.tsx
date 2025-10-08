@@ -24,6 +24,7 @@ import {
   calculateGST,
   getUnifiedLines,
   prepareTemplate8Data,
+  numberToWords,
 } from "./pdf-utils";
 import { template8Styles } from "./pdf-template-styles";
 
@@ -61,11 +62,15 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
     showIGST,
     showCGSTSGST,
     showNoTax,
-    pages,
-    itemsPerPage,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
 
-  console.log("bank details" , bank);
+  const itemsPerPage = 18;
+  const pages = [];
+  for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
+    pages.push(itemsWithGST.slice(i, i + itemsPerPage));
+  }
+
+  console.log("bank details", bank);
 
   // Define column widths based on GST applicability
   const getColWidths = () => {
@@ -110,85 +115,89 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
         const isLastPage = pageIndex === pages.length - 1;
         return (
           <Page key={pageIndex} size="A4" style={template8Styles.page}>
-           <View  style={{marginBottom: 4}}>
-             {/* Header Section */}
-            <View style={template8Styles.header}>
-              <Text style={template8Styles.title}>
-                {isGSTApplicable ? "TAX INVOICE" : "INVOICE"}
-              </Text>
-              <Text style={template8Styles.companyName}>
-                {company?.businessName ||
-                  company?.companyName ||
-                  "Company Name"}
-              </Text>
+            <View style={{ marginBottom: 4 }}>
+              {/* Header Section */}
+              <View style={template8Styles.header}>
+                <Text style={template8Styles.title}>
+                  {isGSTApplicable ? "TAX INVOICE" : "INVOICE"}
+                </Text>
+                <Text style={template8Styles.companyName}>
+                  {company?.businessName ||
+                    company?.companyName ||
+                    "Company Name"}
+                </Text>
 
-              <View>
-                {company?.gstin && (
+                <View>
+                  {company?.gstin && (
+                    <Text
+                      style={[
+                        template8Styles.addressText,
+                        template8Styles.grayColor,
+                      ]}
+                    >
+                      <Text
+                        style={[template8Styles.boldText, { fontSize: 10 }]}
+                      >
+                        GSTIN{" "}
+                      </Text>
+                      <Text
+                        style={{ color: "#3d3d3d", fontWeight: "semibold" }}
+                      >
+                        {company.gstin}{" "}
+                      </Text>
+                    </Text>
+                  )}
                   <Text
                     style={[
                       template8Styles.addressText,
                       template8Styles.grayColor,
                     ]}
                   >
-                    <Text style={[template8Styles.boldText, { fontSize: 10 }]}>
-                      GSTIN{" "}
+                    {company?.address || "Address Line 1"}
+                  </Text>
+                  <Text
+                    style={[
+                      template8Styles.addressText,
+                      template8Styles.grayColor,
+                    ]}
+                  >
+                    {company?.City || "City"}
+                  </Text>
+                  <Text
+                    style={[
+                      template8Styles.addressText,
+                      template8Styles.grayColor,
+                    ]}
+                  >
+                    {company?.addressState || "State"} -{" "}
+                    {company?.Pincode || "Pincode"}
+                  </Text>
+                  <Text
+                    style={[
+                      template8Styles.addressText,
+                      template8Styles.grayColor,
+                    ]}
+                  >
+                    <Text style={[template8Styles.boldText, { fontSize: "9" }]}>
+                      Phone{" "}
                     </Text>
-                    <Text style={{ color: "#3d3d3d", fontWeight: "semibold" }}>
-                      {company.gstin}{" "}
+                    <Text>
+                      {company?.mobileNumber || company?.Telephone || "Phone"}
                     </Text>
                   </Text>
-                )}
-                <Text
-                  style={[
-                    template8Styles.addressText,
-                    template8Styles.grayColor,
-                  ]}
-                >
-                  {company?.address || "Address Line 1"}
-                </Text>
-                <Text
-                  style={[
-                    template8Styles.addressText,
-                    template8Styles.grayColor,
-                  ]}
-                >
-                  {company?.City || "City"}
-                </Text>
-                <Text
-                  style={[
-                    template8Styles.addressText,
-                    template8Styles.grayColor,
-                  ]}
-                >
-                  {company?.addressState || "State"} -{" "}
-                  {company?.Pincode || "Pincode"}
-                </Text>
-                <Text
-                  style={[
-                    template8Styles.addressText,
-                    template8Styles.grayColor,
-                  ]}
-                >
-                  <Text style={[template8Styles.boldText, { fontSize: "9" }]}>
-                    Phone{" "}
-                  </Text>
-                  <Text>
-                    {company?.mobileNumber || company?.Telephone || "Phone"}
-                  </Text>
-                </Text>
+                </View>
               </View>
-            </View>
 
-            {/* Logo */}
-            <Image
-              src={logo}
-              style={{
-                position: "absolute",
-                right: 40,
-                width: 100,
-                height: 100,
-              }}
-            />
+              {/* Logo */}
+              <Image
+                src={logo}
+                style={{
+                  position: "absolute",
+                  right: 40,
+                  width: 100,
+                  height: 100,
+                }}
+              />
             </View>
 
             <View style={template8Styles.dividerBlue} />
@@ -779,10 +788,21 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                     )}
 
                     <View style={template8Styles.totalsRow}>
-                      <Text style={template8Styles.boldText}>Total Amount</Text>
+                      <Text style={template8Styles.boldText}>
+                        {isGSTApplicable ? "Total Amount After Tax" : "Total Amount"}
+                      </Text>
                       <Text>
                         <Text style={template8Styles.smallRs}>Rs</Text>{" "}
                         {totalAmount.toFixed(2)}
+                      </Text>
+                    </View>
+
+                    {/* Total in words */}
+                    <View style={template8Styles.totalsRow}>
+                      <Text
+                        style={{ fontSize: 8, marginTop: 4, marginRight: 8 }}
+                      >
+                        Total in words : {numberToWords(totalAmount)}
                       </Text>
                     </View>
                   </View>
@@ -809,35 +829,85 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                     </View>
                   </View>
 
-                 <View>
-  <Text style={template8Styles.boldText}>Bank Details:</Text>
-  {bank && typeof bank === 'object' && bank.bankName ? (
-    <View style={{ marginTop: 4 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-        <Text style={[template8Styles.normalText, {marginRight:28}]}>Name:</Text>
-        <Text style={[template8Styles.normalText, {display:"flex", justifyContent:"flex-start"}]}>{bank.bankName}</Text>
-      </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-        <Text style={template8Styles.normalText}>Branch:</Text>
-        <Text style={[template8Styles.normalText, {display:"flex", justifyContent:"flex-start"}]}>{bank.branchAddress}</Text>
-      </View>
-      {/* <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                  <View>
+                    <Text style={template8Styles.boldText}>Bank Details:</Text>
+                    {bank && typeof bank === "object" && bank.bankName ? (
+                      <View style={{ marginTop: 4 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            marginBottom: 4,
+                          }}
+                        >
+                          <Text
+                            style={[
+                              template8Styles.normalText,
+                              { marginRight: 28 },
+                            ]}
+                          >
+                            Name:
+                          </Text>
+                          <Text
+                            style={[
+                              template8Styles.normalText,
+                              { display: "flex", justifyContent: "flex-start" },
+                            ]}
+                          >
+                            {bank.bankName}
+                          </Text>
+                        </View>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            marginBottom: 4,
+                          }}
+                        >
+                          <Text style={template8Styles.normalText}>
+                            Branch:
+                          </Text>
+                          <Text
+                            style={[
+                              template8Styles.normalText,
+                              { display: "flex", justifyContent: "flex-start" },
+                            ]}
+                          >
+                            {bank.branchAddress}
+                          </Text>
+                        </View>
+                        {/* <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
         <Text style={template8Styles.normalText}>Acc. Number:</Text>
         <Text style={template8Styles.normalText}>{bank.accountNumber}</Text>
       </View> */}
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-        <Text style={template8Styles.normalText}>IFSC:</Text>
-        <Text style={[template8Styles.normalText, {display:"flex", justifyContent:"flex-start"}]}>{bank.ifscCode}</Text>
-      </View>
-      {/* <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            marginBottom: 4,
+                          }}
+                        >
+                          <Text style={template8Styles.normalText}>IFSC:</Text>
+                          <Text
+                            style={[
+                              template8Styles.normalText,
+                              { display: "flex", justifyContent: "flex-start" },
+                            ]}
+                          >
+                            {bank.ifscCode}
+                          </Text>
+                        </View>
+                        {/* <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <Text style={template8Styles.normalText}>UPI ID:</Text>
         <Text style={template8Styles.normalText}>{bank.upiId}</Text>
       </View> */}
-    </View>
-  ) : (
-    <Text style={template8Styles.normalText}>No bank details available</Text>
-  )}
-</View>
+                      </View>
+                    ) : (
+                      <Text style={template8Styles.normalText}>
+                        No bank details available
+                      </Text>
+                    )}
+                  </View>
 
                   {/* Stamp */}
                   {/* <View style={template8Styles.stamp}>
@@ -860,25 +930,40 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                     (() => {
                       // Parse HTML notes
                       const notesHtml = transaction.notes;
-                      const titleMatch = notesHtml.match(/<span class="ql-size-large">(.*?)<\/span>/);
-                      const title = titleMatch ? titleMatch[1].replace(/&/g, '&') : "Terms and Conditions";
+                      const titleMatch = notesHtml.match(
+                        /<span class="ql-size-large">(.*?)<\/span>/
+                      );
+                      const title = titleMatch
+                        ? titleMatch[1].replace(/&/g, "&")
+                        : "Terms and Conditions";
 
                       const listItems = [];
                       const liRegex = /<li[^>]*>(.*?)<\/li>/g;
                       let match;
                       while ((match = liRegex.exec(notesHtml)) !== null) {
                         // Strip HTML tags from item
-                        const cleanItem = match[1].replace(/<[^>]*>/g, '').replace(/&/g, '&');
+                        const cleanItem = match[1]
+                          .replace(/<[^>]*>/g, "")
+                          .replace(/&/g, "&");
                         listItems.push(cleanItem);
                       }
 
                       return (
                         <>
-                          <Text style={[template8Styles.boldText, { fontSize: 12 }]}>
+                          <Text
+                            style={[template8Styles.boldText, { fontSize: 12 }]}
+                          >
                             {title}
                           </Text>
                           {listItems.map((item, index) => (
-                            <Text key={index} style={{ textAlign: 'left', marginTop: 4, fontSize: 8 }}>
+                            <Text
+                              key={index}
+                              style={{
+                                textAlign: "left",
+                                marginTop: 4,
+                                fontSize: 8,
+                              }}
+                            >
                               • {item}
                             </Text>
                           ))}
@@ -902,6 +987,11 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                 </View>
               </>
             )}
+
+            {/* Page Number */}
+            <Text style={template8Styles.pageNumber}>
+              {pageIndex + 1} / {pages.length} Page
+            </Text>
           </Page>
         );
       })}

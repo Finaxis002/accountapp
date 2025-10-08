@@ -1,5 +1,7 @@
   import type { Company, Party, Transaction, ShippingAddress, Bank } from "@/lib/types";
+  import { Text } from "@react-pdf/renderer";
   import { getUnifiedLines } from "./getUnifiedLines";
+import { Rss } from "lucide-react";
   export { getUnifiedLines };
 
   const stateCodeMap: Record<string, string> = {
@@ -100,7 +102,69 @@
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
-    return `Rs. ${formatted}`;
+   return `Rs. ${formatted}`;
+  };
+
+  export const numberToWords = (num: number): string => {
+    if (num === 0) return "ZERO";
+
+    const ones = [
+      "", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
+      "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN",
+      "SEVENTEEN", "EIGHTEEN", "NINETEEN"
+    ];
+
+    const tens = [
+      "", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"
+    ];
+
+    const scales = ["", "THOUSAND", "LAKH", "CRORE"];
+
+    const convertHundreds = (n: number): string => {
+      let str = "";
+      if (n > 99) {
+        str += ones[Math.floor(n / 100)] + " HUNDRED ";
+        n %= 100;
+      }
+      if (n > 19) {
+        str += tens[Math.floor(n / 10)] + " ";
+        n %= 10;
+      }
+      if (n > 0) {
+        str += ones[n] + " ";
+      }
+      return str.trim();
+    };
+
+    const convertToWords = (n: number): string => {
+      if (n === 0) return "";
+
+      let words = "";
+      let scaleIndex = 0;
+
+      while (n > 0) {
+        if (n % 1000 !== 0) {
+          words = convertHundreds(n % 1000) + (scales[scaleIndex] ? " " + scales[scaleIndex] : "") + " " + words;
+        }
+        n = Math.floor(n / 1000);
+        scaleIndex++;
+      }
+
+      return words.trim();
+    };
+
+    const integerPart = Math.floor(num);
+    const decimalPart = Math.round((num - integerPart) * 100);
+
+    let result = convertToWords(integerPart);
+
+    if (decimalPart > 0) {
+      result += " AND " + convertToWords(decimalPart) + " PAISE ONLY";
+    } else {
+      result += " RUPEES ONLY";
+    }
+
+    return result.trim();
   };
 
   export const renderNotes = (
@@ -536,6 +600,42 @@
     };
   };
 
+
+// Helper function to group items by HSN/SAC and calculate totals
+export const getHsnSummary = (items: any[], showIGST: boolean, showCGSTSGST: boolean) => {
+  const hsnMap = new Map();
+  
+  items.forEach(item => {
+    const hsnCode = item.code || '-';
+    if (!hsnMap.has(hsnCode)) {
+      hsnMap.set(hsnCode, {
+        hsnCode,
+        taxableValue: 0,
+        taxRate: item.gstRate || 0,
+        taxAmount: 0,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        total: 0
+      });
+    }
+    
+    const existing = hsnMap.get(hsnCode);
+    existing.taxableValue += item.taxableValue;
+    
+    if (showIGST) {
+      existing.taxAmount += item.igst || 0;
+    } else if (showCGSTSGST) {
+      existing.cgstAmount += item.cgst || 0;
+      existing.sgstAmount += item.sgst || 0;
+      existing.taxAmount = existing.cgstAmount + existing.sgstAmount;
+    }
+    
+    existing.total += item.total;
+  });
+  
+  return Array.from(hsnMap.values());
+};
+
   export const prepareTemplate8Data = (
     transaction: Transaction,
     company?: Company | null,
@@ -599,11 +699,7 @@
     const showCGSTSGST = isGSTApplicable && !isInterstate;
     const showNoTax = !isGSTApplicable;
 
-    const itemsPerPage = 18;
-    const pages = [];
-    for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
-      pages.push(itemsWithGST.slice(i, i + itemsPerPage));
-    }
+
 
     return {
       totals,
@@ -622,7 +718,5 @@
       showIGST,
       showCGSTSGST,
       showNoTax,
-      pages,
-      itemsPerPage,
     };
   };
