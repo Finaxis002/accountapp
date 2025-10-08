@@ -2347,160 +2347,124 @@ hsnTaxTotalCell: {
 
 
 export const template_t3 = StyleSheet.create({
-    page: {
-      flexDirection: 'column',
-      backgroundColor: '#FFFFFF',
-      padding: 20,
-      fontSize: 9,
-      fontFamily: 'Helvetica',
-      paddingHorizontal:100
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-      alignItems:"center",
-    },
-    companyInfo: {
-      flex: 1,
-      alignItems:"center",
-      textAlign:"center",
-      width:"100%"
-    },
-    companyName: {
-      fontSize: 14,
-      fontWeight: 'bold',
-      marginBottom: 4,
-    },
-    companyAddress: {
-      fontSize: 9,
-      marginBottom: 2,
-      lineHeight: 1.2,
-    },
-    gstin: {
-      fontSize: 9,
-      fontWeight: 'bold',
-      marginTop: 4,
-    },
-    invoiceNumber: {
-      fontSize: 9,
-      marginBottom: 2,
-    },
-    title: {
-      fontSize: 14,
-      fontWeight: 'bold',
-      textAlign: 'center',
-      marginVertical: 2,
-    },
-    billedToSection: {
-     flexDirection: 'row',
-      justifyContent: 'space-between',
-      // marginBottom: 10,
-      alignItems:"center",
-      gap:4
-    },
-    billedTo: {
-      flex: 2,
-    },
-    invoiceDetails: {
-      flex: 1,
-      alignItems: 'flex-end',
-    },
-    sectionTitle: {
-      fontSize: 10,
-      fontWeight: 'bold',
-      marginBottom: 4,
-    },
-    partyInfo: {
-      fontSize: 9,
-      lineHeight: 1.2,
-    },
-    itemsTable: {
-      width: '100%',
-      borderWidth: 1,
-      borderColor: '#000',
-      marginBottom: 10,
-    },
-    tableHeader: {
-      flexDirection: 'row',
-      backgroundColor: '#f0f0f0',
-      borderBottomWidth: 1,
-      borderBottomColor: '#000',
-    },
-    tableRow: {
-      flexDirection: 'row',
-      borderBottomWidth: 1,
-      borderBottomColor: '#000',
-      minHeight: 30,
-    },
-    tableCell: {
-      padding: 4,
-      borderRightWidth: 1,
-      borderRightColor: '#000',
-      justifyContent: 'center',
-    },
-    lastCell: {
-      padding: 4,
-      justifyContent: 'center',
-    },
-    srNoCell: {
-      width: '5%',
-      textAlign: 'center',
-    },
-    descriptionCell: {
-      width: '50%',
-    },
-    qtyCell: {
-      width: '10%',
-      textAlign: 'center',
-    },
-    rateCell: {
-      width: '15%',
-      textAlign: 'right',
-      paddingRight: 8,
-    },
-    totalCell: {
-      width: '20%',
-      textAlign: 'right',
-      paddingRight: 8,
-    },
-    itemDescription: {
-      fontSize: 9,
-      lineHeight: 1.2,
-    },
-    itemCode: {
-      fontSize: 8,
-      color: '#666',
-    },
-    hsnCode: {
-      fontSize: 8,
-      fontWeight: 'bold',
-      marginTop: 2,
-    },
-    totalsSection: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      marginTop: 10,
-    },
-    totalsTable: {
-      width: '40%',
-    },
-    totalRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 4,
-      paddingHorizontal: 8,
-    },
-    totalLabel: {
-      fontWeight: 'bold',
-    },
-    totalValue: {
-      textAlign: 'right',
-    },
-    footer: {
-      marginTop: 20,
-      fontSize: 8,
-      textAlign: 'center',
-      color: '#666',
-    },
-  });
+  page: {
+    flexDirection: 'column',
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    fontSize: 8,
+    fontFamily: 'Courier',
+    width: '100%',
+  },
+  centerText: {
+    textAlign: 'center',
+    width: '100%',
+  },
+  boldText: {
+    fontWeight: 'bold',
+    // fontFamily: 'Courier-Bold',
+  },
+  companyName: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 2,
+    // fontFamily: 'Courier-Bold',
+  },
+  companyAddress: {
+    fontSize: 7,
+    textAlign: 'center',
+    lineHeight: 1.2,
+    marginBottom: 3,
+  },
+  invoiceTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 4,
+    // textDecoration: 'underline',
+    // fontFamily: 'Courier-Bold',
+  },
+  section: {
+
+  },
+  billedinvoice:{
+  display:"flex",
+  justifyContent:"space-between"
+  },
+  sectionTitle: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginBottom: 2,
+    // fontFamily: 'Courier-Bold',
+  },
+  line: {
+    borderBottom: '1px solid #000',
+    marginVertical: 3,
+  },
+  dashedLine: {
+    borderBottom: '1px double-dashed #000',
+    marginVertical: 3,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 1,
+  },
+  col: {
+    flexDirection: 'column',
+  },
+  itemsHeader: {
+    flexDirection: 'row',
+    borderBottom: '1px solid #000',
+    borderTop: '1px solid #000',
+    paddingVertical: 2,
+    marginBottom: 2,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    paddingVertical: 1,
+    borderBottom: '0.5px solid #666',
+  },
+  colSr: {
+    width: '8%',
+    textAlign: 'center',
+  },
+  colItem: {
+    width: '42%',
+    paddingLeft: 2,
+  },
+  colHsn: {
+    width: '20%',
+    textAlign: 'left',
+  },
+  colQty: {
+    width: '10%',
+    textAlign: 'center',
+  },
+  colRate: {
+    width: '12%',
+    textAlign: 'right',
+    paddingRight: 2,
+  },
+  colTotal: {
+    width: '18%',
+    textAlign: 'right',
+    paddingRight: 2,
+  },
+  totalSection: {
+    marginTop: 4,
+    borderTop: '1px solid #000',
+    paddingTop: 3,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 1,
+  },
+  footer: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 7,
+    lineHeight: 1.2,
+  },
+});

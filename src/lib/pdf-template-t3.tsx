@@ -1,4 +1,14 @@
-// pdf-templateA5.tsx
+// pdf-template-t3.tsx
+import React from "react";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Font,
+  pdf,
+} from "@react-pdf/renderer";
 import type {
   Company,
   Party,
@@ -8,30 +18,55 @@ import type {
   Client,
 } from "@/lib/types";
 import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Image,
-  pdf,
-} from "@react-pdf/renderer";
-import {
-  deriveTotals,
+  prepareTemplate8Data,
   formatCurrency,
   getBillingAddress,
   getShippingAddress,
-  getItemsBody,
-  calculateGST,
-  getUnifiedLines,
-  prepareTemplate8Data,
   getStateCode,
   numberToWords,
 } from "./pdf-utils";
 
-import { template_t3 } from "./pdf-template-styles";
+// Register a monospace font for proper alignment
+Font.register({
+  family: "Courier",
+  fonts: [
+    { src: "https://fonts.cdnfonts.com/s/63309/CourierPrime-Regular.ttf" },
+  ],
+});
 
-const logo = "/assets/invoice-logos/R.png";
+const styles = StyleSheet.create({
+  page: {
+    fontSize: 8,
+    padding: 10,
+    width: 280, // approx 80mm roll width
+  },
+  center: { textAlign: "center" },
+  line: { marginVertical: 2 },
+  section: { marginBottom: 5 },
+  tableHeader: {
+    flexDirection: "row",
+    fontWeight: "bold",
+    marginTop: 4,
+    fontSize: 9,
+  },
+  tableRow: { 
+    flexDirection: "row", 
+    fontSize: 7, 
+    marginTop: 2,
+    alignItems: "flex-start",
+  },
+  colItem: { width: "40%" },
+  colGst: { width: "35%", paddingLeft: 5 },
+  colTotal: { width: "25%", textAlign: "right" },
+  bold: { fontWeight: "bold" },
+  borderLine: {
+    textAlign: "center",
+    marginVertical: 2,
+  },
+  gstLine: {
+    marginBottom: 1,
+  },
+});
 
 interface Template_t3Props {
   transaction: Transaction;
@@ -47,145 +82,184 @@ const Template_t3: React.FC<Template_t3Props> = ({
   company,
   party,
   shippingAddress,
-  bank,
-  client,
 }) => {
-
-  // Sample data based on your image
-  const sampleItems = [
-    {
-      srNo: 1,
-      description: "Wireless Security\nAjorn System\n64 WD\n22336655441\nIC 555\n234SC904509",
-      hsn: "HSN : 830ZII",
-      qty: "100 BOX",
-      rate: "4,236.44",
-      total: "4,998.00"
-    },
-    {
-      srNo: 2,
-      description: "Wireless Security\nComera SMP\nS6/We\n45666456654\n36/We\n45666456653",
-      hsn: "HSN : 830ZII",
-      qty: "3.00 PCS",
-      rate: "2,824.84",
-      total: "8,999.83"
-    },
-    {
-      srNo: 3,
-      description: "Dollar high\nDoubly cable",
-      hsn: "HSN : 823655",
-      qty: "4.00 BDL",
-      rate: "1,000.00",
-      total: "4,200.00"
-    }
-  ];
-
-  const calculateGrandTotal = () => {
-    return sampleItems.reduce((sum, item) => {
-      const total = parseFloat(item.total.replace(/,/g, ''));
-      return sum + total;
-    }, 0);
-  };
-
-  const grandTotal = calculateGrandTotal();
+  const {
+    totals,
+    totalTaxable,
+    totalAmount,
+    items,
+    totalItems,
+    totalQty,
+    itemsWithGST,
+    totalCGST,
+    totalSGST,
+    totalIGST,
+    isGSTApplicable,
+    isInterstate,
+    showIGST,
+    showCGSTSGST,
+    showNoTax,
+  } = prepareTemplate8Data(transaction, company, party, shippingAddress);
 
   return (
     <Document>
-      <Page size="A5" style={template_t3.page}>
-        {/* Header */}
-        <View style={template_t3.header}>
-          <View style={template_t3.companyInfo}>
-            <Text style={template_t3.companyName}>Global Securities</Text>
-            <Text style={template_t3.companyAddress}>Aarinta Quotient</Text>
-            <Text style={template_t3.companyAddress}>Shop No 1a</Text>
-            <Text style={template_t3.companyAddress}>Thana, Maharashtra - 40107</Text>
-            <Text style={template_t3.gstin}>GSTIN : 272MJHMT56HLT</Text>
-            <Text style={template_t3.companyAddress}>44324</Text>
-          </View>
+      <Page size={{ width: 280, height: "1000" }} style={styles.page}>
+        <View style={styles.center}>
+          <Text>{company?.businessName || company?.companyName || "Company Name"}</Text>
+          <Text>{[company?.address, company?.City, company?.addressState].filter(Boolean).join(", ")}</Text>
+          <Text>{company?.Country || "India"} - {company?.Pincode || ""}</Text>
+          <Text>{company?.mobileNumber || company?.Telephone || ""}</Text>
         </View>
 
-        {/* Divider */}
-        <View style={{ marginVertical: 2 , alignItems:"center"}} >
-          <Text>=======================================</Text>
+        <Text style={[styles.borderLine, { fontSize: 10 }]}>
+          =============================================
+        </Text>
+        <Text style={[styles.center, styles.bold]}>TAX INVOICE</Text>
+        <Text style={[styles.borderLine, { fontSize: 10 }]}>
+          =============================================
+        </Text>
+
+        <View style={styles.section}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            {/* Left side - Billed To section */}
+            <View style={{ flexDirection: "column", gap: 4 }}>
+              <Text style={styles.bold}>BILLED TO</Text>
+              <Text>{party?.name || "N/A"}</Text>
+              <Text>{party?.contactNumber || "N/A"}</Text>
+              <Text>{party?.gstin || "N/A"}</Text>
             </View>
 
-        {/* Invoice Title */}
-        <Text style={template_t3.title}>TAX INVOICE</Text>
-        <View style={{ marginVertical: 2 , alignItems:"center"}} >
-          <Text>=======================================</Text>
-            </View>
-
-        {/* Billed To Section */}
-        <View style={template_t3.billedToSection}>
-          <View style={template_t3.billedTo}>
-            <Text style={template_t3.sectionTitle}>BILLED TO</Text>
-            <Text style={template_t3.partyInfo}>Joy EnterPrices</Text>
-            <Text style={template_t3.partyInfo}>24CORPP3239MIZA</Text>
-            <Text style={template_t3.partyInfo}>AAUPMJ756H</Text>
-          </View>
-          <View style={template_t3.invoiceDetails}>
-            <Text style={template_t3.invoiceNumber}>INVOICE #: 2</Text>
-            <Text style={template_t3.invoiceNumber}>DATE: 24-Apr-2025</Text>
-          </View>
-        </View>
-
-        {/* Items Table */}
-        <View style={template_t3.itemsTable}>
-          {/* Table Header */}
-          <View style={template_t3.tableHeader}>
-            <View style={[template_t3.tableCell, template_t3.srNoCell]}>
-              <Text>#</Text>
-            </View>
-            <View style={[template_t3.tableCell, template_t3.descriptionCell]}>
-              <Text>Items</Text>
-            </View>
-            <View style={[template_t3.tableCell, template_t3.qtyCell]}>
-              <Text>Qty.</Text>
-            </View>
-            <View style={[template_t3.tableCell, template_t3.rateCell]}>
-              <Text>Rate</Text>
-            </View>
-            <View style={[template_t3.lastCell, template_t3.totalCell]}>
-              <Text>Total</Text>
-            </View>
-          </View>
-
-          {/* Table Rows */}
-          {sampleItems.map((item, index) => (
-            <View key={index} style={template_t3.tableRow}>
-              <View style={[template_t3.tableCell, template_t3.srNoCell]}>
-                <Text>{item.srNo}</Text>
+            {/* Right side - Invoice # and Date */}
+            <View style={{ alignItems: "flex-end" }}>
+              <View style={{ flexDirection: "column", gap: 4 }}>
+                <Text>
+                  <Text style={styles.bold}>INVOICE # :</Text> {transaction.invoiceNumber || "N/A"}
+                </Text>
+                <Text>
+                  <Text style={styles.bold}>DATE :</Text> {new Date(transaction.date).toLocaleDateString("en-IN")}
+                </Text>
               </View>
-              <View style={[template_t3.tableCell, template_t3.descriptionCell]}>
-                <Text style={template_t3.itemDescription}>{item.description}</Text>
-                <Text style={template_t3.hsnCode}>{item.hsn}</Text>
-              </View>
-              <View style={[template_t3.tableCell, template_t3.qtyCell]}>
-                <Text>{item.qty}</Text>
-              </View>
-              <View style={[template_t3.tableCell, template_t3.rateCell]}>
-                <Text>{item.rate}</Text>
-              </View>
-              <View style={[template_t3.lastCell, template_t3.totalCell]}>
-                <Text>{item.total}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Totals Section */}
-        <View style={template_t3.totalsSection}>
-          <View style={template_t3.totalsTable}>
-            <View style={template_t3.totalRow}>
-              <Text style={template_t3.totalLabel}>Grand Total:</Text>
-              <Text style={template_t3.totalValue}>{grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</Text>
             </View>
           </View>
         </View>
 
-        {/* Footer */}
-        <View style={template_t3.footer}>
-          <Text>This is a computer generated invoice</Text>
+        <Text style={[styles.borderLine, { fontSize: 10 }]}>
+          =============================================
+        </Text>
+        
+        {/* Updated Table Header */}
+        <View style={styles.tableHeader}>
+          <Text style={styles.colItem}>Item</Text>
+          <Text style={styles.colGst}>GST</Text>
+          <Text style={styles.colTotal}>Total</Text>
         </View>
+        
+        <Text style={[styles.borderLine, { fontSize: 10 }]}>
+          =============================================
+        </Text>
+
+        {/* Updated Table Rows */}
+        {itemsWithGST.map((item, index) => (
+          <View key={index} style={styles.tableRow}>
+            {/* Item Column */}
+            <View style={styles.colItem}>
+              <Text>{item.name}</Text>
+              <Text>HSN: {item.code || "-"}</Text>
+              <Text>{item.quantity || 0} {item.unit} @ {formatCurrency(item.pricePerUnit || 0)}</Text>
+            </View>
+
+            {/* GST Column - Apply same logic as A5 template */}
+            <View style={styles.colGst}>
+              {isGSTApplicable ? (
+                <>
+                  {showIGST ? (
+                    <Text style={styles.gstLine}>
+                      IGST-{item.gstRate}%: {formatCurrency(item.igst || 0).replace('Rs. ', '')}
+                    </Text>
+                  ) : showCGSTSGST ? (
+                    <>
+                      <Text style={styles.gstLine}>
+                        CGST-{(item.gstRate || 0) / 2}%: {formatCurrency(item.cgst || 0).replace('Rs. ', '')}
+                      </Text>
+                      <Text style={styles.gstLine}>
+                        SGST-{(item.gstRate || 0) / 2}%: {formatCurrency(item.sgst || 0).replace('Rs. ', '')}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.gstLine}>No Tax Applicable</Text>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.gstLine}>No Tax</Text>
+              )}
+            </View>
+
+            {/* Total Column */}
+            <View style={styles.colTotal}>
+              <Text>{formatCurrency(item.total || 0)}</Text>
+            </View>
+          </View>
+        ))}
+
+        <Text style={[styles.borderLine, { fontSize: 10 }]}>
+          =============================================
+        </Text>
+
+        {/* Totals Section - Apply same GST logic as A5 template */}
+        <View style={styles.section}>
+          <Text style={[styles.center, styles.bold]}>TOTAL AMOUNT</Text>
+          <Text style={[styles.borderLine, { fontSize: 10 }]}>
+            =============================================
+          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 2 }}>
+            <Text>Subtotal:</Text>
+            <Text>{formatCurrency(totalTaxable)}</Text>
+          </View>
+          
+          {isGSTApplicable && (
+            <>
+              {showIGST && (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 2 }}>
+                  <Text>IGST:</Text>
+                  <Text>{formatCurrency(totalIGST)}</Text>
+                </View>
+              )}
+              {showCGSTSGST && (
+                <>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 2 }}>
+                    <Text>CGST:</Text>
+                    <Text>{formatCurrency(totalCGST)}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 2 }}>
+                    <Text>SGST:</Text>
+                    <Text>{formatCurrency(totalSGST)}</Text>
+                  </View>
+                </>
+              )}
+            </>
+          )}
+          
+          <Text style={[styles.borderLine, { fontSize: 10 }]}>
+            =============================================
+          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 2 }}>
+            <Text style={styles.bold}>
+              {isGSTApplicable ? "Total Amount After Tax" : "Total Amount"}:
+            </Text>
+            <Text style={styles.bold}>{formatCurrency(totalAmount)}</Text>
+          </View>
+          <Text style={[styles.center, { marginTop: 4 }]}>
+            {numberToWords(totalAmount)}
+          </Text>
+        </View>
+
+        {/* Footer with company name */}
+        <View style={[styles.section, { marginTop: 10 }]}>
+          <Text style={[styles.center, { fontSize: 7 }]}>
+            For {company?.businessName || company?.companyName || "Company Name"} (E & O.E.)
+          </Text>
+        </View>
+
       </Page>
     </Document>
   );
@@ -195,7 +269,6 @@ export const generatePdfForTemplatet3 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
-  serviceNameById?: Map<string, string>,
   shippingAddress?: ShippingAddress | null,
   bank?: Bank | null,
   client?: Client | null
@@ -210,7 +283,6 @@ export const generatePdfForTemplatet3 = async (
       client={client}
     />
   );
-
   return await pdfDoc.toBlob();
 };
 

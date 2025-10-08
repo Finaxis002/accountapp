@@ -524,8 +524,11 @@ import { Rss } from "lucide-react";
       };
     }
 
-    // Check if customer state and shipping state are the same
-    const isInterstate = party?.state !== shippingAddress?.state;
+    // Check if supplier state and recipient state are different (interstate)
+    // If shipping address exists, compare with shipping state, otherwise compare with party billing state
+    const recipientState = shippingAddress?.state || party?.state;
+    const supplierState = company?.addressState;
+    const isInterstate = supplierState && recipientState ? supplierState.toLowerCase().trim() !== recipientState.toLowerCase().trim() : false;
 
     // Calculate GST amounts
     let cgst = 0;

@@ -1740,6 +1740,7 @@ export function TransactionForm({
                 );
             }
 
+            
             const pdfInstance = await pdfDoc;
             let pdfBase64: string;
             if (pdfInstance instanceof Blob) {
