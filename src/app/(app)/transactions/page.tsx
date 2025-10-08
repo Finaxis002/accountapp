@@ -27,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { TransactionForm } from "@/components/transactions/transaction-form";
+import { ProformaForm } from "@/components/transactions/proforma-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCompany } from "@/contexts/company-context";
 import { useToast } from "@/hooks/use-toast";
@@ -70,6 +71,7 @@ type TabKey =
   | "all"
   | "sales"
   | "purchases"
+  | "proforma"
   | "receipts"
   | "payments"
   | "journals";
@@ -78,6 +80,7 @@ type FormType = "sales" | "purchases" | "receipt" | "payment" | "journal";
 export default function TransactionsPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isProformaFormOpen, setIsProformaFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isItemsDialogOpen, setIsItemsDialogOpen] = React.useState(false);
@@ -92,6 +95,7 @@ export default function TransactionsPage() {
   const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [sales, setSales] = React.useState<Transaction[]>([]);
   const [purchases, setPurchases] = React.useState<Transaction[]>([]);
+  const [proforma, setProforma] = React.useState<Transaction[]>([]);
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
   const [journals, setJournals] = React.useState<Transaction[]>([]);
@@ -124,7 +128,7 @@ export default function TransactionsPage() {
   const { permissions: userCaps, role } = useUserPermissions(); // ensure your hook exposes role; otherwise get it from your auth context
   const isSuper = role === "master" || role === "client";
 
-  console.log("useUserPermissions :", userCaps)
+  console.log("useUserPermissions :", userCaps);
 
   const canSales = isSuper || !!userCaps?.canCreateSaleEntries;
   const canPurchases = isSuper || !!userCaps?.canCreatePurchaseEntries;
@@ -226,6 +230,10 @@ export default function TransactionsPage() {
         return parseResponse(data, ["purchaseEntries", "purchases", "entries"]);
       };
 
+      const parseProformaResponse = (data: any) => {
+        return parseResponse(data, ["proformaEntries", "proforma", "entries"]);
+      };
+
       const parseReceiptsResponse = (data: any) => {
         return parseResponse(data, ["receiptEntries", "receipts", "entries"]);
       };
@@ -292,6 +300,7 @@ export default function TransactionsPage() {
       const [
         salesArray,
         purchasesArray,
+        proformaArray,
         receiptsArray,
         paymentsArray,
         journalsArray,
@@ -318,6 +327,16 @@ export default function TransactionsPage() {
               `${baseURL}/api/purchase${queryParam}`,
               parsePurchasesResponse,
               "purchases"
+            ),
+          []
+        ),
+        maybeFetch(
+          canSales,
+          () =>
+            fetchAndParse(
+              `${baseURL}/api/proforma${queryParam}`,
+              parseProformaResponse,
+              "proforma"
             ),
           []
         ),
@@ -386,6 +405,7 @@ export default function TransactionsPage() {
       setPurchases(
         purchasesArray.map((p: any) => ({ ...p, type: "purchases" }))
       );
+      setProforma(proformaArray.map((p: any) => ({ ...p, type: "proforma" })));
       setReceipts(receiptsArray.map((r: any) => ({ ...r, type: "receipt" })));
       setPayments(paymentsArray.map((p: any) => ({ ...p, type: "payment" })));
       setJournals(
@@ -412,7 +432,16 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCompanyId, toast, baseURL, canSales, canPurchases, canReceipt, canPayment, canJournal]);
+  }, [
+    selectedCompanyId,
+    toast,
+    baseURL,
+    canSales,
+    canPurchases,
+    canReceipt,
+    canPayment,
+    canJournal,
+  ]);
 
   const productNameById = React.useMemo(() => {
     const m = new Map<string, string>();
@@ -464,6 +493,9 @@ export default function TransactionsPage() {
     setIsPreviewOpen(true);
   };
 
+  // console.log("productsList :", productsList);
+  // console.log("servicesList :", servicesList);
+
   // change signature:
   const handleViewItems = (tx: any) => {
     const prods = (tx.products || []).map((p: any) => {
@@ -476,6 +508,12 @@ export default function TransactionsPage() {
       //   productObj: p.product,
       // });
 
+      // Get HSN code from product
+      const productId =
+        typeof p.product === "object" ? p.product._id : p.product;
+      const productObj = productsList.find((prod) => prod._id === productId);
+      const hsnCode = productObj?.hsn || "";
+
       return {
         itemType: "product" as const,
         name: productName,
@@ -484,6 +522,7 @@ export default function TransactionsPage() {
         pricePerUnit: p.pricePerUnit ?? "",
         description: "",
         amount: Number(p.amount) || 0,
+        hsnCode,
       };
     });
 
@@ -511,6 +550,10 @@ export default function TransactionsPage() {
         (typeof s.serviceName === "object" && s.serviceName.serviceName) ||
         "(service)";
 
+      // Get SAC code from service
+      const serviceObj = servicesList.find((svc) => svc._id === id);
+      const sacCode = serviceObj?.sac || "";
+
       return {
         itemType: "service" as const,
         name,
@@ -519,6 +562,7 @@ export default function TransactionsPage() {
         pricePerUnit: "",
         description: s.description || "",
         amount: Number(s.amount) || 0,
+        sacCode,
       };
     });
 
@@ -665,6 +709,14 @@ export default function TransactionsPage() {
     [purchases, selectedCompanyId]
   );
 
+  const filteredProforma = React.useMemo(
+    () =>
+      selectedCompanyId
+        ? proforma.filter((p) => getCompanyId(p.company) === selectedCompanyId)
+        : proforma,
+    [proforma, selectedCompanyId]
+  );
+
   const filteredReceipts = React.useMemo(
     () =>
       selectedCompanyId
@@ -692,6 +744,7 @@ export default function TransactionsPage() {
   // Only show lists the user is allowed to see
   const visibleSales = canSales ? sales : [];
   const visiblePurchases = canPurchases ? purchases : [];
+  const visibleProforma = canSales ? proforma : [];
   const visibleReceipts = canReceipt ? receipts : [];
   const visiblePayments = canPayment ? payments : [];
   const visibleJournals = canJournal ? journals : [];
@@ -701,6 +754,7 @@ export default function TransactionsPage() {
       [
         ...visibleSales,
         ...visiblePurchases,
+        ...visibleProforma,
         ...visibleReceipts,
         ...visiblePayments,
         ...visibleJournals,
@@ -708,6 +762,7 @@ export default function TransactionsPage() {
     [
       visibleSales,
       visiblePurchases,
+      visibleProforma,
       visibleReceipts,
       visiblePayments,
       visibleJournals,
@@ -762,6 +817,8 @@ export default function TransactionsPage() {
         return <TrendingUp className="h-4 w-4" />;
       case "purchases":
         return <ShoppingCart className="h-4 w-4" />;
+      case "proforma":
+        return <FileText className="h-4 w-4" />;
       case "receipts":
         return <Receipt className="h-4 w-4" />;
       case "payments":
@@ -876,60 +933,89 @@ export default function TransactionsPage() {
             </div>
             <div className="flex items-center gap-2">
               {canCreateAny && (
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      onClick={() => handleOpenForm(null)}
-                      className="w-full md:w-auto"
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      New Transaction
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="  grid-rows-[auto,1fr,auto] max-h-[90vh]  p-0 sm:max-w-6xl max-w-sm">
-                    <DialogHeader className="p-6">
-                      <DialogTitle>
-                        {transactionToEdit
-                          ? "Edit Transaction"
-                          : "Create a New Transaction"}
-                      </DialogTitle>
-                      <DialogDescription>
-                        {transactionToEdit
-                          ? "Update the details of the financial event."
-                          : "Fill in the details below to record a new financial event."}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <TransactionForm
-                      transactionToEdit={transactionToEdit}
-                      onFormSubmit={() => {
-                        setIsFormOpen(false);
-                        setTransactionToEdit(null);
-                        fetchTransactions();
-                      }}
-                      defaultType={
-                        defaultTransactionType ??
-                        tabToFormType(activeTab) ??
-                        allowedTypes[0] ??
-                        "sales"
-                      }
-                      transaction={transactionToPreview}
-                      company={
-                        companies.find(
-                          (c) => c._id === transactionToPreview?.company?._id
-                        ) || null
-                      }
-                      party={
-                        parties.find(
-                          (p) =>
-                            p._id ===
-                              (transactionToPreview as any)?.party?._id ||
-                            transactionToPreview?.party === p._id
-                        ) || null
-                      }
-                      serviceNameById={serviceNameById} // ✅ pass it
-                    />
-                  </DialogContent>
-                </Dialog>
+                <>
+                  <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        onClick={() => handleOpenForm(null)}
+                        className="w-full md:w-auto"
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        New Transaction
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="  grid-rows-[auto,1fr,auto]  p-0 sm:max-w-6xl max-w-sm">
+                      <DialogHeader className="p-6">
+                        <DialogTitle>
+                          {transactionToEdit
+                            ? "Edit Transaction"
+                            : "Create a New Transaction"}
+                        </DialogTitle>
+                        <DialogDescription>
+                          {transactionToEdit
+                            ? "Update the details of the financial event."
+                            : "Fill in the details below to record a new financial event."}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <TransactionForm
+                        transactionToEdit={transactionToEdit}
+                        onFormSubmit={() => {
+                          setIsFormOpen(false);
+                          setTransactionToEdit(null);
+                          fetchTransactions();
+                        }}
+                        defaultType={
+                          defaultTransactionType ??
+                          tabToFormType(activeTab) ??
+                          allowedTypes[0] ??
+                          "sales"
+                        }
+                        transaction={transactionToPreview}
+                        company={
+                          companies.find(
+                            (c) => c._id === transactionToPreview?.company?._id
+                          ) || null
+                        }
+                        party={
+                          parties.find(
+                            (p) =>
+                              p._id ===
+                                (transactionToPreview as any)?.party?._id ||
+                              transactionToPreview?.party === p._id
+                          ) || null
+                        }
+                        serviceNameById={serviceNameById} // ✅ pass it
+                      />
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={isProformaFormOpen} onOpenChange={setIsProformaFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        onClick={() => setIsProformaFormOpen(true)}
+                        variant="outline"
+                        className="w-full md:w-auto"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Proforma Invoice
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="grid-rows-[auto,1fr,auto] p-0 sm:max-w-6xl max-w-sm">
+                      <DialogHeader className="p-6">
+                        <DialogTitle>Create Proforma Invoice</DialogTitle>
+                        <DialogDescription>
+                          Fill in the details below to create a proforma invoice.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ProformaForm
+                        onFormSubmit={() => {
+                          setIsProformaFormOpen(false);
+                          fetchTransactions();
+                        }}
+                        serviceNameById={serviceNameById}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </>
               )}
             </div>
           </div>
@@ -990,7 +1076,7 @@ export default function TransactionsPage() {
           </Dialog>
 
           <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-            <DialogContent className="max-w-[95vw] sm:max-w-xl rounded-lg sm:rounded-xl">
+            <DialogContent className="max-w-[95vw] sm:max-w-3xl rounded-lg sm:rounded-xl">
               <DialogHeader className="px-1 sm:px-0">
                 <DialogTitle className="text-lg sm:text-xl">
                   Item Details
@@ -1000,137 +1086,157 @@ export default function TransactionsPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4 max-h-[60vh] overflow-y-auto">
-                <div className="sm:hidden space-y-3">
-                  {itemsToView.map((item, idx) => {
-                    const isService = item.itemType === "service";
-                    const qty =
-                      !isService &&
-                      item.quantity !== undefined &&
-                      item.quantity !== null &&
-                      !isNaN(Number(item.quantity))
-                        ? `${item.quantity} ${item.unitType || "Piece"}`
-                        : "—";
-                    const rate = !isService
-                      ? formatCurrency(Number(item?.pricePerUnit ?? 0))
-                      : "—";
-                    const total = formatCurrency(Number(item?.amount ?? 0));
+             <div className="mt-4 max-h-[60vh] overflow-y-auto">
+  {/* Desktop Table (hidden on mobile) */}
+  <Table className="hidden sm:table">
+    <TableHeader>
+      <TableRow>
+        <TableHead>Item</TableHead>
+        <TableHead>Type</TableHead>
+        <TableHead className="text-center">Qty</TableHead>
+        <TableHead className="text-center">HSN/SAC</TableHead>
+        <TableHead className="text-right">Price/Unit</TableHead>
+        <TableHead className="text-right">Total</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {itemsToView.map((item, idx) => {
+        const isService = item.itemType === "service";
+        const qty =
+          !isService &&
+          item.quantity !== undefined &&
+          item.quantity !== null &&
+          !isNaN(Number(item.quantity))
+            ? `${item.quantity} ${item.unitType || "Piece"}`
+            : "—";
+        const rate = !isService
+          ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+          : "—";
+        const total = formatCurrency(Number(item?.amount ?? 0));
 
-                    return (
-                      <div
-                        key={idx}
-                        className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          {isService ? (
-                            <Server className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          <span className="font-medium">
-                            {item?.name ?? "—"}
-                          </span>
-                        </div>
+        // Get HSN/SAC code based on item type
+        const hsnSacCode = isService
+          ? item.sacCode
+          : item.hsnCode;
 
-                        {isService && item?.description ? (
-                          <div className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                            {item.description}
-                          </div>
-                        ) : null}
-
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">
-                              Type:{" "}
-                            </span>
-                            <span className="capitalize">
-                              {item.itemType ?? "—"}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-muted-foreground">Qty: </span>
-                            <span>{qty}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">
-                              Price:{" "}
-                            </span>
-                            <span>{rate}</span>
-                          </div>
-                          <div className="text-right font-semibold">
-                            <span className="text-muted-foreground">
-                              Total:{" "}
-                            </span>
-                            <span>{total}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+        return (
+          <TableRow key={idx}>
+            <TableCell className="font-medium">
+              <div className="flex items-center gap-2">
+                {isService ? (
+                  <Server className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                )}
+                <div className="flex flex-col">
+                  <span>{item?.name ?? "—"}</span>
+                  {isService && item?.description ? (
+                    <span className="text-xs text-muted-foreground line-clamp-1">
+                      {item.description}
+                    </span>
+                  ) : null}
                 </div>
-
-                <Table className="hidden sm:table">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-center">Qty</TableHead>
-                      <TableHead className="text-right">Price/Unit</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {itemsToView.map((item, idx) => {
-                      const isService = item.itemType === "service";
-                      const qty =
-                        !isService &&
-                        item.quantity !== undefined &&
-                        item.quantity !== null &&
-                        !isNaN(Number(item.quantity))
-                          ? `${item.quantity} ${item.unitType || "Piece"}`
-                          : "—";
-                      const rate = !isService
-                        ? formatCurrency(Number(item?.pricePerUnit ?? 0))
-                        : "—";
-                      const total = formatCurrency(Number(item?.amount ?? 0));
-
-                      return (
-                        <TableRow key={idx}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              {isService ? (
-                                <Server className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                              )}
-                              <div className="flex flex-col">
-                                <span>{item?.name ?? "—"}</span>
-                                {isService && item?.description ? (
-                                  <span className="text-xs text-muted-foreground line-clamp-1">
-                                    {item.description}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          <TableCell className="capitalize">
-                            {item.itemType ?? "—"}
-                          </TableCell>
-
-                          <TableCell className="text-center">{qty}</TableCell>
-
-                          <TableCell className="text-right">{rate}</TableCell>
-
-                          <TableCell className="text-right font-semibold">
-                            {total}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
               </div>
+            </TableCell>
+
+            <TableCell className="capitalize">
+              {item.itemType ?? "—"}
+            </TableCell>
+
+            <TableCell className="text-center">{qty}</TableCell>
+
+            {/* HSN/SAC Code Column */}
+            <TableCell className="text-center">
+              {hsnSacCode || "—"}
+            </TableCell>
+
+            <TableCell className="text-right">{rate}</TableCell>
+
+            <TableCell className="text-right font-semibold">
+              {total}
+            </TableCell>
+          </TableRow>
+        );
+      })}
+    </TableBody>
+  </Table>
+
+  {/* Mobile Cards (visible on mobile) */}
+  <div className="sm:hidden space-y-3 p-1">
+    {itemsToView.map((item, idx) => {
+      const isService = item.itemType === "service";
+      const qty =
+        !isService &&
+        item.quantity !== undefined &&
+        item.quantity !== null &&
+        !isNaN(Number(item.quantity))
+          ? `${item.quantity} ${item.unitType || "Piece"}`
+          : "—";
+      const rate = !isService
+        ? formatCurrency(Number(item?.pricePerUnit ?? 0))
+        : "—";
+      const total = formatCurrency(Number(item?.amount ?? 0));
+      const hsnSacCode = isService ? item.sacCode : item.hsnCode;
+
+      return (
+        <div key={idx} className="p-3 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+          {/* Header Section */}
+          <div className="flex items-start gap-3 mb-3">
+            <div className="flex-shrink-0 mt-1">
+              {isService ? (
+                <Server className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Package className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm truncate">{item?.name ?? "—"}</h3>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="text-xs text-muted-foreground capitalize bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                  {item.itemType ?? "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  HSN/SAC: {hsnSacCode || "—"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Service Description */}
+          {isService && item?.description && (
+            <div className="mb-3 px-1">
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {item.description}
+              </p>
+            </div>
+          )}
+
+          {/* Details Grid */}
+          <div className="grid grid-cols-2 gap-4 text-sm border-t pt-3">
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground">Quantity</div>
+              <div className="font-medium">{qty}</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground">Price/Unit</div>
+              <div className="font-medium">{rate}</div>
+            </div>
+
+            <div className="col-span-2 pt-2 border-t">
+              <div className="flex justify-between items-center">
+                <div className="text-sm font-semibold">Total Amount</div>
+                <div className="text-base font-bold text-green-600 dark:text-green-400">
+                  {total}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</div>
             </DialogContent>
           </Dialog>
 
@@ -1175,6 +1281,7 @@ export default function TransactionsPage() {
                       Purchases
                     </TabsTrigger>
                   )}
+                 
                   {canReceipt && (
                     <TabsTrigger
                       value="receipts"
@@ -1197,6 +1304,14 @@ export default function TransactionsPage() {
                       className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
                     >
                       Journals
+                    </TabsTrigger>
+                  )}
+                   {canSales && (
+                    <TabsTrigger
+                      value="proforma"
+                      className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                    >
+                      Proforma
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -1264,6 +1379,20 @@ export default function TransactionsPage() {
                           </div>
                         </li>
                       )}
+                      {canSales && (
+                        <li
+                          onClick={() => handleTabChange("proforma")}
+                          className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-3 opacity-70" />
+                            <span className="flex-1">Proforma</span>
+                            {activeTab === "proforma" && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </li>
+                      )}
                       {canReceipt && (
                         <li
                           onClick={() => handleTabChange("receipts")}
@@ -1326,6 +1455,12 @@ export default function TransactionsPage() {
                 {canPurchases && (
                   <TabsContent value="purchases" className="mt-0">
                     {renderContent(purchases)}
+                  </TabsContent>
+                )}
+
+                {canSales && (
+                  <TabsContent value="proforma" className="mt-0">
+                    {renderContent(proforma)}
                   </TabsContent>
                 )}
 
