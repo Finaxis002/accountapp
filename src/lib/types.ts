@@ -61,7 +61,7 @@ export type Transaction = {
    items?: any[];
    quantity?: number;
    pricePerUnit?: number;
-   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
+   type: "sales" | "purchases" | "receipt" | "payment" | "journal" | "proforma";
    unitType?:
      | "Kg"
      | "Litre"

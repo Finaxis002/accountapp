@@ -980,6 +980,7 @@ export const columns = ({
         const typeStyles: Record<string, string> = {
           sales: "bg-green-500/20 text-green-700 dark:text-green-300",
           purchases: "bg-orange-500/20 text-orange-700 dark:text-orange-300",
+          proforma: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300",
           receipt: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
           payment: "bg-red-500/20 text-red-700 dark:text-red-300",
           journal: "bg-purple-500/20 text-purple-700 dark:text-purple-300",
@@ -1006,8 +1007,8 @@ export const columns = ({
         const [isLoadingParty, setIsLoadingParty] = useState(false);
         const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
          const [dropdownOpen, setDropdownOpen] = useState(false);
-        // Invoice actions are allowed ONLY for sales
-        const isInvoiceable = transaction.type === "sales";
+        // Invoice actions are allowed for sales and proforma
+        const isInvoiceable = transaction.type === "sales" || transaction.type === "proforma";
         // WhatsApp allowed for both sales and receipts
         const isWhatsAppAllowed =
           transaction.type === "sales" || transaction.type === "receipt";

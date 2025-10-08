@@ -24,21 +24,37 @@ import { Badge } from "@/components/ui/badge";
 import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
 import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
 import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
-import { generatePdfForTemplate4 } from "@/lib/pdf-template4"; 
+import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
 import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
-import { generatePdfForTemplate7 } from "@/lib/pdf-template7";  
+import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
+import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplate11 } from "@/lib/pdf-template11";
+import { generatePdfForTemplate12 } from "@/lib/pdf-template12";
+import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
+import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
+import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
+import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
+import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
+import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
+import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
+import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
 import jsPDF from "jspdf";
 import type { Company, Party, Transaction } from "@/lib/types";
 
 const templateOptions = [
-  { value: "template1", label: "Professional", color: "bg-blue-500" },
-  { value: "template2", label: "Creative", color: "bg-purple-500" },
-  { value: "template3", label: "Modern", color: "bg-gray-800" },
-  { value: "template4", label: "Minimal", color: "bg-green-500" },
-  { value: "template5", label: "Refined", color: "bg-amber-600" },
-  { value: "template6", label: "Standard", color: "bg-indigo-600" },
-  { value: "template7", label: "Prestige", color: "bg-teal-600" },
+  { value: "template1", label: "Template 1", color: "bg-blue-500" },
+  { value: "template8", label: "Template 2", color: "bg-purple-500" },
+  { value: "template11", label: "Template 3", color: "bg-gray-800" },
+  { value: "template12", label: "Template 4", color: "bg-green-500" },
+  { value: "template16", label: "Template 5", color: "bg-amber-600" },
+  { value: "template17", label: "Template 6", color: "bg-indigo-600" },
+  { value: "template19", label: "Template 7", color: "bg-teal-600" },
+  { value: "templateA5", label: "Template A5", color: "bg-pink-500" },
+  { value: "templateA5_3", label: "Template A5-3", color: "bg-orange-500" },
+  { value: "templateA5_4", label: "Template A5-4", color: "bg-cyan-500" },
+  { value: "template-t3", label: "Template T3", color: "bg-lime-500" },
+  { value: "template18", label: "Template T3-2", color: "bg-rose-500" },
 ];
 
 // Dummy data for preview
@@ -104,14 +120,69 @@ const dummyServiceNames = new Map([
   ["service3", "Consultation"],
 ]);
 
+const dummyBank = {
+  _id: "bank1",
+  client: "client1",
+  user: "user1",
+  company: "company1",
+  bankName: "Sample Bank",
+  managerName: "John Manager",
+  contactNumber: "9876543210",
+  email: "manager@samplebank.com",
+  city: "Mumbai",
+  ifscCode: "SBIN0001234",
+  branchAddress: "Main Branch, Mumbai",
+  accountNumber: "1234567890",
+  upiId: "sample@upi",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  __v: 0,
+} as any;
+
+const dummyClient = {
+  _id: "client1",
+  clientUsername: "johndoe",
+  contactName: "John Doe",
+  email: "john@example.com",
+  phone: "9876543210",
+  role: "admin",
+  createdAt: new Date().toISOString(),
+  companyName: "Sample Company",
+  subscriptionPlan: "Premium" as const,
+  status: "Active" as const,
+  revenue: 100000,
+  users: 5,
+  companies: 2,
+  totalSales: 50000,
+  totalPurchases: 30000,
+  maxCompanies: 5,
+  maxUsers: 10,
+  maxInventories: 1000,
+  canSendInvoiceEmail: true,
+  canSendInvoiceWhatsapp: true,
+  canCreateUsers: true,
+  canCreateProducts: true,
+  canCreateCustomers: true,
+  canCreateVendors: true,
+  canCreateCompanies: true,
+  canCreateInventory: true,
+  canUpdateCompanies: true,
+  slug: "sample-client",
+} as any;
+
 type TemplateKey =
   | "template1"
-  | "template2"
-  | "template3"
-  | "template4"
-  | "template5"
-  | "template6"
-  | "template7";
+  | "template8"
+  | "template11"
+  | "template12"
+  | "template16"
+  | "template17"
+  | "template19"
+  | "templateA5"
+  | "templateA5_3"
+  | "templateA5_4"
+  | "template-t3"
+  | "template18";
 
 export function TemplateSettings() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -175,79 +246,179 @@ export function TemplateSettings() {
     const generatePdfPreview = async () => {
       setIsGeneratingPreview(true);
       try {
-        let docPromise: Promise<jsPDF>;
+        let pdfBlob: Blob;
 
-        switch (selectedTemplate) {
-         
-          case "template2":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate2(
+        // Templates that use react-pdf (return Blob directly)
+        if (
+          selectedTemplate === "template1" ||
+          selectedTemplate === "template8" ||
+          selectedTemplate === "template12" ||
+          selectedTemplate === "templateA5" ||
+          selectedTemplate === "template18" ||
+          selectedTemplate === "templateA5_3" ||
+          selectedTemplate === "templateA5_4" ||
+          selectedTemplate === "template-t3"
+        ) {
+          switch (selectedTemplate) {
+            case "template1":
+              pdfBlob = await generatePdfForTemplate1(
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,
-                dummyServiceNames
-              )
-            );
-            break;
-          case "template3":
-            docPromise = generatePdfForTemplate3(
-              dummyTransaction,
-              dummyCompany,
-              dummyParty,
-              dummyServiceNames
-            );
-            break;
-          case "template4":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate4(
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank
+              );
+              break;
+            case "template8":
+              pdfBlob = await generatePdfForTemplate8(
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,
-                dummyServiceNames
-              )
-            );
-            break;
-          case "template5":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate5(
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank
+              );
+              break;
+            case "template12":
+              pdfBlob = await generatePdfForTemplate12(
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,
-                dummyServiceNames
-              )
-            );
-            break;
-          case "template6":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate6(
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank
+              );
+              break;
+            case "templateA5":
+              pdfBlob = await generatePdfForTemplateA5(
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,
-                dummyServiceNames
-              )
-            );
-            break;
-          case "template7":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate7(
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank,
+                dummyClient
+              );
+              break;
+            case "template18":
+              pdfBlob = await generatePdfForTemplate18(
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,
-                dummyServiceNames
-              )
-            );
-            break;
-          default:
-            docPromise = generatePdfForTemplate3(
-              dummyTransaction,
-              dummyCompany,
-              dummyParty,
-              dummyServiceNames
-            );
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank
+              );
+              break;
+            case "templateA5_3":
+              pdfBlob = await generatePdfForTemplateA5_3(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank,
+                dummyClient
+              );
+              break;
+            case "templateA5_4":
+              pdfBlob = await generatePdfForTemplateA5_4(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank,
+                dummyClient
+              );
+              break;
+            case "template-t3":
+              pdfBlob = await generatePdfForTemplatet3(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                null, // shippingAddress
+                dummyBank
+              );
+              break;
+            default:
+              pdfBlob = await generatePdfForTemplate1(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null, // shippingAddress
+                dummyBank
+              );
+          }
+        } else {
+          // Templates that use jsPDF
+          let docPromise: Promise<jsPDF>;
+
+          switch (selectedTemplate) {
+            case "template11":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate11(
+                  dummyTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null, // shippingAddress
+                  undefined,
+                  dummyBank
+                )
+              );
+              break;
+            case "template16":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate16(
+                  dummyTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null // shippingAddress
+                )
+              );
+              break;
+            case "template17":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate17(
+                  dummyTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null, // shippingAddress
+                  dummyBank
+                )
+              );
+              break;
+            case "template19":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate19(
+                  dummyTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null, // shippingAddress
+                  dummyBank
+                )
+              );
+              break;
+            default:
+              docPromise = generatePdfForTemplate3(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null // shippingAddress
+              );
+          }
+
+          const doc = await docPromise;
+          pdfBlob = doc.output("blob");
         }
 
-        const doc = await docPromise;
-        const pdfBlob = doc.output("blob");
         objectUrl = URL.createObjectURL(pdfBlob);
         setPdfUrl(objectUrl);
       } catch (err) {
