@@ -509,7 +509,8 @@ if (transaction?.shippingAddress) {
               <SelectItem value="template6">Standard</SelectItem>
               <SelectItem value="template7">Prestige</SelectItem> */}
               {/* priya  */}
-              <SelectItem value="template8">Template 8</SelectItem>
+              <SelectItem value="template8">Template 2</SelectItem>
+<!--               <SelectItem value="template8">Template 8</SelectItem> -->
               <SelectItem value="template11">Template 11</SelectItem>
                <SelectItem value="template12">Template 12</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
