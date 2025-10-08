@@ -21,7 +21,7 @@ import { DialogFooter } from "../ui/dialog";
 //   generatePdfForTemplate6,
 //   generatePdfForTemplate7,
 // } from "@/lib/pdf-templates";
-import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
+
 import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
 import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
 import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
@@ -29,9 +29,14 @@ import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 // priya
+import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplate11 } from "@/lib/pdf-template11";
+import { generatePdfForTemplate12 } from "@/lib/pdf-template12";
 import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
-
+import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
+import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
+import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
 //amit
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
@@ -49,7 +54,12 @@ type TemplateKey =
   | "template6"
   | "template7"
   | "template8"
+   | "template11"
+    | "template12"
   | "templateA5"
+  | "templateA5_3"
+  | "templateA5_4"
+  | "template-t3"
   | "template16"
   | "template17"
   | "template18"
@@ -76,7 +86,7 @@ export function InvoicePreview({
 }: InvoicePreviewProps) {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [selectedTemplate, setSelectedTemplate] =
-    React.useState<TemplateKey>("template8");
+    React.useState<TemplateKey>("template1");
 
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -165,21 +175,55 @@ export function InvoicePreview({
         let pdfBlob: Blob;
 
         // Extract shipping address from transaction
-        const shippingAddress =
-          transaction?.shippingAddress &&
-          typeof transaction.shippingAddress === "object"
-            ? (transaction.shippingAddress as any)
-            : null;
+      let shippingAddress = null;
+
+if (transaction?.shippingAddress) {
+  const addr = transaction.shippingAddress as any;
+  if (addr instanceof Map || addr?.size > 0) {
+    // it's a Map of services, not an address
+    shippingAddress = null;
+  } else if (typeof addr === "object" && (addr.address || addr.city || addr.state)) {
+    // it's a real address object
+    shippingAddress = addr;
+  }
+}
+
 
         if (
+          selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
           selectedTemplate === "templateA5" ||
-          selectedTemplate === "template18"
+          selectedTemplate === "template18"  ||
+          selectedTemplate === "template12" ||
+          selectedTemplate === "templateA5" ||
+          selectedTemplate === "templateA5_3"||
+          selectedTemplate === "templateA5_4"||
+          selectedTemplate === "template-t3"
         ) {
           // Template 8 and Template A5 use react-pdf and return Blob directly
           switch (selectedTemplate) {
+             case "template1":
+              pdfBlob = await generatePdfForTemplate1(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
             case "template8":
               pdfBlob = await generatePdfForTemplate8(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
+            case "template12":
+              pdfBlob = await generatePdfForTemplate12(
                 transaction,
                 company,
                 party,
@@ -199,6 +243,7 @@ export function InvoicePreview({
                 client
               );
               break;
+
               case "template18":
                 pdfBlob = await generatePdfForTemplate18(
                   transaction,
@@ -209,23 +254,46 @@ export function InvoicePreview({
                   bank
                 );
                 break;
+
+             case "templateA5_3":
+              pdfBlob = await generatePdfForTemplateA5_3(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+              case "templateA5_4":
+              pdfBlob = await generatePdfForTemplateA5_4(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+               case "template-t3":
+              pdfBlob = await generatePdfForTemplatet3(
+                transaction,
+                company,
+                party,
+                shippingAddress,
+                bank,
+              );
+              break;
+
           }
         } else {
           // Other templates use jsPDF
           let docPromise: Promise<jsPDF>;
 
           switch (selectedTemplate) {
-            case "template1":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate1(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
+          
             case "template2":
               docPromise = Promise.resolve(
                 generatePdfForTemplate2(
@@ -290,19 +358,32 @@ export function InvoicePreview({
                 )
               );
               break;
-
-            case "template16":
+          case "template11":
               docPromise = Promise.resolve(
-                generatePdfForTemplate16(
+                generatePdfForTemplate11(
                   transaction,
                   company,
                   party,
                   serviceNameById,
                   shippingAddress,
+                  undefined,
                   bank
                 )
               );
               break;
+
+          case "template16":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate16(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress
+              )
+            );
+            break;
+                
             case "template17":
               docPromise = Promise.resolve(
                 generatePdfForTemplate17(
@@ -434,16 +515,22 @@ export function InvoicePreview({
               <SelectValue placeholder="Select a template" />
             </SelectTrigger>
             <SelectContent>
-              {/* <SelectItem value="template1">Professional</SelectItem>
-              <SelectItem value="template2">Creative</SelectItem>
+              <SelectItem value="template1">Template 1</SelectItem>
+             {/*  <SelectItem value="template2">Creative</SelectItem>
               <SelectItem value="template3">Modern</SelectItem>
               <SelectItem value="template4">Minimal</SelectItem>
               <SelectItem value="template5">Refined</SelectItem>
               <SelectItem value="template6">Standard</SelectItem>
               <SelectItem value="template7">Prestige</SelectItem> */}
               {/* priya  */}
-              <SelectItem value="template8">Template 8</SelectItem>
+              <SelectItem value="template8">Template 2</SelectItem>
+           {/* <SelectItem value="template8">Template 8</SelectItem>  */}
+              <SelectItem value="template11">Template 11</SelectItem>
+               <SelectItem value="template12">Template 12</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
+              <SelectItem value="templateA5_3">Template A5-3</SelectItem>
+              <SelectItem value="templateA5_4">Template A5-4</SelectItem>
+               <SelectItem value="template-t3">Template T3</SelectItem>
               {/* amit  */}
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>

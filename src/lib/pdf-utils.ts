@@ -524,8 +524,11 @@ import { Rss } from "lucide-react";
       };
     }
 
-    // Check if customer state and shipping state are the same
-    const isInterstate = party?.state !== shippingAddress?.state;
+    // Check if supplier state and recipient state are different (interstate)
+    // If shipping address exists, compare with shipping state, otherwise compare with party billing state
+    const recipientState = shippingAddress?.state || party?.state;
+    const supplierState = company?.addressState;
+    const isInterstate = supplierState && recipientState ? supplierState.toLowerCase().trim() !== recipientState.toLowerCase().trim() : false;
 
     // Calculate GST amounts
     let cgst = 0;
@@ -599,6 +602,42 @@ import { Rss } from "lucide-react";
       igstTotal,
     };
   };
+
+
+// Helper function to group items by HSN/SAC and calculate totals
+export const getHsnSummary = (items: any[], showIGST: boolean, showCGSTSGST: boolean) => {
+  const hsnMap = new Map();
+  
+  items.forEach(item => {
+    const hsnCode = item.code || '-';
+    if (!hsnMap.has(hsnCode)) {
+      hsnMap.set(hsnCode, {
+        hsnCode,
+        taxableValue: 0,
+        taxRate: item.gstRate || 0,
+        taxAmount: 0,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        total: 0
+      });
+    }
+    
+    const existing = hsnMap.get(hsnCode);
+    existing.taxableValue += item.taxableValue;
+    
+    if (showIGST) {
+      existing.taxAmount += item.igst || 0;
+    } else if (showCGSTSGST) {
+      existing.cgstAmount += item.cgst || 0;
+      existing.sgstAmount += item.sgst || 0;
+      existing.taxAmount = existing.cgstAmount + existing.sgstAmount;
+    }
+    
+    existing.total += item.total;
+  });
+  
+  return Array.from(hsnMap.values());
+};
 
   export const prepareTemplate8Data = (
     transaction: Transaction,

@@ -84,6 +84,7 @@ export const template8Styles = StyleSheet.create({
   },
   table: {
     marginBottom: 16,
+    border:"1px solid #bfbfbf"
   },
   tableHeader: {
     flexDirection: "row",
@@ -170,6 +171,13 @@ export const template8Styles = StyleSheet.create({
     // fontWeight: 'normal',
     // color: '#666',
   },
+  pageNumber: {
+  position: 'absolute',
+  bottom: 20, // Distance from bottom of page
+  right: 20,  // Distance from right of page
+  fontSize: 8,
+  textAlign: 'right',
+},
 });
 
 // A5 specific styles
@@ -316,18 +324,29 @@ export const templateA5Styles = StyleSheet.create({
     // marginTop: 10,
     // border: '1px solid #000',
   },
-  itemsTableHeader: {
-    flexDirection: "row",
-    backgroundColor: "rgba(3, 113, 193, 0.2)",
-    borderBottom: "1px solid #0371C1",
-    borderTop: 0,
+   tableContainer: {
+   position: 'relative',
+   width: '100%',
+ },
+    verticalBorder: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: '#0371C1',
   },
-  headerCell: {
-    borderRight: "1px solid #0371C1",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 2,
-  },
+ itemsTableHeader: {
+  flexDirection: 'row',
+  backgroundColor: 'rgba(3, 113, 193, 0.2)',
+  borderBottom: '1px solid #0371C1',
+  borderTop:0
+},
+headerCell: {
+  // borderRight: '1px solid #0371C1',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 2,
+},
   itemsTableRow: {
     flexDirection: "row",
     // borderBottom: '1px solid #0371C1',
@@ -353,7 +372,7 @@ export const templateA5Styles = StyleSheet.create({
     width: "25%",
     textAlign: "center",
     padding: 2,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft:"1px solid #0371C1"
   },
   hsnHeader: {
     fontSize: 7,
@@ -361,7 +380,7 @@ export const templateA5Styles = StyleSheet.create({
     width: "10%",
     textAlign: "center",
     padding: 2,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft:"1px solid #0371C1"
   },
   qtyHeader: {
     fontSize: 7,
@@ -369,7 +388,7 @@ export const templateA5Styles = StyleSheet.create({
     width: "8%",
     textAlign: "center",
     padding: 2,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft:"1px solid #0371C1"
   },
   rateHeader: {
     fontSize: 7,
@@ -377,7 +396,7 @@ export const templateA5Styles = StyleSheet.create({
     width: "10%",
     textAlign: "center",
     padding: 2,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft:"1px solid #0371C1"
   },
   taxableHeader: {
     fontSize: 7,
@@ -385,14 +404,14 @@ export const templateA5Styles = StyleSheet.create({
     width: "12%",
     textAlign: "center",
     padding: 2,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft:"1px solid #0371C1"
   },
   igstHeader: {
     fontSize: 7,
     fontWeight: "bold",
     width: "12%",
-    borderLeft: "1px solid #0371C1",
-    borderRight: "1px solid #0371C1",
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
   },
   totalHeader: {
     fontSize: 7,
@@ -430,7 +449,7 @@ export const templateA5Styles = StyleSheet.create({
     width: "25%",
     textAlign: "center",
     padding: 4,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft: "1px solid #0371C1",
     wrap: true,
   },
   hsnCell: {
@@ -438,29 +457,29 @@ export const templateA5Styles = StyleSheet.create({
     width: "10%",
     textAlign: "center",
     padding: 4,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft: "1px solid #0371C1",
   },
   qtyCell: {
     fontSize: 7,
     width: "8%",
     textAlign: "center",
     padding: 4,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft: "1px solid #0371C1",
   },
   rateCell: {
     fontSize: 7,
     width: "10%",
     textAlign: "center",
     padding: 4,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft: "1px solid #0371C1",
   },
   taxableCell: {
     fontSize: 7,
     width: "12%",
     textAlign: "center",
     padding: 4,
-    borderLeft: "1px solid #0371C1",
-    borderRight: "1px solid #0371C1",
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
   },
   igstCell: {
     flexDirection: "row",
@@ -489,7 +508,7 @@ export const templateA5Styles = StyleSheet.create({
     width: "15%",
     textAlign: "center",
     padding: 4,
-    borderLeft: "1px solid #0371C1",
+    // borderLeft: "1px solid #0371C1",
   },
 
   // Total Row Styles
@@ -644,6 +663,1814 @@ export const templateA5Styles = StyleSheet.create({
 
   currencySymbol: {
     fontSize: 6,
+  },
+ pageNumber: {
+  position: 'absolute',
+  bottom: 20, // Distance from bottom of page
+  right: 20,  // Distance from right of page
+  fontSize: 8,
+  textAlign: 'right',
+},
+});
+
+
+export const templateA5_3Styles = StyleSheet.create({
+  page: {
+    flexDirection: "column",
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    paddingBottom:0,
+    fontSize: 8,
+    fontFamily: "Helvetica",
+  },
+  header: {
+    display: "flex",
+    flexDirection: "row",
+    // marginBottom: 1,
+    // borderBottom: '1px solid #000',
+    paddingBottom: 4,
+    alignItems: "center",
+    textAlign: "center",
+    gap: 6,
+  },
+  headerLeft: {
+    alignItems: "flex-start",
+  },
+  headerRight: {
+    flex: 3,
+    alignItems: "center",
+    marginLeft:10
+  },
+  logo: {
+    width: 60,
+    height: 60,
+  },
+  companyName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  address: {
+    fontSize: 10,
+    marginBottom: 3,
+    lineHeight: 1.2,
+  },
+  contactInfo: {
+    fontSize: 10,
+    lineHeight: 1.2,
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    alignItems: "center",
+  },
+
+  contactLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  contactValue: {
+    fontSize: 10,
+    fontWeight: "normal",
+  },
+  section: {
+    border: "1.5px solid #0371C1",
+    padding: 0,
+  },
+  tableHeader: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "1.5px solid #0371C1",
+  },
+  gstRow: {
+    flexDirection: "row",
+    padding: 4,
+  },
+  gstLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  gstValue: {
+    fontSize: 10,
+    fontWeight: "normal",
+  },
+  invoiceTitleRow: {
+    padding: 4,
+  },
+  invoiceTitle: {
+    fontSize: 12,
+    fontWeight: "extrabold",
+    textAlign: "center",
+    color: "#0371C1",
+  },
+  recipientRow: {
+    padding: 4,
+  },
+  recipientText: {
+    fontSize: 8,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  threeColSection: {
+    flexDirection: "row",
+    // marginBottom: 10,
+    borderBottom: "2px solid #0371C1",
+  },
+  column: {
+    width: "33.3%",
+    paddingHorizontal: 4,
+    borderLeft: "1px solid #0371C1",
+  },
+  columnHeader: {
+    marginBottom: 5,
+  },
+  dataRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 2,
+  },
+  threecoltableHeader: {
+    fontSize: 8,
+    fontWeight: "bold",
+  },
+  tableLabel: {
+    fontSize: 8,
+    fontWeight: "bold",
+    width: "40%", // Fixed width for labels
+    flexShrink: 0,
+    wrap: true,
+    hyphens: "none",
+  },
+  tableValue: {
+    fontSize: 8,
+    fontWeight: "normal",
+    width: "70%", // Fixed width for values
+    flexShrink: 1,
+    wrap: true,
+    hyphens: "none",
+  },
+
+  // item table style
+  itemsTable: {
+    // marginTop: 10,
+    // border: '1px solid #000',
+  },
+ itemsTableHeader: {
+  flexDirection: 'row',
+  backgroundColor: 'rgba(3, 113, 193, 0.2)',
+  borderBottom: '1px solid #0371C1',
+  borderTop:0
+},
+headerCell: {
+  borderRight: '1px solid #0371C1',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 2,
+},
+  itemsTableRow: {
+    flexDirection: "row",
+    // borderBottom: '1px solid #0371C1',
+    alignItems: "center",
+  },
+  itemsTableTotalRow: {
+    flexDirection: "row",
+    // borderTop: "1px solid #0371C1",
+    backgroundColor: "rgba(3, 113, 193, 0.2)",
+    alignItems: "center",
+  },
+  // Header Styles
+  srNoHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+  },
+  productHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "25%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  hsnHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "10%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  qtyHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  rateHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "10%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  taxableHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  igstHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
+  },
+  totalHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "15%",
+    textAlign: "center",
+    padding: 2,
+  },
+  igstMainHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 1,
+  },
+  igstSubHeader: { flexDirection: "row", borderTop: "1px solid #0371C1" },
+  igstSubText: {
+    fontSize: 6,
+    fontWeight: "bold",
+    width: "70%",
+    textAlign: "center",
+    padding: 1,
+  },
+  igstSubPercentage:{
+    fontSize: 6,
+    fontWeight: "bold",
+    width: "30%",
+    textAlign: "center",
+    padding: 1,
+  },
+Tablecolumn:{
+ column: {
+    borderRight:"1px solid #0371C1"
+  },
+},
+ tableContainer: {
+   position: 'relative',
+   width: '100%',
+ },
+    verticalBorder: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: '#0371C1',
+  },
+  // Cell Styles
+  srNoCell: { fontSize: 7, width: "8%", textAlign: "center", padding: 4 },
+  productCell: {
+    fontSize: 7,
+    width: "25%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+    wrap: true,
+  },
+  hsnCell: {
+    fontSize: 7,
+    width: "10%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  qtyCell: {
+    fontSize: 7,
+    width: "8%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  rateCell: {
+    fontSize: 7,
+    width: "10%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  taxableCell: {
+    fontSize: 7,
+    width: "12%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
+  },
+igstCell: {
+  flexDirection: "row",
+  width: "12%",
+  display: "flex",
+  justifyContent: "center", // horizontally center children
+  alignItems: "center", // vertically center children
+  gap: 10,
+  // borderLeft: "1px solid #0371C1", // optional
+  textAlign: "center",
+},
+igstPercent: {
+  fontSize: 7,
+  textAlign: "right",
+  padding: 1,
+  width: "30%", // ensure consistent spacing
+},
+igstAmount: {
+  fontSize: 7,
+  textAlign: "center",
+  padding: 0,
+  width: "70%",
+  alignItems:"flex-start",
+  display:"flex",
+  justifyContent:"flex-start"
+},
+  totalCell: {
+    fontSize: 7,
+    width: "15%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+
+
+  // Total Row Styles
+  totalLabel: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 2,
+  },
+  totalEmpty: { fontSize: 7, width: "25%", padding: 2 ,  textAlign: "center",fontWeight:"bold"},
+  totalQty: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+  },
+  totalTaxable: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    textAlign: "center",
+    padding: 2,
+  },
+  igstTotal: {
+    fontSize: 7,
+    width: "12%",
+    // borderLeft: "1px solid #ddd",
+    // borderRight: "1px solid #ddd",
+  },
+  totalIgstAmount: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "right",
+    padding: 1,
+  },
+  grandTotal: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "15%",
+    textAlign: "center",
+    padding: 2,
+  },
+
+  // igstHeader: {
+  //   flexDirection: 'row',
+  //   width: '12%',
+  //   borderLeft: '1px solid #000',
+  //   borderRight: '1px solid #000',
+  // },
+  igstPercentHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "50%",
+    textAlign: "center",
+    padding: 2,
+    borderRight: "1px solid #000",
+  },
+  igstAmountHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "50%",
+    textAlign: "center",
+    padding: 2,
+  },
+
+  igstPercentCell: {
+    fontSize: 7,
+    // width: '50%',
+    textAlign: "right",
+    padding: 2,
+    // borderRight: '1px solid #ddd',
+  },
+  igstAmountCell: {
+    fontSize: 7,
+    width: '70%',
+    textAlign: "center",
+    padding: 2,
+  },
+
+
+   bottomSection: {
+    flexDirection: "row",
+    borderTop: "1px solid #0371C1",
+    width: "100%",
+    fontSize: 7,
+  },
+
+  // Left half
+  leftSection: {
+    width: "55%",
+    borderRight: "1px solid #0371C1",
+  },
+
+  totalInWords: {
+    fontSize: 7,
+    fontWeight: "bold",
+    borderBottom: "1px solid #0371C1",
+    padding: 4,
+    textTransform: "uppercase",
+  },
+
+  termsBox: {
+    marginTop: 3,
+    padding:8
+  },
+  termLine: {
+    fontSize: 7,
+    marginBottom: 1,
+  },
+
+  qrContainer: {
+    alignItems: "center",
+    marginTop: 6,
+  },
+  qrImage: {
+    width: 45,
+    height: 45,
+  },
+  qrText: {
+    fontSize: 7,
+    marginTop: 2,
+  },
+
+
+//hst summary table
+
+  // Add these styles to your templateA5_3Styles
+hsnTaxTable: {
+  border: '1px solid #0371C1',
+  backgroundColor: '#FFFFFF',
+},
+hsnTaxTableTitle: {
+  backgroundColor: '#0371C1',
+  color: '#FFFFFF',
+  // padding: 6,
+  fontSize: 8,
+  fontWeight: 'bold',
+  textAlign: 'center',
+},
+hsnTaxTableHeader: {
+  flexDirection: 'row',
+  backgroundColor: '#f0f8ff',
+  borderBottom: '1px solid #0371C1',
+},
+hsnTaxHeaderCell: {
+  padding: 1,
+  fontSize: 7,
+  fontWeight: 'bold',
+  borderRight: '0.5px solid #0371C1',
+  textAlign: 'center',
+},
+hsnTaxTableRow: {
+  flexDirection: 'row',
+  // borderBottom: '0.5px solid #0371C1',
+},
+hsnTaxCell: {
+  padding: 1,
+  fontSize: 7,
+  borderRight: '1px solid #0371C1',
+  textAlign: 'center',
+},
+hsnTaxTableTotalRow: {
+  flexDirection: 'row',
+  backgroundColor: "rgba(3, 113, 193, 0.2)",
+  // borderTop: '1px solid #0371C1',
+},
+hsnTaxTotalCell: {
+  padding: 1,
+  fontSize: 7,
+  fontWeight: 'bold',
+  borderRight: '1px solid #0371C1',
+  textAlign: 'center',
+},
+
+  // Right half
+  rightSection: {
+    width: "45%",
+    justifyContent: "flex-start",
+  },
+
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderBottom: "1px solid #0371C1",
+    padding: 4,
+  },
+
+  label: { fontSize: 8,fontWeight: "bold" },
+  value: { fontSize: 8,fontWeight: "bold" },
+
+  labelBold: { fontSize: 8, fontWeight: "bold" },
+  valueBold: { fontSize: 8, fontWeight: "bold" },
+
+  highlightRow: {
+    backgroundColor: "#EAF4FF",
+  },
+
+  currencySymbol: {
+    fontSize: 6,
+  },
+ pageNumber: {
+  position: 'absolute',
+  bottom: 20, // Distance from bottom of page
+  right: 20,  // Distance from right of page
+  fontSize: 8,
+  textAlign: 'right',
+},
+});
+
+
+
+export const templateA5_4Styles = StyleSheet.create({
+  page: {
+    flexDirection: "column",
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    paddingBottom:0,
+    fontSize: 8,
+    fontFamily: "Helvetica",
+  },
+  header: {
+    display: "flex",
+    flexDirection: "row",
+    // marginBottom: 1,
+    // borderBottom: '1px solid #000',
+    paddingBottom: 4,
+    alignItems: "center",
+    textAlign: "center",
+    gap: 6,
+  },
+  headerLeft: {
+    alignItems: "flex-start",
+  },
+  headerRight: {
+    flex: 3,
+    alignItems: "center",
+    marginLeft:10
+  },
+  logo: {
+    width: 60,
+    height: 60,
+  },
+  companyName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  address: {
+    fontSize: 10,
+    marginBottom: 3,
+    lineHeight: 1.2,
+  },
+  contactInfo: {
+    fontSize: 10,
+    lineHeight: 1.2,
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    alignItems: "center",
+  },
+
+  contactLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  contactValue: {
+    fontSize: 10,
+    fontWeight: "normal",
+  },
+  section: {
+    border: "1.5px solid #0371C1",
+    padding: 0,
+  },
+  tableHeader: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "1.5px solid #0371C1",
+  },
+  gstRow: {
+    flexDirection: "row",
+    padding: 4,
+  },
+  gstLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  gstValue: {
+    fontSize: 10,
+    fontWeight: "normal",
+  },
+  invoiceTitleRow: {
+    padding: 4,
+  },
+  invoiceTitle: {
+    fontSize: 12,
+    fontWeight: "extrabold",
+    textAlign: "center",
+    color: "#0371C1",
+  },
+  recipientRow: {
+    padding: 4,
+  },
+  recipientText: {
+    fontSize: 8,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  threeColSection: {
+    flexDirection: "row",
+    // marginBottom: 10,
+    borderBottom: "2px solid #0371C1",
+  },
+  column: {
+    width: "25%",
+    paddingHorizontal: 4,
+    borderLeft: "1px solid #0371C1",
+  },
+  columnHeader: {
+    marginBottom: 5,
+  },
+  dataRow: {
+    display:"flex",
+    // gap:,
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    paddingVertical: 2,
+  },
+  threecoltableHeader: {
+    fontSize: 8,
+    fontWeight: "bold",
+  },
+  tableLabel: {
+    fontSize: 8,
+    fontWeight: "bold",
+    width: "30%", // Fixed width for labels
+    flexShrink: 0,
+    wrap: true,
+    hyphens: "none",
+  },
+  tableValue: {
+    fontSize: 8,
+    fontWeight: "normal",
+    width: "70%", // Fixed width for values
+    flexShrink: 1,
+    wrap: true,
+    hyphens: "none",
+  },
+
+  // item table style
+  itemsTable: {
+    // marginTop: 10,
+    // border: '1px solid #000',
+  },
+ itemsTableHeader: {
+  flexDirection: 'row',
+  backgroundColor: 'rgba(3, 113, 193, 0.2)',
+  borderBottom: '1px solid #0371C1',
+  borderTop:0
+},
+headerCell: {
+  borderRight: '1px solid #0371C1',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 2,
+},
+  itemsTableRow: {
+    flexDirection: "row",
+    // borderBottom: '1px solid #0371C1',
+    alignItems: "center",
+  },
+  itemsTableTotalRow: {
+    flexDirection: "row",
+    // borderTop: "1px solid #0371C1",
+    backgroundColor: "rgba(3, 113, 193, 0.2)",
+    alignItems: "center",
+  },
+  // Header Styles
+  srNoHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+  },
+  productHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "25%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  hsnHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "10%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  qtyHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  rateHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "10%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  taxableHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  igstHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
+  },
+  totalHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "15%",
+    textAlign: "center",
+    padding: 2,
+  },
+  igstMainHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 1,
+  },
+  igstSubHeader: { flexDirection: "row", borderTop: "1px solid #0371C1" },
+  igstSubText: {
+    fontSize: 6,
+    fontWeight: "bold",
+    width: "70%",
+    textAlign: "center",
+    padding: 1,
+  },
+  igstSubPercentage:{
+    fontSize: 6,
+    fontWeight: "bold",
+    width: "30%",
+    textAlign: "center",
+    padding: 1,
+  },
+Tablecolumn:{
+ column: {
+    borderRight:"1px solid #0371C1"
+  },
+},
+ tableContainer: {
+   position: 'relative',
+   width: '100%',
+ },
+    verticalBorder: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: '#0371C1',
+  },
+  // Cell Styles
+  srNoCell: { fontSize: 7, width: "8%", textAlign: "center", padding: 4 },
+  productCell: {
+    fontSize: 7,
+    width: "25%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+    wrap: true,
+  },
+  hsnCell: {
+    fontSize: 7,
+    width: "10%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  qtyCell: {
+    fontSize: 7,
+    width: "8%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  rateCell: {
+    fontSize: 7,
+    width: "10%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  taxableCell: {
+    fontSize: 7,
+    width: "12%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
+     backgroundColor: 'rgba(3, 113, 193, 0.2)',
+  },
+igstCell: {
+  flexDirection: "row",
+  width: "12%",
+  display: "flex",
+  justifyContent: "center", // horizontally center children
+  alignItems: "center", // vertically center children
+  gap: 10,
+  // borderLeft: "1px solid #0371C1", // optional
+  textAlign: "center",
+},
+igstPercent: {
+  fontSize: 7,
+  textAlign: "right",
+  padding: 1,
+  width: "30%", // ensure consistent spacing
+},
+igstAmount: {
+  fontSize: 7,
+  textAlign: "center",
+  padding: 0,
+  width: "70%",
+  alignItems:"flex-start",
+  display:"flex",
+  justifyContent:"flex-start"
+},
+  totalCell: {
+    fontSize: 7,
+    width: "15%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+     backgroundColor: 'rgba(3, 113, 193, 0.2)',
+  },
+
+
+  // Total Row Styles
+  totalLabel: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 2,
+  },
+  totalEmpty: { fontSize: 7, width: "25%", padding: 2 ,  textAlign: "center",fontWeight:"bold"},
+  totalQty: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+  },
+  totalTaxable: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    textAlign: "center",
+    padding: 2,
+  },
+  igstTotal: {
+    fontSize: 7,
+    width: "12%",
+    // borderLeft: "1px solid #ddd",
+    // borderRight: "1px solid #ddd",
+  },
+  totalIgstAmount: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "right",
+    padding: 1,
+  },
+  grandTotal: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "15%",
+    textAlign: "center",
+    padding: 2,
+  },
+
+  // igstHeader: {
+  //   flexDirection: 'row',
+  //   width: '12%',
+  //   borderLeft: '1px solid #000',
+  //   borderRight: '1px solid #000',
+  // },
+  igstPercentHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "50%",
+    textAlign: "center",
+    padding: 2,
+    borderRight: "1px solid #000",
+  },
+  igstAmountHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "50%",
+    textAlign: "center",
+    padding: 2,
+  },
+
+  igstPercentCell: {
+    fontSize: 7,
+    // width: '50%',
+    textAlign: "right",
+    padding: 2,
+    // borderRight: '1px solid #ddd',
+  },
+  igstAmountCell: {
+    fontSize: 7,
+    width: '70%',
+    textAlign: "center",
+    padding: 2,
+  },
+
+
+   bottomSection: {
+    flexDirection: "row",
+    borderTop: "1px solid #0371C1",
+    width: "100%",
+    fontSize: 7,
+  },
+
+  // Left half
+  leftSection: {
+    width: "55%",
+    borderRight: "1px solid #0371C1",
+  },
+
+  totalInWords: {
+    fontSize: 7,
+    fontWeight: "bold",
+    borderBottom: "1px solid #0371C1",
+    padding: 4,
+    textTransform: "uppercase",
+  },
+
+  termsBox: {
+    marginTop: 3,
+    padding:8
+  },
+  termLine: {
+    fontSize: 7,
+    marginBottom: 1,
+  },
+
+  qrContainer: {
+    alignItems: "center",
+    marginTop: 6,
+  },
+  qrImage: {
+    width: 45,
+    height: 45,
+  },
+  qrText: {
+    fontSize: 7,
+    marginTop: 2,
+  },
+
+
+  //hst summary table
+
+  // Add these styles to your templateA5_3Styles
+hsnTaxTable: {
+  border: '1px solid #0371C1',
+  backgroundColor: '#FFFFFF',
+},
+hsnTaxTableTitle: {
+  backgroundColor: '#0371C1',
+  color: '#FFFFFF',
+  // padding: 6,
+  fontSize: 8,
+  fontWeight: 'bold',
+  textAlign: 'center',
+},
+hsnTaxTableHeader: {
+  flexDirection: 'row',
+  backgroundColor: '#f0f8ff',
+  borderBottom: '1px solid #0371C1',
+},
+hsnTaxHeaderCell: {
+  padding: 1,
+  fontSize: 7,
+  fontWeight: 'bold',
+  borderRight: '0.5px solid #0371C1',
+  textAlign: 'center',
+},
+hsnTaxTableRow: {
+  flexDirection: 'row',
+  borderBottom: '0.5px solid #0371C1',
+},
+hsnTaxCell: {
+  padding: 1,
+  fontSize: 7,
+  borderRight: '1px solid #0371C1',
+  textAlign: 'center',
+},
+hsnTaxTableTotalRow: {
+  flexDirection: 'row',
+  backgroundColor: "rgba(3, 113, 193, 0.2)",
+  // borderTop: '1px solid #0371C1',
+},
+hsnTaxTotalCell: {
+  padding: 1,
+  fontSize: 7,
+  fontWeight: 'bold',
+  borderRight: '1px solid #0371C1',
+  textAlign: 'center',
+},
+
+  // Right half
+  rightSection: {
+    width: "45%",
+    justifyContent: "flex-start",
+  },
+
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderBottom: "1px solid #0371C1",
+    padding: 4,
+  },
+
+  label: { fontSize: 8,fontWeight: "bold" },
+  value: { fontSize: 8,fontWeight: "bold" },
+
+  labelBold: { fontSize: 8, fontWeight: "bold" },
+  valueBold: { fontSize: 8, fontWeight: "bold" },
+
+  highlightRow: {
+    backgroundColor: "#EAF4FF",
+  },
+
+  currencySymbol: {
+    fontSize: 6,
+  },
+ pageNumber: {
+  position: 'absolute',
+  bottom: 20, // Distance from bottom of page
+  right: 20,  // Distance from right of page
+  fontSize: 8,
+  textAlign: 'right',
+},
+  bankdetails:{
+    width:"100%",
+    borderTop: "1px solid #0371C1",
+     padding: 5,
+    flexDirection: 'row',
+    // fontSize: 10,
+    gap:10,
+  },
+  dataRowBank:{   
+    flexDirection: "row",
+    // justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 1,
+    gap:0,
+  },
+  tableLabelBank:{
+ fontSize: 8,
+    fontWeight: "bold",
+    // width: "30%", // Fixed width for labels
+    flexShrink: 0,
+    wrap: true,
+    hyphens: "none",
+  },
+  tableValueBank:{
+     fontSize: 8,
+    fontWeight: "normal",
+    // width: "70%", // Fixed width for values
+    flexShrink: 1,
+    wrap: true,
+    hyphens: "none",
+  }
+});
+
+
+
+export const template1Styles = StyleSheet.create({
+   page: {
+    flexDirection: "column",
+    backgroundColor: "#FFFFFF",
+    padding: 25,
+    fontFamily: "Helvetica",
+  },
+  header: {
+    display: "flex",
+    flexDirection: "row",
+    // marginBottom: 1,
+    // borderBottom: '1px solid #000',
+    paddingBottom: 4,
+    alignItems: "center",
+    textAlign: "center",
+    gap: 6,
+  },
+  headerLeft: {
+    alignItems: "flex-start",
+  },
+  headerRight: {
+    flex: 3,
+    alignItems: "flex-start",
+  },
+  logo: {
+    width: 60,
+    height: 60,
+  },
+  companyName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  address: {
+    fontSize: 10,
+    marginBottom: 3,
+    lineHeight: 1.2,
+  },
+  contactInfo: {
+    fontSize: 10,
+    lineHeight: 1.2,
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    alignItems: "center",
+  },
+
+  contactLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  contactValue: {
+    fontSize: 10,
+    fontWeight: "normal",
+  },
+  section: {
+    border: "1.5px solid #0371C1",
+    padding: 0,
+  },
+  tableHeader: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "1.5px solid #0371C1",
+  },
+  gstRow: {
+    flexDirection: "row",
+    padding: 4,
+  },
+  gstLabel: {
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  gstValue: {
+    fontSize: 12,
+    fontWeight: "normal",
+  },
+  invoiceTitleRow: {
+    padding: 4,
+  },
+  invoiceTitle: {
+    fontSize: 16,
+    fontWeight: "extrabold",
+    textAlign: "center",
+    color: "#0371C1",
+  },
+  recipientRow: {
+    padding: 4,
+  },
+  recipientText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  threeColSection: {
+    flexDirection: "row",
+    // marginBottom: 10,
+    borderBottom: "2px solid #0371C1",
+  },
+  column: {
+    width: "33.3%",
+    paddingHorizontal: 4,
+    borderLeft: "1px solid #0371C1",
+  },
+  columnHeader: {
+    marginBottom: 5,
+  },
+  dataRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 2,
+  },
+  threecoltableHeader: {
+    fontSize: 8,
+    fontWeight: "bold",
+  },
+  tableLabel: {
+    fontSize: 8,
+    fontWeight: "bold",
+    width: "40%", // Fixed width for labels
+    flexShrink: 0,
+    wrap: true,
+    hyphens: "none",
+  },
+  tableValue: {
+    fontSize: 8,
+    fontWeight: "normal",
+    width: "70%", // Fixed width for values
+    flexShrink: 1,
+    wrap: true,
+    hyphens: "none",
+  },
+
+  // item table style
+  itemsTable: {
+    // marginTop: 10,
+    // border: '1px solid #000',
+  },
+   tableContainer: {
+   position: 'relative',
+   width: '100%',
+ },
+    verticalBorder: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: '#0371C1',
+  },
+ itemsTableHeader: {
+  flexDirection: 'row',
+  backgroundColor: 'rgba(3, 113, 193, 0.2)',
+  borderBottom: '1px solid #0371C1',
+  borderTop:0
+},
+headerCell: {
+  // borderRight: '1px solid #0371C1',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 2,
+},
+  itemsTableRow: {
+    flexDirection: "row",
+    // borderBottom: '1px solid #0371C1',
+    alignItems: "center",
+  },
+  itemsTableTotalRow: {
+    flexDirection: "row",
+    // borderTop: "1px solid #0371C1",
+    backgroundColor: "rgba(3, 113, 193, 0.2)",
+    alignItems: "center",
+  },
+  // Header Styles
+  srNoHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+  },
+  productHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "25%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  hsnHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "10%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  qtyHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  rateHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "10%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  taxableHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    textAlign: "center",
+    padding: 2,
+    // borderLeft:"1px solid #0371C1"
+  },
+  igstHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
+  },
+  totalHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "15%",
+    textAlign: "center",
+    padding: 2,
+  },
+  igstMainHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 1,
+  },
+  igstSubHeader: { flexDirection: "row", borderTop: "1px solid #0371C1" },
+  igstSubText: {
+    fontSize: 6,
+    fontWeight: "bold",
+    width: "70%",
+    textAlign: "center",
+    padding: 1,
+  },
+  igstSubPercentage:{
+    fontSize: 6,
+    fontWeight: "bold",
+    width: "30%",
+    textAlign: "center",
+    padding: 1,
+  },
+
+  // Cell Styles
+  srNoCell: { fontSize: 7, width: "8%", textAlign: "center", padding: 4 },
+  productCell: {
+    fontSize: 7,
+    width: "25%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+    wrap: true,
+  },
+  hsnCell: {
+    fontSize: 7,
+    width: "10%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  qtyCell: {
+    fontSize: 7,
+    width: "8%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  rateCell: {
+    fontSize: 7,
+    width: "10%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+  taxableCell: {
+    fontSize: 7,
+    width: "12%",
+    textAlign: "center",
+    padding: 4,
+     backgroundColor: "rgba(3, 113, 193, 0.2)",
+    // borderLeft: "1px solid #0371C1",
+    // borderRight: "1px solid #0371C1",
+  },
+igstCell: {
+  flexDirection: "row",
+  width: "12%",
+  display: "flex",
+  justifyContent: "center", // horizontally center children
+  alignItems: "center", // vertically center children
+  gap: 10,
+  // borderLeft: "1px solid #0371C1", // optional
+  textAlign: "center",
+},
+igstPercent: {
+  fontSize: 7,
+  textAlign: "center",
+  padding: 1,
+  width: "30%", // ensure consistent spacing
+},
+igstAmount: {
+  fontSize: 7,
+  textAlign: "center",
+  padding: 1,
+  width: "70%",
+},
+  totalCell: {
+    fontSize: 7,
+    width: "15%",
+    textAlign: "center",
+    padding: 4,
+    // borderLeft: "1px solid #0371C1",
+  },
+
+
+  // Total Row Styles
+  totalLabel: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 2,
+  },
+  totalEmpty: { fontSize: 7, width: "25%", padding: 2 ,  textAlign: "center",fontWeight:"bold"},
+  totalQty: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "8%",
+    textAlign: "center",
+    padding: 2,
+  },
+  totalTaxable: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "12%",
+    textAlign: "center",
+    padding: 2,
+  },
+  igstTotal: {
+    fontSize: 7,
+    width: "12%",
+    borderLeft: "1px solid #ddd",
+    borderRight: "1px solid #ddd",
+  },
+  totalIgstAmount: {
+    fontSize: 7,
+    fontWeight: "bold",
+    textAlign: "right",
+    padding: 1,
+  },
+  grandTotal: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "15%",
+    textAlign: "center",
+    padding: 2,
+  },
+
+  // igstHeader: {
+  //   flexDirection: 'row',
+  //   width: '12%',
+  //   borderLeft: '1px solid #000',
+  //   borderRight: '1px solid #000',
+  // },
+  igstPercentHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "50%",
+    textAlign: "center",
+    padding: 2,
+    borderRight: "1px solid #000",
+  },
+  igstAmountHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    width: "50%",
+    textAlign: "center",
+    padding: 2,
+  },
+
+  igstPercentCell: {
+    fontSize: 7,
+    // width: '50%',
+    textAlign: "center",
+    padding: 2,
+    // borderRight: '1px solid #ddd',
+  },
+  igstAmountCell: {
+    fontSize: 7,
+    // width: '50%',
+    textAlign: "center",
+    padding: 2,
+  },
+
+
+   bottomSection: {
+    flexDirection: "row",
+    borderTop: "1px solid #0371C1",
+    width: "100%",
+    fontSize: 7,
+  },
+
+  // Left half
+  leftSection: {
+    width: "65%",
+    borderRight: "1px solid #0371C1",
+  },
+
+  totalInWords: {
+    fontSize: 7,
+    fontWeight: "bold",
+    borderBottom: "1px solid #0371C1",
+    padding: 4,
+    textTransform: "uppercase",
+  },
+
+  termsBox: {
+    marginTop: 3,
+    padding:8
+  },
+  termLine: {
+    fontSize: 7,
+    marginBottom: 1,
+  },
+
+  qrContainer: {
+    alignItems: "center",
+    marginTop: 6,
+  },
+  qrImage: {
+    width: 45,
+    height: 45,
+  },
+  qrText: {
+    fontSize: 7,
+    marginTop: 2,
+  },
+
+  // Right half
+  rightSection: {
+    width: "35%",
+    justifyContent: "flex-start",
+  },
+
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderBottom: "1px solid #0371C1",
+    padding: 4,
+  },
+
+  label: { fontSize: 8,fontWeight: "bold" },
+  value: { fontSize: 8,fontWeight: "bold" },
+
+  labelBold: { fontSize: 8, fontWeight: "bold" },
+  valueBold: { fontSize: 8, fontWeight: "bold" },
+
+  highlightRow: {
+    backgroundColor: "#EAF4FF",
+  },
+
+  currencySymbol: {
+    fontSize: 6,
+  },
+
+  //hst summary table
+
+  // Add these styles to your templateA5_3Styles
+hsnTaxTable: {
+  // border: '1px solid #0371C1',
+  backgroundColor: '#FFFFFF',
+},
+hsnTaxTableTitle: {
+  backgroundColor: '#0371C1',
+  color: '#FFFFFF',
+  // padding: 6,
+  fontSize: 8,
+  fontWeight: 'bold',
+  textAlign: 'center',
+},
+hsnTaxTableHeader: {
+  flexDirection: 'row',
+  backgroundColor: '#f0f8ff',
+  borderBottom: '1px solid #0371C1',
+},
+hsnTaxHeaderCell: {
+  padding: 1,
+  fontSize: 7,
+  fontWeight: 'bold',
+  borderRight: '0.5px solid #0371C1',
+  textAlign: 'center',
+},
+hsnTaxTableRow: {
+  flexDirection: 'row',
+  borderBottom: '0.5px solid #0371C1',
+},
+hsnTaxCell: {
+  padding: 1,
+  fontSize: 7,
+  borderRight: '1px solid #0371C1',
+  textAlign: 'center',
+},
+hsnTaxTableTotalRow: {
+  flexDirection: 'row',
+  backgroundColor: "rgba(3, 113, 193, 0.2)",
+  // borderTop: '1px solid #0371C1',
+},
+hsnTaxTotalCell: {
+  padding: 1,
+  fontSize: 7,
+  fontWeight: 'bold',
+  borderRight: '1px solid #0371C1',
+  textAlign: 'center',
+},
+
+ pageNumber: {
+  position: 'absolute',
+  bottom: 20, // Distance from bottom of page
+  right: 20,  // Distance from right of page
+  fontSize: 8,
+  textAlign: 'right',
+},
+});
+
+
+
+
+export const template_t3 = StyleSheet.create({
+  page: {
+    flexDirection: 'column',
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    fontSize: 8,
+    fontFamily: 'Courier',
+    width: '100%',
+  },
+  centerText: {
+    textAlign: 'center',
+    width: '100%',
+  },
+  boldText: {
+    fontWeight: 'bold',
+    // fontFamily: 'Courier-Bold',
+  },
+  companyName: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 2,
+    // fontFamily: 'Courier-Bold',
+  },
+  companyAddress: {
+    fontSize: 7,
+    textAlign: 'center',
+    lineHeight: 1.2,
+    marginBottom: 3,
+  },
+  invoiceTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 4,
+    // textDecoration: 'underline',
+    // fontFamily: 'Courier-Bold',
+  },
+  section: {
+
+  },
+  billedinvoice:{
+  display:"flex",
+  justifyContent:"space-between"
+  },
+  sectionTitle: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginBottom: 2,
+    // fontFamily: 'Courier-Bold',
+  },
+  line: {
+    borderBottom: '1px solid #000',
+    marginVertical: 3,
+  },
+  dashedLine: {
+    borderBottom: '1px double-dashed #000',
+    marginVertical: 3,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 1,
+  },
+  col: {
+    flexDirection: 'column',
+  },
+  itemsHeader: {
+    flexDirection: 'row',
+    borderBottom: '1px solid #000',
+    borderTop: '1px solid #000',
+    paddingVertical: 2,
+    marginBottom: 2,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    paddingVertical: 1,
+    borderBottom: '0.5px solid #666',
+  },
+  colSr: {
+    width: '8%',
+    textAlign: 'center',
+  },
+  colItem: {
+    width: '42%',
+    paddingLeft: 2,
+  },
+  colHsn: {
+    width: '20%',
+    textAlign: 'left',
+  },
+  colQty: {
+    width: '10%',
+    textAlign: 'center',
+  },
+  colRate: {
+    width: '12%',
+    textAlign: 'right',
+    paddingRight: 2,
+  },
+  colTotal: {
+    width: '18%',
+    textAlign: 'right',
+    paddingRight: 2,
+  },
+  totalSection: {
+    marginTop: 4,
+    borderTop: '1px solid #000',
+    paddingTop: 3,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 1,
+  },
+  footer: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 7,
+    lineHeight: 1.2,
   },
 });
 
