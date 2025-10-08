@@ -185,33 +185,10 @@ if (transaction?.shippingAddress) {
 }
 
 
-        if (selectedTemplate === "template8") {
-          
-          // Template 8 uses react-pdf and returns Blob directly
-          pdfBlob = await generatePdfForTemplate8(
-            transaction,
-            company,
-            party,
-            serviceNameById,
-            shippingAddress,
-            bank
-          );
-        } 
-        if (selectedTemplate === "template12") {
-          
-          // Template 12 uses react-pdf and returns Blob directly
-          pdfBlob = await generatePdfForTemplate12(
-           transaction,
-            company,
-            party,
-            serviceNameById,
-            shippingAddress,
-            bank
-          );
-        }else {
         if (
           selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
+          selectedTemplate === "template12" ||
           selectedTemplate === "templateA5" ||
           selectedTemplate === "templateA5_3"||
           selectedTemplate === "templateA5_4"||
@@ -231,6 +208,16 @@ if (transaction?.shippingAddress) {
               break;
             case "template8":
               pdfBlob = await generatePdfForTemplate8(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
+            case "template12":
+              pdfBlob = await generatePdfForTemplate12(
                 transaction,
                 company,
                 party,
@@ -355,19 +342,17 @@ if (transaction?.shippingAddress) {
           case "template11":
               docPromise = Promise.resolve(
                 generatePdfForTemplate11(
-
-            case "template16":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate16(
                   transaction,
                   company,
                   party,
                   serviceNameById,
                   shippingAddress,
+                  undefined,
                   bank
                 )
               );
               break;
+
           case "template16":
             docPromise = Promise.resolve(
               generatePdfForTemplate16(
@@ -379,10 +364,7 @@ if (transaction?.shippingAddress) {
               )
             );
             break;
-                  shippingAddress
-                )
-              );
-              break;
+                
             case "template17":
               docPromise = Promise.resolve(
                 generatePdfForTemplate17(
@@ -510,7 +492,7 @@ if (transaction?.shippingAddress) {
               <SelectItem value="template7">Prestige</SelectItem> */}
               {/* priya  */}
               <SelectItem value="template8">Template 2</SelectItem>
-<!--               <SelectItem value="template8">Template 8</SelectItem> -->
+           {/* <SelectItem value="template8">Template 8</SelectItem>  */}
               <SelectItem value="template11">Template 11</SelectItem>
                <SelectItem value="template12">Template 12</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
