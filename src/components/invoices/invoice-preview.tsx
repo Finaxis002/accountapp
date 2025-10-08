@@ -200,8 +200,7 @@ export function InvoicePreview({
             shippingAddress,
             bank
           );
-        }else {
-        if (
+        }else  if (
           selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
           selectedTemplate === "templateA5" ||
@@ -349,6 +348,15 @@ export function InvoicePreview({
           case "template11":
               docPromise = Promise.resolve(
                 generatePdfForTemplate11(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
 
             case "template16":
               docPromise = Promise.resolve(
@@ -373,10 +381,7 @@ export function InvoicePreview({
               )
             );
             break;
-                  shippingAddress
-                )
-              );
-              break;
+                
             case "template17":
               docPromise = Promise.resolve(
                 generatePdfForTemplate17(

@@ -1,4 +1,4 @@
-import type { Company, Party, Transaction, ShippingAddress } from "@/lib/types";
+import type { Company, Party, Transaction, ShippingAddress, Bank } from "@/lib/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -42,7 +42,8 @@ export const generatePdfForTemplate16 = async (
     company: ExtendedCompany | null | undefined, 
     party: ExtendedParty | null | undefined, 
     serviceNameById?: Map<string, string>,
-    shippingAddressOverride?: ExtendedShippingAddress | null 
+    shippingAddressOverride?: ExtendedShippingAddress | null ,
+    bank?: Bank | null
 ): Promise<jsPDF> => {
     
     // --- START: Hardcoded Bank Details (Left UNCHANGED as requested) ---
