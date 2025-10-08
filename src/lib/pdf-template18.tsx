@@ -57,6 +57,18 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
   shippingAddress,
   bank,
 }) => {
+  // --- Thermal page sizing helpers ---
+  const mmToPt = (mm: number) => (mm * 72) / 25.4;
+  const THERMAL_WIDTH_MM = 80; // common 80mm paper; change to 58 if needed
+  const thermalPageWidth = mmToPt(THERMAL_WIDTH_MM);
+  const estimateThermalHeight = (itemCount: number) => {
+    // Rough estimate: header/meta/billed-to ≈ 180pt, per item ≈ 34pt, summary/QR ≈ 240pt
+    const headerHeight = 180;
+    const perItemHeight = 34;
+    const footerHeight = 240;
+    const minHeight = 400; // ensure non-zero height for very small invoices
+    return Math.max(minHeight, headerHeight + itemCount * perItemHeight + footerHeight);
+  };
   const {
     totalTaxable,
     totalAmount,
@@ -74,7 +86,8 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress); // --- START LOGIC COPY FROM TEMPLATE 8 (for item presentation/pagination) ---
 
-  const itemsPerPage = 12; // Reduced for compact style and summary at the bottom
+  // For thermal receipts, render all items on a single page so height grows with content
+  const itemsPerPage = itemsWithGST.length || 12;
   const pages = [];
   for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
     pages.push(itemsWithGST.slice(i, i + itemsPerPage));
@@ -98,8 +111,13 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
       {" "}
       {pages.map((pageItems, pageIndex) => {
         const isLastPage = pageIndex === pages.length - 1;
+        const dynamicHeight = estimateThermalHeight(pageItems.length);
         return (
-          <Page key={pageIndex} size="A4" style={template18Styles.page}>
+          <Page
+            key={pageIndex}
+            size={{ width: thermalPageWidth, height: dynamicHeight }}
+            style={[template18Styles.page, { paddingHorizontal: 8, paddingVertical: 8 }]}
+          >
             {" "}
             <View style={template18Styles.pageContent}>
               {/* Company Header - Centered */}{" "}
@@ -132,12 +150,12 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
               <View style={template18Styles.invoiceTitleContainer}>
                 {" "}
                 <Text style={template18Styles.invoiceTitle}>
-                  ======================TAX INVOICE======================
+                 ===================TAX INVOICE==================
                 </Text>
                 {" "}
               </View>
               {" "}
-              {/* INVOICE # and DATE (Spread Left/Right) */}             {" "}
+              {/* INVOICE # and DATE (Spread Left/Right) */}{" "}
               <View style={template18Styles.invoiceMetaRow}>
                 {" "}
                 <Text style={template18Styles.invoiceMetaTextLeft}>
@@ -158,11 +176,11 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                 {" "}
               </View>
               {/*               <Text style={template18Styles.separatorBold}></Text> */}
-              {/* Billed To Section */}             {" "}
+              {/* Billed To Section */}{" "}
               <View style={template18Styles.billedToBox}>
                 {" "}
                 <Text style={template18Styles.billedToHeader}>
-                  =========================BILLED TO==========================
+                ======================BILLED TO======================
                 </Text>
                 {" "}
                 <Text style={template18Styles.billedToText}>
@@ -182,12 +200,12 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                 )}
                 {" "}
                 <Text style={template18Styles.billedToHeader}>
-                  ============================================================
+                  =======================================================
                 </Text>
                 {" "}
               </View>
               {/*               <Text style={template18Styles.separatorBold}></Text> */}
-              {/* Items Table Header */}             {" "}
+              {/* Items Table Header */}{" "}
               <View style={template18Styles.itemsTableHeaderSimple}>
                 {" "}
                 <Text
@@ -214,7 +232,7 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                 <Text
                   style={[
                     template18Styles.itemsHeaderColumn,
-                    { width: "25%", textAlign: "right" },
+                    { width: "28%", textAlign: "right" },
                   ]}
                 >
                   Total
@@ -222,7 +240,7 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                 {" "}
               </View>
               {/*               <Text style={template18Styles.separatorDouble}></Text> */}
-              {/* Items Table Body */}             {" "}
+              {/* Items Table Body */}{" "}
               <View style={template18Styles.itemsTableSimple}>
                 {" "}
                 {pageItems.map((item, index) => (
@@ -236,7 +254,7 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                     <View
                       style={[
                         template18Styles.itemDetailsCell,
-                        { width: "40%" },
+                        { width: "50%" },
                       ]}
                     >
                       {" "}
@@ -261,15 +279,14 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                     <View
                       style={[
                         template18Styles.taxablePlusGSTCell,
-                        { width: "85%" },
+                        { width: "110%" },
                       ]}
                     >
                       <Text style={template18Styles.taxableValueText}>
                         {formatCurrency(item.taxableValue)}
-                      </Text>
-                      <Text style={template18Styles.gstRateText}>
                         + {item.gstRate.toFixed(2)} %
                       </Text>
+                      
                       {/* GST Breakdown per item */}
                       {showIGST ? (
                         <Text style={template18Styles.gstRateText}>
@@ -316,12 +333,12 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                         </>
                       ) : null}
                     </View>
-                    {/* Total - Position 3 (25%) */}
+                    {/* Total - Position 3  */}
                     {" "}
                     <Text
                       style={[
                         template18Styles.totalCellSimple,
-                        { width: "55%" },
+                        { width: "90%" },
                       ]}
                     >
                       <Text style={template18Styles.taxableValueTextrs}>

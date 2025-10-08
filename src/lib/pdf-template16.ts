@@ -11,6 +11,7 @@ import {
     prepareTemplate8Data,
     formatCurrency,
     numberToWords,
+    getStateCode,
 } from "./pdf-utils";
 
 // FIX: Interfaces simplified to minimally include 'email' and core fields.
@@ -47,8 +48,10 @@ export const generatePdfForTemplate16 = async (
     party: ExtendedParty | null | undefined, 
     serviceNameById?: Map<string, string>,
     shippingAddress?: ExtendedShippingAddress | null,
-    bank?: Bank | null
+    bank?: Bank | null | undefined
 ): Promise<jsPDF> => {
+
+    console.log("bank details from template 16 :",bank)
     
     // --- START: Hardcoded Bank Details (Left UNCHANGED as requested) ---
     const getBankDetails = () => ({
@@ -75,48 +78,7 @@ export const generatePdfForTemplate16 = async (
         return numberToWords(n);
     };
 
-    // Helper function to get state code (like template8)
-    const getStateCode = (state: string): string => {
-        const stateCodeMap: { [key: string]: string } = {
-            "Andhra Pradesh": "37",
-            "Arunachal Pradesh": "12",
-            "Assam": "18",
-            "Bihar": "10",
-            "Chhattisgarh": "22",
-            "Goa": "30",
-            "Gujarat": "24",
-            "Haryana": "06",
-            "Himachal Pradesh": "02",
-            "Jharkhand": "20",
-            "Karnataka": "29",
-            "Kerala": "32",
-            "Madhya Pradesh": "462080",
-            "Maharashtra": "27",
-            "Manipur": "14",
-            "Meghalaya": "17",
-            "Mizoram": "15",
-            "Nagaland": "13",
-            "Odisha": "21",
-            "Punjab": "03",
-            "Rajasthan": "08",
-            "Sikkim": "11",
-            "Tamil Nadu": "33",
-            "Telangana": "36",
-            "Tripura": "16",
-            "Uttar Pradesh": "09",
-            "Uttarakhand": "05",
-            "West Bengal": "19",
-            "Delhi": "07",
-            "Chandigarh": "04",
-            "Puducherry": "34",
-            "Ladakh": "38",
-            "Jammu and Kashmir": "01",
-            "Lakshadweep": "31",
-            "Andaman and Nicobar Islands": "35",
-            "Dadra and Nagar Haveli and Daman and Diu": "26"
-        };
-        return stateCodeMap[state] || "";
-    };
+    // getStateCode is imported from pdf-utils to keep mapping consistent with template8
     
     // Use template8 data preparation logic
     const {
@@ -565,6 +527,9 @@ export const generatePdfForTemplate16 = async (
     putBankDetail("Acc. Number:", bankDetails.accNumber, bankDetailY); bankDetailY += 12;
     putBankDetail("IFSC:", bankDetails.ifsc, bankDetailY); bankDetailY += 12;
     putBankDetail("UPI ID:", bankDetails.upiId, bankDetailY); bankDetailY += 12;
+
+    console.log("bank",bank)
+    
     
     
     // RIGHT: Signature Block (DYNAMIC Company Name)

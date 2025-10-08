@@ -779,18 +779,8 @@ Delivery Ex-Premises.`,M,sigY+15)
     // ---------------- TERMS AND CONDITIONS (BOTTOM LEFT) ----------------
     
     // Ensure space before terms block
-    // if (currentBlockY + 120 > getH() - M) {
-    //     doc.addPage();
-    //     drawBorderFrame(doc, M);
-    //     currentBlockY = FRAME_TOP_Y + 10;
-    // }
-    // doc.setDrawColor(...BORDER);
-    // // doc.line(M, currentBlockY, getW() - M, currentBlockY ); // ❌ REMOVED: Redundant line
-    // currentBlockY += 10;
+   
 
-    // doc.setFont("helvetica", "bold");
-    // doc.setTextColor(0, 0, 0);
-    // doc.setFontSize(9);
     
     // const termsHeight = renderNotes(doc, finalTerms, M, currentBlockY + 15, COL_W * 2 - 20, getW(), doc.internal.pageSize.getHeight());
     

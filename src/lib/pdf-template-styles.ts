@@ -655,7 +655,7 @@ export const template18Styles = StyleSheet.create({
     flexDirection: "column",
     backgroundColor: "#FFFFFF",
     paddingVertical: 24,
-    paddingHorizontal: 160,
+    paddingHorizontal: 150,
     fontSize: 8, 
     fontFamily: "Helvetica",
   },
@@ -713,21 +713,24 @@ export const template18Styles = StyleSheet.create({
     // Container for centering the title
     alignItems: "center",
     marginBottom: 2,
-    width: 280,
+    // width: 280,
+    // paddingRight:60
   },
   invoiceTitle: {
     fontSize: 8,
     fontWeight: "bold",
     textAlign: "center",
     color: "#000000",
+    width: 280,
+    // paddingRight:60
   },
   invoiceMetaRow: {
     // Aligns INVOICE # and DATE left and right, spanning full width
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 4,
-    width: 260,
-    paddingLeft: 15,
+    // width: 260,
+    // paddingLeft: 15,
   },
   invoiceMetaTextLeft: {
     fontSize: 8,
@@ -747,6 +750,7 @@ export const template18Styles = StyleSheet.create({
   billedToBox: {
     flexDirection: "column",
     alignItems: "center",
+    paddingRight:0
   },
   billedToHeader: {
     fontSize: 7,
@@ -754,6 +758,7 @@ export const template18Styles = StyleSheet.create({
     color: "#000000", // FIXED SYNTAX ERROR: removed trailing '
     textAlign: "center",
     marginBottom: 1,
+    width:300
   },
   billedToText: {
     fontSize: 8,
@@ -768,7 +773,7 @@ export const template18Styles = StyleSheet.create({
   itemsTableHeaderSimple: {
     flexDirection: "row",
     alignItems: "stretch",
-    paddingLeft: 20,
+    paddingLeft: 0,
   },
   itemsHeaderColumn: {
     fontSize: 9,
@@ -779,7 +784,7 @@ export const template18Styles = StyleSheet.create({
   },
   itemsTableSimple: {
     flexDirection: "column",
-    paddingLeft:20
+    paddingLeft:1
   },
   itemsTableRowSimple: {
     flexDirection: "row",
@@ -815,7 +820,9 @@ export const template18Styles = StyleSheet.create({
     fontWeight: "normal",
     color: "#000000",
     paddingRight: 0,
-    paddingLeft:"15px"
+    paddingLeft:"30px",
+     flexDirection: "row",
+    
   },
   gstRateText: {
     fontSize: 8,
@@ -823,7 +830,7 @@ export const template18Styles = StyleSheet.create({
     color: "#000000",
     lineHeight: 1.3,
     paddingRight: 0,
-    paddingLeft:"23px"
+    paddingLeft:"30px"
   },
   totalCellSimple: {
     fontSize: 8,
@@ -849,7 +856,9 @@ export const template18Styles = StyleSheet.create({
   summaryContainer: {
     marginTop: 4,
     flexDirection: "column",
-    alignItems: "center",
+    // alignItems: "center",
+    width:350
+    
   },
   separatorSummary: {
     fontSize: 8,
@@ -860,15 +869,18 @@ export const template18Styles = StyleSheet.create({
     color: "#000000",
     width: "100%",
     content: "================SUMMARY========================",
+    
   },
   summarySection: {
     width: "60%",
     flexDirection: "column",
+    
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 1,
+    
   },
   summaryLabel: {
     fontSize: 8,
