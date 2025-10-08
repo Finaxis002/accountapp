@@ -206,7 +206,7 @@ const itemSchema = z
 
 const formSchema = z
   .object({
-    type: z.enum(["sales", "purchases", "receipt", "payment", "journal"]),
+    type: z.enum(["sales", "purchases", "receipt", "payment", "journal","proforma"]),
     company: z.string().min(1, "Please select a company."),
     party: z.string().optional(),
     date: z.date({ required_error: "A date is required." }),
