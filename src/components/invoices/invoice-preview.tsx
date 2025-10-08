@@ -31,6 +31,8 @@ import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 // priya
 import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplate11 } from "@/lib/pdf-template11";
+import { generatePdfForTemplate12 } from "@/lib/pdf-template12";
 import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
 import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
 import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
@@ -50,6 +52,8 @@ type TemplateKey =
   | "template6"
   | "template7"
   | "template8"
+   | "template11"
+    | "template12"
   | "templateA5"
   | "templateA5_3"
   | "templateA5_4"
@@ -181,6 +185,30 @@ if (transaction?.shippingAddress) {
 }
 
 
+        if (selectedTemplate === "template8") {
+          
+          // Template 8 uses react-pdf and returns Blob directly
+          pdfBlob = await generatePdfForTemplate8(
+            transaction,
+            company,
+            party,
+            serviceNameById,
+            shippingAddress,
+            bank
+          );
+        } 
+        if (selectedTemplate === "template12") {
+          
+          // Template 12 uses react-pdf and returns Blob directly
+          pdfBlob = await generatePdfForTemplate12(
+           transaction,
+            company,
+            party,
+            serviceNameById,
+            shippingAddress,
+            bank
+          );
+        }else {
         if (
           selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
@@ -324,6 +352,9 @@ if (transaction?.shippingAddress) {
                 )
               );
               break;
+          case "template11":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate11(
 
             case "template16":
               docPromise = Promise.resolve(
@@ -332,6 +363,22 @@ if (transaction?.shippingAddress) {
                   company,
                   party,
                   serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
+          case "template16":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate16(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress
+              )
+            );
+            break;
                   shippingAddress
                 )
               );
@@ -463,6 +510,9 @@ if (transaction?.shippingAddress) {
               <SelectItem value="template7">Prestige</SelectItem> */}
               {/* priya  */}
               <SelectItem value="template8">Template 2</SelectItem>
+<!--               <SelectItem value="template8">Template 8</SelectItem> -->
+              <SelectItem value="template11">Template 11</SelectItem>
+               <SelectItem value="template12">Template 12</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
               <SelectItem value="templateA5_3">Template A5-3</SelectItem>
               <SelectItem value="templateA5_4">Template A5-4</SelectItem>

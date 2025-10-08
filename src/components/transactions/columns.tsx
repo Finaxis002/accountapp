@@ -1005,7 +1005,7 @@ export const columns = ({
         const [partyDetails, setPartyDetails] = useState<Party | null>(null);
         const [isLoadingParty, setIsLoadingParty] = useState(false);
         const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
-
+         const [dropdownOpen, setDropdownOpen] = useState(false);
         // Invoice actions are allowed ONLY for sales
         const isInvoiceable = transaction.type === "sales";
         // WhatsApp allowed for both sales and receipts
@@ -1158,6 +1158,7 @@ export const columns = ({
 
 ////////////////////
 const handleSendWhatsApp = async () => {
+  setDropdownOpen(false);
   // Fetch party details if we don't have them
   let partyToUse = partyDetails;
   if (!partyToUse && basicParty?._id) {
@@ -1190,7 +1191,7 @@ const handleSendWhatsApp = async () => {
 
         return (
           <>
-            <DropdownMenu>
+            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
                   <span className="sr-only">Open menu</span>
