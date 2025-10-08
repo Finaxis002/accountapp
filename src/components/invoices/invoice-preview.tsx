@@ -195,7 +195,6 @@ if (transaction?.shippingAddress) {
           selectedTemplate === "templateA5" ||
           selectedTemplate === "template18"  ||
           selectedTemplate === "template12" ||
-          selectedTemplate === "templateA5" ||
           selectedTemplate === "templateA5_3"||
           selectedTemplate === "templateA5_4"||
           selectedTemplate === "template-t3"
