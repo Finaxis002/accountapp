@@ -40,6 +40,8 @@ import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
 //amit
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
+import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
+import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
 import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 
@@ -59,7 +61,9 @@ type TemplateKey =
   | "templateA5_4"
   | "template-t3"
   | "template16"
-  | "template17";
+  | "template17"
+  | "template18"
+  | "template19";
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
@@ -188,6 +192,8 @@ if (transaction?.shippingAddress) {
         if (
           selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
+          selectedTemplate === "templateA5" ||
+          selectedTemplate === "template18"  ||
           selectedTemplate === "template12" ||
           selectedTemplate === "templateA5" ||
           selectedTemplate === "templateA5_3"||
@@ -237,6 +243,18 @@ if (transaction?.shippingAddress) {
                 client
               );
               break;
+
+              case "template18":
+                pdfBlob = await generatePdfForTemplate18(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                );
+                break;
+
              case "templateA5_3":
               pdfBlob = await generatePdfForTemplateA5_3(
                 transaction,
@@ -268,6 +286,7 @@ if (transaction?.shippingAddress) {
                 bank,
               );
               break;
+
           }
         } else {
           // Other templates use jsPDF
@@ -372,7 +391,20 @@ if (transaction?.shippingAddress) {
                   company,
                   party,
                   serviceNameById,
-                  shippingAddress
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
+                 case "template19":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate19(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
                 )
               );
               break;
@@ -502,6 +534,8 @@ if (transaction?.shippingAddress) {
               {/* amit  */}
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>
+              <SelectItem value="template18">new3</SelectItem>
+              <SelectItem value="template19">new4</SelectItem>
             </SelectContent>
           </Select>
         </div>

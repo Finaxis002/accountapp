@@ -11,6 +11,7 @@ import {
   pdf,
 } from "@react-pdf/renderer";
 import { Column } from "jspdf-autotable";
+import { Fullscreen } from "lucide-react";
 import { last } from "pdf-lib";
 
 export const template8Styles = StyleSheet.create({
@@ -433,7 +434,7 @@ headerCell: {
     textAlign: "center",
     padding: 1,
   },
-  igstSubPercentage:{
+  igstSubPercentage: {
     fontSize: 6,
     fontWeight: "bold",
     width: "30%",
@@ -480,28 +481,28 @@ headerCell: {
     // borderLeft: "1px solid #0371C1",
     // borderRight: "1px solid #0371C1",
   },
-igstCell: {
-  flexDirection: "row",
-  width: "12%",
-  display: "flex",
-  justifyContent: "center", // horizontally center children
-  alignItems: "center", // vertically center children
-  gap: 10,
-  // borderLeft: "1px solid #0371C1", // optional
-  textAlign: "center",
-},
-igstPercent: {
-  fontSize: 7,
-  textAlign: "center",
-  padding: 1,
-  width: "30%", // ensure consistent spacing
-},
-igstAmount: {
-  fontSize: 7,
-  textAlign: "center",
-  padding: 1,
-  width: "70%",
-},
+  igstCell: {
+    flexDirection: "row",
+    width: "12%",
+    display: "flex",
+    justifyContent: "center", // horizontally center children
+    alignItems: "center", // vertically center children
+    gap: 10,
+    // borderLeft: "1px solid #0371C1", // optional
+    textAlign: "center",
+  },
+  igstPercent: {
+    fontSize: 7,
+    textAlign: "center",
+    padding: 1,
+    width: "30%", // ensure consistent spacing
+  },
+  igstAmount: {
+    fontSize: 7,
+    textAlign: "center",
+    padding: 1,
+    width: "70%",
+  },
   totalCell: {
     fontSize: 7,
     width: "15%",
@@ -510,7 +511,6 @@ igstAmount: {
     // borderLeft: "1px solid #0371C1",
   },
 
-
   // Total Row Styles
   totalLabel: {
     fontSize: 7,
@@ -518,7 +518,13 @@ igstAmount: {
     textAlign: "center",
     padding: 2,
   },
-  totalEmpty: { fontSize: 7, width: "25%", padding: 2 ,  textAlign: "center",fontWeight:"bold"},
+  totalEmpty: {
+    fontSize: 7,
+    width: "25%",
+    padding: 2,
+    textAlign: "center",
+    fontWeight: "bold",
+  },
   totalQty: {
     fontSize: 7,
     fontWeight: "bold",
@@ -589,8 +595,7 @@ igstAmount: {
     padding: 2,
   },
 
-
-   bottomSection: {
+  bottomSection: {
     flexDirection: "row",
     borderTop: "1px solid #0371C1",
     width: "100%",
@@ -613,7 +618,7 @@ igstAmount: {
 
   termsBox: {
     marginTop: 3,
-    padding:8
+    padding: 8,
   },
   termLine: {
     fontSize: 7,
@@ -646,8 +651,8 @@ igstAmount: {
     padding: 4,
   },
 
-  label: { fontSize: 8,fontWeight: "bold" },
-  value: { fontSize: 8,fontWeight: "bold" },
+  label: { fontSize: 8, fontWeight: "bold" },
+  value: { fontSize: 8, fontWeight: "bold" },
 
   labelBold: { fontSize: 8, fontWeight: "bold" },
   valueBold: { fontSize: 8, fontWeight: "bold" },
@@ -2467,4 +2472,308 @@ export const template_t3 = StyleSheet.create({
     fontSize: 7,
     lineHeight: 1.2,
   },
+});
+
+// Template 18 specific styles
+
+export const template18Styles = StyleSheet.create({
+  // --- Page and Content Layout ---
+  page: {
+    flexDirection: "column",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 24,
+    paddingHorizontal: 150,
+    fontSize: 8, 
+    fontFamily: "Helvetica",
+  },
+  pageContent: {
+    flex: 1,
+    flexDirection: "column",
+    justifyContent: "flex-start",
+    gap: 4,
+  }, // --- Typography Utilities ---
+  separator: {
+    fontSize: 8,
+    textAlign: "center",
+    marginVertical: 1,
+    color: "#000000",
+  },
+  separatorBold: {
+    fontSize: 7,
+    textAlign: "center",
+    marginVertical: 1,
+    fontWeight: "bold",
+    color: "#000000",
+  },
+  separatorDouble: {
+    fontSize: 8,
+    textAlign: "center",
+    marginVertical: 1,
+    fontWeight: "extrabold",
+    letterSpacing: 0.5,
+    color: "#000000",
+  }, // --- Company Header (Top Centered) ---
+
+  companyHeaderSection: {
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  companyNameTop: {
+    fontSize: 9,
+    fontWeight: "bold",
+    marginBottom: 1,
+    color: "#000000",
+  },
+  address: {
+    fontSize: 8,
+    textAlign: "center",
+    lineHeight: 1.2,
+    color: "#000000",
+  },
+  gstin: {
+    fontSize: 8,
+    marginTop: 1,
+    color: "#000000",
+    textAlign: "center",
+  }, // --- Invoice Title and Meta Row (Updated Alignment) ---
+  invoiceTitleContainer: {
+    // Container for centering the title
+    alignItems: "center",
+    marginBottom: 2,
+    // width: 280,
+    // paddingRight:60
+  },
+  invoiceTitle: {
+    fontSize: 8,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#000000",
+    width: 280,
+    // paddingRight:60
+  },
+  invoiceMetaRow: {
+    // Aligns INVOICE # and DATE left and right, spanning full width
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    // width: 260,
+    // paddingLeft: 15,
+  },
+  invoiceMetaTextLeft: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+    lineHeight: 1.3,
+    textAlign: "left",
+  },
+  invoiceMetaTextRight: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+    lineHeight: 1.3,
+    textAlign: "right",
+  }, // --- Billed To Section ---
+
+  billedToBox: {
+    flexDirection: "column",
+    alignItems: "center",
+    paddingRight:0
+  },
+  billedToHeader: {
+    fontSize: 7,
+    fontWeight: "bold",
+    color: "#000000", // FIXED SYNTAX ERROR: removed trailing '
+    textAlign: "center",
+    marginBottom: 1,
+    width:300
+  },
+  billedToText: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+    lineHeight: 1.3,
+    marginLeft: 0,
+    width: "100%",
+    textAlign: "center",
+  }, // --- Items Table (Simplified look from image) ---
+
+  itemsTableHeaderSimple: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    paddingLeft: 0,
+  },
+  itemsHeaderColumn: {
+    fontSize: 9,
+    fontWeight: "bold",
+    padding: 1,
+    color: "#000000",
+    lineHeight: 1.3, // Removed borderRight to match the image's line-separated text style
+  },
+  itemsTableSimple: {
+    flexDirection: "column",
+    paddingLeft:1
+  },
+  itemsTableRowSimple: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 4,
+    marginTop: 4,
+    marginLeft: 0,
+    paddingBottom: 4,
+    // borderBottom: "0.5px dotted #000000",
+  },
+  itemDetailsCell: {
+    flexDirection: "column",
+    justifyContent: "flex-start",
+  },
+  itemNameText: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+  },
+  itemSubText: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+    lineHeight: 1.3,
+  },
+  taxablePlusGSTCell: {
+    flexDirection: "column",
+    // alignItems: "flex-end",
+    justifyContent: "flex-start",
+  },
+  taxableValueText: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+    paddingRight: 0,
+    paddingLeft:"30px",
+     flexDirection: "row",
+    
+  },
+  gstRateText: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+    lineHeight: 1.3,
+    paddingRight: 0,
+    paddingLeft:"30px"
+  },
+  totalCellSimple: {
+    fontSize: 8,
+    fontWeight: "normal",
+    textAlign: "right",
+    color: "#000000",
+    paddingLeft: 30,
+  },
+  totalCellSimpleRs: {
+    fontSize: 8,
+    fontWeight: "normal",
+    textAlign: "right",
+    color: "#000000",
+    paddingLeft: 0,
+  },
+  taxableValueTextrs: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+    paddingLeft: 200,
+  }, // --- Summary Section ---
+
+  summaryContainer: {
+    marginTop: 4,
+    flexDirection: "column",
+    // alignItems: "center",
+    width:350
+    
+  },
+  separatorSummary: {
+    fontSize: 8,
+    textAlign: "center",
+    marginBottom: 1,
+    fontWeight: "extrabold",
+    letterSpacing: 0.5,
+    color: "#000000",
+    width: "100%",
+    content: "================SUMMARY========================",
+    
+  },
+  summarySection: {
+    width: "60%",
+    flexDirection: "column",
+    
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 1,
+    
+  },
+  summaryLabel: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+  },
+  summaryValue: {
+    fontSize: 8,
+    fontWeight: "normal",
+    color: "#000000",
+  },
+  summaryLabelGrand: {
+    fontSize: 8,
+    fontWeight: "bold",
+    color: "#000000",
+  },
+  summaryValueGrand: {
+    fontSize: 8,
+    fontWeight: "bold",
+    color: "#000000",
+  }, // --- QR Code/UPI Section ---
+  qrCodeSection: {
+    marginTop: 10,
+    alignItems: "center",
+    marginBottom: 10,
+    marginLeft: 0,
+    width: "100%",
+  },
+  qrCodePlaceholder: {
+    width: 60,
+    height: 60,
+    border: "1px solid black",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  qrCodePlaceholderText: {
+    fontSize: 6,
+    color: "#000000",
+    textAlign: "center",
+  },
+  payUsingUpi: {
+    fontSize: 7,
+    fontWeight: "normal",
+    color: "#000000",
+    marginTop: 2,
+  }, // --- UNUSED STYLES (from template8 that aren't mapped) ---
+
+  title: {},
+  dividerBlue: {},
+  divider: {},
+  table: {},
+  tableHeader: {},
+  tableCellHeader: {},
+  tableRow: {},
+  tableCell: {},
+  tableCellSize7: {},
+  tableCellLast: {},
+  totalsSection: {},
+  totalsLeft: {},
+  totalsRight: {},
+  totalsRow: {},
+  smallRs: {},
+  paymentSection: {},
+  termsSection: {},
+  boldText: {},
+  normalText: {},
+  grayColor: {},
+  sectionHeader: {},
 });
