@@ -167,11 +167,19 @@ export function InvoicePreview({
         let pdfBlob: Blob;
 
         // Extract shipping address from transaction
-        const shippingAddress =
-          transaction?.shippingAddress &&
-          typeof transaction.shippingAddress === "object"
-            ? (transaction.shippingAddress as any)
-            : null;
+      let shippingAddress = null;
+
+if (transaction?.shippingAddress) {
+  const addr = transaction.shippingAddress as any;
+  if (addr instanceof Map || addr?.size > 0) {
+    // it's a Map of services, not an address
+    shippingAddress = null;
+  } else if (typeof addr === "object" && (addr.address || addr.city || addr.state)) {
+    // it's a real address object
+    shippingAddress = addr;
+  }
+}
+
 
         if (
           selectedTemplate === "template1" ||
@@ -241,10 +249,8 @@ export function InvoicePreview({
                 transaction,
                 company,
                 party,
-                serviceNameById,
                 shippingAddress,
                 bank,
-                client
               );
               break;
           }
