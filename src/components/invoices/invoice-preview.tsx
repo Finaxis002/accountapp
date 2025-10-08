@@ -30,6 +30,8 @@ import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplate11 } from "@/lib/pdf-template11";
+import { generatePdfForTemplate12 } from "@/lib/pdf-template12";
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import jsPDF from "jspdf";
@@ -44,6 +46,8 @@ type TemplateKey =
   | "template6"
   | "template7"
   | "template8"
+   | "template11"
+    | "template12"
   | "template16"
   | "template17";
 
@@ -107,7 +111,19 @@ export function InvoicePreview({
             shippingAddress,
             bank
           );
-        } else {
+        } 
+        if (selectedTemplate === "template12") {
+          
+          // Template 12 uses react-pdf and returns Blob directly
+          pdfBlob = await generatePdfForTemplate12(
+           transaction,
+            company,
+            party,
+            serviceNameById,
+            shippingAddress,
+            bank
+          );
+        }else {
           // Other templates use jsPDF
           let docPromise: Promise<jsPDF>;
 
@@ -187,7 +203,18 @@ export function InvoicePreview({
                 )
               );
               break;
-        
+          case "template11":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate11(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
           case "template16":
             docPromise = Promise.resolve(
               generatePdfForTemplate16(
@@ -347,6 +374,8 @@ export function InvoicePreview({
               <SelectItem value="template6">Standard</SelectItem>
               <SelectItem value="template7">Prestige</SelectItem>
               <SelectItem value="template8">Template 8</SelectItem>
+              <SelectItem value="template11">Template 11</SelectItem>
+               <SelectItem value="template12">Template 12</SelectItem>
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>
             </SelectContent>
