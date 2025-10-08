@@ -524,17 +524,19 @@ if (transaction?.shippingAddress) {
               {/* priya  */}
               <SelectItem value="template8">Template 2</SelectItem>
            {/* <SelectItem value="template8">Template 8</SelectItem>  */}
-              <SelectItem value="template11">Template 11</SelectItem>
-               <SelectItem value="template12">Template 12</SelectItem>
+              <SelectItem value="template11">Template 3</SelectItem>
+               <SelectItem value="template12">Template 4</SelectItem>
+                <SelectItem value="template16">Template 5</SelectItem>
+                <SelectItem value="template17">Template 6</SelectItem>
+                 <SelectItem value="template19">Template 7</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
               <SelectItem value="templateA5_3">Template A5-3</SelectItem>
               <SelectItem value="templateA5_4">Template A5-4</SelectItem>
-               <SelectItem value="template-t3">Template T3</SelectItem>
+               <SelectItem value="template-t3">Template T3</SelectItem>  
+              <SelectItem value="template18">Template T3-2</SelectItem>
               {/* amit  */}
-              <SelectItem value="template16">new</SelectItem>
-              <SelectItem value="template17">new2</SelectItem>
-              <SelectItem value="template18">new3</SelectItem>
-              <SelectItem value="template19">new4</SelectItem>
+
+
             </SelectContent>
           </Select>
         </div>
