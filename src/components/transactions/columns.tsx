@@ -645,7 +645,6 @@ import { useState, useEffect } from "react";
 import { WhatsAppComposerDialog } from "./whatsapp-composer-dialog";
 import { whatsappConnectionService } from "@/lib/whatsapp-connection";
 
-
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
   onViewItems: (tx: Transaction) => void;
@@ -699,8 +698,6 @@ export const columns = ({
   onSendWhatsApp,
   hideActions = false,
 }: ColumnsProps): ColumnDef<Transaction>[] => {
-
-  
   const customFilterFn = makeCustomFilterFn(serviceNameById);
 
   const baseColumns: ColumnDef<Transaction>[] = [
@@ -999,7 +996,7 @@ export const columns = ({
         const [partyDetails, setPartyDetails] = useState<Party | null>(null);
         const [isLoadingParty, setIsLoadingParty] = useState(false);
         const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
-         const [dropdownOpen, setDropdownOpen] = useState(false);
+        const [dropdownOpen, setDropdownOpen] = useState(false);
         // Invoice actions are allowed ONLY for sales
         const isInvoiceable = transaction.type === "sales";
         // WhatsApp allowed for both sales and receipts
@@ -1117,71 +1114,72 @@ export const columns = ({
         //   // Open the WhatsApp composer dialog
         //   setIsWhatsAppDialogOpen(true);
         // };
-////////////////////
+        ////////////////////
 
         // In your columns component, update the WhatsApp handler:
-//         const handleSendWhatsApp = async () => {
-//   // Fetch party details if we don't have them
-//   let partyToUse = partyDetails;
-//   if (!partyToUse && basicParty?._id) {
-//     partyToUse = await fetchPartyDetails();
-//   }
+        //         const handleSendWhatsApp = async () => {
+        //   // Fetch party details if we don't have them
+        //   let partyToUse = partyDetails;
+        //   if (!partyToUse && basicParty?._id) {
+        //     partyToUse = await fetchPartyDetails();
+        //   }
 
-//   if (!partyToUse) {
-//     toast({
-//       variant: "destructive",
-//       title: "Customer Information Missing",
-//       description: "Unable to find customer details for this transaction.",
-//     });
-//     return;
-//   }
+        //   if (!partyToUse) {
+        //     toast({
+        //       variant: "destructive",
+        //       title: "Customer Information Missing",
+        //       description: "Unable to find customer details for this transaction.",
+        //     });
+        //     return;
+        //   }
 
-//   // Check if WhatsApp is connected
-//   const isConnected = whatsappConnectionService.isWhatsAppConnected();
+        //   // Check if WhatsApp is connected
+        //   const isConnected = whatsappConnectionService.isWhatsAppConnected();
 
-//   if (!isConnected) {
-//     toast({
-//       title: "Connect WhatsApp",
-//       description: "Please connect your WhatsApp to send messages.",
-//     });
-//   }
+        //   if (!isConnected) {
+        //     toast({
+        //       title: "Connect WhatsApp",
+        //       description: "Please connect your WhatsApp to send messages.",
+        //     });
+        //   }
 
-//   // If connected, open the composer directly
-//   setIsWhatsAppDialogOpen(true); // Change this line
-// };
+        //   // If connected, open the composer directly
+        //   setIsWhatsAppDialogOpen(true); // Change this line
+        // };
 
-////////////////////
-const handleSendWhatsApp = async () => {
-  setDropdownOpen(false);
-  // Fetch party details if we don't have them
-  let partyToUse = partyDetails;
-  if (!partyToUse && basicParty?._id) {
-    partyToUse = await fetchPartyDetails();
-  }
+        ////////////////////
+        const handleSendWhatsApp = async () => {
+          setDropdownOpen(false);
+          // Fetch party details if we don't have them
+          let partyToUse = partyDetails;
+          if (!partyToUse && basicParty?._id) {
+            partyToUse = await fetchPartyDetails();
+          }
 
-  if (!partyToUse) {
-    toast({
-      variant: "destructive",
-      title: "Customer Information Missing",
-      description: "Unable to find customer details for this transaction.",
-    });
-    return;
-  }
+          if (!partyToUse) {
+            toast({
+              variant: "destructive",
+              title: "Customer Information Missing",
+              description:
+                "Unable to find customer details for this transaction.",
+            });
+            return;
+          }
 
-  // ✅ BETTER: Use async method for accurate check
-  const isConnected = await whatsappConnectionService.checkWhatsAppWebConnection();
+          // ✅ BETTER: Use async method for accurate check
+          const isConnected =
+            await whatsappConnectionService.checkWhatsAppWebConnection();
 
-  if (!isConnected) {
-    toast({
-      title: "Connect WhatsApp",
-      description: "Please connect your WhatsApp to send messages.",
-    });
-  }
+          if (!isConnected) {
+            toast({
+              title: "Connect WhatsApp",
+              description: "Please connect your WhatsApp to send messages.",
+            });
+          }
 
-  // If connected, open the composer directly
-  setIsWhatsAppDialogOpen(true);
-};
-
+          // If connected, open the composer directly
+          setIsWhatsAppDialogOpen(true);
+        };
 
         return (
           <>
