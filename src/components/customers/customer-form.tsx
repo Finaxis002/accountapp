@@ -96,6 +96,7 @@ const formSchema = z
     address: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
+    pincode: z.string().optional(),
     gstin: z.string().optional().or(z.literal("")),
     gstRegistrationType: z.enum(gstRegistrationTypes).default("Unregistered"),
     pan: z
@@ -141,6 +142,7 @@ export function CustomerForm({
       address: customer?.address || "",
       city: customer?.city || "",
       state: customer?.state || "",
+      pincode: customer?.pincode || "",
       gstin: customer?.gstin || "",
       gstRegistrationType: customer?.gstRegistrationType || "Unregistered",
       pan: customer?.pan || "",
@@ -318,6 +320,7 @@ export function CustomerForm({
                 </FormItem>
               )}
             />
+           
 
             {/* <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -418,6 +421,19 @@ export function CustomerForm({
                 )}
               />
             </div>
+             <FormField
+              control={form.control}
+              name="pincode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pincode</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. 400001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid md:grid-cols-2 gap-4">
               {/* …after City/State … */}

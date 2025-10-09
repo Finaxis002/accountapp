@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import type { Company, Product } from "@/lib/types";
+import type { Company, Product , Service } from "@/lib/types";
 import { ProductForm } from "@/components/products/product-form";
 // ⬇️ import your real ServiceForm
 import { ServiceForm } from "@/components/services/service-form";
@@ -55,13 +55,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ExcelImportExport } from "@/components/ui/excel-import-export";
 
-type Service = {
-  _id: string;
-  serviceName: string;
-  createdAt?: string;
-  updatedAt?: string;
-  // add more fields if you have them (price, description, etc.)
-};
+
 
 export default function InventoryPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -392,6 +386,7 @@ export default function InventoryPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Unit</TableHead>
+                <TableHead>HSN</TableHead>
                 <TableHead>Created At</TableHead>
                 {role !== "user" && (
                   <TableHead className="text-right">Actions</TableHead>
@@ -422,6 +417,9 @@ export default function InventoryPage() {
                   </TableCell>
                    <TableCell>
                     <span className="font-bold text-sm">{p.unit ?? "Piece"}</span>
+                  </TableCell>
+                    <TableCell>
+                    <span className="font-bold text-sm">{p.hsn ?? "N/A"}</span>
                   </TableCell>
                   
 
@@ -544,6 +542,19 @@ export default function InventoryPage() {
                 </div>
               </div>
 
+              {/* hsn   */}
+
+               <div className="flex gap-4 items-start align-middle text-center">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                   HSN
+                  </span>
+                <span className="text-sm text-gray-800 dark:text-gray-200 font-medium">
+                    {p.hsn ?? "N/A"}
+                  </span>
+                </div>
+
+
+
               {/* Action Buttons */}
               {role !== "user" && (
               <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
@@ -665,6 +676,7 @@ export default function InventoryPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Service</TableHead>
+                <TableHead>SAC</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -677,6 +689,13 @@ export default function InventoryPage() {
                       <Server className="h-4 w-4 text-muted-foreground" />
                       {s.serviceName}
                       <Badge variant="outline">Service</Badge>
+                    </div>
+                  </TableCell>
+                   <TableCell>
+                    <div className="font-medium flex items-center gap-2">
+                     
+                      {s.sac ?? "N/A"}
+                    
                     </div>
                   </TableCell>
                   <TableCell>

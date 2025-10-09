@@ -6,6 +6,7 @@ export type Product = {
   type?: 'product' | 'service';
   stocks?: number;
   unit?: string;
+  hsn?: string;
   createdByClient: string;   // <-- required
   createdAt?: string;
   updatedAt?: string;
@@ -17,6 +18,7 @@ export type Product = {
 export type Service = {
     _id: string;
     serviceName:string;
+    sac?: string;
     createdByClient: string;
     createdAt?: string;
     updatedAt?: string;
@@ -31,19 +33,24 @@ export type Item = {
   quantity?: number;
   unitType?: "Kg" | "Litre" | "Piece" | "Box" | "Meter" | "Dozen" | "Pack" | "Other";
   pricePerUnit?: number;
+  hsnCode?: string;
   // Service fields
   service?: Service;
   serviceName?: Service;
   description?: string;
+  sacCode?: string;
   // Common field
   amount: number;
 }
 
 export type Transaction = {
+  fromState: any;
+  toState: any;
    _id: string;
    invoiceNumber?: string | null;
    invoiceYearYY?: number | null;
    date: Date;
+   dueDate: Date;
    party?: {
      email: boolean; _id: string; name: string
    } | string;
@@ -54,7 +61,7 @@ export type Transaction = {
    items?: any[];
    quantity?: number;
    pricePerUnit?: number;
-   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
+   type: "sales" | "purchases" | "receipt" | "payment" | "journal" | "proforma";
    unitType?:
      | "Kg"
      | "Litre"
@@ -78,6 +85,8 @@ export type Transaction = {
    // For Receipts/Payments
    referenceNumber?: string;
    notes?: string;
+   shippingAddress?: ShippingAddress | string | null;
+   bank?: Bank | string | null;
  };
 
 export type Kpi = {
@@ -240,6 +249,7 @@ export type Party = {
   address?: string;
   city?: string;
   state?: string;
+  pincode?: string;
   gstin?: string;
   gstRegistrationType?:
     | "Regular"
@@ -271,4 +281,41 @@ export type Vendor = Party & {
     | "Unknown";
   pan?: string;
   isTDSApplicable?: boolean;
+  contactNumber?: string; // For vendor compatibility
+  email?: string; // For vendor compatibility
+};
+
+export type ShippingAddress = {
+  _id: string;
+  party: string;
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  contactNumber: string;
+  createdByClient: string;
+  createdByUser: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+};
+
+export type Bank = {
+  _id: string;
+  client: string;
+  user: string;
+  company: string;
+  bankName: string;
+  managerName: string;
+  contactNumber: string;
+  email: string;
+  city: string;
+  ifscCode: string;
+  branchAddress: string;
+  accountNumber?: string;
+  upiId?: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
 };
