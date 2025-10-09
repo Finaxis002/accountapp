@@ -22,6 +22,7 @@ import {
     prepareTemplate8Data,
 } from "./pdf-utils";
 import { template8Styles } from "./pdf-template-styles";
+import { capitalizeWords } from "./utils";
 const logo = "/assets/invoice-logos/R.png";
 const convertNumberToWords = (num: number): string => {
     if (num === 0) return "Zero";
@@ -158,7 +159,7 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
         totalItems,
         totalQty,
     } = prepareTemplate8Data(transaction, company, party, shippingAddress);
-    const billing = getBillingAddress(party);
+    const billing = capitalizeWords(getBillingAddress(party));
     let shippingLabel = "";
     let shippingState = "N/A";
 
@@ -179,14 +180,14 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                     />
                     <View style={[styles.companyDetails, { marginLeft: 10 }]}>
                         <Text style={[styles.companyName, { marginBottom: 5 }]}>
-                            {company?.businessName}
+                            {capitalizeWords(company?.businessName)}
                         </Text>
                         <Text style={{ marginBottom: 3 }}>
-                            {company?.address}
+                            {capitalizeWords(company?.address)}
                         </Text>
                         <Text style={{ marginBottom: 3 }}>
-                            {company?.City},{" "}
-                            {company?.addressState} -{" "}
+                            {capitalizeWords(company?.City)},{" "}
+                            {capitalizeWords(company?.addressState)} -{" "}
                             {company?.Pincode}
                         </Text>
                         {company?.gstin && <Text>GSTIN {company.gstin}</Text>}
@@ -204,7 +205,7 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                     <View style={{ flex: 1, marginRight: 6 }}>
                         <Text style={styles.sectionHeader}>Details of Buyer | Billed to :</Text>
                         <Text style={{ fontSize: 9, fontWeight: "bold" }}>
-                            {party?.name || "Jay Enterprises"}
+                            {capitalizeWords(party?.name || "Jay Enterprises")}
                         </Text>
                         <Text style={styles.addressText}>{billing}</Text>
                         {party?.gstin && <Text style={styles.addressText}>GSTIN: {party.gstin}</Text>}
@@ -236,7 +237,7 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                                         { fontSize: 12 },
                                     ]}
                                 >
-                                    {shippingAddress?.label || " "}
+                                    {capitalizeWords(shippingAddress?.label || " ")}
                                 </Text>
                                 <Text
                                     style={[
@@ -244,10 +245,10 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                                         template8Styles.grayColor,
                                     ]}
                                 >
-                                    {getShippingAddress(
+                                    {capitalizeWords(getShippingAddress(
                                         shippingAddress,
                                         getBillingAddress(party)
-                                    )}
+                                    ))}
                                 </Text>
 
                                 <Text
@@ -301,7 +302,7 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                         return (
                             <View key={idx} style={styles.tableRow}>
                                 <Text style={[styles.td, { flex: 1 }]}>{idx + 1}</Text>
-                                <Text style={[styles.td, { flex: 2 }]}>{item.name}</Text>
+                                <Text style={[styles.td, { flex: 2 }]}>{capitalizeWords(item.name)}</Text>
                                 <Text style={[styles.td, { flex: 1 }]}>{item.code || "-"}</Text>
                                 <Text style={[styles.td, { flex: 1 }]}>{item.quantity || "-"}</Text>
                                 <Text style={[styles.td, { flex: 1 }]}>{item.pricePerUnit || "-"}</Text>
@@ -361,12 +362,12 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                     {/* TOTAL row in GST Summary */}
                     <View style={styles.tableRow}>
                         <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>TOTAL</Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalTaxable}</Text>
+                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{formatCurrency(totalTaxable)}</Text>
                         <Text style={[styles.td, { flex: 1 }]}></Text>
                         <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalCGST}</Text>
                         <Text style={[styles.td, { flex: 1 }]}></Text>
                         <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalSGST}</Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalAmount}</Text>
+                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{formatCurrency(totalAmount)}</Text>
                     </View>
                 </View>
 
@@ -380,15 +381,15 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                             <View style={{ marginTop: 4 }}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
                                     <Text style={[template8Styles.normalText, { marginRight: 28 }]}>Name:</Text>
-                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{bank.bankName}</Text>
+                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{capitalizeWords(bank.bankName)}</Text>
                                 </View>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
                                     <Text style={template8Styles.normalText}>Branch:</Text>
-                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{bank.branchAddress}</Text>
+                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{capitalizeWords(bank.branchAddress)}</Text>
                                 </View>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
                                     <Text style={template8Styles.normalText}>IFSC:</Text>
-                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{bank.ifscCode}</Text>
+                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{capitalizeWords(bank.ifscCode)}</Text>
                                 </View>
                             </View>
                         ) : (

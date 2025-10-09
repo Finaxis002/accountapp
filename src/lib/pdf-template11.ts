@@ -20,6 +20,7 @@ import {
   renderNotes,
   invNo,
 } from "./pdf-utils";
+import { capitalizeWords } from "./utils";
 
 
 export const generatePdfForTemplate11 = async (
@@ -195,8 +196,8 @@ const buyerState = party?.state || "State not available";
 const consigneeState =
   shippingAddress?.state || party?.state || "State not available";
 
-  const billingAddress = getBillingAddress(party);
-  const shippingAddressStr = getShippingAddress(shippingAddress, billingAddress);
+  const billingAddress = capitalizeWords(getBillingAddress(party));
+  const shippingAddressStr = capitalizeWords(getShippingAddress(shippingAddress, billingAddress));
   // const buyerState = billingAddress?.split(',')[1]?.trim() || "State not available";
   const displayedCompanyName =
     opts?.displayCompanyName?.trim() || (company?.businessName || "").trim();
@@ -267,7 +268,7 @@ const consigneeState =
     doc.setFontSize(16);
     doc.setTextColor(...COLOR.PRIMARY);
     doc.text(
-      (invoiceData.company.name || "").toUpperCase(),
+      capitalizeWords((invoiceData.company.name || "").toUpperCase()),
       nameX,
       42
     );
@@ -291,7 +292,7 @@ if (addr || stateText) {
 
   doc.text("Name :", infoX + 6, infoY + 12);
   doc.setFont("helvetica", "normal");
-  doc.text(invoiceData.billTo.name || "-", infoX + 60, infoY + 12, { align: "left" });
+  doc.text(capitalizeWords(invoiceData.billTo.name || "-"), infoX + 60, infoY + 12, { align: "left" });
 
   doc.setFont("helvetica", "bold");
   doc.text("Phone :", infoX + 6, infoY + 24);
@@ -488,7 +489,7 @@ yL = row("State", buyerState, x1, yL, w1);
     const taxable = Number(it.amount ?? qty * rate);
     const gstPct = Number(it.gstPercentage ?? 0);
     const { cgst, sgst, igst, total } = gstBreakup(taxable, gstPct, isInterState);
-    const desc = `${it?.name || ""}${it?.description ? " — " + it.description : ""}`;
+    const desc = `${capitalizeWords(it?.name || "")}${it?.description ? " — " + it.description : ""}`;
     return {
       sr: i + 1,
       desc,
@@ -719,10 +720,10 @@ doc.setFont("helvetica", "normal");
 doc.setFontSize(10);
 
 const bankLines = [
-  `Bank Name: ${bank?.bankName || "-"}`,
-  `Branch: ${bank?.branchAddress || "-"}`,
-  `City: ${bank?.city || "-"}`,
-  `IFSC Code: ${bank?.ifscCode || "-"}`,
+  `Bank Name: ${capitalizeWords(bank?.bankName || "-")}`,
+  `Branch: ${capitalizeWords(bank?.branchAddress || "-")}`,
+  `City: ${capitalizeWords(bank?.city || "-")}`,
+  `IFSC Code: ${capitalizeWords(bank?.ifscCode || "-")}`,
   `Contact Number: ${bank?.contactNumber || "-"}`,
 ];
 
@@ -881,7 +882,7 @@ y1 += bankLines.length * 14 + 8;
 
   // ================= Signature / Stamp =================
   const companyDisplayName =
-    (company as any)?.legalName || (company as any)?.name || "Company Name";
+    capitalizeWords((company as any)?.legalName || (company as any)?.name || "Company Name");
 
   doc.setFont("helvetica", "bold");
   doc.text(`For ${companyDisplayName}`, rightBoxX + rightBoxW / 2, y2, {
