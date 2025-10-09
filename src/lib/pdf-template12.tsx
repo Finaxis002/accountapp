@@ -22,6 +22,7 @@ import {
     prepareTemplate8Data,
 } from "./pdf-utils";
 import { template8Styles } from "./pdf-template-styles";
+import { templateA5_4Styles } from "./pdf-template-styles";
 const logo = "/assets/invoice-logos/R.png";
 const convertNumberToWords = (num: number): string => {
     if (num === 0) return "Zero";
@@ -137,7 +138,7 @@ interface Template12PDFProps {
     company?: Company | null;
     party?: Party | null;
     shippingAddress?: ShippingAddress | null;
-    bank?: Bank | null;
+    bank?: Bank | undefined
 }
 
 const Template12PDF: React.FC<Template12PDFProps> = ({
@@ -161,16 +162,21 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
     const billing = getBillingAddress(party);
     let shippingLabel = "";
     let shippingState = "N/A";
-
     if (shippingAddress && typeof shippingAddress !== "string") {
         shippingLabel = getShippingAddress(shippingAddress);
         shippingState = shippingAddress.state || "N/A";
     }
-    console.log("Resolved Shipping State:", shippingState);
-
+    console.log("Resolved Shipping State temp 12:", shippingAddress?.state);
+    const isIntraState =
+        company?.addressState?.trim().toLowerCase() ===
+        shippingAddress?.state?.trim().toLowerCase();
+    const totalIGST = !isIntraState ? totalCGST + totalSGST : 0;
+    const formatCurrency = (amount: number) => {
+        return "₹ " + Number(amount).toFixed(2); // 2 decimal digits fix
+    };
     return (
         <Document>
-            <Page size="A4" style={styles.page}>
+            <Page size="A4" style={{ ...styles.page, paddingBottom: 70 }}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Image
@@ -233,7 +239,7 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                                     style={[
                                         template8Styles.companyName,
                                         template8Styles.grayColor,
-                                        { fontSize: 12 },
+                                        { fontSize: 9 },
                                     ]}
                                 >
                                     {shippingAddress?.label || " "}
@@ -303,7 +309,8 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                                 <Text style={[styles.td, { flex: 1 }]}>{idx + 1}</Text>
                                 <Text style={[styles.td, { flex: 2 }]}>{item.name}</Text>
                                 <Text style={[styles.td, { flex: 1 }]}>{item.code || "-"}</Text>
-                                <Text style={[styles.td, { flex: 1 }]}>{item.quantity || "-"}</Text>
+                                <Text style={[styles.td, { flex: 1 }]}>  {item.quantity ? `${item.quantity} ${item.unit || ""}` : "-"}
+                                </Text>
                                 <Text style={[styles.td, { flex: 1 }]}>{item.pricePerUnit || "-"}</Text>
                                 <Text style={[styles.td, { flex: 1 }]}>{taxableValue}</Text>
                             </View>
@@ -315,10 +322,15 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                 {/* Totals */}
                 <View style={styles.totals}>
                     <View>
-
                         <Text>Taxable Amount: {formatCurrency(totalTaxable)}</Text>
-                        <Text>CGST: {formatCurrency(totalCGST)}</Text>
-                        <Text>SGST: {formatCurrency(totalSGST)}</Text>
+                        {isIntraState ? (
+                            <>
+                                <Text>CGST: {formatCurrency(totalCGST)}</Text>
+                                <Text>SGST: {formatCurrency(totalSGST)}</Text>
+                            </>
+                        ) : (
+                            <Text>IGST: {formatCurrency(totalIGST)}</Text>
+                        )}
                         <Text>Total Amount: {formatCurrency(totalAmount)}</Text>
                     </View>
                 </View>
@@ -331,12 +343,17 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                 {/* GST Summary Table */}
                 <View style={[styles.table, { marginTop: 12 }]}>
                     <View style={styles.tableRow}>
-                        {["HSN/SAC", "Taxable Value", "CGST %", "CGST Amt", "SGST %", "SGST Amt", "Total"].map(
-                            (h, i) => (
+                        {isIntraState ? (
+                            ["HSN/SAC", "Taxable Value", "CGST %", "CGST Amt", "SGST %", "SGST Amt", "Total"].map((h, i) => (
                                 <Text key={i} style={[styles.th, { flex: 1 }]}>{h}</Text>
-                            )
+                            ))
+                        ) : (
+                            ["HSN/SAC", "Taxable Value", "IGST %", "IGST Amt", "Total"].map((h, i) => (
+                                <Text key={i} style={[styles.th, { flex: 1 }]}>{h}</Text>
+                            ))
                         )}
                     </View>
+
                     {items.map((item, idx) => {
                         const taxableValue = item.amount || 0;
                         const gst = item.gstPercentage || 0;
@@ -350,25 +367,45 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                             <View key={idx} style={styles.tableRow}>
                                 <Text style={[styles.td, { flex: 1 }]}>{item.code || "-"}</Text>
                                 <Text style={[styles.td, { flex: 1 }]}>{taxableValue}</Text>
-                                <Text style={[styles.td, { flex: 1 }]}>{cgstRate}%</Text>
-                                <Text style={[styles.td, { flex: 1 }]}>{cgstAmt}</Text>
-                                <Text style={[styles.td, { flex: 1 }]}>{sgstRate}%</Text>
-                                <Text style={[styles.td, { flex: 1 }]}>{sgstAmt}</Text>
+                                {isIntraState ? (
+                                    <>
+                                        <Text style={[styles.td, { flex: 1 }]}>{cgstRate}%</Text>
+                                        <Text style={[styles.td, { flex: 1 }]}>{cgstAmt}</Text>
+                                        <Text style={[styles.td, { flex: 1 }]}>{sgstRate}%</Text>
+                                        <Text style={[styles.td, { flex: 1 }]}>{sgstAmt}</Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Text style={[styles.td, { flex: 1 }]}>{gst}%</Text>
+                                        <Text style={[styles.td, { flex: 1 }]}>{cgstAmt + sgstAmt}</Text>
+                                    </>
+                                )}
                                 <Text style={[styles.td, { flex: 1 }]}>{total}</Text>
                             </View>
                         );
                     })}
-                    {/* TOTAL row in GST Summary */}
+
+                    {/* TOTAL row */}
                     <View style={styles.tableRow}>
                         <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>TOTAL</Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalTaxable}</Text>
-                        <Text style={[styles.td, { flex: 1 }]}></Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalCGST}</Text>
-                        <Text style={[styles.td, { flex: 1 }]}></Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalSGST}</Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalAmount}</Text>
+                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{(totalTaxable)}</Text>
+                        {isIntraState ? (
+                            <>
+                                <Text style={[styles.td, { flex: 1 }]}></Text>
+                                <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{(totalCGST)}</Text>
+                                <Text style={[styles.td, { flex: 1 }]}></Text>
+                                <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{(totalSGST)}</Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={[styles.td, { flex: 1 }]}></Text>
+                                <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{(totalIGST)}</Text>
+                            </>
+                        )}
+                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{formatCurrency(totalAmount)}</Text>
                     </View>
                 </View>
+
 
 
                 {/* Bank Details + Signatory Row */}
@@ -379,16 +416,13 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                         {bank && typeof bank === 'object' && bank.bankName ? (
                             <View style={{ marginTop: 4 }}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                                    <Text style={[template8Styles.normalText, { marginRight: 28 }]}>Name:</Text>
-                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{bank.bankName}</Text>
+                                    <Text style={[template8Styles.normalText, { marginRight: 28 }]}>Name:  {bank.bankName}</Text>
                                 </View>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                                    <Text style={template8Styles.normalText}>Branch:</Text>
-                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{bank.branchAddress}</Text>
+                                    <Text style={template8Styles.normalText}>Branch:  {bank.branchAddress}</Text>
                                 </View>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                                    <Text style={template8Styles.normalText}>IFSC:</Text>
-                                    <Text style={[template8Styles.normalText, { display: "flex", justifyContent: "flex-start" }]}>{bank.ifscCode}</Text>
+                                    <Text style={template8Styles.normalText}>IFSC:  {bank.ifscCode}</Text>
                                 </View>
                             </View>
                         ) : (
@@ -396,24 +430,84 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                         )}
                     </View>
 
-                    {/* Signatory (Right) */}
+                    {/* Signatory */}
                     <View style={{ flex: 1, alignItems: "flex-end", justifyContent: "flex-end" }}>
                         <Text style={{ fontSize: 9, fontWeight: "bold" }}>For Global Security</Text>
                         <Text style={{ fontSize: 8, marginTop: 25 }}>Authorised Signatory</Text>
                     </View>
                 </View>
                 {/* Footer */}
-                <View style={styles.footer}>
-                    <Text>Terms and Conditions:</Text>
-                    <Text>• Subject to our home Jurisdiction.</Text>
-                    <Text>• Responsibility ceases as soon as goods leave our premises.</Text>
-                    <Text>• Goods once sold will not be taken back.</Text>
-                    <Text>• Delivery Ex-Premises.</Text>
+                {transaction?.notes ? (
+                    (() => {
+                        // Parse HTML notes
+                        const notesHtml = transaction.notes;
+                        const titleMatch = notesHtml.match(
+                            /<span class="ql-size-large">(.*?)<\/span>/
+                        );
+                        const title = titleMatch
+                            ? titleMatch[1].replace(/&/g, "&")
+                            : "Terms and Conditions";
 
-                    <Text style={{ marginTop: 8 }}>
-                        Declaration: Composition Taxable Person Not Eligible To Collect Taxes On Supplies
-                    </Text>
-                </View>
+                        const listItems = [];
+                        const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+                        let match;
+                        while ((match = liRegex.exec(notesHtml)) !== null) {
+                            // Strip HTML tags from item
+                            const cleanItem = match[1]
+                                .replace(/<[^>]*>/g, "")
+                                .replace(/&/g, "&");
+                            listItems.push(cleanItem);
+                        }
+
+                        return (
+                            <View style={templateA5_4Styles.termsBox}>
+                                <Text
+                                    style={[
+                                        templateA5_4Styles.termLine,
+                                        { fontWeight: "bold" },
+                                    ]}
+                                >
+                                    {title}
+                                </Text>
+                                {listItems.map((item, index) => (
+                                    <Text
+                                        key={index}
+                                        style={templateA5_4Styles.termLine}
+                                    >
+                                        • {item}
+                                    </Text>
+                                ))}
+                            </View>
+                        );
+                    })()
+                ) : (
+                    <View style={templateA5_4Styles.termsBox}>
+                        <Text style={templateA5_4Styles.termLine}>
+                            No terms and conditions added yet
+                        </Text>
+                    </View>
+                )}
+                <View
+                    fixed
+                    style={{
+                        position: "absolute",
+                        bottom: 40,
+                        left: 20,
+                        right: 20,
+                        borderBottom: "1px solid #999999",
+                    }}
+                />
+                <Text
+                    style={{
+                        position: "absolute",
+                        fontSize: 8,
+                        bottom: 30,    
+                        right: 20,      
+                        textAlign: "right",
+                    }}
+                    render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                    fixed
+                />
             </Page>
         </Document>
     );
@@ -427,7 +521,7 @@ transaction: Transaction, company: Company | null, party: Party | null, serviceN
             company={company}
             party={party}
             shippingAddress={shippingAddress}
-            bank={bank}
+            bank={bank || undefined}
         />
     );
     return await pdfDoc.toBlob();

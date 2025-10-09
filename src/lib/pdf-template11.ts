@@ -29,8 +29,12 @@ export const generatePdfForTemplate11 = async (
   serviceNameById?: Map<string, string>,
   shippingAddress?: ShippingAddress | null,
   opts?: { displayCompanyName?: string; logoUrl?: string },
-  bank?:Bank
+  bank?: Bank | null
 ): Promise<jsPDF> => {
+  
+
+   console.log("Transactions data from template 11", transaction)
+  console.log("Bank details from template 11:", bank)
 
   console.log("Bank details from temp11 :", bank)
 
@@ -134,6 +138,7 @@ const detectGSTIN = (x?: Partial<Company | Party> | null): string | null => {
     }
   };
 
+  
   // ---------- derive ----------
   const lines = getUnifiedLines(transaction, serviceNameById);
   const fallbackAmount = Number((transaction as any)?.amount ?? 0);
@@ -633,7 +638,7 @@ yL = row("State", buyerState, x1, yL, w1);
     theme: "grid",
     styles: {
       font: "helvetica",
-      fontSize: 9,
+      fontSize: 8,
       textColor: COLOR.TEXT as any,
       lineColor: COLOR.BLUE as any,
       lineWidth: 0.2,
@@ -643,10 +648,10 @@ yL = row("State", buyerState, x1, yL, w1);
     headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold" },
     alternateRowStyles: { fillColor: [255, 255, 255] },
     footStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold" },
-    columnStyles,
-    didDrawPage: () => { },
-    margin: { left: margin, right: margin },
+    columnStyles, 
+didDrawPage: (data) => {
 
+},
   });
   let footerStartY = (doc as any).lastAutoTable.finalY + 20;
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -717,6 +722,9 @@ y1 = drawHeading("Bank Details", col1X, y1, colW);
 
 doc.setFont("helvetica", "normal");
 doc.setFontSize(10);
+ y1 += 4;
+
+
 
 const bankLines = [
   `Bank Name: ${bank?.bankName || "-"}`,
@@ -739,21 +747,47 @@ y1 += bankLines.length * 14 + 8;
   doc.line(col1X, y1, col1X + colW, y1);
   y1 += 10;
 
-  // === Terms & Conditions ===
-  y1 = drawHeading("Terms & Conditions", col1X, y1, colW);
+ // === Terms & Conditions ===
+y1 = drawHeading("Terms & Conditions", col1X, y1, colW);
 
+doc.setFont("helvetica", "normal");
+doc.setFontSize(10);
+
+if (transaction?.notes) {
+  const notesHtml = transaction.notes;
+
+  // Extract optional title from <span class="ql-size-large">
+  const titleMatch = notesHtml.match(/<span class="ql-size-large">(.*?)<\/span>/);
+  const title = titleMatch ? titleMatch[1].replace(/&/g, "&") : "Terms and Conditions";
+
+  // Extract <li> items
+  const listItems: string[] = [];
+  const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+  let match;
+  while ((match = liRegex.exec(notesHtml)) !== null) {
+    const cleanItem = match[1].replace(/<[^>]*>/g, "").replace(/&/g, "&");
+    listItems.push(cleanItem);
+  }
+
+  // Render title
+  doc.setFont("helvetica", "bold");
+  doc.text(title, col1X + 8, y1);
+  y1 += 12;
+
+  // Render each item
   doc.setFont("helvetica", "normal");
-  const terms = [
-    "Subject to our home Jurisdiction.",
-    "Responsibility Ceases asthey leaves our Premises.",
-    "Goods once sold will not be taken back.",
-    "Delivery Ex-Premises.",
-  ];
-  terms.forEach((term, i) => {
-    doc.text(term, col1X + 8, y1 + (i + 1) * 12);
+  listItems.forEach((item) => {
+    const lines = doc.splitTextToSize(`• ${item}`, colW - 16);
+    doc.text(lines, col1X + 8, y1);
+    y1 += lines.length * 12;
   });
-  y1 += terms.length * 12 + 8;
-
+  y1 += 8;
+} else {
+  // Fallback
+  y1 += 4;
+  doc.text("No terms and conditions added yet", col1X + 8, y1);
+   y1 += 2;
+}
 
   /* ================= RIGHT SIDE BOX (Drop-in) ================= */
 
@@ -928,5 +962,33 @@ y1 += bankLines.length * 14 + 8;
   y2 = finalSignY + 6;
   y2 = checkPageBreak(doc, y2, 120);
   doc.text("", innerRX, y2);
+
+const pageCount = doc.getNumberOfPages(); // total pages
+
+for (let i = 1; i <= pageCount; i++) {
+  doc.setPage(i); // current page select karo
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+
+   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginBottom = 20; 
+  const marginRight = 15;  
+
+  const pageNum = (doc.internal as any).getCurrentPageInfo().pageNumber;
+  const totalPages = (doc.internal as any).getNumberOfPages();
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
+
+  doc.text(
+    `Page ${pageNum} of ${totalPages}`,
+    pageWidth - marginRight,
+    pageHeight - marginBottom,
+    { align: "right" }
+  );
+}
+
   return doc;
 };
