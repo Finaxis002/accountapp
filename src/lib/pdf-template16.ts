@@ -1,3 +1,4 @@
+// template16.ts
 import type { Company, Party, Transaction, ShippingAddress, Bank } from "@/lib/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -36,12 +37,7 @@ const LOGO_DATA_URL = 'data:image/png;base64,...';
 const STAMP_DATA_URL = 'data:image/png;base64,...'; 
 const QR_CODE_DATA_URL = 'data:image/png;base64,...'; 
 
-// Hardcoded Terms for default use when transaction.notes is empty
-const IMAGE_DEFAULT_TERMS = `Subject to our Home Jurisdiction.
-Our Responsibility Ceases as soon as goods leaves our Premises.
-Goods once sold will not taken back.
-Delivery Ex-Premises.`;
-
+// *** REMOVED: IMAGE_DEFAULT_TERMS hardcoded constant ***
 
 export const generatePdfForTemplate16 = async (
     transaction: DynamicTransaction, 
@@ -54,13 +50,13 @@ export const generatePdfForTemplate16 = async (
 
     console.log("bank details from template 16 :",bank)
     
-    // --- START: Hardcoded Bank Details (Left UNCHANGED as requested) ---
+    // --- START: Hardcoded Bank Details (MODIFIED to act as an N/A fallback) ---
     const getBankDetails = () => ({
-        name: "Kotak Mahindra Bank",
-        branch: "City Center",
-        accNumber: "123654789321", 
-        ifsc: "KKBK0000888", 
-        upiId: "kotaksample@icici", 
+        name: "Bank Details Not Available",
+        branch: "N/A",
+        accNumber: "N/A", 
+        ifsc: "N/A", 
+        upiId: "N/A", 
     });
     // --- END: Hardcoded Bank Details ---
     
@@ -79,8 +75,6 @@ export const generatePdfForTemplate16 = async (
         return numberToWords(n);
     };
 
-    // getStateCode is imported from pdf-utils to keep mapping consistent with template8
-    
     // Use template8 data preparation logic
     const {
         totalTaxable,
@@ -126,25 +120,40 @@ export const generatePdfForTemplate16 = async (
     const finalTotalAmount = money(invoiceTotal);
     
     const shippingAddressSource = shippingAddress;
-    const billingAddress = getBillingAddress(party);
-    const shippingAddressStr = getShippingAddress(shippingAddressSource, billingAddress); 
+    
+    // APPLY capitalizeWords HERE
+    const billingAddress = capitalizeWords(getBillingAddress(party));
+    const shippingAddressStr = capitalizeWords(getShippingAddress(shippingAddressSource, getBillingAddress(party))); 
     
     const companyGSTIN = _getGSTIN(company);
     const partyGSTIN = _getGSTIN(party);
 
-    // Define column widths based on GST applicability (like template8)
+    // ----------------- FIX FOR FULL WIDTH TABLE -----------------
     const getColWidths = () => {
-        if (!isGSTApplicable) {
-            // Non-GST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, Total
-            return [32, 122, 50, 50, 30, 70, 60];
+        const totalPageWidth = 595.28; // A4 width in pt
+        const M = 36; // Margin
+        const availableWidth = totalPageWidth - (M * 2); // 595.28 - 72 = 523.28
+
+        // Base fixed column widths (Sr.No, HSN/SAC, Rate, Qty, Taxable Value, Total)
+        const fixedWidthSum = 292; // 32 + 50 + 50 + 30 + 70 + 60 = 292 pt
+
+        if (showCGSTSGST) {
+            // CGST/SGST layout: 11 columns
+            const taxWidth = 180; // 35 + 55 + 35 + 55 = 180 pt
+            const nameColWidth = availableWidth - (fixedWidthSum + taxWidth);
+            return [32, nameColWidth, 50, 50, 30, 70, 35, 55, 35, 55, 60];
         } else if (showIGST) {
-            // IGST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, IGST%, IGST Amt, Total
-            return [32, 100, 50, 50, 30, 70, 40, 60, 60];
+            // IGST layout: 9 columns
+            const taxWidth = 100; // 40 + 60 = 100 pt
+            const nameColWidth = availableWidth - (fixedWidthSum + taxWidth);
+            return [32, nameColWidth, 50, 50, 30, 70, 40, 60, 60];
         } else {
-            // CGST/SGST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, CGST%, CGST Amt, SGST%, SGST Amt, Total
-            return [32, 80, 50, 50, 30, 70, 35, 55, 35, 55, 60];
+            // Non-GST layout: 7 columns
+            const nameColWidth = availableWidth - fixedWidthSum;
+            return [32, nameColWidth, 50, 50, 30, 70, 60];
         }
     };
+    // ----------------- END FIX -----------------
 
     const colWidths = getColWidths();
 
@@ -155,38 +164,67 @@ export const generatePdfForTemplate16 = async (
         poNumber: transaction.poNumber || "N/A", 
         poDate: fmtDate(transaction.poDate) || "N/A",
         eWayNo: transaction.eWayBillNo || "N/A",
-        // Using state code helper like template8
-        placeOfSupply: party?.state ? `${party.state} (${getStateCode(party.state) || "-"})` : "N/A", 
+        
+        placeOfSupply: party?.state ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})` : "N/A", 
         
         company: {
-            name: company?.businessName || "Your Company Name",
-            address: company?.address || "Company Address Missing",
+            
+            name: capitalizeWords(company?.businessName || "Your Company Name"),
+            address: capitalizeWords(company?.address || "Company Address Missing"),
             gstin: companyGSTIN || "N/A",
             pan: company?.panNumber || "N/A", 
-            state: company?.addressState  ? `${company?.addressState } (${getStateCode(company?.addressState ) || "-"})` : "N/A", 
-            city: company?.City ,
+            
+            state: company?.addressState  ? `${capitalizeWords(company?.addressState) } (${getStateCode(company?.addressState ) || "-"})` : "N/A", 
+            city: capitalizeWords(company?.City || "N/A"),
             phone: company?.mobileNumber || "N/A",
-            email: company?.email || company?.emailId || "N/A", // ADDED EMAIL ACCESS
+            email: company?.email || company?.emailId || "N/A", 
         },
         invoiceTo: {
-            name: party?.name || "Client Name",
+           
+            name: capitalizeWords(party?.name || "Client Name"),
             billingAddress: billingAddress,
             gstin: partyGSTIN || "N/A",
             pan: party?.panNumber || "N/A", 
-            state: party?.state ? `${party.state} (${getStateCode(party.state) || "-"})` : "N/A",
-            email: party?.email || "N/A", // ADDED EMAIL ACCESS
+            
+            state: party?.state ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})` : "N/A",
+            email: party?.email || "N/A", 
         },
         shippingAddress: {
-            // Using 'as any' for safe access when types conflict (e.g., state, name)
-            name: (shippingAddressSource as any)?.name || party?.name || 'Client Name',
+            
+            name: capitalizeWords((shippingAddressSource as any)?.name || party?.name || 'Client Name'),
             address: shippingAddressStr,
+            
             state: (shippingAddressSource as any)?.state ? 
-                `${(shippingAddressSource as any).state} (${getStateCode((shippingAddressSource as any).state) || "-"})` : 
-                party?.state ? `${party.state} (${getStateCode(party.state) || "-"})` : 'N/A', 
+                `${capitalizeWords((shippingAddressSource as any).state)} (${getStateCode((shippingAddressSource as any).state) || "-"})` : 
+                party?.state ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})` : 'N/A', 
         }
     };
     
-    const finalTerms = transaction.notes || IMAGE_DEFAULT_TERMS; 
+    // ---------------- PARSE TERMS AND CONDITIONS (A5 LOGIC) ----------------
+    let termsTitle = "Terms and Conditions";
+    let termsList: string[] = [];
+    const notesHtml = transaction.notes || ""; 
+
+    if (notesHtml.trim().length > 0) {
+        const titleMatch = notesHtml.match(
+            /<span class="ql-size-large">(.*?)<\/span>/
+        );
+        termsTitle = titleMatch
+            ? titleMatch[1].replace(/&amp;/g, "&") 
+            : "Terms and Conditions"; 
+
+        const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+        let match;
+        while ((match = liRegex.exec(notesHtml)) !== null) {
+            const cleanItem = match[1]
+                .replace(/<[^>]*>/g, "")
+                .replace(/&amp;/g, "&");
+            termsList.push(cleanItem);
+        }
+    } else {
+        termsList = [];
+    }
+    // ---------------- END PARSE TERMS AND CONDITIONS ----------------
 
     // ---------------- doc + theme ----------------
     const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -216,7 +254,8 @@ export const generatePdfForTemplate16 = async (
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-        doc.text(invoiceData.company.name.toUpperCase(), M, y);
+        
+        doc.text(capitalizeWords(invoiceData.company.name.toUpperCase()), M, y);
         y += 16;
 
     doc.setFontSize(8);
@@ -256,7 +295,7 @@ export const generatePdfForTemplate16 = async (
 
         // Separator
         y = Math.max(y, M + logoSize + 20);
-   doc.setDrawColor(0, 110, 200);
+    doc.setDrawColor(0, 110, 200);
     doc.setLineWidth(1.5);
         doc.line(M, y + 4, getW() - M, y + 4);
         return y + 16;
@@ -277,11 +316,13 @@ export const generatePdfForTemplate16 = async (
         leftY += 16;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text(invoiceData.invoiceTo.name, M, leftY);
+        
+        doc.text(capitalizeWords(invoiceData.invoiceTo.name), M, leftY);
         leftY += 12;
-        const billAddressLines = doc.splitTextToSize(invoiceData.invoiceTo.billingAddress, 250);
+       
+        const billAddressLines = doc.splitTextToSize(invoiceData.invoiceTo.billingAddress, 200);
         if (billAddressLines.length) doc.text(billAddressLines, M, leftY);
-        leftY += billAddressLines.length * 14;
+        leftY += billAddressLines.length * 12;
         if (invoiceData.invoiceTo.email !== 'N/A') { doc.text(`Email: ${invoiceData.invoiceTo.email}`, M, leftY); leftY += 12; }
         if (invoiceData.invoiceTo.gstin !== 'N/A') { doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, M, leftY); leftY += 12; }
         if (invoiceData.invoiceTo.pan !== 'N/A') { doc.text(`PAN: ${invoiceData.invoiceTo.pan}`, M, leftY); leftY += 12; }
@@ -292,7 +333,9 @@ export const generatePdfForTemplate16 = async (
         const middleX = M + 200; let middleY = detailY;
         doc.setFont("helvetica", "bold"); doc.setTextColor(...DARK); doc.setFontSize(10);
         doc.text("Shipping address:", middleX, middleY); middleY += 16; doc.setFontSize(9); doc.setFont("helvetica", "normal");
-        doc.text(invoiceData.shippingAddress.name, middleX, middleY); middleY += 14;
+        
+        doc.text(capitalizeWords(invoiceData.shippingAddress.name), middleX, middleY); middleY += 14;
+        
         const shipAddressLines = doc.splitTextToSize(invoiceData.shippingAddress.address, 180);
         if (shipAddressLines.length) doc.text(shipAddressLines, middleX, middleY);
         middleY += shipAddressLines.length * 12;
@@ -323,7 +366,7 @@ export const generatePdfForTemplate16 = async (
         columnStyles[index] = { 
             cellWidth: width,
             halign: index === 0 || index === 2 || index === 4 ? "center" : 
-                   (index >= 3 && index <= 9) ? "right" : "left"
+                    (index >= 3 && index <= 9) ? "right" : "left"
         };
     });
 
@@ -350,9 +393,12 @@ export const generatePdfForTemplate16 = async (
     // Build dynamic body data based on GST type
     const buildBodyData = () => {
         return lines.map((it: DynamicLineItem, i: number) => {
+           
+            const nameAndDesc = `${capitalizeWords(it.name || "")}\n${it.description ? it.description.split('\n').join(' / ') : ""}`;
+            
             const baseData = [
                 i + 1,
-                `${it.name || ""}\n${it.description ? it.description.split('\n').join(' / ') : ""}`,
+                nameAndDesc,
                 it.hsnSac || "N/A",
                 money(it.pricePerUnit),
                 Number(it.quantity).toFixed(2),
@@ -474,10 +520,10 @@ export const generatePdfForTemplate16 = async (
     // Amount in Words
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0); 
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.text("Total amount (in words):", M , currentTotalsY + 10);
     doc.setFont("helvetica", "normal");
-    doc.text(`INR ${convertNumberToWords(invoiceTotal)}`, M + 110, currentTotalsY + 10);
+    doc.text(`INR ${convertNumberToWords(invoiceTotal)}`, M + 95, currentTotalsY + 10, { maxWidth: 420 });
     
     cursorY = currentTotalsY + 25;
 
@@ -492,7 +538,9 @@ export const generatePdfForTemplate16 = async (
         if (cursorY + needed > bottomSafe) {
             doc.addPage();
             headerBottomY = drawStaticHeader();
-            return headerBottomY + 10; 
+            // We need to re-draw the customer/meta block after the static header on new pages
+            drawCustomerMetaBlock(headerBottomY);
+            return blockBottomY + 10; // This should be the Y after the entire header block
         }
         return cursorY;
     };
@@ -504,22 +552,43 @@ export const generatePdfForTemplate16 = async (
     // LEFT: Bank Details & UPI (Dynamic)
     let bankY = blockY;
 
+    // --- Dynamic Bank Details Acquisition ---
+    const dynamicBankDetails = (bank && typeof bank === 'object' && (bank as any).bankName) ? {
+        
+        name: capitalizeWords((bank as any).bankName || "N/A"),
+        branch: capitalizeWords((bank as any).branchName || (bank as any).branchAddress || "N/A"),
+        accNumber: (bank as any).accountNumber || "N/A",
+        ifsc: capitalizeWords((bank as any).ifscCode || "N/A"),
+        upiId: (bank as any).upiId || "N/A",
+    } : getBankDetails(); // Calls the N/A fallback
+
+    const areBankDetailsAvailable = dynamicBankDetails.name !== "Bank Details Not Available";
+
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
-    doc.text("Pay using UPI:", M, bankY);
-    doc.text("Bank Details:", M + 120, bankY);
+    
+    // Only display 'Pay using UPI' and QR code if details are available
+    if (areBankDetailsAvailable) {
+        doc.text("Pay using UPI:", M, bankY);
+        doc.text("Bank Details:", M + 120, bankY);
+    } else {
+        doc.text("Bank Details:", M, bankY);
+    }
+
     bankY += 16;
 
     // UPI QR Code (Placeholder)
     const qrSize = 60;
-    doc.setDrawColor(0, 0, 0);
-    doc.setFillColor(240, 240, 240);
-    doc.rect(M + 10, bankY, qrSize, qrSize, 'FD'); // QR Code box placeholder
+    if (areBankDetailsAvailable) {
+        doc.setDrawColor(0, 0, 0);
+        doc.setFillColor(240, 240, 240);
+        doc.rect(M + 10, bankY, qrSize, qrSize, 'FD'); // QR Code box placeholder
+    }
 
     // Bank Details Table-like layout (Dynamic)
     let bankDetailY = bankY;
-    const bankX = M + 120;
+    const bankX = areBankDetailsAvailable ? M + 120 : M; // If N/A, start details earlier on the left
     doc.setFontSize(8);
     
     const putBankDetail = (label: string, val: string, y: number) => {
@@ -528,23 +597,21 @@ export const generatePdfForTemplate16 = async (
         doc.setFont("helvetica", "bold");
         doc.text(val, bankX + 50, y);
     };
-    
-    // Use dynamic bank data if available, otherwise fallback to hardcoded
-    const bankDetails = bank && typeof bank === 'object' && bank.bankName ? {
-        name: bank.bankName,
-        branch: (bank as any).branchName || bank.branchAddress || "Branch Name",
-        accNumber: bank.accountNumber || "Account Number",
-        ifsc: bank.ifscCode || "IFSC Code",
-        upiId: bank.upiId || "UPI ID"
-    } : getBankDetails(); // Fallback to hardcoded
-    
-    putBankDetail("Bank Name:", bankDetails.name, bankDetailY); bankDetailY += 12;
-    putBankDetail("Branch:", bankDetails.branch, bankDetailY); bankDetailY += 12;
-    putBankDetail("Acc. Number:", bankDetails.accNumber, bankDetailY); bankDetailY += 12;
-    putBankDetail("IFSC:", bankDetails.ifsc, bankDetailY); bankDetailY += 12;
-    putBankDetail("UPI ID:", bankDetails.upiId, bankDetailY); bankDetailY += 12;
 
-    console.log("bank",bank)
+    if (areBankDetailsAvailable) {
+        putBankDetail("Bank Name:", dynamicBankDetails.name, bankDetailY); bankDetailY += 12;
+        putBankDetail("Branch:", dynamicBankDetails.branch, bankDetailY); bankDetailY += 12;
+        putBankDetail("Acc. Number:", dynamicBankDetails.accNumber, bankDetailY); bankDetailY += 12;
+        putBankDetail("IFSC:", dynamicBankDetails.ifsc, bankDetailY); bankDetailY += 12;
+        putBankDetail("UPI ID:", dynamicBankDetails.upiId, bankDetailY); bankDetailY += 12;
+    } else {
+        // Display the "NOT AVAILABLE" message prominently
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(128,128,128);
+        doc.text("BANK DETAILS NOT AVAILABLE", bankX, bankDetailY + 20);
+        bankDetailY += 40; 
+    }
     
     
     
@@ -553,7 +620,8 @@ export const generatePdfForTemplate16 = async (
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
-    doc.text(`For ${invoiceData.company.name}`, sigX + 20, blockY + 5);
+  
+    doc.text(`For ${capitalizeWords(invoiceData.company.name)}`, sigX + 20, blockY + 5);
 
     // Signature/Stamp Placeholder
     const sigHeight = 50;
@@ -574,23 +642,34 @@ export const generatePdfForTemplate16 = async (
     cursorY += 20;
 
     let termsY = cursorY;
-    const terms = `Subject to our Home Jurisdiction.
-Our Responsibility Ceases as soon as goods leaves our Premises.
-Goods once sold will not taken back.
-Delivery Ex-Premises.`;
-    
-    const termsLines = doc.splitTextToSize(terms, 300);
+    const TERMS_START_Y = termsY;
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
-    doc.text("Terms and Conditions:", M, termsY);
+    
+    // Render Title
+    doc.text(`${termsTitle}:`, M, termsY);
     termsY += 13;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...DARK);
-    doc.text(termsLines, M, termsY);
+    
+    // RENDER LOGIC: Display parsed terms or the "No terms..." message
+    if (termsList.length > 0) {
+        termsList.forEach((item, index) => {
+            // Split line into multiple lines if too long for the left-hand column (approx 300pt wide)
+            
+            const itemLines = doc.splitTextToSize(`• ${item}`, 300); 
+            doc.text(itemLines, M, termsY);
+            termsY += itemLines.length * 10; // 10pt line height
+        });
+    } else {
+        // Display the specific "No terms..." message
+        doc.text("No terms and conditions added yet", M, termsY);
+        termsY += 10;
+    }
 
 
     return doc;
