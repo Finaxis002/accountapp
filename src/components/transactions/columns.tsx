@@ -711,20 +711,20 @@ const makeCustomFilterFn = (
 //     // ✅ Use the same approach as download but for printing
 //     const pdfBlob = pdfDoc.output('blob');
 //     const pdfUrl = URL.createObjectURL(pdfBlob);
-    
+
 //     // Create iframe for printing
 //     const iframe = document.createElement('iframe');
 //     iframe.style.display = 'none';
 //     iframe.src = pdfUrl;
-    
+
 //     document.body.appendChild(iframe);
-    
+
 //     iframe.onload = () => {
 //       try {
 //         // Wait a bit for PDF to load completely
 //         setTimeout(() => {
 //           iframe.contentWindow?.print();
-          
+
 //           // Clean up after printing
 //           setTimeout(() => {
 //             document.body.removeChild(iframe);
@@ -738,7 +738,7 @@ const makeCustomFilterFn = (
 //         throw new Error('Printing failed - please try downloading instead');
 //       }
 //     };
-    
+
 //   } catch (error) {
 //     console.error('Error printing invoice:', error);
 //     throw new Error('Failed to generate print document');
@@ -760,20 +760,20 @@ const printInvoice = async (
     );
 
     const pdfUrl = URL.createObjectURL(pdfBlob);
-    
+
     // Create iframe for printing
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
     iframe.src = pdfUrl;
-    
+
     document.body.appendChild(iframe);
-    
+
     iframe.onload = () => {
       try {
         // Wait a bit for PDF to load completely
         setTimeout(() => {
           iframe.contentWindow?.print();
-          
+
           // Clean up after printing
           setTimeout(() => {
             document.body.removeChild(iframe);
@@ -781,19 +781,17 @@ const printInvoice = async (
           }, 1000);
         }, 500);
       } catch (printError) {
-        console.error('Print failed:', printError);
+        console.error("Print failed:", printError);
         document.body.removeChild(iframe);
         URL.revokeObjectURL(pdfUrl);
-        throw new Error('Printing failed - please try downloading instead');
+        throw new Error("Printing failed - please try downloading instead");
       }
     };
-    
   } catch (error) {
-    console.error('Error printing invoice:', error);
-    throw new Error('Failed to generate print document');
+    console.error("Error printing invoice:", error);
+    throw new Error("Failed to generate print document");
   }
 };
-
 
 export const columns = ({
   onPreview,
@@ -1106,9 +1104,10 @@ export const columns = ({
         const [isLoadingParty, setIsLoadingParty] = useState(false);
         const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
 
-         const [dropdownOpen, setDropdownOpen] = useState(false);
+        const [dropdownOpen, setDropdownOpen] = useState(false);
         // Invoice actions are allowed for sales and proforma
-        const isInvoiceable = transaction.type === "sales" || transaction.type === "proforma";
+        const isInvoiceable =
+          transaction.type === "sales" || transaction.type === "proforma";
 
         // WhatsApp allowed for both sales and receipts
         const isWhatsAppAllowed =
@@ -1180,18 +1179,72 @@ export const columns = ({
           return pv && typeof pv === "object" ? (pv as Party) : undefined;
         };
 
-        const handleDownload = () => {
-          const doc = generatePdfForTemplate1(
-            transaction,
-            buildCompany(),
-            buildPartyForInvoice(),
-            serviceNameById
-          );
-          const fname = `Invoice-${(transaction._id ?? "INV")
-            .toString()
-            .slice(-6)
-            .toUpperCase()}.pdf`;
-          // doc.save(fname);
+        // const handleDownload = () => {
+        //   const doc = generatePdfForTemplate1(
+        //     transaction,
+        //     buildCompany(),
+        //     buildPartyForInvoice(),
+        //     serviceNameById
+        //   );
+        //   const fname = `Invoice-${(transaction._id ?? "INV")
+        //     .toString()
+        //     .slice(-6)
+        //     .toUpperCase()}.pdf`;
+        //   // doc.save(fname);
+        // };
+
+        const handleDownload = async () => {
+          if (!isInvoiceable) {
+            toast({
+              variant: "destructive",
+              title: "Cannot Download",
+              description:
+                "Only sales and proforma transactions can be downloaded as invoices.",
+            });
+            return;
+          }
+
+          try {
+            const pdfBlob = await generatePdfForTemplate1(
+              transaction,
+              buildCompany(),
+              buildPartyForInvoice(),
+              serviceNameById
+            );
+
+            // Create download link
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement("a");
+            link.href = url;
+
+            const invoiceNumber =
+              transaction.invoiceNumber || transaction.referenceNumber;
+            const fname = `Invoice-${
+              invoiceNumber ||
+              (transaction._id ?? "INV").toString().slice(-6).toUpperCase()
+            }.pdf`;
+            link.download = fname;
+
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Clean up
+            URL.revokeObjectURL(url);
+
+            toast({
+              title: "Invoice Downloaded",
+              description: `Invoice saved as ${fname}`,
+            });
+          } catch (error) {
+            console.error("Error downloading invoice:", error);
+            toast({
+              variant: "destructive",
+              title: "Download Failed",
+              description: "Could not download invoice. Please try again.",
+            });
+          }
         };
 
         const handlePrintInvoice = () => {
@@ -1312,7 +1365,12 @@ export const columns = ({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onClick={handleDownload}
+                  // onClick={handleDownload}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await handleDownload();
+                  }}
                   disabled={!isInvoiceable}
                 >
                   <Download className="mr-2 h-4 w-4" />
