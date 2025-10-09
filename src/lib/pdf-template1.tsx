@@ -29,6 +29,7 @@ import {
   numberToWords,
   getHsnSummary,
 } from "./pdf-utils";
+import { capitalizeWords } from "./utils";
 
 import { template1Styles } from "./pdf-template-styles";
 const getClientName = (client: any) => {
@@ -142,12 +143,12 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
               </View>
               <View style={template1Styles.headerRight}>
                 <Text style={template1Styles.companyName}>
-                  {company?.businessName ||
+                  {capitalizeWords(company?.businessName ||
                     company?.companyName ||
-                    "Company Name"}
+                    "Company Name")}
                 </Text>
                 <Text style={template1Styles.address}>
-                  {[
+                  {capitalizeWords([
                     company?.address,
                     company?.City,
                     company?.addressState,
@@ -155,12 +156,12 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     company?.Pincode,
                   ]
                     .filter(Boolean)
-                    .join(", ") || "Address Line 1"}
+                    .join(", ") || "Address Line 1")}
                 </Text>
                 <View style={template1Styles.contactInfo}>
                   <Text style={template1Styles.contactLabel}>Name : </Text>
                   <Text style={template1Styles.contactValue}>
-                    {getClientName(client)}
+                    {capitalizeWords(getClientName(client))}
                   </Text>
                   <Text style={template1Styles.contactLabel}> | Phone : </Text>
                   <Text style={template1Styles.contactValue}>
@@ -206,13 +207,13 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                   <View style={template1Styles.dataRow}>
                     <Text style={template1Styles.tableLabel}>Name</Text>
                     <Text style={template1Styles.tableValue}>
-                      {party?.name || "N/A"}
+                      {capitalizeWords(party?.name || "N/A")}
                     </Text>
                   </View>
                   <View style={template1Styles.dataRow}>
                     <Text style={template1Styles.tableLabel}>Address</Text>
                     <Text style={template1Styles.tableValue}>
-                      {getBillingAddress(party)}
+                      {capitalizeWords(getBillingAddress(party))}
                     </Text>
                   </View>
                   <View style={template1Styles.dataRow}>
@@ -255,16 +256,16 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                   <View style={template1Styles.dataRow}>
                     <Text style={template1Styles.tableLabel}>Name</Text>
                     <Text style={template1Styles.tableValue}>
-                      {shippingAddress?.label || party?.name || "N/A"}
+                      {capitalizeWords(shippingAddress?.label || party?.name || "N/A")}
                     </Text>
                   </View>
                   <View style={template1Styles.dataRow}>
                     <Text style={template1Styles.tableLabel}>Address</Text>
                     <Text style={template1Styles.tableValue}>
-                      {getShippingAddress(
+                      {capitalizeWords(getShippingAddress(
                         shippingAddress,
                         getBillingAddress(party)
-                      )}
+                      ))}
                     </Text>
                   </View>
                   <View style={template1Styles.dataRow}>
@@ -535,7 +536,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                           { width: colWidths[1] },
                         ]}
                       >
-                        {item.name}
+                        {capitalizeWords(item.name)}
                       </Text>
                       <Text
                         style={[
@@ -1267,9 +1268,9 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       <View style={template1Styles.totalRow}>
                         <Text style={template1Styles.label}>
                           For{"-"}
-                          {company?.businessName ||
+                          {capitalizeWords(company?.businessName ||
                             company?.companyName ||
-                            "Company Name"}
+                            "Company Name")}
                         </Text>
                         <Text style={template1Styles.value}>(E & O.E.)</Text>
                       </View>

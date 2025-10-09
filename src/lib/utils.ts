@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function capitalizeWords(str: string | undefined): string {
+  if (!str) return str || "";
+  return str.replace(/\b\w/g, l => l.toUpperCase());
+}
+
 // Safely get a short id tail for fallback labels
 const tail = (id?: string) => (id ? id.toString().slice(-6) : "");
 
