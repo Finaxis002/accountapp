@@ -189,7 +189,9 @@ if (transaction?.shippingAddress) {
 }
 
 
+
         if (
+
           selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
           selectedTemplate === "templateA5" ||
@@ -384,18 +386,6 @@ if (transaction?.shippingAddress) {
             break;
                 
             case "template17":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate17(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress,
-                  bank
-                )
-              );
-              break;
-                 case "template19":
               docPromise = Promise.resolve(
                 generatePdfForTemplate19(
                   transaction,

@@ -362,12 +362,12 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                     {/* TOTAL row in GST Summary */}
                     <View style={styles.tableRow}>
                         <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>TOTAL</Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{formatCurrency(totalTaxable)}</Text>
+                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalTaxable}</Text>
                         <Text style={[styles.td, { flex: 1 }]}></Text>
                         <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalCGST}</Text>
                         <Text style={[styles.td, { flex: 1 }]}></Text>
                         <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{totalSGST}</Text>
-                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{formatCurrency(totalAmount)}</Text>
+                        <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>{(totalAmount)}</Text>
                     </View>
                 </View>
 
