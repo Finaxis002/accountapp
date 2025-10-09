@@ -9,25 +9,12 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Save, Loader2, Eye, Check, Laptop, Monitor } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
-import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
-import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
-import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
-import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
-import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
-import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
 import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
 import { generatePdfForTemplate11 } from "@/lib/pdf-template11";
 import { generatePdfForTemplate12 } from "@/lib/pdf-template12";
@@ -39,10 +26,11 @@ import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
 import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
 import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
 import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
+import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
 import jsPDF from "jspdf";
 import type { Company, Party, Transaction } from "@/lib/types";
 
-const templateOptions = [
+const templateOptions: { value: TemplateKey; label: string; color: string }[] = [
   { value: "template1", label: "Template 1", color: "bg-blue-500" },
   { value: "template8", label: "Template 2", color: "bg-purple-500" },
   { value: "template11", label: "Template 3", color: "bg-gray-800" },
@@ -184,25 +172,298 @@ type TemplateKey =
   | "template-t3"
   | "template18";
 
+// Thumbnail cache to prevent regeneration
+const thumbnailCache = new Map<TemplateKey, string>();
+
+// Thumbnail component
+const TemplateThumbnail = React.memo(({
+  template,
+  isSelected,
+  onClick,
+  isGenerating
+}: {
+  template: { value: TemplateKey; label: string; color: string };
+  isSelected: boolean;
+  onClick: () => void;
+  isGenerating: boolean;
+}) => {
+  const [thumbnailUrl, setThumbnailUrl] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const generateThumbnail = async () => {
+      // Check cache first
+      if (thumbnailCache.has(template.value)) {
+        setThumbnailUrl(thumbnailCache.get(template.value)!);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const simplifiedTransaction = {
+          ...dummyTransaction,
+          items: dummyTransaction.items ? [dummyTransaction.items[0]] : []
+        };
+
+        let pdfBlob: Blob;
+
+        // Templates that use react-pdf (return Blob directly)
+        if (
+          template.value === "template1" ||
+          template.value === "template8" ||
+          template.value === "template12" ||
+          template.value === "templateA5" ||
+          template.value === "template18" ||
+          template.value === "templateA5_3" ||
+          template.value === "templateA5_4" ||
+          template.value === "template-t3"
+        ) {
+          switch (template.value) {
+            case "template1":
+              pdfBlob = await generatePdfForTemplate1(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
+            case "template8":
+              pdfBlob = await generatePdfForTemplate8(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
+            case "template12":
+              pdfBlob = await generatePdfForTemplate12(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
+            case "templateA5":
+              pdfBlob = await generatePdfForTemplateA5(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank,
+                dummyClient
+              );
+              break;
+            case "template18":
+              pdfBlob = await generatePdfForTemplate18(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
+            case "templateA5_3":
+              pdfBlob = await generatePdfForTemplateA5_3(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank,
+                dummyClient
+              );
+              break;
+            case "templateA5_4":
+              pdfBlob = await generatePdfForTemplateA5_4(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank,
+                dummyClient
+              );
+              break;
+            case "template-t3":
+              pdfBlob = await generatePdfForTemplatet3(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                null,
+                dummyBank
+              );
+              break;
+            default:
+              pdfBlob = await generatePdfForTemplate1(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+          }
+        } else {
+          // Templates that use jsPDF
+          let docPromise: Promise<jsPDF>;
+
+          switch (template.value) {
+            case "template11":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate11(
+                  simplifiedTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null,
+                  undefined,
+                  dummyBank
+                )
+              );
+              break;
+            case "template16":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate16(
+                  simplifiedTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null
+                )
+              );
+              break;
+            case "template17":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate17(
+                  simplifiedTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null,
+                  dummyBank
+                )
+              );
+              break;
+            case "template19":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate19(
+                  simplifiedTransaction,
+                  dummyCompany,
+                  dummyParty,
+                  dummyServiceNames,
+                  null,
+                  dummyBank
+                )
+              );
+              break;
+            default:
+              docPromise = generatePdfForTemplate3(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null
+              );
+          }
+
+          const doc = await docPromise;
+          pdfBlob = doc.output("blob");
+        }
+
+        const url = URL.createObjectURL(pdfBlob);
+        thumbnailCache.set(template.value, url);
+        setThumbnailUrl(url);
+      } catch (error) {
+        console.error(`Failed to generate thumbnail for ${template.label}:`, error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    generateThumbnail();
+
+    return () => {
+      // Don't revoke URL immediately as it's cached
+    };
+  }, [template.value]);
+
+  return (
+    <div
+      className={`relative border-2 rounded-lg p-3 cursor-pointer transition-all group ${
+        isSelected
+          ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+          : "border-muted hover:border-muted-foreground/30 hover:bg-muted/30"
+      } ${isGenerating ? "opacity-50 cursor-not-allowed" : ""}`}
+      onClick={isGenerating ? undefined : onClick}
+    >
+      {/* Full clickable overlay */}
+      <div className="absolute inset-0 z-10" onClick={isGenerating ? undefined : onClick} />
+      
+      <div className="space-y-3 relative z-0">
+        {/* PDF Thumbnail Preview */}
+        <div className="aspect-[3/4]  rounded-md overflow-hidden border shadow-sm items-center justify-center">
+          {isLoading ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mb-2" />
+              <span className="text-xs text-muted-foreground">Loading...</span>
+            </div>
+          ) : thumbnailUrl ? (
+            <iframe
+              src={thumbnailUrl}
+              className="w-full h-full transform pointer-events-none" // Disable iframe clicks
+              title={`${template.label} preview`}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/30">
+              <span className="text-xs">Preview unavailable</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Template Label */}
+        <div className="flex items-center justify-between min-h-[2rem]">
+          <span className="text-sm font-medium truncate flex-1 mr-2">
+            {template.label}
+          </span>
+          {isSelected && (
+            <Badge variant="default" className="text-xs shrink-0">
+              <Check className="h-3 w-3 mr-1" />
+              Selected
+            </Badge>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+TemplateThumbnail.displayName = 'TemplateThumbnail';
+
 export function TemplateSettings() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
-  const [selectedTemplate, setSelectedTemplate] =
-    React.useState<TemplateKey>("template1");
+  const [selectedTemplate, setSelectedTemplate] = React.useState<TemplateKey>("template1");
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = React.useState(true);
-  const [fetchedTemplate, setFetchedTemplate] =
-    React.useState<TemplateKey>("template1");
+  const [fetchedTemplate, setFetchedTemplate] = React.useState<TemplateKey>("template1");
   const { toast } = useToast();
 
-  // Fix the useEffect to properly set both states
+  // Load template setting
   React.useEffect(() => {
     const loadTemplateSetting = async () => {
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        console.log("Token :", token);
         const response = await fetch(
           `${baseURL}/api/settings/default-template`,
           {
@@ -218,7 +479,6 @@ export function TemplateSettings() {
           setSelectedTemplate(template as TemplateKey);
           setFetchedTemplate(template as TemplateKey);
         } else if (response.status === 404) {
-          // If no template found, use default template1
           setSelectedTemplate("template1");
           setFetchedTemplate("template1");
         } else {
@@ -239,7 +499,7 @@ export function TemplateSettings() {
     loadTemplateSetting();
   }, [toast, baseURL]);
 
-  // Generate PDF preview when template changes
+  // Generate main PDF preview when template changes
   React.useEffect(() => {
     let objectUrl: string | null = null;
 
@@ -266,7 +526,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank
               );
               break;
@@ -276,7 +536,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank
               );
               break;
@@ -286,7 +546,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank
               );
               break;
@@ -296,7 +556,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank,
                 dummyClient
               );
@@ -307,7 +567,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank
               );
               break;
@@ -317,7 +577,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank,
                 dummyClient
               );
@@ -328,7 +588,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank,
                 dummyClient
               );
@@ -338,7 +598,7 @@ export function TemplateSettings() {
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,
-                null, // shippingAddress
+                null,
                 dummyBank
               );
               break;
@@ -348,7 +608,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null, // shippingAddress
+                null,
                 dummyBank
               );
           }
@@ -364,7 +624,7 @@ export function TemplateSettings() {
                   dummyCompany,
                   dummyParty,
                   dummyServiceNames,
-                  null, // shippingAddress
+                  null,
                   undefined,
                   dummyBank
                 )
@@ -377,7 +637,7 @@ export function TemplateSettings() {
                   dummyCompany,
                   dummyParty,
                   dummyServiceNames,
-                  null // shippingAddress
+                  null
                 )
               );
               break;
@@ -388,7 +648,7 @@ export function TemplateSettings() {
                   dummyCompany,
                   dummyParty,
                   dummyServiceNames,
-                  null, // shippingAddress
+                  null,
                   dummyBank
                 )
               );
@@ -400,7 +660,7 @@ export function TemplateSettings() {
                   dummyCompany,
                   dummyParty,
                   dummyServiceNames,
-                  null, // shippingAddress
+                  null,
                   dummyBank
                 )
               );
@@ -411,7 +671,7 @@ export function TemplateSettings() {
                 dummyCompany,
                 dummyParty,
                 dummyServiceNames,
-                null // shippingAddress
+                null
               );
           }
 
@@ -455,6 +715,7 @@ export function TemplateSettings() {
       });
 
       if (response.ok) {
+        setFetchedTemplate(selectedTemplate);
         toast({
           title: "Success",
           description: "Default template updated successfully",
@@ -474,15 +735,15 @@ export function TemplateSettings() {
     }
   };
 
+  const handleTemplateChange = (value: TemplateKey) => {
+    setSelectedTemplate(value);
+  };
+
   const getCurrentTemplate = () => {
     return (
       templateOptions.find((template) => template.value === selectedTemplate) ||
       templateOptions[0]
     );
-  };
-
-  const handleTemplateChange = (value: string) => {
-    setSelectedTemplate(value as TemplateKey);
   };
 
   if (isLoading) {
@@ -519,23 +780,19 @@ export function TemplateSettings() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="template">Change Default Invoice Template</Label>
-            <Select
-              value={selectedTemplate}
-              onValueChange={handleTemplateChange}
-            >
-              <SelectTrigger id="template" className="w-full">
-                <SelectValue placeholder="Select a template" />
-              </SelectTrigger>
-              <SelectContent>
-                {templateOptions.map((template) => (
-                  <SelectItem key={template.value} value={template.value}>
-                    {template.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <Label>Select Default Template</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {templateOptions.map((template) => (
+                <TemplateThumbnail
+                  key={template.value}
+                  template={template}
+                  isSelected={selectedTemplate === template.value}
+                  onClick={() => handleTemplateChange(template.value)}
+                  isGenerating={isGeneratingPreview && selectedTemplate === template.value}
+                />
+              ))}
+            </div>
           </div>
 
           <Button onClick={handleSave} disabled={isSaving} className="w-full">
@@ -554,7 +811,7 @@ export function TemplateSettings() {
         </CardContent>
       </Card>
 
-      {/* ✅ Desktop / Laptop Table */}
+      {/* Desktop Preview */}
       <div className="hidden md:block">
         <Card>
           <CardHeader>
@@ -587,7 +844,7 @@ export function TemplateSettings() {
               </Badge>
             </div>
 
-            <div className="border rounded-lg overflow-hidden bg-secondary h-96">
+            <div className="border rounded-lg overflow-hidden bg-secondary h-[80vh]">
               {isGeneratingPreview ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -616,106 +873,66 @@ export function TemplateSettings() {
         </Card>
       </div>
 
-      {/* ✅ Mobile Card View */}
-      <div className="md:hidden space-y-3">
+      {/* Mobile Preview */}
+      <div className="md:hidden">
         <Card>
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2">
-      <Eye className="h-5 w-5" />
-      Current Template Preview
-    </CardTitle>
-    <CardDescription>
-      This is how your invoices will appear to clients
-    </CardDescription>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div
-          className={`w-10 h-10 rounded-md ${currentTemplate.color} flex items-center justify-center`}
-        >
-          <span className="text-white font-bold text-xs">INV</span>
-        </div>
-        <div>
-          <h3 className="font-semibold">{currentTemplate.label}</h3>
-          <p className="text-sm text-muted-foreground">
-            Selected as default
-          </p>
-        </div>
-      </div>
-      <Badge variant="outline" className="flex items-center gap-1">
-        <Check className="h-3 w-3" />
-        Active
-      </Badge>
-    </div>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Current Template Preview
+            </CardTitle>
+            <CardDescription>
+              This is how your invoices will appear to clients
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-md ${currentTemplate.color} flex items-center justify-center`}
+                >
+                  <span className="text-white font-bold text-xs">INV</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">{currentTemplate.label}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Selected as default
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Check className="h-3 w-3" />
+                Active
+              </Badge>
+            </div>
 
-    <div className="relative border rounded-lg overflow-hidden bg-secondary h-96">
-      {/* Mobile Overlay */}
-      <div className="md:hidden absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center p-4">
-        <div className="text-center bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border max-w-sm">
-          <div className="mx-auto w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-3">
-            <Monitor className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h3 className="font-semibold text-lg mb-2">View on Desktop</h3>
-          <p className="text-muted-foreground text-sm mb-4">
-            Please login on a desktop or laptop to view and customize your invoice template
-          </p>
-          <Button variant="default" size="sm">
-            <Laptop className="h-4 w-4 mr-2" />
-            Switch to Desktop
-          </Button>
-        </div>
-      </div>
+            <div className="border rounded-lg overflow-hidden bg-secondary h-64">
+              {isGeneratingPreview ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <p className="ml-2 text-sm">Generating Preview...</p>
+                </div>
+              ) : pdfUrl ? (
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border-0"
+                  title="Template Preview"
+                />
+              ) : (
+                <div className="flex justify-center items-center h-full">
+                  <p className="text-sm">Could not generate template preview.</p>
+                </div>
+              )}
+            </div>
 
-      {/* Blurred Content for Mobile */}
-      <div className="md:hidden filter blur-md">
-        {isGeneratingPreview ? (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="ml-3">Generating Preview...</p>
-          </div>
-        ) : pdfUrl ? (
-          <iframe
-            src={pdfUrl}
-            className="w-full h-full border-0"
-            title="Template Preview"
-          />
-        ) : (
-          <div className="flex justify-center items-center h-full">
-            <p>Could not generate template preview.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Normal Content for Desktop */}
-      <div className="hidden md:block">
-        {isGeneratingPreview ? (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="ml-3">Generating Preview...</p>
-          </div>
-        ) : pdfUrl ? (
-          <iframe
-            src={pdfUrl}
-            className="w-full h-full border-0"
-            title="Template Preview"
-          />
-        ) : (
-          <div className="flex justify-center items-center h-full">
-            <p>Could not generate template preview.</p>
-          </div>
-        )}
-      </div>
-    </div>
-
-    <div className="text-sm text-muted-foreground">
-      <p>
-        This preview shows how your invoices will look with the{" "}
-        <strong>{currentTemplate.label}</strong> template.
-      </p>
-    </div>
-  </CardContent>
-</Card>
+            <div className="text-sm text-muted-foreground">
+              <p>
+                This preview shows how your invoices will look with the{" "}
+                <strong>{currentTemplate.label}</strong> template.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
