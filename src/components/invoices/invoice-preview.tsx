@@ -37,13 +37,14 @@ import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
 import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
 import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
 import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
+import { generatePdfForTemplateA5_2 } from "@/lib/pdf-templateA3-2";
 //amit
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
-import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
 import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
+import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
 
 type TemplateKey =
   | "template1"
@@ -54,9 +55,10 @@ type TemplateKey =
   | "template6"
   | "template7"
   | "template8"
-   | "template11"
-    | "template12"
+  | "template11"
+  | "template12"
   | "templateA5"
+  | "templateA5_2"
   | "templateA5_3"
   | "templateA5_4"
   | "template-t3"
@@ -189,12 +191,15 @@ if (transaction?.shippingAddress) {
 }
 
 
+
         if (
+
           selectedTemplate === "template1" ||
           selectedTemplate === "template8" ||
           selectedTemplate === "templateA5" ||
           selectedTemplate === "template18"  ||
           selectedTemplate === "template12" ||
+           selectedTemplate === "templateA5_2" ||
           selectedTemplate === "templateA5_3"||
           selectedTemplate === "templateA5_4"||
           selectedTemplate === "template-t3"
@@ -253,7 +258,17 @@ if (transaction?.shippingAddress) {
                   bank
                 );
                 break;
-
+              case "templateA5_2":
+              pdfBlob = await generatePdfForTemplateA5_2(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
              case "templateA5_3":
               pdfBlob = await generatePdfForTemplateA5_3(
                 transaction,
@@ -382,8 +397,7 @@ if (transaction?.shippingAddress) {
               )
             );
             break;
-                
-            case "template17":
+               case "template17":
               docPromise = Promise.resolve(
                 generatePdfForTemplate17(
                   transaction,
@@ -395,7 +409,8 @@ if (transaction?.shippingAddress) {
                 )
               );
               break;
-                 case "template19":
+                
+            case "template19":
               docPromise = Promise.resolve(
                 generatePdfForTemplate19(
                   transaction,
@@ -523,13 +538,14 @@ if (transaction?.shippingAddress) {
               <SelectItem value="template7">Prestige</SelectItem> */}
               {/* priya  */}
               <SelectItem value="template8">Template 2</SelectItem>
-           {/* <SelectItem value="template8">Template 8</SelectItem>  */}
+            {/* <SelectItem value="template8">Template 8</SelectItem>  */}
               <SelectItem value="template11">Template 3</SelectItem>
                <SelectItem value="template12">Template 4</SelectItem>
                 <SelectItem value="template16">Template 5</SelectItem>
                 <SelectItem value="template17">Template 6</SelectItem>
-                 <SelectItem value="template19">Template 7</SelectItem>
+                <SelectItem value="template19">Template 7</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
+              <SelectItem value="templateA5_2">Template A5-2</SelectItem>
               <SelectItem value="templateA5_3">Template A5-3</SelectItem>
               <SelectItem value="templateA5_4">Template A5-4</SelectItem>
                <SelectItem value="template-t3">Template T3</SelectItem>  

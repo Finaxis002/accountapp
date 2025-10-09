@@ -741,6 +741,7 @@ class WhatsAppAPI {
         successful: 0,
         failed: 0,
         results: [],
+
         errors: [
           {
             phoneNumber: "", // Use phoneNumber instead of vendorId
@@ -748,6 +749,7 @@ class WhatsAppAPI {
             error: error.message || "Failed to send bulk messages",
           },
         ],
+
       };
     }
   }

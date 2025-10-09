@@ -25,6 +25,7 @@ import {
   getStateCode,
   numberToWords,
 } from "./pdf-utils";
+import { capitalizeWords } from "./utils";
 
 // Register a monospace font for proper alignment
 Font.register({
@@ -105,16 +106,21 @@ const Template_t3: React.FC<Template_t3Props> = ({
     <Document>
       <Page size={{ width: 280, height: "1000" }} style={styles.page}>
         <View style={styles.center}>
-          <Text>{company?.businessName || company?.companyName || "Company Name"}</Text>
-          <Text>{[company?.address, company?.City, company?.addressState].filter(Boolean).join(", ")}</Text>
-          <Text>{company?.Country || "India"} - {company?.Pincode || ""}</Text>
+          <Text>{capitalizeWords(company?.businessName || company?.companyName || "Company Name")}</Text>
+          <Text>{capitalizeWords([company?.address, company?.City, company?.addressState].filter(Boolean).join(", "))}</Text>
+          <Text>{capitalizeWords(company?.Country || "India")} - {company?.Pincode || ""}</Text>
           <Text>{company?.mobileNumber || company?.Telephone || ""}</Text>
         </View>
 
         <Text style={[styles.borderLine, { fontSize: 10 }]}>
           =============================================
         </Text>
-        <Text style={[styles.center, styles.bold]}>TAX INVOICE</Text>
+        <Text style={[styles.center, styles.bold]}> {" "}
+                    {transaction.type === "proforma"
+                      ? "PROFORMA INVOICE"
+                      : isGSTApplicable
+                      ? "TAX INVOICE"
+                      : "INVOICE"}</Text>
         <Text style={[styles.borderLine, { fontSize: 10 }]}>
           =============================================
         </Text>
@@ -124,7 +130,7 @@ const Template_t3: React.FC<Template_t3Props> = ({
             {/* Left side - Billed To section */}
             <View style={{ flexDirection: "column", gap: 4 }}>
               <Text style={styles.bold}>BILLED TO</Text>
-              <Text>{party?.name || "N/A"}</Text>
+              <Text>{capitalizeWords(party?.name || "N/A")}</Text>
               <Text>{party?.contactNumber || "N/A"}</Text>
               <Text>{party?.gstin || "N/A"}</Text>
             </View>
@@ -163,7 +169,7 @@ const Template_t3: React.FC<Template_t3Props> = ({
           <View key={index} style={styles.tableRow}>
             {/* Item Column */}
             <View style={styles.colItem}>
-              <Text>{item.name}</Text>
+              <Text>{capitalizeWords(item.name)}</Text>
               <Text>HSN: {item.code || "-"}</Text>
               <Text>{item.quantity || 0} {item.unit} @ {formatCurrency(item.pricePerUnit || 0)}</Text>
             </View>
@@ -256,7 +262,7 @@ const Template_t3: React.FC<Template_t3Props> = ({
         {/* Footer with company name */}
         <View style={[styles.section, { marginTop: 10 }]}>
           <Text style={[styles.center, { fontSize: 7 }]}>
-            For {company?.businessName || company?.companyName || "Company Name"} (E & O.E.)
+            For {capitalizeWords(company?.businessName || company?.companyName || "Company Name")} (E & O.E.)
           </Text>
         </View>
 

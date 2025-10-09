@@ -1,4 +1,4 @@
-// pdf-templateA5.tsx
+// pdf-templateA5-3.tsx
 import type {
   Company,
   Party,
@@ -29,15 +29,16 @@ import {
   numberToWords,
   getHsnSummary,
 } from "./pdf-utils";
-import { capitalizeWords } from "./utils";
 
-import { template1Styles } from "./pdf-template-styles";
+import { templateA5_3Styles } from "./pdf-template-styles";
 const getClientName = (client: any) => {
   if (!client) return "Client Name";
   if (typeof client === "string") return client;
   return client.companyName || client.contactName || "Client Name";
 };
 console.log("client name", getClientName);
+
+const logo = "/assets/invoice-logos/R.png";
 
 interface TemplateA5PDFProps {
   transaction: Transaction;
@@ -48,7 +49,7 @@ interface TemplateA5PDFProps {
   client?: Client | null;
 }
 
-const Template1: React.FC<TemplateA5PDFProps> = ({
+const TemplateA5_2PDF: React.FC<TemplateA5PDFProps> = ({
   transaction,
   company,
   party,
@@ -74,15 +75,13 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
     showCGSTSGST,
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
-
-  const logoSrc = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
-  // console.log("logo path", logoSrc);
-
+  console.log("pdf-templateA5-2 is getting render")
+   const logoSrc = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
   // For IGST (Interstate)
   const colWidthsIGST = ["4%", "25%", "10%", "8%", "10%", "15%", "20%", "12%"];
   const totalColumnIndexIGST = 7;
 
-  const itemsPerPage = 30;
+  const itemsPerPage = 10;
   const pages = [];
   for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
     pages.push(itemsWithGST.slice(i, i + itemsPerPage));
@@ -91,13 +90,13 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
   const colWidthsCGSTSGST = [
     "4%",
     "20%",
-    "10%",
+    "15%",
     "8%",
     "10%",
     "12%",
-    "13%",
-    "13%",
-    "20%",
+    "12%",
+    "15%",
+    "18%",
   ];
   const totalColumnIndexCGSTSGST = 8;
 
@@ -118,7 +117,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
     : totalColumnIndexNoTax;
 
   // Calculate table width in points (A5: 420pt width, padding 20pt each side, section border 1.5pt each side)
-  const tableWidth = showCGSTSGST ? 491 : showIGST ? 520 : 540;
+  const tableWidth = showCGSTSGST ? 330 : showIGST ? 362 : 375;
 
   // Calculate vertical border positions
   const borderPositions: number[] = [];
@@ -133,28 +132,22 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
       {pages.map((pageItems, pageIndex) => {
         const isLastPage = pageIndex === pages.length - 1;
         return (
-          <Page key={pageIndex} size="A4" style={template1Styles.page}>
+          <Page key={pageIndex} size="A5" style={templateA5_3Styles.page}>
             {/* Header */}
-            <View style={template1Styles.header}>
-              <View style={template1Styles.headerLeft}>
-                {
-                  logoSrc && (
-<Image
-                  src={logoSrc}
-                  style={template1Styles.logo}
-                />
-                  )
-                }
-                
+            <View style={templateA5_3Styles.header}>
+              <View style={templateA5_3Styles.headerLeft}>
+                {logoSrc && (
+                                 <Image src={logoSrc} style={templateA5_3Styles.logo} />
+                               )}
               </View>
-              <View style={template1Styles.headerRight}>
-                <Text style={template1Styles.companyName}>
-                  {capitalizeWords(company?.businessName ||
+              <View style={templateA5_3Styles.headerRight}>
+                <Text style={templateA5_3Styles.companyName}>
+                  {company?.businessName ||
                     company?.companyName ||
-                    "Company Name")}
+                    "Company Name"}
                 </Text>
-                <Text style={template1Styles.address}>
-                  {capitalizeWords([
+                <Text style={[templateA5_3Styles.address, { width: "60%" }]}>
+                  {[
                     company?.address,
                     company?.City,
                     company?.addressState,
@@ -162,37 +155,40 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     company?.Pincode,
                   ]
                     .filter(Boolean)
-                    .join(", ") || "Address Line 1")}
+                    .join(", ") || "Address Line 1"}
                 </Text>
-                <View style={template1Styles.contactInfo}>
-                  <Text style={template1Styles.contactLabel}>Name : </Text>
-                  <Text style={template1Styles.contactValue}>
-                    {capitalizeWords(getClientName(client))}
+                <View style={templateA5_3Styles.contactInfo}>
+                  <Text style={templateA5_3Styles.contactLabel}>Name : </Text>
+                  <Text style={templateA5_3Styles.contactValue}>
+                    {getClientName(client)}
                   </Text>
-                  <Text style={template1Styles.contactLabel}> | Phone : </Text>
-                  <Text style={template1Styles.contactValue}>
+                  <Text style={templateA5_3Styles.contactLabel}>
+                    {" "}
+                    | Phone :{" "}
+                  </Text>
+                  <Text style={templateA5_3Styles.contactValue}>
                     {company?.mobileNumber || company?.Telephone || "Phone"}
                   </Text>
                 </View>
               </View>
             </View>
             {/* Body - Items Table */}
-            <View style={template1Styles.section}>
+            <View style={templateA5_3Styles.section}>
               {/* table header  */}
-              <View style={template1Styles.tableHeader}>
+              <View style={templateA5_3Styles.tableHeader}>
                 {company?.gstin && (
-                  <View style={template1Styles.gstRow}>
-                    <Text style={template1Styles.gstLabel}>GSTIN : </Text>
-                    <Text style={template1Styles.gstValue}>
-                      {"-"}
-                      {company.gstin}
-                      {"-"}
+                  <View style={templateA5_3Styles.gstRow}>
+                    <Text style={templateA5_3Styles.gstLabel}>GSTIN : </Text>
+                    <Text style={templateA5_3Styles.gstValue}>
+                      {" "}
+                      {company.gstin}{" "}
                     </Text>
                   </View>
                 )}
 
-                <View style={template1Styles.invoiceTitleRow}>
-                  <Text style={template1Styles.invoiceTitle}>
+                <View style={templateA5_3Styles.invoiceTitleRow}>
+                  <Text style={templateA5_3Styles.invoiceTitle}>
+                     {" "}
                     {transaction.type === "proforma"
                       ? "PROFORMA INVOICE"
                       : isGSTApplicable
@@ -201,106 +197,104 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                   </Text>
                 </View>
 
-                <View style={template1Styles.recipientRow}>
-                  <Text style={template1Styles.recipientText}>
+                <View style={templateA5_3Styles.recipientRow}>
+                  <Text style={templateA5_3Styles.recipientText}>
                     ORIGINAL FOR RECIPIENT
                   </Text>
                 </View>
               </View>
               {/* table three columns */}
-              <View style={template1Styles.threeColSection}>
+              <View style={templateA5_3Styles.threeColSection}>
                 {/* Column 1 - Details of Buyer */}
-                <View style={[template1Styles.column, { borderLeft: "none" }]}>
-                  <View style={template1Styles.columnHeader}>
-                    <Text style={template1Styles.threecoltableHeader}>
+                <View
+                  style={[templateA5_3Styles.column2, { borderLeft: "none" }]}
+                >
+                  <View style={templateA5_3Styles.columnHeader}>
+                    <Text style={templateA5_3Styles.threecoltableHeader}>
                       Details of Buyer | Billed to:
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>Name</Text>
-                    <Text style={template1Styles.tableValue}>
-                      {capitalizeWords(party?.name || "N/A")}
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>Name</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
+                      {party?.name || "N/A"}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>Address</Text>
-                    <Text style={template1Styles.tableValue}>
-                      {capitalizeWords(getBillingAddress(party))}
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>Address</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
+                      {getBillingAddress(party)}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>Phone</Text>
-                    <Text style={template1Styles.tableValue}>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>Phone</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {party?.contactNumber || "-"}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>GSTIN</Text>
-                    <Text style={template1Styles.tableValue}>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>GSTIN</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {party?.gstin || "-"}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>PAN</Text>
-                    <Text style={template1Styles.tableValue}>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>PAN</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {party?.pan || "-"}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>
                       Place of Supply
                     </Text>
-                    <Text style={template1Styles.tableValue}>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {party?.state
                         ? `${party.state} (${getStateCode(party.state) || "-"})`
                         : "-"}
                     </Text>
                   </View>
-                </View>
-
-                {/* Column 2 - Details of Consigned */}
-                <View style={template1Styles.column}>
-                  <View style={template1Styles.columnHeader}>
-                    <Text style={template1Styles.threecoltableHeader}>
+                  <View style={templateA5_3Styles.columnHeader}>
+                    <Text style={templateA5_3Styles.threecoltableHeader}>
                       Details of Consigned | Shipped to:
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>Name</Text>
-                    <Text style={template1Styles.tableValue}>
-                      {capitalizeWords(shippingAddress?.label || party?.name || "N/A")}
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>Name</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
+                      {shippingAddress?.label || party?.name || "N/A"}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>Address</Text>
-                    <Text style={template1Styles.tableValue}>
-                      {capitalizeWords(getShippingAddress(
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>Address</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
+                      {getShippingAddress(
                         shippingAddress,
                         getBillingAddress(party)
-                      ))}
+                      )}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>Country</Text>
-                    <Text style={template1Styles.tableValue}>India</Text>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>Country</Text>
+                    <Text style={templateA5_3Styles.tableValue}>India</Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>Phone</Text>
-                    <Text style={template1Styles.tableValue}>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>Phone</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {shippingAddress?.contactNumber ||
                         party?.contactNumber ||
                         "-"}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>GSTIN</Text>
-                    <Text style={template1Styles.tableValue}>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>GSTIN</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {party?.gstin || "-"}
                     </Text>
                   </View>
-                  <View style={template1Styles.dataRow}>
-                    <Text style={template1Styles.tableLabel}>State</Text>
-                    <Text style={template1Styles.tableValue}>
+                  <View style={templateA5_3Styles.dataRow}>
+                    <Text style={templateA5_3Styles.tableLabel}>State</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {shippingAddress?.state
                         ? `${shippingAddress.state} (${
                             getStateCode(shippingAddress.state) || "-"
@@ -312,38 +306,46 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                   </View>
                 </View>
 
+              
+
                 {/* Column 3 - Invoice Details */}
-                <View style={[template1Styles.column, { borderRight: "none" }]}>
+                <View
+                  style={[templateA5_3Styles.column2, { borderRight: "none" }]}
+                >
                   <View
                     style={[
-                      template1Styles.dataRow,
-                      { display: "flex", gap: 30 },
+                      templateA5_3Styles.dataRow,
+                      { display: "flex" },
                     ]}
                   >
-                    <Text style={template1Styles.tableLabel}>Invoice No.</Text>
-                    <Text style={template1Styles.tableValue}>
+                    <Text style={templateA5_3Styles.tableLabel}>
+                      Invoice No.
+                    </Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {transaction.invoiceNumber || "N/A"}
                     </Text>
                   </View>
                   <View
                     style={[
-                      template1Styles.dataRow,
-                      { display: "flex", gap: 30 },
+                      templateA5_3Styles.dataRow,
+                      { display: "flex" },
                     ]}
                   >
-                    <Text style={template1Styles.tableLabel}>Invoice Date</Text>
-                    <Text style={template1Styles.tableValue}>
+                    <Text style={templateA5_3Styles.tableLabel}>
+                      Invoice Date
+                    </Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {new Date(transaction.date).toLocaleDateString("en-IN")}
                     </Text>
                   </View>
                   <View
                     style={[
-                      template1Styles.dataRow,
-                      { display: "flex", gap: 30 },
+                      templateA5_3Styles.dataRow,
+                      { display: "flex" },
                     ]}
                   >
-                    <Text style={template1Styles.tableLabel}>Due Date</Text>
-                    <Text style={template1Styles.tableValue}>
+                    <Text style={templateA5_3Styles.tableLabel}>Due Date</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {new Date(transaction.dueDate).toLocaleDateString(
                         "en-IN"
                       )}
@@ -351,54 +353,62 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                   </View>
                   <View
                     style={[
-                      template1Styles.dataRow,
-                      { display: "flex", gap: 30 },
+                      templateA5_3Styles.dataRow,
+                      { display: "flex" },
                     ]}
                   >
-                    <Text style={template1Styles.tableLabel}>P.O. No.</Text>
-                    <Text style={template1Styles.tableValue}>
+                    <Text style={templateA5_3Styles.tableLabel}>P.O. No.</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {transaction.voucher || "-"}
                     </Text>
                   </View>
                   <View
                     style={[
-                      template1Styles.dataRow,
-                      { display: "flex", gap: 30 },
+                      templateA5_3Styles.dataRow,
+                      { display: "flex" },
                     ]}
                   >
-                    <Text style={template1Styles.tableLabel}>E-Way No.</Text>
-                    <Text style={template1Styles.tableValue}>
+                    <Text style={templateA5_3Styles.tableLabel}>E-Way No.</Text>
+                    <Text style={templateA5_3Styles.tableValue}>
                       {transaction.referenceNumber || "-"}
                     </Text>
                   </View>
                   <View
                     style={[
-                      template1Styles.dataRow,
-                      { display: "flex", gap: 30 },
+                      templateA5_3Styles.dataRow,
+                      { display: "flex" },
                     ]}
                   >
-                    <Text style={template1Styles.tableLabel}></Text>
-                    <Text style={template1Styles.tableValue}></Text>
+                    <Text style={templateA5_3Styles.tableLabel}></Text>
+                    <Text style={templateA5_3Styles.tableValue}></Text>
                   </View>
                   <View
                     style={[
-                      template1Styles.dataRow,
-                      { display: "flex", gap: 30 },
+                      templateA5_3Styles.dataRow,
+                      { display: "flex" },
                     ]}
                   >
-                    <Text style={template1Styles.tableLabel}></Text>
-                    <Text style={template1Styles.tableValue}></Text>
+                    <Text style={templateA5_3Styles.tableLabel}></Text>
+                    <Text style={templateA5_3Styles.tableValue}></Text>
                   </View>
                 </View>
               </View>
               {/* Items Table */}
-              <View style={template1Styles.tableContainer}>
-                <View style={template1Styles.itemsTable}>
+              <View style={templateA5_3Styles.tableContainer}>
+                {/* Vertical borders */}
+                {borderPositions.map((pos, index) => (
+                  <View
+                    key={index}
+                    style={[templateA5_3Styles.verticalBorder, { left: pos }]}
+                  />
+                ))}
+
+                <View style={templateA5_3Styles.itemsTable}>
                   {/* Table Header */}
-                  <View style={template1Styles.itemsTableHeader}>
+                  <View style={templateA5_3Styles.itemsTableHeader}>
                     <Text
                       style={[
-                        template1Styles.srNoHeader,
+                        templateA5_3Styles.srNoHeader,
                         { width: colWidths[0] },
                       ]}
                     >
@@ -406,7 +416,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     </Text>
                     <Text
                       style={[
-                        template1Styles.productHeader,
+                        templateA5_3Styles.productHeader,
                         { width: colWidths[1] },
                       ]}
                     >
@@ -414,7 +424,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     </Text>
                     <Text
                       style={[
-                        template1Styles.hsnHeader,
+                        templateA5_3Styles.hsnHeader,
                         { width: colWidths[2] },
                       ]}
                     >
@@ -422,7 +432,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     </Text>
                     <Text
                       style={[
-                        template1Styles.qtyHeader,
+                        templateA5_3Styles.qtyHeader,
                         { width: colWidths[3] },
                       ]}
                     >
@@ -430,7 +440,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     </Text>
                     <Text
                       style={[
-                        template1Styles.rateHeader,
+                        templateA5_3Styles.rateHeader,
                         { width: colWidths[4] },
                       ]}
                     >
@@ -438,7 +448,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     </Text>
                     <Text
                       style={[
-                        template1Styles.taxableHeader,
+                        templateA5_3Styles.taxableHeader,
                         { width: colWidths[5] },
                       ]}
                     >
@@ -450,21 +460,23 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       // Interstate - Show IGST columns
                       <View
                         style={[
-                          template1Styles.igstHeader,
+                          templateA5_3Styles.igstHeader,
                           { width: colWidths[6] },
                         ]}
                       >
-                        <Text style={template1Styles.igstMainHeader}>IGST</Text>
-                        <View style={template1Styles.igstSubHeader}>
+                        <Text style={templateA5_3Styles.igstMainHeader}>
+                          IGST
+                        </Text>
+                        <View style={templateA5_3Styles.igstSubHeader}>
                           <Text
                             style={[
-                              template1Styles.igstSubPercentage,
+                              templateA5_3Styles.igstSubPercentage,
                               { borderRight: "1px solid #0371C1" },
                             ]}
                           >
                             %
                           </Text>
-                          <Text style={template1Styles.igstSubText}>
+                          <Text style={templateA5_3Styles.igstSubText}>
                             Amount
                           </Text>
                         </View>
@@ -474,46 +486,47 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       <>
                         <View
                           style={[
-                            template1Styles.igstHeader,
+                            templateA5_3Styles.igstHeader,
                             { width: colWidths[6] },
+                            // { borderRight: "1px solid #0371C1" },
                           ]}
                         >
-                          <Text style={template1Styles.igstMainHeader}>
+                          <Text style={templateA5_3Styles.igstMainHeader}>
                             CGST
                           </Text>
-                          <View style={template1Styles.igstSubHeader}>
+                          <View style={templateA5_3Styles.igstSubHeader}>
                             <Text
                               style={[
-                                template1Styles.igstSubPercentage,
+                                templateA5_3Styles.igstSubPercentage,
                                 { borderRight: "1px solid #0371C1" },
                               ]}
                             >
                               %
                             </Text>
-                            <Text style={template1Styles.igstSubText}>
+                            <Text style={templateA5_3Styles.igstSubText}>
                               Amount
                             </Text>
                           </View>
                         </View>
                         <View
                           style={[
-                            template1Styles.igstHeader,
+                            templateA5_3Styles.igstHeader,
                             { width: colWidths[7] },
                           ]}
                         >
-                          <Text style={template1Styles.igstMainHeader}>
+                          <Text style={templateA5_3Styles.igstMainHeader}>
                             SGST
                           </Text>
-                          <View style={template1Styles.igstSubHeader}>
+                          <View style={templateA5_3Styles.igstSubHeader}>
                             <Text
                               style={[
-                                template1Styles.igstSubPercentage,
+                                templateA5_3Styles.igstSubPercentage,
                                 { borderRight: "1px solid #0371C1" },
                               ]}
                             >
                               %
                             </Text>
-                            <Text style={template1Styles.igstSubText}>
+                            <Text style={templateA5_3Styles.igstSubText}>
                               Amount
                             </Text>
                           </View>
@@ -524,7 +537,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                     {/* Total Column */}
                     <Text
                       style={[
-                        template1Styles.totalHeader,
+                        templateA5_3Styles.totalHeader,
                         { width: colWidths[totalColumnIndex] },
                       ]}
                     >
@@ -533,10 +546,10 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                   </View>
 
                   {pageItems.map((item, index) => (
-                    <View key={index} style={template1Styles.itemsTableRow}>
+                    <View key={index} style={templateA5_3Styles.itemsTableRow}>
                       <Text
                         style={[
-                          template1Styles.srNoCell,
+                          templateA5_3Styles.srNoCell,
                           { width: colWidths[0] },
                         ]}
                       >
@@ -544,15 +557,15 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       </Text>
                       <Text
                         style={[
-                          template1Styles.productCell,
+                          templateA5_3Styles.productCell,
                           { width: colWidths[1] },
                         ]}
                       >
-                        {capitalizeWords(item.name)}
+                        {item.name}
                       </Text>
                       <Text
                         style={[
-                          template1Styles.hsnCell,
+                          templateA5_3Styles.hsnCell,
                           { width: colWidths[2] },
                         ]}
                       >
@@ -560,7 +573,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       </Text>
                       <Text
                         style={[
-                          template1Styles.qtyCell,
+                          templateA5_3Styles.qtyCell,
                           { width: colWidths[3] },
                         ]}
                       >
@@ -568,7 +581,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       </Text>
                       <Text
                         style={[
-                          template1Styles.rateCell,
+                          templateA5_3Styles.rateCell,
                           { width: colWidths[4] },
                         ]}
                       >
@@ -576,8 +589,8 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       </Text>
                       <Text
                         style={[
-                          template1Styles.taxableCell,
-                          { width: colWidths[5] },
+                          templateA5_3Styles.taxableCell,
+                          { width: colWidths[5], backgroundColor:"rgba(3, 113, 193, 0.2)" },
                         ]}
                       >
                         {formatCurrency(item.taxableValue)}
@@ -585,14 +598,14 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       {showIGST ? (
                         <View
                           style={[
-                            template1Styles.igstCell,
+                            templateA5_3Styles.igstCell,
                             { width: colWidths[6] },
                           ]}
                         >
-                          <Text style={template1Styles.igstPercent}>
+                          <Text style={templateA5_3Styles.igstPercent}>
                             {item.gstRate}
                           </Text>
-                          <Text style={template1Styles.igstAmount}>
+                          <Text style={templateA5_3Styles.igstAmount}>
                             {formatCurrency(item.igst)}
                           </Text>
                         </View>
@@ -600,27 +613,27 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                         <>
                           <View
                             style={[
-                              template1Styles.igstCell,
+                              templateA5_3Styles.igstCell,
                               { width: colWidths[6] },
                             ]}
                           >
-                            <Text style={template1Styles.igstPercent}>
+                            <Text style={templateA5_3Styles.igstPercent}>
                               {item.gstRate / 2}
                             </Text>
-                            <Text style={template1Styles.igstAmount}>
+                            <Text style={templateA5_3Styles.igstAmount}>
                               {formatCurrency(item.cgst)}
                             </Text>
                           </View>
                           <View
                             style={[
-                              template1Styles.igstCell,
+                              templateA5_3Styles.igstCell,
                               { width: colWidths[7] },
                             ]}
                           >
-                            <Text style={template1Styles.igstPercent}>
+                            <Text style={templateA5_3Styles.igstPercent}>
                               {item.gstRate / 2}
                             </Text>
-                            <Text style={template1Styles.igstAmount}>
+                            <Text style={templateA5_3Styles.igstAmount}>
                               {formatCurrency(item.sgst)}
                             </Text>
                           </View>
@@ -628,167 +641,149 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       ) : null}
                       <Text
                         style={[
-                          template1Styles.totalCell,
-                          { width: colWidths[totalColumnIndex] },
+                          templateA5_3Styles.totalCell,
+                          { width: colWidths[totalColumnIndex] ,backgroundColor:"rgba(3, 113, 193, 0.2)" },
                         ]}
                       >
                         {formatCurrency(item.total)}
                       </Text>
                     </View>
                   ))}
+                </View>
 
-                  {isLastPage && (
-                    <View style={template1Styles.itemsTableTotalRow}>
-                      <Text
+                {isLastPage && (
+                  <View style={templateA5_3Styles.itemsTableTotalRow}>
+                    <Text
+                      style={[
+                        templateA5_3Styles.totalLabel,
+                        { width: colWidths[0] },
+                      ]}
+                    ></Text>
+                    <Text
+                      style={[
+                        templateA5_3Styles.totalEmpty,
+                        { width: colWidths[1] },
+                      ]}
+                    ></Text>
+                    <Text
+                      style={[
+                        templateA5_3Styles.totalEmpty,
+                        {
+                          width: colWidths[2],
+                          // borderRight: "1px solid #0371C1",
+                        },
+                      ]}
+                    >
+                      Total
+                    </Text>
+                    <Text
+                      style={[
+                        templateA5_3Styles.totalQty,
+                        {
+                          width: colWidths[3],
+                          // borderRight: "1px solid #0371C1",
+                        },
+                      ]}
+                    >
+                      {totalQty.toFixed(2)}
+                    </Text>
+                    <Text
+                      style={[
+                        templateA5_3Styles.totalEmpty,
+                        { width: colWidths[4] },
+                      ]}
+                    ></Text>
+                    <Text
+                      style={[
+                        templateA5_3Styles.totalTaxable,
+                        {
+                          width: colWidths[5],
+                          // borderRight: "1px solid #0371C1",
+                          // borderLeft: "1px solid #0371C1",
+                        },
+                      ]}
+                    >
+                      {formatCurrency(totalTaxable)}
+                    </Text>
+                    {showIGST ? (
+                      <View
                         style={[
-                          template1Styles.totalLabel,
-                          { width: colWidths[0] },
-                        ]}
-                      ></Text>
-                      <Text
-                        style={[
-                          template1Styles.totalEmpty,
-                          { width: colWidths[1] },
-                        ]}
-                      ></Text>
-                      <Text
-                        style={[
-                          template1Styles.totalEmpty,
-                          {
-                            width: colWidths[2],
-                            borderRight: "1px solid #0371C1",
-                          },
+                          templateA5_3Styles.igstTotal,
+                          { width: colWidths[6] },
                         ]}
                       >
-                        Total
-                      </Text>
-                      <Text
-                        style={[
-                          template1Styles.totalQty,
-                          {
-                            width: colWidths[3],
-                            borderRight: "1px solid #0371C1",
-                          },
-                        ]}
-                      >
-                        {totalQty.toFixed(2)}
-                      </Text>
-                      <Text
-                        style={[
-                          template1Styles.totalEmpty,
-                          { width: colWidths[4] },
-                        ]}
-                      ></Text>
-                      <Text
-                        style={[
-                          template1Styles.totalTaxable,
-                          {
-                            width: colWidths[5],
-                            borderRight: "1px solid #0371C1",
-                            borderLeft: "1px solid #0371C1",
-                          },
-                        ]}
-                      >
-                        {formatCurrency(totalTaxable)}
-                      </Text>
-                      {showIGST ? (
+                        <Text
+                          style={[
+                            templateA5_3Styles.totalEmpty,
+                            { width: "30%" },
+                          ]}
+                        ></Text>
+                        <Text
+                          style={[
+                            templateA5_3Styles.totalIgstAmount,
+                            // { borderRight: "1px solid #0371C1" },
+                          ]}
+                        >
+                          {formatCurrency(totalIGST)}
+                        </Text>
+                      </View>
+                    ) : showCGSTSGST ? (
+                      <>
                         <View
                           style={[
-                            template1Styles.igstTotal,
+                            templateA5_3Styles.igstTotal,
                             { width: colWidths[6] },
+                          ]}
+                        >
+                          
+                          <Text style={[templateA5_3Styles.totalIgstAmount]}>
+                            {formatCurrency(totalCGST)}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            templateA5_3Styles.igstTotal,
+                            { width: colWidths[7] },
                           ]}
                         >
                           <Text
                             style={[
-                              template1Styles.totalEmpty,
-                              { width: "30%" },
+                              templateA5_3Styles.totalEmpty,
+                             
                             ]}
                           ></Text>
                           <Text
                             style={[
-                              template1Styles.totalIgstAmount,
-                              { borderRight: "1px solid #0371C1" },
+                              templateA5_3Styles.totalIgstAmount,
+                              // { borderRight: "1px solid #0371C1" },
                             ]}
                           >
-                            {formatCurrency(totalIGST)}
+                            {formatCurrency(totalSGST)}
                           </Text>
                         </View>
-                      ) : showCGSTSGST ? (
-                        <>
-                          <View
-                            style={[
-                              template1Styles.igstTotal,
-                              { width: colWidths[6] },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                template1Styles.totalEmpty,
-                                { width: "30%" },
-                              ]}
-                            ></Text>
-                            <Text style={[template1Styles.totalIgstAmount]}>
-                              {formatCurrency(totalCGST)}
-                            </Text>
-                          </View>
-                          <View
-                            style={[
-                              template1Styles.igstTotal,
-                              { width: colWidths[7] },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                template1Styles.totalEmpty,
-                                { width: "30%" },
-                              ]}
-                            ></Text>
-                            <Text
-                              style={[
-                                template1Styles.totalIgstAmount,
-                                { borderRight: "1px solid #0371C1" },
-                              ]}
-                            >
-                              {formatCurrency(totalSGST)}
-                            </Text>
-                          </View>
-                        </>
-                      ) : null}
-                      <Text
-                        style={[
-                          template1Styles.grandTotal,
-                          { width: colWidths[totalColumnIndex] },
-                        ]}
-                      >
-                        {formatCurrency(totalAmount)}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Vertical borders */}
-                  {borderPositions.map((pos, index) => (
-                    <View
-                      key={index}
-                      style={[template1Styles.verticalBorder, { left: pos }]}
-                    />
-                  ))}
-                </View>
+                      </>
+                    ) : null}
+                    <Text
+                      style={[
+                        templateA5_3Styles.grandTotal,
+                        { width: colWidths[totalColumnIndex] },
+                      ]}
+                    >
+                      {formatCurrency(totalAmount)}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {isLastPage && (
                 <>
-                  <View
-                    style={[
-                      template1Styles.bottomSection,
-                      { flexDirection: "column" },
-                    ]}
-                  >
-                    <Text style={template1Styles.totalInWords}>
+                  <View style={[templateA5_3Styles.bottomSection,{flexDirection:"column"}]}>
+                    <Text style={templateA5_3Styles.totalInWords}>
                       Total in words : {numberToWords(totalAmount)}
                     </Text>
                     {/* HSN/SAC Tax Table */}
                     {isGSTApplicable && (
-                      <View style={template1Styles.hsnTaxTable}>
+                      <View style={templateA5_3Styles.hsnTaxTable}>
                         {/* Define specific column widths for HSN table */}
                         {(() => {
                           // Define column widths specifically for HSN table
@@ -808,11 +803,11 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                             <>
                               {/* Table Header */}
                               <View
-                                style={template1Styles.hsnTaxTableHeader}
+                                style={templateA5_3Styles.hsnTaxTableHeader}
                               >
                                 <Text
                                   style={[
-                                    template1Styles.hsnTaxHeaderCell,
+                                    templateA5_3Styles.hsnTaxHeaderCell,
                                     { width: hsnColWidths[0] },
                                   ]}
                                 >
@@ -820,7 +815,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                 </Text>
                                 <Text
                                   style={[
-                                    template1Styles.hsnTaxHeaderCell,
+                                    templateA5_3Styles.hsnTaxHeaderCell,
                                     { width: hsnColWidths[1] },
                                   ]}
                                 >
@@ -832,21 +827,21 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                   // Interstate - Show IGST columns
                                   <View
                                     style={[
-                                      template1Styles.igstHeader,
+                                      templateA5_3Styles.igstHeader,
                                       { width: hsnColWidths[2] },
                                     ]}
                                   >
                                     <Text
-                                      style={template1Styles.igstMainHeader}
+                                      style={templateA5_3Styles.igstMainHeader}
                                     >
                                       IGST
                                     </Text>
                                     <View
-                                      style={template1Styles.igstSubHeader}
+                                      style={templateA5_3Styles.igstSubHeader}
                                     >
                                       <Text
                                         style={[
-                                          template1Styles.igstSubPercentage,
+                                          templateA5_3Styles.igstSubPercentage,
                                           {
                                             borderRight: "1px solid #0371C1",
                                           },
@@ -855,7 +850,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                         %
                                       </Text>
                                       <Text
-                                        style={template1Styles.igstSubText}
+                                        style={templateA5_3Styles.igstSubText}
                                       >
                                         Amount
                                       </Text>
@@ -866,23 +861,23 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                   <>
                                     <View
                                       style={[
-                                        template1Styles.igstHeader,
+                                        templateA5_3Styles.igstHeader,
                                         { width: hsnColWidths[2] },
                                       ]}
                                     >
                                       <Text
                                         style={
-                                          template1Styles.igstMainHeader
+                                          templateA5_3Styles.igstMainHeader
                                         }
                                       >
                                         CGST
                                       </Text>
                                       <View
-                                        style={template1Styles.igstSubHeader}
+                                        style={templateA5_3Styles.igstSubHeader}
                                       >
                                         <Text
                                           style={[
-                                            template1Styles.igstSubPercentage,
+                                            templateA5_3Styles.igstSubPercentage,
                                             {
                                               borderRight: "1px solid #0371C1",
                                             },
@@ -891,7 +886,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                           %
                                         </Text>
                                         <Text
-                                          style={template1Styles.igstSubText}
+                                          style={templateA5_3Styles.igstSubText}
                                         >
                                           Amount
                                         </Text>
@@ -899,23 +894,23 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                     </View>
                                     <View
                                       style={[
-                                        template1Styles.igstHeader,
+                                        templateA5_3Styles.igstHeader,
                                         { width: hsnColWidths[3] },
                                       ]}
                                     >
                                       <Text
                                         style={
-                                          template1Styles.igstMainHeader
+                                          templateA5_3Styles.igstMainHeader
                                         }
                                       >
                                         SGST
                                       </Text>
                                       <View
-                                        style={template1Styles.igstSubHeader}
+                                        style={templateA5_3Styles.igstSubHeader}
                                       >
                                         <Text
                                           style={[
-                                            template1Styles.igstSubPercentage,
+                                            templateA5_3Styles.igstSubPercentage,
                                             {
                                               borderRight: "1px solid #0371C1",
                                               borderLeft: "1px solid #0371C1",
@@ -925,7 +920,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                           %
                                         </Text>
                                         <Text
-                                          style={template1Styles.igstSubText}
+                                          style={templateA5_3Styles.igstSubText}
                                         >
                                           Amount
                                         </Text>
@@ -937,7 +932,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                 {/* Total Column */}
                                 <Text
                                   style={[
-                                    template1Styles.hsnTaxHeaderCell,
+                                    templateA5_3Styles.hsnTaxHeaderCell,
                                     {
                                       width: hsnColWidths[hsnTotalColumnIndex],
                                       borderLeft: "1px solid #0371C1",
@@ -957,11 +952,11 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                               ).map((hsnItem, index) => (
                                 <View
                                   key={index}
-                                  style={template1Styles.hsnTaxTableRow}
+                                  style={templateA5_3Styles.hsnTaxTableRow}
                                 >
                                   <Text
                                     style={[
-                                      template1Styles.hsnTaxCell,
+                                      templateA5_3Styles.hsnTaxCell,
                                       { width: hsnColWidths[0] },
                                     ]}
                                   >
@@ -969,7 +964,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                   </Text>
                                   <Text
                                     style={[
-                                      template1Styles.hsnTaxCell,
+                                      templateA5_3Styles.hsnTaxCell,
                                       { width: hsnColWidths[1] },
                                     ]}
                                   >
@@ -979,17 +974,17 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                   {showIGST ? (
                                     <View
                                       style={[
-                                        template1Styles.igstCell,
+                                        templateA5_3Styles.igstCell,
                                         { width: hsnColWidths[2] },
                                       ]}
                                     >
                                       <Text
-                                        style={template1Styles.igstPercent}
+                                        style={templateA5_3Styles.igstPercent}
                                       >
                                         {hsnItem.taxRate}
                                       </Text>
                                       <Text
-                                        style={template1Styles.igstAmount}
+                                        style={templateA5_3Styles.igstAmount}
                                       >
                                         {formatCurrency(hsnItem.taxAmount)}
                                       </Text>
@@ -998,21 +993,22 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                     <>
                                       <View
                                         style={[
-                                          template1Styles.igstCell,
+                                          templateA5_3Styles.igstCell,
                                           {
-                                            borderRight: "1px solid #0371C1",
-                                          },
+                                              borderRight: "1px solid #0371C1",
+                                            },
                                           { width: hsnColWidths[2] },
                                         ]}
                                       >
                                         <Text
-                                          style={template1Styles.igstPercent}
+                                          style={templateA5_3Styles.igstPercent}
                                         >
                                           {hsnItem.taxRate / 2}
                                         </Text>
                                         <Text
                                           style={[
-                                            template1Styles.igstAmount,
+                                            templateA5_3Styles.igstAmount,
+                                            
                                           ]}
                                         >
                                           {formatCurrency(hsnItem.cgstAmount)}
@@ -1020,19 +1016,19 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                       </View>
                                       <View
                                         style={[
-                                          template1Styles.igstCell,
+                                          templateA5_3Styles.igstCell,
                                           { width: hsnColWidths[3] },
                                         ]}
                                       >
                                         <Text
                                           style={[
-                                            template1Styles.igstPercent,
+                                            templateA5_3Styles.igstPercent,
                                           ]}
                                         >
                                           {hsnItem.taxRate / 2}
                                         </Text>
                                         <Text
-                                          style={template1Styles.igstAmount}
+                                          style={templateA5_3Styles.igstAmount}
                                         >
                                           {formatCurrency(hsnItem.sgstAmount)}
                                         </Text>
@@ -1042,7 +1038,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
 
                                   <Text
                                     style={[
-                                      template1Styles.hsnTaxCell,
+                                      templateA5_3Styles.hsnTaxCell,
                                       {
                                         width:
                                           hsnColWidths[hsnTotalColumnIndex],
@@ -1058,11 +1054,11 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
 
                               {/* Total Row */}
                               <View
-                                style={template1Styles.hsnTaxTableTotalRow}
+                                style={templateA5_3Styles.hsnTaxTableTotalRow}
                               >
                                 <Text
                                   style={[
-                                    template1Styles.hsnTaxTotalCell,
+                                    templateA5_3Styles.hsnTaxTotalCell,
                                     { width: hsnColWidths[0] },
                                   ]}
                                 >
@@ -1070,7 +1066,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                 </Text>
                                 <Text
                                   style={[
-                                    template1Styles.hsnTaxTotalCell,
+                                    templateA5_3Styles.hsnTaxTotalCell,
                                     { width: hsnColWidths[1] },
                                   ]}
                                 >
@@ -1080,20 +1076,20 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                 {showIGST ? (
                                   <View
                                     style={[
-                                      template1Styles.igstTotal,
+                                      templateA5_3Styles.igstTotal,
                                       { width: hsnColWidths[2] },
                                     ]}
                                   >
                                     <Text
                                       style={[
-                                        template1Styles.totalEmpty,
+                                        templateA5_3Styles.totalEmpty,
                                         { width: "30%" },
                                       ]}
                                     ></Text>
                                     <Text
                                       style={[
-                                        template1Styles.totalIgstAmount,
-                                        // { borderRight: "1px solid #0371C1" },
+                                        templateA5_3Styles.totalIgstAmount,
+                                        { borderRight: "1px solid #0371C1" },
                                       ]}
                                     >
                                       {formatCurrency(totalIGST)}
@@ -1103,19 +1099,19 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                   <>
                                     <View
                                       style={[
-                                        template1Styles.igstTotal,
+                                        templateA5_3Styles.igstTotal,
                                         { width: hsnColWidths[2] },
                                       ]}
                                     >
                                       <Text
                                         style={[
-                                          template1Styles.totalEmpty,
+                                          templateA5_3Styles.totalEmpty,
                                           { width: "30%" },
                                         ]}
                                       ></Text>
                                       <Text
                                         style={[
-                                          template1Styles.totalIgstAmount,
+                                          templateA5_3Styles.totalIgstAmount,
                                         ]}
                                       >
                                         {formatCurrency(totalCGST)}
@@ -1123,20 +1119,22 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                                     </View>
                                     <View
                                       style={[
-                                        template1Styles.igstTotal,
+                                        templateA5_3Styles.igstTotal,
                                         { width: hsnColWidths[3] },
                                       ]}
                                     >
                                       <Text
                                         style={[
-                                          template1Styles.totalEmpty,
+                                          templateA5_3Styles.totalEmpty,
                                           { width: "30%" },
                                         ]}
                                       ></Text>
                                       <Text
                                         style={[
-                                          template1Styles.totalIgstAmount,
-                                         
+                                          templateA5_3Styles.totalIgstAmount,
+                                          {
+                                            borderRight: "1px solid #0371C1",
+                                          },
                                         ]}
                                       >
                                         {formatCurrency(totalSGST)}
@@ -1147,7 +1145,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
 
                                 <Text
                                   style={[
-                                    template1Styles.hsnTaxTotalCell,
+                                    templateA5_3Styles.hsnTaxTotalCell,
                                     {
                                       width: hsnColWidths[hsnTotalColumnIndex],
                                       borderRight: "none",
@@ -1163,11 +1161,9 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                       </View>
                     )}
                   </View>
-                  <View style={template1Styles.bottomSection}>
+                  <View style={templateA5_3Styles.bottomSection}>
                     {/* Left Column: Total in words + Terms */}
-                    <View style={template1Styles.leftSection}>
-                     
-
+                    <View style={templateA5_3Styles.leftSection}>
                       {transaction?.notes ? (
                         (() => {
                           // Parse HTML notes
@@ -1191,10 +1187,10 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                           }
 
                           return (
-                            <View style={template1Styles.termsBox}>
+                            <View style={templateA5_3Styles.termsBox}>
                               <Text
                                 style={[
-                                  template1Styles.termLine,
+                                  templateA5_3Styles.termLine,
                                   { fontWeight: "bold" },
                                 ]}
                               >
@@ -1203,7 +1199,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                               {listItems.map((item, index) => (
                                 <Text
                                   key={index}
-                                  style={template1Styles.termLine}
+                                  style={templateA5_3Styles.termLine}
                                 >
                                   • {item}
                                 </Text>
@@ -1212,35 +1208,37 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                           );
                         })()
                       ) : (
-                        <View style={template1Styles.termsBox}>
-                          <Text style={template1Styles.termLine}>
+                        <View style={templateA5_3Styles.termsBox}>
+                          <Text style={templateA5_3Styles.termLine}>
                             No terms and conditions added yet
                           </Text>
                         </View>
                       )}
 
                       {/* QR Code + Label */}
-                      {/* <View style={template1Styles.qrContainer}>
-                               <Image src="/path/to/qr.png" style={template1Styles.qrImage} />
-                               <Text style={template1Styles.qrText}>Pay using UPI</Text>
-                             </View> */}
+                      {/* <View style={templateA5_3Styles.qrContainer}>
+                      <Image src="/path/to/qr.png" style={templateA5_3Styles.qrImage} />
+                      <Text style={templateA5_3Styles.qrText}>Pay using UPI</Text>
+                    </View> */}
                     </View>
 
                     {/* Right Column: Totals */}
-                    <View style={template1Styles.rightSection}>
-                      <View style={template1Styles.totalRow}>
-                        <Text style={template1Styles.label}>
+                    <View style={templateA5_3Styles.rightSection}>
+                      <View style={templateA5_3Styles.totalRow}>
+                        <Text style={templateA5_3Styles.label}>
                           Taxable Amount
                         </Text>
-                        <Text style={template1Styles.value}>
+                        <Text style={templateA5_3Styles.value}>
                           {formatCurrency(totalTaxable)}
                         </Text>
                       </View>
 
                       {isGSTApplicable && (
-                        <View style={template1Styles.totalRow}>
-                          <Text style={template1Styles.label}>Total Tax</Text>
-                          <Text style={template1Styles.value}>
+                        <View style={templateA5_3Styles.totalRow}>
+                          <Text style={templateA5_3Styles.label}>
+                            Total Tax
+                          </Text>
+                          <Text style={templateA5_3Styles.value}>
                             {formatCurrency(
                               showIGST ? totalIGST : totalCGST + totalSGST
                             )}
@@ -1250,15 +1248,17 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
 
                       <View
                         style={[
-                          template1Styles.totalRow,
-                          isGSTApplicable ? template1Styles.highlightRow : {},
+                          templateA5_3Styles.totalRow,
+                          isGSTApplicable
+                            ? templateA5_3Styles.highlightRow
+                            : {},
                         ]}
                       >
                         <Text
                           style={
                             isGSTApplicable
-                              ? template1Styles.labelBold
-                              : template1Styles.label
+                              ? templateA5_3Styles.labelBold
+                              : templateA5_3Styles.label
                           }
                         >
                           {isGSTApplicable
@@ -1268,33 +1268,35 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
                         <Text
                           style={
                             isGSTApplicable
-                              ? template1Styles.valueBold
-                              : template1Styles.value
+                              ? templateA5_3Styles.valueBold
+                              : templateA5_3Styles.value
                           }
                         >
-                          {/* <Text style={template1Styles.currencySymbol}></Text> */}
+                          {/* <Text style={templateA5_3Styles.currencySymbol}></Text> */}
                           {formatCurrency(totalAmount)}
                         </Text>
                       </View>
 
-                      <View style={template1Styles.totalRow}>
-                        <Text style={template1Styles.label}>
-                          For{"-"}
-                          {capitalizeWords(company?.businessName ||
+                      <View style={templateA5_3Styles.totalRow}>
+                        <Text style={templateA5_3Styles.label}>
+                          For{" "}
+                          {company?.businessName ||
                             company?.companyName ||
-                            "Company Name")}
+                            "Company Name"}
                         </Text>
-                        <Text style={template1Styles.value}>(E & O.E.)</Text>
+                        <Text style={templateA5_3Styles.value}>(E & O.E.)</Text>
                       </View>
                     </View>
                   </View>
                 </>
               )}
+
+             
             </View>
-            {/* Page Number */}
-            <Text style={template1Styles.pageNumber}>
-              {pageIndex + 1} / {pages.length} page
-            </Text>
+             {/* Page Number */}
+              <Text style={templateA5_3Styles.pageNumber}>
+                {pageIndex + 1} / {pages.length} Page
+              </Text>
           </Page>
         );
       })}
@@ -1302,7 +1304,7 @@ const Template1: React.FC<TemplateA5PDFProps> = ({
   );
 };
 
-export const generatePdfForTemplate1 = async (
+export const generatePdfForTemplateA5_2 = async (
   transaction: Transaction,
   company: Company | null | undefined,
   party: Party | null | undefined,
@@ -1312,7 +1314,7 @@ export const generatePdfForTemplate1 = async (
   client?: Client | null
 ): Promise<Blob> => {
   const pdfDoc = pdf(
-    <Template1
+    <TemplateA5_2PDF
       transaction={transaction}
       company={company}
       party={party}
@@ -1325,5 +1327,4 @@ export const generatePdfForTemplate1 = async (
   return await pdfDoc.toBlob();
 };
 
-export default Template1;
-
+export default TemplateA5_2PDF;

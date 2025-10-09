@@ -135,6 +135,8 @@ export const generatePdfForTemplate19 = async (
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
 
+  const logoUrl = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
+
   // Convert itemsWithGST to the format expected by template16
   const lines = itemsWithGST.map((item) => ({
     name: item.name,
@@ -305,18 +307,39 @@ export const generatePdfForTemplate19 = async (
     // Logo
     const logoSize = 60;
     const logoX = getW() - M - logoSize;
-    doc.setFillColor(242, 133, 49);
-    doc.triangle(
-      logoX + logoSize * 0.4,
-      M,
-      logoX + logoSize,
-      M,
-      logoX + logoSize * 0.4,
-      M + logoSize,
-      "F"
-    );
-    doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
-    doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, 'PNG', logoX, M, logoSize, logoSize);
+      } catch (e) {
+        // Fallback to default logo
+        doc.setFillColor(242, 133, 49);
+        doc.triangle(
+          logoX + logoSize * 0.4,
+          M,
+          logoX + logoSize,
+          M,
+          logoX + logoSize * 0.4,
+          M + logoSize,
+          "F"
+        );
+        doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
+        doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
+      }
+    } else {
+      // Default logo
+      doc.setFillColor(242, 133, 49);
+      doc.triangle(
+        logoX + logoSize * 0.4,
+        M,
+        logoX + logoSize,
+        M,
+        logoX + logoSize * 0.4,
+        M + logoSize,
+        "F"
+      );
+      doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
+      doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
+    }
 
     // Separator
     y = Math.max(y, M + logoSize + 20);

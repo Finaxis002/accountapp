@@ -784,6 +784,12 @@ export const templateA5_3Styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderLeft: "1px solid #0371C1",
   },
+  column2:{
+    width:"50%",
+    paddingHorizontal: 4,
+    borderLeft: "1px solid #0371C1",
+
+  },
   columnHeader: {
     marginBottom: 5,
   },

@@ -27,8 +27,7 @@ import {
   numberToWords,
 } from "./pdf-utils";
 import { template8Styles } from "./pdf-template-styles";
-
-const logo = "/assets/invoice-logos/R.png";
+import { capitalizeWords } from "./utils";
 
 interface Template8PDFProps {
   transaction: Transaction;
@@ -63,6 +62,9 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
     showCGSTSGST,
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+  const logoSrc = company?.logo
+    ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}`
+    : null;
 
   const itemsPerPage = 18;
   const pages = [];
@@ -119,12 +121,18 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
               {/* Header Section */}
               <View style={template8Styles.header}>
                 <Text style={template8Styles.title}>
-                  {isGSTApplicable ? "TAX INVOICE" : "INVOICE"}
+                  {transaction.type === "proforma"
+                    ? "PROFORMA INVOICE"
+                    : isGSTApplicable
+                    ? "TAX INVOICE"
+                    : "INVOICE"}
                 </Text>
                 <Text style={template8Styles.companyName}>
-                  {company?.businessName ||
-                    company?.companyName ||
-                    "Company Name"}
+                  {capitalizeWords(
+                    company?.businessName ||
+                      company?.companyName ||
+                      "Company Name"
+                  )}
                 </Text>
 
                 <View>
@@ -153,7 +161,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       template8Styles.grayColor,
                     ]}
                   >
-                    {company?.address || "Address Line 1"}
+                    {capitalizeWords(company?.address || "Address Line 1")}
                   </Text>
                   <Text
                     style={[
@@ -161,7 +169,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       template8Styles.grayColor,
                     ]}
                   >
-                    {company?.City || "City"}
+                    {capitalizeWords(company?.City || "City")}
                   </Text>
                   <Text
                     style={[
@@ -169,7 +177,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       template8Styles.grayColor,
                     ]}
                   >
-                    {company?.addressState || "State"} -{" "}
+                    {capitalizeWords(company?.addressState || "State")} -{" "}
                     {company?.Pincode || "Pincode"}
                   </Text>
                   <Text
@@ -189,15 +197,18 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
               </View>
 
               {/* Logo */}
-              <Image
-                src={logo}
-                style={{
-                  position: "absolute",
-                  right: 40,
-                  width: 100,
-                  height: 100,
-                }}
-              />
+              {logoSrc && (
+                <Image
+                  src={logoSrc}
+                  style={{
+                    position: "absolute",
+                    right: 40,
+                    width: 80,
+                    height: 80,
+                    marginBottom:20
+                  }}
+                />
+              )}
             </View>
 
             <View style={template8Styles.dividerBlue} />
@@ -229,7 +240,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       { fontSize: 12 },
                     ]}
                   >
-                    {party?.name || "Jay Enterprises"}
+                    {capitalizeWords(party?.name || "Jay Enterprises")}
                   </Text>
                   <Text
                     style={[
@@ -238,7 +249,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       { width: "70%" },
                     ]}
                   >
-                    {getBillingAddress(party)}
+                    {capitalizeWords(getBillingAddress(party))}
                   </Text>
 
                   {/* GSTIN detail - Only show if GST is applicable and available */}
@@ -300,7 +311,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       { fontSize: 12 },
                     ]}
                   >
-                    {shippingAddress?.label || " "}
+                    {capitalizeWords(shippingAddress?.label || " ")}
                   </Text>
                   <Text
                     style={[
@@ -308,9 +319,11 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       template8Styles.grayColor,
                     ]}
                   >
-                    {getShippingAddress(
-                      shippingAddress,
-                      getBillingAddress(party)
+                    {capitalizeWords(
+                      getShippingAddress(
+                        shippingAddress,
+                        getBillingAddress(party)
+                      )
                     )}
                   </Text>
 
@@ -589,7 +602,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       { width: colWidths[1], textAlign: "left", padding: 8 },
                     ]}
                   >
-                    {item.name}
+                    {capitalizeWords(item.name)}
                   </Text>
                   <Text
                     style={[
@@ -789,7 +802,9 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
 
                     <View style={template8Styles.totalsRow}>
                       <Text style={template8Styles.boldText}>
-                        {isGSTApplicable ? "Total Amount After Tax" : "Total Amount"}
+                        {isGSTApplicable
+                          ? "Total Amount After Tax"
+                          : "Total Amount"}
                       </Text>
                       <Text>
                         <Text style={template8Styles.smallRs}>Rs</Text>{" "}
@@ -854,7 +869,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                               { display: "flex", justifyContent: "flex-start" },
                             ]}
                           >
-                            {bank.bankName}
+                            {capitalizeWords(bank.bankName)}
                           </Text>
                         </View>
                         <View
@@ -873,7 +888,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                               { display: "flex", justifyContent: "flex-start" },
                             ]}
                           >
-                            {bank.branchAddress}
+                            {capitalizeWords(bank.branchAddress)}
                           </Text>
                         </View>
                         {/* <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
@@ -894,7 +909,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                               { display: "flex", justifyContent: "flex-start" },
                             ]}
                           >
-                            {bank.ifscCode}
+                            {capitalizeWords(bank.ifscCode)}
                           </Text>
                         </View>
                         {/* <View style={{ flexDirection: "row", justifyContent: "space-between" }}>

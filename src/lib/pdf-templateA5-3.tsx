@@ -75,6 +75,7 @@ const TemplateA5_3PDF: React.FC<TemplateA5PDFProps> = ({
     showCGSTSGST,
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+   const logoSrc = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
   // For IGST (Interstate)
   const colWidthsIGST = ["4%", "25%", "10%", "8%", "10%", "15%", "20%", "12%"];
   const totalColumnIndexIGST = 7;
@@ -134,10 +135,9 @@ const TemplateA5_3PDF: React.FC<TemplateA5PDFProps> = ({
             {/* Header */}
             <View style={templateA5_3Styles.header}>
               <View style={templateA5_3Styles.headerLeft}>
-                <Image
-                  src="/assets/invoice-logos/R.png"
-                  style={templateA5_3Styles.logo}
-                />
+                {logoSrc && (
+                                 <Image src={logoSrc} style={templateA5_3Styles.logo} />
+                               )}
               </View>
               <View style={templateA5_3Styles.headerRight}>
                 <Text style={templateA5_3Styles.companyName}>
@@ -187,7 +187,12 @@ const TemplateA5_3PDF: React.FC<TemplateA5PDFProps> = ({
 
                 <View style={templateA5_3Styles.invoiceTitleRow}>
                   <Text style={templateA5_3Styles.invoiceTitle}>
-                    TAX INVOICE
+                     {" "}
+                    {transaction.type === "proforma"
+                      ? "PROFORMA INVOICE"
+                      : isGSTApplicable
+                      ? "TAX INVOICE"
+                      : "INVOICE"}
                   </Text>
                 </View>
 

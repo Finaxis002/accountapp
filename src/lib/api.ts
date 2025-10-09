@@ -4,7 +4,7 @@ import { clearSession, getToken } from "./authSession";
 import Router from "next/router";
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL, // e.g. https://reportsbe.sharda.co.in
+  baseURL: process.env.NEXT_PUBLIC_BASE_URL, // e.g. https://reportsbe.sharda.co.in
   withCredentials: false,
 });
 
