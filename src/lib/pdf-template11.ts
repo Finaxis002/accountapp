@@ -662,7 +662,7 @@ yL = row("State", buyerState, x1, yL, w1);
         }
         : {
             // No GST (7 columns) - HSN/SAC is column 2
-            "0": { cellWidth: 50 },
+            "0": { cellWidth: 35 },
             "1": { cellWidth: dynamicNameColNoGST }, 
             "2": { cellWidth: 50 }, // HSN/SAC
             "3": { cellWidth: 35 }, // Qty
