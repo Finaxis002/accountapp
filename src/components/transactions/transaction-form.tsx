@@ -206,7 +206,7 @@ const itemSchema = z
 
 const formSchema = z
   .object({
-    type: z.enum(["sales", "purchases", "receipt", "payment", "journal"]),
+    type: z.enum(["sales", "purchases", "receipt", "payment", "journal","proforma"]),
     company: z.string().min(1, "Please select a company."),
     party: z.string().optional(),
     date: z.date({ required_error: "A date is required." }),
@@ -1740,6 +1740,7 @@ export function TransactionForm({
                 );
             }
 
+            
             const pdfInstance = await pdfDoc;
             let pdfBase64: string;
             if (pdfInstance instanceof Blob) {
@@ -3221,10 +3222,7 @@ export function TransactionForm({
                         )}
                       />
                     </div>
-
-                    {gstEnabled && (
-                      <>
-                        {/* HSN Code */}
+                     {/* HSN Code */}
                         <div className="min-w-[100px] flex-1">
                           <FormItem>
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -3244,6 +3242,10 @@ export function TransactionForm({
                             </div>
                           </FormItem>
                         </div>
+
+                    {gstEnabled && (
+                      <>
+                       
 
                         {/* GST % */}
                         <div className="min-w-[100px] flex-1">
@@ -3462,10 +3464,7 @@ export function TransactionForm({
                         )}
                       />
                     </div>
-
-                    {gstEnabled && (
-                      <>
-                        {/* SAC Code */}
+                      {/* SAC Code */}
                         <div className="md:col-span-2">
                           <FormItem>
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -3485,6 +3484,10 @@ export function TransactionForm({
                             </div>
                           </FormItem>
                         </div>
+
+                    {gstEnabled && (
+                      <>
+                      
 
                         {/* GST % */}
                         <div className="md:col-span-2">

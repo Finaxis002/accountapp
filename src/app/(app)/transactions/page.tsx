@@ -27,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { TransactionForm } from "@/components/transactions/transaction-form";
+import { ProformaForm } from "@/components/transactions/proforma-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCompany } from "@/contexts/company-context";
 import { useToast } from "@/hooks/use-toast";
@@ -70,6 +71,7 @@ type TabKey =
   | "all"
   | "sales"
   | "purchases"
+  | "proforma"
   | "receipts"
   | "payments"
   | "journals";
@@ -78,6 +80,7 @@ type FormType = "sales" | "purchases" | "receipt" | "payment" | "journal";
 export default function TransactionsPage() {
   const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isProformaFormOpen, setIsProformaFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isItemsDialogOpen, setIsItemsDialogOpen] = React.useState(false);
@@ -92,6 +95,7 @@ export default function TransactionsPage() {
   const [vendors, setVendors] = React.useState<Vendor[]>([]);
   const [sales, setSales] = React.useState<Transaction[]>([]);
   const [purchases, setPurchases] = React.useState<Transaction[]>([]);
+  const [proforma, setProforma] = React.useState<Transaction[]>([]);
   const [receipts, setReceipts] = React.useState<Transaction[]>([]);
   const [payments, setPayments] = React.useState<Transaction[]>([]);
   const [journals, setJournals] = React.useState<Transaction[]>([]);
@@ -226,6 +230,10 @@ export default function TransactionsPage() {
         return parseResponse(data, ["purchaseEntries", "purchases", "entries"]);
       };
 
+      const parseProformaResponse = (data: any) => {
+        return parseResponse(data, ["proformaEntries", "proforma", "entries"]);
+      };
+
       const parseReceiptsResponse = (data: any) => {
         return parseResponse(data, ["receiptEntries", "receipts", "entries"]);
       };
@@ -292,6 +300,7 @@ export default function TransactionsPage() {
       const [
         salesArray,
         purchasesArray,
+        proformaArray,
         receiptsArray,
         paymentsArray,
         journalsArray,
@@ -318,6 +327,16 @@ export default function TransactionsPage() {
               `${baseURL}/api/purchase${queryParam}`,
               parsePurchasesResponse,
               "purchases"
+            ),
+          []
+        ),
+        maybeFetch(
+          canSales,
+          () =>
+            fetchAndParse(
+              `${baseURL}/api/proforma${queryParam}`,
+              parseProformaResponse,
+              "proforma"
             ),
           []
         ),
@@ -386,6 +405,7 @@ export default function TransactionsPage() {
       setPurchases(
         purchasesArray.map((p: any) => ({ ...p, type: "purchases" }))
       );
+      setProforma(proformaArray.map((p: any) => ({ ...p, type: "proforma" })));
       setReceipts(receiptsArray.map((r: any) => ({ ...r, type: "receipt" })));
       setPayments(paymentsArray.map((p: any) => ({ ...p, type: "payment" })));
       setJournals(
@@ -689,6 +709,14 @@ export default function TransactionsPage() {
     [purchases, selectedCompanyId]
   );
 
+  const filteredProforma = React.useMemo(
+    () =>
+      selectedCompanyId
+        ? proforma.filter((p) => getCompanyId(p.company) === selectedCompanyId)
+        : proforma,
+    [proforma, selectedCompanyId]
+  );
+
   const filteredReceipts = React.useMemo(
     () =>
       selectedCompanyId
@@ -716,6 +744,7 @@ export default function TransactionsPage() {
   // Only show lists the user is allowed to see
   const visibleSales = canSales ? sales : [];
   const visiblePurchases = canPurchases ? purchases : [];
+  const visibleProforma = canSales ? proforma : [];
   const visibleReceipts = canReceipt ? receipts : [];
   const visiblePayments = canPayment ? payments : [];
   const visibleJournals = canJournal ? journals : [];
@@ -725,6 +754,7 @@ export default function TransactionsPage() {
       [
         ...visibleSales,
         ...visiblePurchases,
+        ...visibleProforma,
         ...visibleReceipts,
         ...visiblePayments,
         ...visibleJournals,
@@ -732,6 +762,7 @@ export default function TransactionsPage() {
     [
       visibleSales,
       visiblePurchases,
+      visibleProforma,
       visibleReceipts,
       visiblePayments,
       visibleJournals,
@@ -786,6 +817,8 @@ export default function TransactionsPage() {
         return <TrendingUp className="h-4 w-4" />;
       case "purchases":
         return <ShoppingCart className="h-4 w-4" />;
+      case "proforma":
+        return <FileText className="h-4 w-4" />;
       case "receipts":
         return <Receipt className="h-4 w-4" />;
       case "payments":
@@ -900,60 +933,89 @@ export default function TransactionsPage() {
             </div>
             <div className="flex items-center gap-2">
               {canCreateAny && (
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      onClick={() => handleOpenForm(null)}
-                      className="w-full md:w-auto"
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      New Transaction
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="  grid-rows-[auto,1fr,auto]  p-0 sm:max-w-6xl max-w-sm">
-                    <DialogHeader className="p-6">
-                      <DialogTitle>
-                        {transactionToEdit
-                          ? "Edit Transaction"
-                          : "Create a New Transaction"}
-                      </DialogTitle>
-                      <DialogDescription>
-                        {transactionToEdit
-                          ? "Update the details of the financial event."
-                          : "Fill in the details below to record a new financial event."}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <TransactionForm
-                      transactionToEdit={transactionToEdit}
-                      onFormSubmit={() => {
-                        setIsFormOpen(false);
-                        setTransactionToEdit(null);
-                        fetchTransactions();
-                      }}
-                      defaultType={
-                        defaultTransactionType ??
-                        tabToFormType(activeTab) ??
-                        allowedTypes[0] ??
-                        "sales"
-                      }
-                      transaction={transactionToPreview}
-                      company={
-                        companies.find(
-                          (c) => c._id === transactionToPreview?.company?._id
-                        ) || null
-                      }
-                      party={
-                        parties.find(
-                          (p) =>
-                            p._id ===
-                              (transactionToPreview as any)?.party?._id ||
-                            transactionToPreview?.party === p._id
-                        ) || null
-                      }
-                      serviceNameById={serviceNameById} // ✅ pass it
-                    />
-                  </DialogContent>
-                </Dialog>
+                <>
+                  <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        onClick={() => handleOpenForm(null)}
+                        className="w-full md:w-auto"
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        New Transaction
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="  grid-rows-[auto,1fr,auto]  p-0 sm:max-w-6xl max-w-sm">
+                      <DialogHeader className="p-6">
+                        <DialogTitle>
+                          {transactionToEdit
+                            ? "Edit Transaction"
+                            : "Create a New Transaction"}
+                        </DialogTitle>
+                        <DialogDescription>
+                          {transactionToEdit
+                            ? "Update the details of the financial event."
+                            : "Fill in the details below to record a new financial event."}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <TransactionForm
+                        transactionToEdit={transactionToEdit}
+                        onFormSubmit={() => {
+                          setIsFormOpen(false);
+                          setTransactionToEdit(null);
+                          fetchTransactions();
+                        }}
+                        defaultType={
+                          defaultTransactionType ??
+                          tabToFormType(activeTab) ??
+                          allowedTypes[0] ??
+                          "sales"
+                        }
+                        transaction={transactionToPreview}
+                        company={
+                          companies.find(
+                            (c) => c._id === transactionToPreview?.company?._id
+                          ) || null
+                        }
+                        party={
+                          parties.find(
+                            (p) =>
+                              p._id ===
+                                (transactionToPreview as any)?.party?._id ||
+                              transactionToPreview?.party === p._id
+                          ) || null
+                        }
+                        serviceNameById={serviceNameById} // ✅ pass it
+                      />
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={isProformaFormOpen} onOpenChange={setIsProformaFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        onClick={() => setIsProformaFormOpen(true)}
+                        variant="outline"
+                        className="w-full md:w-auto"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Proforma Invoice
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="grid-rows-[auto,1fr,auto] p-0 sm:max-w-6xl max-w-sm">
+                      <DialogHeader className="p-6">
+                        <DialogTitle>Create Proforma Invoice</DialogTitle>
+                        <DialogDescription>
+                          Fill in the details below to create a proforma invoice.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ProformaForm
+                        onFormSubmit={() => {
+                          setIsProformaFormOpen(false);
+                          fetchTransactions();
+                        }}
+                        serviceNameById={serviceNameById}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </>
               )}
             </div>
           </div>
@@ -1219,6 +1281,7 @@ export default function TransactionsPage() {
                       Purchases
                     </TabsTrigger>
                   )}
+                 
                   {canReceipt && (
                     <TabsTrigger
                       value="receipts"
@@ -1241,6 +1304,14 @@ export default function TransactionsPage() {
                       className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
                     >
                       Journals
+                    </TabsTrigger>
+                  )}
+                   {canSales && (
+                    <TabsTrigger
+                      value="proforma"
+                      className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium transition-all duration-200"
+                    >
+                      Proforma
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -1308,6 +1379,20 @@ export default function TransactionsPage() {
                           </div>
                         </li>
                       )}
+                      {canSales && (
+                        <li
+                          onClick={() => handleTabChange("proforma")}
+                          className="cursor-pointer px-4 py-3 text-sm transition-colors duration-150 hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-3 opacity-70" />
+                            <span className="flex-1">Proforma</span>
+                            {activeTab === "proforma" && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </li>
+                      )}
                       {canReceipt && (
                         <li
                           onClick={() => handleTabChange("receipts")}
@@ -1370,6 +1455,12 @@ export default function TransactionsPage() {
                 {canPurchases && (
                   <TabsContent value="purchases" className="mt-0">
                     {renderContent(purchases)}
+                  </TabsContent>
+                )}
+
+                {canSales && (
+                  <TabsContent value="proforma" className="mt-0">
+                    {renderContent(proforma)}
                   </TabsContent>
                 )}
 

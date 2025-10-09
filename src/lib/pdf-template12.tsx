@@ -514,7 +514,7 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
 };
 
 export const generatePdfForTemplate12 = async (
-    transaction: Transaction, company: Company | null, party: Party | null, serviceNameById: Map<string, string> | undefined, shippingAddress?: ShippingAddress | null, bank?: Bank | null): Promise<Blob> => {
+transaction: Transaction, company: Company | null, party: Party | null, serviceNameById: Map<string, string> | undefined, shippingAddress?: ShippingAddress | null, bank?: Bank | null): Promise<Blob> => {
     const pdfDoc = pdf(
         <Template12PDF
             transaction={transaction}

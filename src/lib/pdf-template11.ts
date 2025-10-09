@@ -36,6 +36,8 @@ export const generatePdfForTemplate11 = async (
    console.log("Transactions data from template 11", transaction)
   console.log("Bank details from template 11:", bank)
 
+  console.log("Bank details from temp11 :", bank)
+
   // ---------- palette ----------
 
   const COLOR = {
@@ -63,7 +65,7 @@ const detectGSTIN = (x?: Partial<Company | Party> | null): string | null => {
    const a = x as any;
 
    // Log the full object for debugging
-   console.log("GSTIN Detection Input:", JSON.stringify(a, null, 2));
+  //  console.log("GSTIN Detection Input:", JSON.stringify(a, null, 2));
 
    // Check for multiple possible property names
 
@@ -166,8 +168,8 @@ const stateCode = (gst: string) => {
   const code = gst.slice(0, 2);
   return /^\d+$/.test(code) ? code : "";
 };
-console.log("Company GSTIN:", companyGSTIN);
-console.log("Party GSTIN:", partyGSTIN);
+// console.log("Company GSTIN:", companyGSTIN);
+// console.log("Party GSTIN:", partyGSTIN);
 
 const gstEnabled = !!companyGSTIN && items.some((it: any) => Number(it?.gstPercentage || 0) > 0);
 
