@@ -328,7 +328,7 @@ if (addr || stateText) {
   doc.setFontSize(11);
   doc.setTextColor(...COLOR.TEXT);
   doc.text(gstText, margin + gutter, headerBarY);
-  doc.text("TAX INVOICE", margin + contentWidth / 2, headerBarY, { align: "center" });
+  doc.text(transaction.type === "proforma" ? "PROFORMA INVOICE" : gstEnabled ? "TAX INVOICE" : "INVOICE", margin + contentWidth / 2, headerBarY, { align: "center" });
   doc.text("ORIGINAL FOR RECIPIENT", margin + contentWidth - gutter, headerBarY, { align: "right" });
 
   doc.setDrawColor(...COLOR.BLUE);

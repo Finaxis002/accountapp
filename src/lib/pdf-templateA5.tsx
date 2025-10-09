@@ -37,8 +37,6 @@ const getClientName = (client: any) => {
 };
 console.log("client name", getClientName);
 
-const logo = "/assets/invoice-logos/R.png";
-
 interface TemplateA5PDFProps {
   transaction: Transaction;
   company?: Company | null;
@@ -74,7 +72,9 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
     showCGSTSGST,
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
-
+  const logoSrc = company?.logo
+    ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}`
+    : null;
   // For IGST (Interstate)
   const colWidthsIGST = ["4%", "25%", "10%", "8%", "10%", "15%", "20%", "12%"];
   const totalColumnIndexIGST = 7;
@@ -139,10 +139,9 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
             {/* Header */}
             <View style={templateA5Styles.header}>
               <View style={templateA5Styles.headerLeft}>
-                <Image
-                  src="/assets/invoice-logos/R.png"
-                  style={templateA5Styles.logo}
-                />
+                {logoSrc && (
+                  <Image src={logoSrc} style={templateA5Styles.logo} />
+                )}
               </View>
               <View style={templateA5Styles.headerRight}>
                 <Text style={templateA5Styles.companyName}>
@@ -182,13 +181,21 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                     <Text style={templateA5Styles.gstLabel}>GSTIN : </Text>
                     <Text style={templateA5Styles.gstValue}>
                       {"-"}
-                      {company.gstin}{"-"}
+                      {company.gstin}
+                      {"-"}
                     </Text>
                   </View>
                 )}
 
                 <View style={templateA5Styles.invoiceTitleRow}>
-                  <Text style={templateA5Styles.invoiceTitle}>TAX INVOICE</Text>
+                  <Text style={templateA5Styles.invoiceTitle}>
+                    {" "}
+                    {transaction.type === "proforma"
+                      ? "PROFORMA INVOICE"
+                      : isGSTApplicable
+                      ? "TAX INVOICE"
+                      : "INVOICE"}
+                  </Text>
                 </View>
 
                 <View style={templateA5Styles.recipientRow}>
@@ -652,7 +659,7 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                           templateA5Styles.totalEmpty,
                           {
                             width: colWidths[2],
-                            borderRight: "1px solid #0371C1",
+                            // borderRight: "1px solid #0371C1",
                           },
                         ]}
                       >
@@ -663,7 +670,7 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                           templateA5Styles.totalQty,
                           {
                             width: colWidths[3],
-                            borderRight: "1px solid #0371C1",
+                            // borderRight: "1px solid #0371C1",
                           },
                         ]}
                       >
@@ -680,8 +687,8 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                           templateA5Styles.totalTaxable,
                           {
                             width: colWidths[5],
-                            borderRight: "1px solid #0371C1",
-                            borderLeft: "1px solid #0371C1",
+                            // borderRight: "1px solid #0371C1",
+                            // borderLeft: "1px solid #0371C1",
                           },
                         ]}
                       >
@@ -863,10 +870,24 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                         isGSTApplicable ? templateA5Styles.highlightRow : {},
                       ]}
                     >
-                      <Text style={isGSTApplicable ? templateA5Styles.labelBold : templateA5Styles.label}>
-                        {isGSTApplicable ? "Total Amount After Tax" : "Total Amount"}
+                      <Text
+                        style={
+                          isGSTApplicable
+                            ? templateA5Styles.labelBold
+                            : templateA5Styles.label
+                        }
+                      >
+                        {isGSTApplicable
+                          ? "Total Amount After Tax"
+                          : "Total Amount"}
                       </Text>
-                      <Text style={isGSTApplicable ? templateA5Styles.valueBold : templateA5Styles.value}>
+                      <Text
+                        style={
+                          isGSTApplicable
+                            ? templateA5Styles.valueBold
+                            : templateA5Styles.value
+                        }
+                      >
                         {/* <Text style={templateA5Styles.currencySymbol}></Text> */}
                         {formatCurrency(totalAmount)}
                       </Text>
@@ -884,13 +905,11 @@ const TemplateA5PDF: React.FC<TemplateA5PDFProps> = ({
                   </View>
                 </View>
               )}
-
-             
             </View>
-             {/* Page Number */}
-              <Text style={templateA5Styles.pageNumber}>
-                {pageIndex + 1} / {pages.length} page
-              </Text>
+            {/* Page Number */}
+            <Text style={templateA5Styles.pageNumber}>
+              {pageIndex + 1} / {pages.length} page
+            </Text>
           </Page>
         );
       })}

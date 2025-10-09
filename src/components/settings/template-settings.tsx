@@ -23,6 +23,7 @@ import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
 import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
 import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
+import { generatePdfForTemplateA5_2 } from "@/lib/pdf-templateA3-2";
 import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
 import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
 import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
@@ -39,6 +40,7 @@ const templateOptions: { value: TemplateKey; label: string; color: string }[] = 
   { value: "template17", label: "Template 6", color: "bg-indigo-600" },
   { value: "template19", label: "Template 7", color: "bg-teal-600" },
   { value: "templateA5", label: "Template A5", color: "bg-pink-500" },
+  { value: "templateA5_2", label: "Template A5-2", color: "bg-green-500" },
   { value: "templateA5_3", label: "Template A5-3", color: "bg-orange-500" },
   { value: "templateA5_4", label: "Template A5-4", color: "bg-cyan-500" },
   { value: "template-t3", label: "Template T3", color: "bg-lime-500" },
@@ -167,6 +169,7 @@ type TemplateKey =
   | "template17"
   | "template19"
   | "templateA5"
+  | "templateA5_2"
   | "templateA5_3"
   | "templateA5_4"
   | "template-t3"
@@ -214,6 +217,7 @@ const TemplateThumbnail = React.memo(({
           template.value === "template12" ||
           template.value === "templateA5" ||
           template.value === "template18" ||
+          template.value === "templateA5_2" ||
           template.value === "templateA5_3" ||
           template.value === "templateA5_4" ||
           template.value === "template-t3"
@@ -268,6 +272,17 @@ const TemplateThumbnail = React.memo(({
                 dummyServiceNames,
                 null,
                 dummyBank
+              );
+              break;
+               case "templateA5_2":
+              pdfBlob = await generatePdfForTemplateA5_2(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank,
+                dummyClient
               );
               break;
             case "templateA5_3":
@@ -515,6 +530,7 @@ export function TemplateSettings() {
           selectedTemplate === "template12" ||
           selectedTemplate === "templateA5" ||
           selectedTemplate === "template18" ||
+          selectedTemplate === "templateA5_2" ||
           selectedTemplate === "templateA5_3" ||
           selectedTemplate === "templateA5_4" ||
           selectedTemplate === "template-t3"
@@ -569,6 +585,17 @@ export function TemplateSettings() {
                 dummyServiceNames,
                 null,
                 dummyBank
+              );
+              break;
+               case "templateA5_2":
+              pdfBlob = await generatePdfForTemplateA5_2(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank,
+                dummyClient
               );
               break;
             case "templateA5_3":

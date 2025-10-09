@@ -115,7 +115,12 @@ const Template_t3: React.FC<Template_t3Props> = ({
         <Text style={[styles.borderLine, { fontSize: 10 }]}>
           =============================================
         </Text>
-        <Text style={[styles.center, styles.bold]}>TAX INVOICE</Text>
+        <Text style={[styles.center, styles.bold]}> {" "}
+                    {transaction.type === "proforma"
+                      ? "PROFORMA INVOICE"
+                      : isGSTApplicable
+                      ? "TAX INVOICE"
+                      : "INVOICE"}</Text>
         <Text style={[styles.borderLine, { fontSize: 10 }]}>
           =============================================
         </Text>

@@ -29,8 +29,6 @@ import {
 import { template8Styles } from "./pdf-template-styles";
 import { capitalizeWords } from "./utils";
 
-const logo = "/assets/invoice-logos/R.png";
-
 interface Template8PDFProps {
   transaction: Transaction;
   company?: Company | null;
@@ -64,6 +62,9 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
     showCGSTSGST,
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+  const logoSrc = company?.logo
+    ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}`
+    : null;
 
   const itemsPerPage = 18;
   const pages = [];
@@ -120,12 +121,18 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
               {/* Header Section */}
               <View style={template8Styles.header}>
                 <Text style={template8Styles.title}>
-                  {isGSTApplicable ? "TAX INVOICE" : "INVOICE"}
+                  {transaction.type === "proforma"
+                    ? "PROFORMA INVOICE"
+                    : isGSTApplicable
+                    ? "TAX INVOICE"
+                    : "INVOICE"}
                 </Text>
                 <Text style={template8Styles.companyName}>
-                  {capitalizeWords(company?.businessName ||
-                    company?.companyName ||
-                    "Company Name")}
+                  {capitalizeWords(
+                    company?.businessName ||
+                      company?.companyName ||
+                      "Company Name"
+                  )}
                 </Text>
 
                 <View>
@@ -190,15 +197,18 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
               </View>
 
               {/* Logo */}
-              <Image
-                src={logo}
-                style={{
-                  position: "absolute",
-                  right: 40,
-                  width: 100,
-                  height: 100,
-                }}
-              />
+              {logoSrc && (
+                <Image
+                  src={logoSrc}
+                  style={{
+                    position: "absolute",
+                    right: 40,
+                    width: 80,
+                    height: 80,
+                    marginBottom:20
+                  }}
+                />
+              )}
             </View>
 
             <View style={template8Styles.dividerBlue} />
@@ -309,10 +319,12 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
                       template8Styles.grayColor,
                     ]}
                   >
-                    {capitalizeWords(getShippingAddress(
-                      shippingAddress,
-                      getBillingAddress(party)
-                    ))}
+                    {capitalizeWords(
+                      getShippingAddress(
+                        shippingAddress,
+                        getBillingAddress(party)
+                      )
+                    )}
                   </Text>
 
                   <Text
@@ -790,7 +802,9 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
 
                     <View style={template8Styles.totalsRow}>
                       <Text style={template8Styles.boldText}>
-                        {isGSTApplicable ? "Total Amount After Tax" : "Total Amount"}
+                        {isGSTApplicable
+                          ? "Total Amount After Tax"
+                          : "Total Amount"}
                       </Text>
                       <Text>
                         <Text style={template8Styles.smallRs}>Rs</Text>{" "}
