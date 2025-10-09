@@ -13,6 +13,7 @@ import {
     numberToWords,
     getStateCode,
 } from "./pdf-utils";
+import { capitalizeWords } from "./utils";
 
 // FIX: Interfaces simplified to minimally include 'email' and core fields.
 // We use type assertions inside the function to handle dynamic/non-standard fields (like panNumber, stateCode).
