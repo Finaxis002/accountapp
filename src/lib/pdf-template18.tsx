@@ -150,7 +150,12 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
               <View style={template18Styles.invoiceTitleContainer}>
                 {" "}
                 <Text style={template18Styles.invoiceTitle}>
-                 ===================TAX INVOICE==================
+                 =================== {" "}
+                    {transaction.type === "proforma"
+                      ? "PROFORMA INVOICE"
+                      : isGSTApplicable
+                      ? "TAX INVOICE"
+                      : "INVOICE"}==================
                 </Text>
                 {" "}
               </View>
