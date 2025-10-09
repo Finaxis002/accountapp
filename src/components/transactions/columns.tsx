@@ -694,22 +694,71 @@ const makeCustomFilterFn = (
   };
 };
 
-const printInvoice = (
+// const printInvoice = (
+//   transaction: Transaction,
+//   company?: Company,
+//   party?: Party,
+//   serviceNameById?: Map<string, string>
+// ) => {
+//   try {
+//     const pdfDoc = generatePdfForTemplate1(
+//       transaction,
+//       company,
+//       party,
+//       serviceNameById
+//     );
+
+//     // ✅ Use the same approach as download but for printing
+//     const pdfBlob = pdfDoc.output('blob');
+//     const pdfUrl = URL.createObjectURL(pdfBlob);
+    
+//     // Create iframe for printing
+//     const iframe = document.createElement('iframe');
+//     iframe.style.display = 'none';
+//     iframe.src = pdfUrl;
+    
+//     document.body.appendChild(iframe);
+    
+//     iframe.onload = () => {
+//       try {
+//         // Wait a bit for PDF to load completely
+//         setTimeout(() => {
+//           iframe.contentWindow?.print();
+          
+//           // Clean up after printing
+//           setTimeout(() => {
+//             document.body.removeChild(iframe);
+//             URL.revokeObjectURL(pdfUrl);
+//           }, 1000);
+//         }, 500);
+//       } catch (printError) {
+//         console.error('Print failed:', printError);
+//         document.body.removeChild(iframe);
+//         URL.revokeObjectURL(pdfUrl);
+//         throw new Error('Printing failed - please try downloading instead');
+//       }
+//     };
+    
+//   } catch (error) {
+//     console.error('Error printing invoice:', error);
+//     throw new Error('Failed to generate print document');
+//   }
+// };
+
+const printInvoice = async (
   transaction: Transaction,
   company?: Company,
   party?: Party,
   serviceNameById?: Map<string, string>
 ) => {
   try {
-    const pdfDoc = generatePdfForTemplate1(
+    const pdfBlob = await generatePdfForTemplate1(
       transaction,
       company,
       party,
       serviceNameById
     );
 
-    // ✅ Use the same approach as download but for printing
-    const pdfBlob = pdfDoc.output('blob');
     const pdfUrl = URL.createObjectURL(pdfBlob);
     
     // Create iframe for printing
@@ -744,6 +793,7 @@ const printInvoice = (
     throw new Error('Failed to generate print document');
   }
 };
+
 
 export const columns = ({
   onPreview,
