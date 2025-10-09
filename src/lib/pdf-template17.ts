@@ -1,3 +1,4 @@
+// template17.ts
 import type { Company, Party, Transaction, ShippingAddress, Bank } from "@/lib/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -10,6 +11,7 @@ import {
     prepareTemplate8Data,
     numberToWords,
 } from "./pdf-utils";
+import { capitalizeWords } from "./utils";
 
 // Minimal interfaces with necessary dynamic properties
 interface ExtendedCompany extends Company { email?: string; panNumber?: string; stateCode?: string; }
@@ -42,9 +44,9 @@ const FRAME_TOP_Y = 30;
 // Using a small offset, assuming you will adjust the PDF height for final space as discussed earlier.
 const BOTTOM_OFFSET = 20; 
 
-// =========================================================================
+
 // ⭐ BORDER DRAWING FUNCTION (Global)
-// =========================================================================
+
 const drawBorderFrame = (doc: jsPDF, M: number) => {
     const h = doc.internal.pageSize.getHeight();
     const w = doc.internal.pageSize.getWidth(); 
@@ -66,9 +68,9 @@ const drawBorderFrame = (doc: jsPDF, M: number) => {
 };
 
 
-// =========================================================================
+
 // ⭐ BUYER/CONSIGNEE BLOCK DRAWING FUNCTION (New Global Function)
-// =========================================================================
+
 const drawBuyerConsigneeBlock = (doc: jsPDF, M: number, COL_W: number, invoiceData: any, getW: () => number, startY: number): number => {
     
     let cursorY = startY;
@@ -102,51 +104,59 @@ const drawBuyerConsigneeBlock = (doc: jsPDF, M: number, COL_W: number, invoiceDa
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    doc.text(invoiceData.invoiceTo.name, M + 5, leftY);
-    leftY += 4;
+    
+    doc.text(capitalizeWords(invoiceData.invoiceTo.name), M + 5, leftY);
+    leftY += 12;
+    
 
     doc.setFont("helvetica", "normal");
     const billAddressLines = doc.splitTextToSize(
-        invoiceData.invoiceTo.billingAddress,
+        
+        capitalizeWords(invoiceData.invoiceTo.billingAddress),
         COL_W - 10
     );
-    doc.text(billAddressLines.join("\n"), M + 5, leftY + 20);
-    leftY += billAddressLines.length * 9;
+    // Adjust starting position for split text
+    let currentBillY = leftY + 2; 
+    doc.text(billAddressLines.join("\n"), M + 5, currentBillY);
+    currentBillY += billAddressLines.length * 9;
 
-    if (invoiceData.invoiceTo.gstin !== "N/A")
-        doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, M + 5, leftY);
-    leftY += 15;
-    if (invoiceData.invoiceTo.pan !== "N/A")
-        doc.text(`PAN: ${invoiceData.invoiceTo.pan}`, M + 5, leftY);
-    leftY += 9;
-    doc.text(`Place of Supply: ${invoiceData.placeOfSupply}`, M + 5, leftY);
-    leftY += 9;
-
+    currentBillY += 4;
+        doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, M + 5, currentBillY);
+    currentBillY += 12;
+    
+        doc.text(`PAN: ${invoiceData.invoiceTo.pan}`, M + 5, currentBillY);
+    currentBillY += 12;
+    doc.text(`Place of Supply: ${invoiceData.placeOfSupply}`, M + 5, currentBillY);
+    
     // RIGHT: Ship To / Consignee Details
     let rightY = cursorY;
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    doc.text(invoiceData.shippingAddress.name, M + COL_W + 5, rightY);
+    doc.text(capitalizeWords(invoiceData.shippingAddress.name), M + COL_W + 5, rightY);
     rightY += 12;
 
     doc.setFont("helvetica", "normal");
     const shipAddressLines = doc.splitTextToSize(
-        invoiceData.shippingAddress.address,
+        
+        capitalizeWords(invoiceData.shippingAddress.address),
         COL_W - 10
     );
-    doc.text(shipAddressLines.join("\n"), M + COL_W + 5, rightY);
-    rightY += shipAddressLines.length * 12;
+    // Adjust starting position for split text
+    let currentShipY = rightY;
+    doc.text(shipAddressLines.join("\n"), M + COL_W + 5, currentShipY);
+    currentShipY += shipAddressLines.length * 9; 
 
-    doc.text(`Country: India`, M + COL_W + 5, rightY);
-    rightY += 13;
+    doc.text(`Country: India`, M + COL_W + 5, currentShipY + 2);
+    currentShipY += 10;
     if (invoiceData.company.gstin !== "N/A")
-        doc.text(`GSTIN: -`, M + COL_W + 5, rightY);
-    rightY += 12;
+        doc.text(`GSTIN: -`, M + COL_W + 5, currentShipY + 2);
+    currentShipY += 10;
+  
     doc.text(
-        `State: ${invoiceData.shippingAddress.state}`,
+        `State: ${capitalizeWords(invoiceData.shippingAddress.state)}`,
         M + COL_W + 5,
-        rightY
+        currentShipY + 2
     );
 
     cursorY = detailsBlockBottom;
@@ -158,9 +168,9 @@ const drawBuyerConsigneeBlock = (doc: jsPDF, M: number, COL_W: number, invoiceDa
     return cursorY;
 };
 
-// =========================================================================
+
 // ⭐ COMPANY/METADATA BLOCK DRAWING FUNCTION (Global - Updated)
-// =========================================================================
+
 const drawHeaderContent = (doc: jsPDF, M: number, COL_W: number, invoiceData: any, getW: () => number, fmtDate: (d?: string | number | Date | null) => string): number => {
     
     const W = getW();
@@ -183,22 +193,26 @@ const drawHeaderContent = (doc: jsPDF, M: number, COL_W: number, invoiceData: an
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    doc.text(invoiceData.company.name.toUpperCase(), M + 80, companyY);
+   
+    doc.text(capitalizeWords(invoiceData.company.name.toUpperCase()), M + 80, companyY);
     companyY += 12;
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     const companyAddressLines = doc.splitTextToSize(
-        invoiceData.company.address,
+        
+        capitalizeWords(invoiceData.company.address),
         250
     );
 
     if (invoiceData.company.lAddress !== "N/A")
-        doc.text(` ${invoiceData.company.lAddress}`, M + 78, companyY);
+        
+        doc.text(` ${capitalizeWords(invoiceData.company.lAddress)}`, M + 78, companyY);
     companyY += 12;
 
     if (invoiceData.company.state !== "N/A")
-        doc.text(` ${invoiceData.company.state}`, M + 78, companyY);
+        
+        doc.text(` ${capitalizeWords(invoiceData.company.state)}`, M + 78, companyY);
     companyY += 12;
 
     if (invoiceData.company.gstin !== "N/A") {
@@ -210,7 +224,8 @@ const drawHeaderContent = (doc: jsPDF, M: number, COL_W: number, invoiceData: an
     companyY += 12;
     if (companyAddressLines.length) {
         for (let i = 0; i < Math.min(companyAddressLines.length, 2); i++) {
-            doc.text(`State:${companyAddressLines[i]}`, M + 80, companyY);
+           
+            doc.text(`State:${capitalizeWords(companyAddressLines[i])}`, M + 80, companyY);
             companyY += 2; 
         }
     }
@@ -292,9 +307,9 @@ const drawHeaderContent = (doc: jsPDF, M: number, COL_W: number, invoiceData: an
 };
 
 
-// =========================================================================
+
 // ⭐ EXPORTED FUNCTION (Main Logic)
-// =========================================================================
+
 export const generatePdfForTemplate17 = async (
     transaction: DynamicTransaction, 
     company: ExtendedCompany | null | undefined, 
@@ -304,13 +319,13 @@ export const generatePdfForTemplate17 = async (
     bank?: Bank | null
 ): Promise<jsPDF> => {
     
-    // --- START: Hardcoded Bank Details (UNCHANGED as requested) ---
+    // --- START: Hardcoded Bank Details (REMOVED/MODIFIED) ---
     const getBankDetails = () => ({
-        name: "Kotak Mahindra Bank",
-        branch: "City Center",
-        accNumber: "123654789321", 
-        ifsc: "KKBK0000888", 
-        upiId: "kotaksample@icici", 
+        name: "Bank Details Not Available",
+        branch: "N/A",
+        accNumber: "N/A", 
+        ifsc: "N/A", 
+        upiId: "N/A", 
     });
     // --- END: Hardcoded Bank Details ---
     
@@ -343,7 +358,8 @@ export const generatePdfForTemplate17 = async (
 
     // Map itemsWithGST to local lines for table rendering
     const lines: DynamicLineItem[] = (itemsWithGST || []).map((it: any) => ({
-        name: it.name,
+       
+        name: capitalizeWords(it.name),
         description: it.description || "",
         quantity: it.quantity || 0,
         pricePerUnit: it.pricePerUnit || 0,
@@ -365,8 +381,10 @@ export const generatePdfForTemplate17 = async (
     const finalTotalAmount = money(invoiceTotal);
     
     const shippingAddressSource = shippingAddressOverride;
-    const billingAddress = getBillingAddress(party);
-    const shippingAddressStr = getShippingAddress(shippingAddressSource, billingAddress); 
+  
+    const billingAddress = capitalizeWords(getBillingAddress(party));
+    
+    const shippingAddressStr = capitalizeWords(getShippingAddress(shippingAddressSource, billingAddress)); 
     
     const companyGSTIN = _getGSTIN(company);
     const partyGSTIN = _getGSTIN(party);
@@ -378,34 +396,67 @@ export const generatePdfForTemplate17 = async (
         poNumber: transaction.poNumber || "N/A", 
         poDate: fmtDate(transaction.poDate) || "N/A",
         eWayNo: transaction.eWayBillNo || "N/A",
-        placeOfSupply: (party as any)?.stateCode ? `${party?.state} (${(party as any)?.stateCode})` : (party?.state || "N/A"), 
+        
+        placeOfSupply: (party as any)?.stateCode ? `${capitalizeWords(party?.state)} (${(party as any)?.stateCode})` : (party?.state || "N/A"), 
         
         company: {
-            name: company?.businessName || "Your Company Name",
+            
+            name: capitalizeWords(company?.businessName || "Your Company Name"),
             lAddress: company?.address,
-            address: company?.addressState || "Company Address Missing",
+            address: company?.addressState || "Company Address Missing", // Will be capitalized in drawHeaderContent
             gstin: companyGSTIN || "N/A",
             pan: company?.panNumber || "N/A", 
-            state: company?.City || "N/A", 
+            state: company?.City || "N/A", // Will be capitalized in drawHeaderContent
             phone: company?.mobileNumber || company?.Telephone || "N/A",
             email: company?.email || company?.emailId || "N/A", 
         },
         invoiceTo: {
-            name: party?.name || "Client Name",
+          
+            name: capitalizeWords(party?.name || "Client Name"),
             billingAddress: billingAddress,
             gstin: partyGSTIN || "N/A",
             pan: party?.panNumber || "N/A", 
-            state: party?.state || "N/A",
+            state: party?.state || "N/A", // Will be capitalized in drawBuyerConsigneeBlock
             email: party?.email || "N/A", 
         },
         shippingAddress: {
-            name: (shippingAddressSource as any)?.name || party?.name || 'Client Name',
+            
+            name: capitalizeWords((shippingAddressSource as any)?.name || party?.name || 'Client Name'),
             address: shippingAddressStr,
-            state: (shippingAddressSource as any)?.state || party?.state || 'N/A', 
+            state: (shippingAddressSource as any)?.state || party?.state || 'N/A', // Will be capitalized in drawBuyerConsigneeBlock
         }
     };
     
-    const finalTerms = transaction.notes || IMAGE_DEFAULT_TERMS; 
+    // ---------------- PARSE TERMS AND CONDITIONS (COPIED FROM TEMPLATE 16) ----------------
+    let termsTitle = "Terms and Conditions";
+    let termsList: string[] = [];
+    const notesHtml = transaction.notes || ""; 
+
+    if (notesHtml.trim().length > 0) {
+        // Match bold title span (like in the A5 template)
+        const titleMatch = notesHtml.match(
+            /<span class="ql-size-large">(.*?)<\/span>/
+        );
+        termsTitle = titleMatch
+            ? capitalizeWords(titleMatch[1].replace(/&amp;/g, "&")) 
+            : "Terms and Conditions"; // Fallback title
+
+        // Match list items
+        const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+        let match;
+        while ((match = liRegex.exec(notesHtml)) !== null) {
+            // Strip any remaining HTML tags from the item and decode &amp;
+           
+            const cleanItem = capitalizeWords(match[1]
+                .replace(/<[^>]*>/g, "")
+                .replace(/&amp;/g, "&"));
+            termsList.push(cleanItem);
+        }
+    } else {
+        // If notes are empty, the list remains empty
+        termsList = [];
+    }
+    // ---------------- END PARSE TERMS AND CONDITIONS ----------------
 
     // ---------------- doc + theme ----------------
     // Set a custom height (e.g., 750) if you want extra space at the bottom beyond the BOTTOM_OFFSET
@@ -418,22 +469,25 @@ export const generatePdfForTemplate17 = async (
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...DARK);
 
-    // ========================================================
-    // ⭐ DRAW FRAME ON PAGE 1
-    // ========================================================
-    drawBorderFrame(doc, M); 
     
-    // ========================================================
-    // ⭐ DRAW HEADER & CALCULATE START Y
-    // ========================================================
-    // 1. Draw Company/Metadata block and capture header bottom for repeating header
-    let headerBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
-    let cursorY = headerBottomY;
+    // ⭐ Calculate initial header height for autotable margin
+    
+    // Draw on Page 1 to establish the layout and determine the repeating height
+    drawBorderFrame(doc, M); 
+    const initialHeaderBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
+    // Calculate the start Y for the buyer/consignee block after the initial header
+    let initialBuyerBlockStart = initialHeaderBottomY;
+    // Get the Y position after the first buyer block draw
+    const initialBuyerBlockBottomY = drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, initialBuyerBlockStart);
+    
+    // The total height of the repeating content: Header + Buyer/Consignee Block
+    const REPEATING_HEADER_HEIGHT = initialBuyerBlockBottomY; 
 
-    // 2. Draw Buyer/Consignee block and get starting Y for the table
-    cursorY = drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, cursorY);
+    // ========================================================
+    // ⭐ SETUP AUTOTABLE FOR ITEMS
+    // ========================================================
 
-    // ---------------- ITEMS TABLE (Detailed Breakdown) ----------------
+    let cursorY = initialBuyerBlockBottomY;
     
     const totalWidth = getW() - M * 2;
     const fixedWidths = 380; 
@@ -443,7 +497,7 @@ export const generatePdfForTemplate17 = async (
     const gstGroupHeader = showIGST ? "IGST" : (showCGSTSGST ? "CGST/SGST" : "GST");
 
     autoTable(doc, {
-        // ⭐ startY is the first page starting Y (after buyer/consignee block)
+        // ⭐ startY for the first page is the Y after the Buyer/Consignee block
         startY: cursorY,
         styles: {
             font: "helvetica",
@@ -464,7 +518,7 @@ export const generatePdfForTemplate17 = async (
         },
         columnStyles: showCGSTSGST ? {
             0: { halign: "center", cellWidth: 28 }, 
-            1: { cellWidth: itemColWidth - 40 },       
+            1: { cellWidth: itemColWidth - 40 },
             2: { halign: "center", cellWidth: 38 }, 
             3: { halign: "right", cellWidth: 32 }, 
             4: { halign: "center", cellWidth: 32 }, 
@@ -477,7 +531,7 @@ export const generatePdfForTemplate17 = async (
             11: { halign: "right", cellWidth: 52 }, 
         } : {
             0: { halign: "center", cellWidth: 30 }, 
-            1: { cellWidth: itemColWidth },        
+            1: { cellWidth: itemColWidth },
             2: { halign: "center", cellWidth: 40 }, 
             3: { halign: "right", cellWidth: 34 }, 
             4: { halign: "center", cellWidth: 34 }, 
@@ -531,6 +585,7 @@ export const generatePdfForTemplate17 = async (
                 const sgstPct = (src.gstRate || 0) / 2;
                 return [
                     i + 1,
+                    
                     `${it.name || ""}\n${it.description ? it.description.split('\n').join(' / ') : ""}`,
                     it.hsnSac || "N/A",
                     Number(it.quantity).toFixed(2),
@@ -548,6 +603,7 @@ export const generatePdfForTemplate17 = async (
             const amount = showIGST ? (src.igst || 0) : ((it.lineTax || 0));
             return [
             i + 1,
+            
             `${it.name || ""}\n${it.description ? it.description.split('\n').join(' / ') : ""}`,
             it.hsnSac || "N/A",
             Number(it.quantity).toFixed(2),
@@ -559,13 +615,20 @@ export const generatePdfForTemplate17 = async (
             money(it.lineTotal),
             ];
         }),
-        didDrawPage: () => {
-            // Draw frame and the static header on every page
+        didDrawPage: (data) => {
+            // ⭐ Draw frame and the static header on every page
             drawBorderFrame(doc, M);
-            drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
+            const headerBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
+            // ⭐ Draw Buyer/Consignee block on every page, starting right after the header
+            drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, headerBottomY);
+            
+            // Set page number in footer
+            doc.setFontSize(8);
+            // jsPDF internal page count starts at 1, so the new page is doc.internal.pages.length
+            doc.text(`Page ${data.pageNumber}`, getW() - M - 20, getH() - 10);
         },
-        // Ensure subsequent pages start below the repeating header
-        margin: { left: M, right: M, top: headerBottomY }, 
+        // ⭐ Margin top must be the height of the entire repeating header block
+        margin: { left: M, right: M, top: REPEATING_HEADER_HEIGHT + 5 }, // +5pt for spacing
         theme: 'grid',
     });
 
@@ -615,12 +678,31 @@ export const generatePdfForTemplate17 = async (
 
     // --------------- TAX SUMMARY TABLE (MATCHING SCREENSHOT) ---------------
     
+    // Helper to ensure space and move to next page if needed
+    const ensureSpace = (needed: number): number => {
+        const H = getH();
+        const bottomSafe = H - BOTTOM_OFFSET; 
+        if (afterTableY + needed > bottomSafe) {
+            doc.addPage();
+            
+            // ⭐ Manually draw the frame, header, and buyer/consignee block on the new page.
+            drawBorderFrame(doc, M);
+            const newPageHeaderBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
+            drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, newPageHeaderBottomY);
+            
+            // Print Page Number on the new page's footer
+            doc.setFontSize(8);
+            // jsPDF internal page count starts at 1, so the new page is doc.internal.pages.length
+            doc.text(`Page ${doc.internal.pages.length}`, getW() - M - 20, getH() - 10);
+            
+            // ⭐ Reset afterTableY to be below the entire repeating header block
+            return REPEATING_HEADER_HEIGHT + 5; 
+        }
+        return afterTableY;
+    };
+
     // Ensure space before starting tax summary
-    if (afterTableY + 140 > getH() - M) {
-        doc.addPage();
-        drawBorderFrame(doc, M);
-        afterTableY = FRAME_TOP_Y + 10;
-    }
+    afterTableY = ensureSpace(140);
     let taxSummaryY = afterTableY;
     
     // Build tax summary dynamically grouped by HSN/SAC
@@ -640,7 +722,6 @@ export const generatePdfForTemplate17 = async (
         groupedByHSN[key].total += it.total || 0;
     });
     const taxSummaryData = Object.values(groupedByHSN);
-    const taxSummaryFinalTotalTax = showIGST ? (totalIGST) : (totalCGST + totalSGST);
 
     autoTable(doc, {
         startY: taxSummaryY,
@@ -676,6 +757,11 @@ export const generatePdfForTemplate17 = async (
         },
         margin: { left: M, right: getW() - (M + 300) }, 
         theme: 'grid',
+        didDrawPage: (data) => {
+            // The main autotable's didDrawPage already handled the full header section. 
+            // We only need the frame if this table extends onto a new page.
+            drawBorderFrame(doc, M); 
+        },
     });
 
     taxSummaryY = (doc as any).lastAutoTable.finalY;
@@ -700,43 +786,48 @@ export const generatePdfForTemplate17 = async (
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     const totalTaxVal = showIGST ? totalIGST : (totalCGST + totalSGST);
-    doc.text(`Total Tax in words: ${numberToWords(totalTaxVal)}`, M, taxSummaryY + 20);
+    doc.text(`Total Tax in words: ${numberToWords(invoiceTotal)}`, M, taxSummaryY + 20);
     afterTableY = taxSummaryY + 25;
     
-    // --------------- BANK DETAILS & SIGNATURE ---------------
+    // --------------- BANK DETAILS & SIGNATURE & TERMS ---------------
 
-    // Ensure space before bank/signature block
-    if (afterTableY + 200 > getH() - M) {
-        doc.addPage();
-        drawBorderFrame(doc, M);
-        afterTableY = FRAME_TOP_Y + 10;
-    }
+    // Ensure space before the entire footer block (Terms, Bank, Signature)
+    const neededFooterSpace = 150; 
+    afterTableY = ensureSpace(neededFooterSpace);
+
     doc.setDrawColor(...BORDER);
     doc.line(M, afterTableY, getW() - M, afterTableY);
     afterTableY += 16;
-
+    
+    // Change: Logic is slightly different here. If dynamic bank details are provided, use them.
     const bankDetails = (bank && typeof bank === 'object' && (bank as any).bankName) ? {
-        name: (bank as any).bankName,
-        branch: (bank as any).branchName || (bank as any).branchAddress || "Branch Name",
-        accNumber: (bank as any).accountNumber || "Account Number",
-        ifsc: (bank as any).ifscCode || "IFSC Code",
-        upiId: (bank as any).upiId || "UPI ID",
-    } : getBankDetails(); 
+        
+        name: capitalizeWords((bank as any).bankName),
+        branch: capitalizeWords((bank as any).branchName || (bank as any).branchAddress || "N/A"),
+        accNumber: (bank as any).accountNumber || "N/A",
+        ifsc: capitalizeWords((bank as any).ifscCode || "N/A"),
+        upiId: (bank as any).upiId || "N/A",
+    } : getBankDetails(); // Calls the modified function
     const bankX = M + COL_W ;
     
     let currentBlockY = afterTableY;
     
-    // Bank Details (Left/Center)
+    // RIGHT HALF: Bank Details & Signature
     let bankDetailY = currentBlockY;
+    
+    const qrSize = 50;
+    const qrX = getW() - M - qrSize - 10;
+
+    // Check if bank details are truly missing before drawing the QR code and details
+    const areBankDetailsAvailable = bankDetails.name !== "Bank Details Not Available";
+    
+    // Draw Bank Details and QR Code on the right half
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(9);
     doc.text("Bank Details", bankX, bankDetailY);
     bankDetailY += 15;
 
-    const qrSize = 50;
-    const qrX = getW() - M - qrSize - 10;
-    
     doc.setFontSize(8);
     const putBankDetail = (label: string, val: string, x: number, y: number) => {
         doc.setFont("helvetica", "normal");
@@ -745,44 +836,72 @@ export const generatePdfForTemplate17 = async (
         doc.text(val, x + 50, y);
     };
     
-    putBankDetail("Name:", bankDetails.name, bankX, bankDetailY); bankDetailY += 12;
-    putBankDetail("Branch:", bankDetails.branch, bankX, bankDetailY); bankDetailY += 12;
-    putBankDetail("Acc. Number:", bankDetails.accNumber, bankX, bankDetailY); bankDetailY += 12;
-    putBankDetail("IFSC:", bankDetails.ifsc, bankX, bankDetailY); bankDetailY += 12;
-    putBankDetail("UPI ID:", bankDetails.upiId, bankX, bankDetailY); bankDetailY += 12;
-    
-    // QR Code + Pay using UPI (Right)
-    doc.setDrawColor(0, 0, 0);
-    doc.setFillColor(240, 240, 240);
-    doc.rect(qrX, currentBlockY , qrSize, qrSize, 'FD'); // QR Code box placeholder
+    if (areBankDetailsAvailable) {
+        putBankDetail("Name:", bankDetails.name, bankX, bankDetailY); bankDetailY += 12;
+        putBankDetail("Branch:", bankDetails.branch, bankX, bankDetailY); bankDetailY += 12;
+        putBankDetail("Acc. Number:", bankDetails.accNumber, bankX, bankDetailY); bankDetailY += 12;
+        putBankDetail("IFSC:", bankDetails.ifsc, bankX, bankDetailY); bankDetailY += 12;
+        putBankDetail("UPI ID:", bankDetails.upiId, bankX, bankDetailY); bankDetailY += 12;
 
-    doc.setFont("helvetica", "bold");
-    doc.text("Pay using UPI", qrX , currentBlockY+ qrSize + 12);
+        // QR Code + Pay using UPI (Only draw if details are present)
+        doc.setDrawColor(0, 0, 0);
+        doc.setFillColor(240, 240, 240);
+        doc.rect(qrX, currentBlockY , qrSize, qrSize, 'FD'); // QR Code box placeholder
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Pay using UPI", qrX , currentBlockY + qrSize + 12);
+        
+    } else {
+        // ⭐ If bank details are not available, display the message prominently
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(255, 0, 0);
+        doc.text("BANK DETAILS NOT AVAILABLE", bankX, bankDetailY + 20);
+        bankDetailY = currentBlockY + 40; // Push Y down to match height roughly
+    }
     
-    // Signature Block
-    const sigY = bankDetailY + 40;
+    // Signature Block (Drawn regardless of bank details)
+    const sigY = bankDetailY + 10;
     doc.setFontSize(9);
-    doc.text(`For ${invoiceData.company.name}`, qrX - 49, sigY);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`For ${capitalizeWords(invoiceData.company.name)}`, qrX - 49, sigY);
 
     doc.rect(qrX - 80, sigY + 5, 140, 55, 'S'); // Signature box placeholder
     doc.text("Authorised Signatory", qrX - 73 + 20, sigY + 58); 
+    
+    
+    // LEFT HALF: Terms and Conditions
+    let termsY = currentBlockY; // Start T&C at the same vertical level as Bank Details
+    
+    const TERMS_COL_WIDTH = COL_W - 10; // Margin adjusted width for text wrapping
 
-    doc.text("Terms and Conditions", M, sigY);
+    // Set the T&C Title
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.text(`${termsTitle}:`, M, termsY);
+    termsY += 13;
+
+    // Set the T&C body style
     doc.setFont("helvetica", "normal");
-    doc.text(`Subject to our Home Jurisdiction.
-Our Responsibility Ceases as soon as goods leaves our Premises.
-Goods once sold will not taken back.
-Delivery Ex-Premises.`,M,sigY+15)
-
-    currentBlockY = sigY + 60;
-
-    // ---------------- TERMS AND CONDITIONS (BOTTOM LEFT) ----------------
+    doc.setFontSize(8);
+    doc.setTextColor(...DARK);
     
-    // Ensure space before terms block
-   
+    // RENDER LOGIC: Display parsed terms or the "No terms..." message
+    if (termsList.length > 0) {
+        termsList.forEach((item, index) => {
+            // Split line into multiple lines if too long for the left-hand column
+            const itemLines = doc.splitTextToSize(`• ${item}`, TERMS_COL_WIDTH); 
+            doc.text(itemLines, M, termsY);
+            termsY += itemLines.length * 10; // 10pt line height
+        });
+    } else {
+        // Display the specific "No terms..." message
+        doc.text("No terms and conditions added yet", M, termsY);
+        termsY += 10;
+    }
 
-    
-    // const termsHeight = renderNotes(doc, finalTerms, M, currentBlockY + 15, COL_W * 2 - 20, getW(), doc.internal.pageSize.getHeight());
-    
+    currentBlockY = sigY + 60; // Keep final Y based on signature block which is usually lowest
+
     return doc;
 };

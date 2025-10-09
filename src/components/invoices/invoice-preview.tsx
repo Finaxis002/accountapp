@@ -188,8 +188,6 @@ if (transaction?.shippingAddress) {
   }
 }
 
-
-
         if (
 
           selectedTemplate === "template1" ||
@@ -252,7 +250,9 @@ if (transaction?.shippingAddress) {
                   party,
                   serviceNameById,
                   shippingAddress,
-                  bank
+                  bank,
+                  
+                  
                 );
                 break;
 
@@ -367,7 +367,6 @@ if (transaction?.shippingAddress) {
                   party,
                   serviceNameById,
                   shippingAddress,
-                  undefined,
                   bank
                 )
               );
@@ -380,12 +379,25 @@ if (transaction?.shippingAddress) {
                 company,
                 party,
                 serviceNameById,
-                shippingAddress
+                shippingAddress,
+                bank
               )
             );
             break;
                 
             case "template17":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate17(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
+               case "template19":
               docPromise = Promise.resolve(
                 generatePdfForTemplate19(
                   transaction,
