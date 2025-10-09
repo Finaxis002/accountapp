@@ -110,14 +110,148 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
     return (
         <Document>
             {" "}
-            {pages.map((pageItems, pageIndex) => {
-                const isLastPage = pageIndex === pages.length - 1;
-                const dynamicHeight = estimateThermalHeight(pageItems.length);
-                return (
-                    <Page
-                        key={pageIndex}
-                        size={{ width: thermalPageWidth, height: dynamicHeight }}
-                        style={[template18Styles.page, { paddingHorizontal: 8, paddingVertical: 8 }]}
+            <View style={template18Styles.pageContent}>
+              {/* Company Header - Centered */}{" "}
+              <View style={template18Styles.companyHeaderSection}>
+                {" "}
+                <Text style={template18Styles.companyNameTop}>
+                  {" "}
+                  {company?.businessName ||
+                    company?.companyName ||
+                    "Global Securities"}
+                  {" "}
+                </Text>
+                {" "}
+                <Text style={template18Styles.address}>
+                  {" "}
+                  {getBillingAddress(company as unknown as Party) ||
+                    "Address Line 1"}
+                  {" "}
+                </Text>
+                {" "}
+                {company?.gstin && (
+                  <Text style={template18Styles.gstin}>
+                    GSTIN: {company.gstin}{" "}
+                  </Text>
+                )}
+                {" "}
+              </View>
+              {/* TAX INVOICE Header (Centered Text) */}
+              {" "}
+              <View style={template18Styles.invoiceTitleContainer}>
+                {" "}
+                <Text style={template18Styles.invoiceTitle}>
+                 =================== {" "}
+                    {transaction.type === "proforma"
+                      ? "PROFORMA INVOICE"
+                      : isGSTApplicable
+                      ? "TAX INVOICE"
+                      : "INVOICE"}==================
+                </Text>
+                {" "}
+              </View>
+              {" "}
+              {/* INVOICE # and DATE (Spread Left/Right) */}{" "}
+              <View style={template18Styles.invoiceMetaRow}>
+                {" "}
+                <Text style={template18Styles.invoiceMetaTextLeft}>
+                  INVOICE #: {transaction.invoiceNumber || "N/A"}
+                </Text>
+                {" "}
+                <Text style={template18Styles.invoiceMetaTextRight}>
+                  DATE:{" "}
+                  {new Date(transaction.date)
+                    .toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                    .toUpperCase()
+                    .replace(/\./g, "-")}
+                </Text>
+                {" "}
+              </View>
+              {/*               <Text style={template18Styles.separatorBold}></Text> */}
+              {/* Billed To Section */}{" "}
+              <View style={template18Styles.billedToBox}>
+                {" "}
+                <Text style={template18Styles.billedToHeader}>
+                ======================BILLED TO======================
+                </Text>
+                {" "}
+                <Text style={template18Styles.billedToText}>
+                  Name : {party?.name || "Jay Enterprises"}
+                </Text>
+                {" "}
+                {party?.gstin && (
+                  <Text style={template18Styles.billedToText}>
+                    GSTIN : {party.gstin}
+                  </Text>
+                )}
+                {" "}
+                {party?.pan && (
+                  <Text style={template18Styles.billedToText}>
+                    PAN : {party.pan}
+                  </Text>
+                )}
+                {" "}
+                <Text style={template18Styles.billedToHeader}>
+                  =======================================================
+                </Text>
+                {" "}
+              </View>
+              {/*               <Text style={template18Styles.separatorBold}></Text> */}
+              {/* Items Table Header */}{" "}
+              <View style={template18Styles.itemsTableHeaderSimple}>
+                {" "}
+                <Text
+                  style={[
+                    template18Styles.itemsHeaderColumn,
+                    { width: "30%", textAlign: "left" },
+                  ]}
+                >
+                  Items x Qty
+                </Text>
+                {" "}
+                {/* ORDER REVERTED: Taxable + GST is now second */}
+                {" "}
+                <Text
+                  style={[
+                    template18Styles.itemsHeaderColumn,
+                    { width: "35%", textAlign: "center" },
+                  ]}
+                >
+                  Taxable + GST
+                </Text>
+                {/* ORDER REVERTED: Total is now third */}
+                {" "}
+                <Text
+                  style={[
+                    template18Styles.itemsHeaderColumn,
+                    { width: "28%", textAlign: "right" },
+                  ]}
+                >
+                  Total
+                </Text>
+                {" "}
+              </View>
+              {/*               <Text style={template18Styles.separatorDouble}></Text> */}
+              {/* Items Table Body */}{" "}
+              <View style={template18Styles.itemsTableSimple}>
+                {" "}
+                {pageItems.map((item, index) => (
+                  <View
+                    key={index}
+                    style={template18Styles.itemsTableRowSimple}
+                  >
+                    {" "}
+                    {/* Item Details (Name, Qty, HSN, Rate) - Position 1 (50%) */}
+                    {" "}
+                    <View
+                      style={[
+                        template18Styles.itemDetailsCell,
+                        { width: "50%" },
+                      ]}
                     >
                         {" "}
                         <View style={template18Styles.pageContent}>

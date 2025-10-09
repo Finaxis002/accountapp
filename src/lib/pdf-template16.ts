@@ -14,7 +14,7 @@ import {
     numberToWords,
     getStateCode,
 } from "./pdf-utils";
-import { capitalizeWords } from "./utils"; // Assuming this utility is imported
+import { capitalizeWords } from "./utils";
 
 // FIX: Interfaces simplified to minimally include 'email' and core fields.
 // We use type assertions inside the function to handle dynamic/non-standard fields (like panNumber, stateCode).
@@ -92,6 +92,8 @@ export const generatePdfForTemplate16 = async (
         showCGSTSGST,
         showNoTax,
     } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+
+    const logoUrl = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
 
     // Convert itemsWithGST to the format expected by template16
     const lines = itemsWithGST.map(item => ({
@@ -245,7 +247,7 @@ export const generatePdfForTemplate16 = async (
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(...DARK);
-        doc.text("TAX INVOICE", M, y);
+        doc.text(transaction.type === "proforma" ? "PROFORMA INVOICE" : gstEnabled ? "TAX INVOICE" : "INVOICE", M, y);
         y += 28;
 
         // Company Details
@@ -273,10 +275,23 @@ export const generatePdfForTemplate16 = async (
 
         // Logo
         const logoSize = 60; const logoX = getW() - M - logoSize;
-    doc.setFillColor(242, 133, 49); 
-    doc.triangle(logoX + logoSize * 0.4, M, logoX + logoSize, M, logoX + logoSize * 0.4, M + logoSize, 'F');
-    doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
-    doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, 'F');
+        if (logoUrl) {
+          try {
+            doc.addImage(logoUrl, 'PNG', logoX, M, logoSize, logoSize);
+          } catch (e) {
+            // Fallback to default logo
+            doc.setFillColor(242, 133, 49);
+            doc.triangle(logoX + logoSize * 0.4, M, logoX + logoSize, M, logoX + logoSize * 0.4, M + logoSize, 'F');
+            doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
+            doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, 'F');
+          }
+        } else {
+          // Default logo
+          doc.setFillColor(242, 133, 49);
+          doc.triangle(logoX + logoSize * 0.4, M, logoX + logoSize, M, logoX + logoSize * 0.4, M + logoSize, 'F');
+          doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
+          doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, 'F');
+        }
 
         // Separator
         y = Math.max(y, M + logoSize + 20);

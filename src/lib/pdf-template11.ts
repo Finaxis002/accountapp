@@ -269,9 +269,104 @@ const stateText = company?.addressState ? `, ${company.addressState}` : "";
 if (addr || stateText) {
     doc.text(addr + stateText, nameX, 58, { maxWidth: contentWidth - (nameX - margin) - 12 });
 }
-    };
+  };
 
-    await drawHeader();
+  await drawHeader();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  const infoBoxW = 100, infoBoxH = 34;
+  const infoX = margin + contentWidth - infoBoxW - 4, infoY = 16;
+
+  doc.text("Name :", infoX + 6, infoY + 12);
+  doc.setFont("helvetica", "normal");
+  doc.text(capitalizeWords(invoiceData.billTo.name || "-"), infoX + 60, infoY + 12, { align: "left" });
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Phone :", infoX + 6, infoY + 24);
+  doc.setFont("helvetica", "normal");
+  doc.text(((party as any)?.phone || company?.mobileNumber || "-"), infoX + 60, infoY + 24);
+  // ---------- company & bill-to ----------
+  const infoTop = headerH + 18;
+
+  const gstText = invoiceData.company.gstin
+    ? `GSTIN: ${invoiceData.company.gstin}`
+    : "GSTIN: -";
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...COLOR.TEXT);
+  // ---------- 3-SECTION BLUE HEADER BLOCK (BUYER / CONSIGNEE / META) ----------
+  const topY = 96;
+  const boxH = 120;
+  const bw = contentWidth;
+  // 2️⃣ TAX INVOICE strip 
+  const headerBarY = topY - 6;
+
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+  doc.line(margin, headerBarY - 10, margin + contentWidth, headerBarY - 10);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...COLOR.TEXT);
+  doc.text(gstText, margin + gutter, headerBarY);
+  doc.text(transaction.type === "proforma" ? "PROFORMA INVOICE" : gstEnabled ? "TAX INVOICE" : "INVOICE", margin + contentWidth / 2, headerBarY, { align: "center" });
+  doc.text("ORIGINAL FOR RECIPIENT", margin + contentWidth - gutter, headerBarY, { align: "right" });
+
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+  doc.line(margin, topY, margin + contentWidth, topY);
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+
+  doc.line(margin, headerBarY - 10, margin, topY);
+
+  doc.line(margin + contentWidth, headerBarY - 10, margin + contentWidth, topY);
+  // buyer / consignee
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+  (doc as any).rect(margin, topY, bw, boxH, "S" as "S");
+  // Column widths (equally distributed)
+  const w1 = bw * 0.33;           // Buyer
+  const w2 = bw * 0.33;           // Consignee
+  const w3 = bw * 0.33;           // Meta
+
+  const x1 = margin;
+  const x2 = margin + w1;
+  const x3 = margin + w1 + w2;
+
+  // Vertical separators
+  doc.setLineWidth(0.7);
+  doc.line(x2, topY, x2, topY + boxH);
+  doc.line(x3, topY, x3, topY + boxH);
+
+  const headH = 18;
+  doc.line(x1, topY + headH, x1 + w1, topY + headH);
+  doc.line(x2, topY + headH, x2 + w2, topY + headH);
+  doc.line(x3, topY + headH, x3 + w3, topY + headH);
+
+  doc.line(x1, topY + headH, x1 + w1, topY + headH);
+  doc.line(x2, topY + headH, x2 + w2, topY + headH);
+  doc.line(x3, topY + headH, x3 + w3, topY + headH);
+  let y = 40;
+  // Headings
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...COLOR.TEXT);
+  y = checkPageBreak(doc, y, 80);
+  doc.text("Details of Buyer :", x1 + 6, topY + 12);
+  doc.text("Details of Consignee :", x2 + 6, topY + 12);
+  doc.text("", x3 + 6, topY + 12); // 👈 left-aligned
+  y += 60;
+  // Helper to print label
+  const row = (
+    label: string,
+    value: string | string[] | undefined,
+    x: number,
+    y: number,
+    colW: number
+  ) => {
+    const labelW = 72; // left label width
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     const infoBoxW = 100, infoBoxH = 34;

@@ -169,9 +169,11 @@ const drawBuyerConsigneeBlock = (doc: jsPDF, M: number, COL_W: number, invoiceDa
 };
 
 
-// ⭐ COMPANY/METADATA BLOCK DRAWING FUNCTION (Global - Updated)
 
-const drawHeaderContent = (doc: jsPDF, M: number, COL_W: number, invoiceData: any, getW: () => number, fmtDate: (d?: string | number | Date | null) => string): number => {
+// =========================================================================
+// ⭐ COMPANY/METADATA BLOCK DRAWING FUNCTION (Global - Updated)
+// =========================================================================
+const drawHeaderContent = (doc: jsPDF, M: number, COL_W: number, invoiceData: any, getW: () => number, fmtDate: (d?: string | number | Date | null) => string, transaction: DynamicTransaction, isGSTApplicable: boolean, logoUrl: string | null): number => {
     
     const W = getW();
 
@@ -179,13 +181,20 @@ const drawHeaderContent = (doc: jsPDF, M: number, COL_W: number, invoiceData: an
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...PRIMARY_BLUE);
-    doc.text("TAX INVOICE", M + 240, TITLE_Y); 
+    doc.text(transaction.type === "proforma" ? "PROFORMA INVOICE" : isGSTApplicable ? "TAX INVOICE" : "INVOICE", M + 240, TITLE_Y);
 
-    // Header Logo (Left, Placeholder)
-    doc.setFillColor(242, 133, 49); 
-    doc.triangle(M + 5, FRAME_TOP_Y + 5, M + 65, FRAME_TOP_Y + 5, M + 5, FRAME_TOP_Y + 65, 'F');
-    doc.setFillColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
-    doc.triangle(M + 5, FRAME_TOP_Y + 5, M + 45, FRAME_TOP_Y + 5, M + 5, FRAME_TOP_Y + 65, 'F');
+    // Header Logo (Left)
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, 'PNG', M + 5, FRAME_TOP_Y + 5, 60, 60);
+      } catch (e) {
+        // Fallback to default logo
+        doc.setFillColor(242, 133, 49);
+        doc.triangle(M + 5, FRAME_TOP_Y + 5, M + 65, FRAME_TOP_Y + 5, M + 5, FRAME_TOP_Y + 65, 'F');
+        doc.setFillColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+        doc.triangle(M + 5, FRAME_TOP_Y + 5, M + 45, FRAME_TOP_Y + 5, M + 5, FRAME_TOP_Y + 65, 'F');
+      }
+    } 
 
     // Header Company Details (Left)
     let companyY = FRAME_TOP_Y + 25; 
@@ -356,6 +365,8 @@ export const generatePdfForTemplate17 = async (
         totalItems
     } = prepareTemplate8Data(transaction, company, party, shippingAddressOverride);
 
+    const logoUrl = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
+
     // Map itemsWithGST to local lines for table rendering
     const lines: DynamicLineItem[] = (itemsWithGST || []).map((it: any) => ({
        
@@ -486,6 +497,12 @@ export const generatePdfForTemplate17 = async (
     // ========================================================
     // ⭐ SETUP AUTOTABLE FOR ITEMS
     // ========================================================
+    // 1. Draw Company/Metadata block and capture header bottom for repeating header
+    let headerBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate, transaction, isGSTApplicable, logoUrl);
+    let cursorY = headerBottomY;
+
+    // 2. Draw Buyer/Consignee block and get starting Y for the table
+    cursorY = drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, cursorY);
 
     let cursorY = initialBuyerBlockBottomY;
     

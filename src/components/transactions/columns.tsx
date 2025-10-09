@@ -614,6 +614,7 @@ import {
   Eye,
   Server,
   Send,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -691,6 +692,105 @@ const makeCustomFilterFn = (
 
     return partyName.toLowerCase().includes(q) || desc.includes(q) || matchLine;
   };
+};
+
+// const printInvoice = (
+//   transaction: Transaction,
+//   company?: Company,
+//   party?: Party,
+//   serviceNameById?: Map<string, string>
+// ) => {
+//   try {
+//     const pdfDoc = generatePdfForTemplate1(
+//       transaction,
+//       company,
+//       party,
+//       serviceNameById
+//     );
+
+//     // ✅ Use the same approach as download but for printing
+//     const pdfBlob = pdfDoc.output('blob');
+//     const pdfUrl = URL.createObjectURL(pdfBlob);
+
+//     // Create iframe for printing
+//     const iframe = document.createElement('iframe');
+//     iframe.style.display = 'none';
+//     iframe.src = pdfUrl;
+
+//     document.body.appendChild(iframe);
+
+//     iframe.onload = () => {
+//       try {
+//         // Wait a bit for PDF to load completely
+//         setTimeout(() => {
+//           iframe.contentWindow?.print();
+
+//           // Clean up after printing
+//           setTimeout(() => {
+//             document.body.removeChild(iframe);
+//             URL.revokeObjectURL(pdfUrl);
+//           }, 1000);
+//         }, 500);
+//       } catch (printError) {
+//         console.error('Print failed:', printError);
+//         document.body.removeChild(iframe);
+//         URL.revokeObjectURL(pdfUrl);
+//         throw new Error('Printing failed - please try downloading instead');
+//       }
+//     };
+
+//   } catch (error) {
+//     console.error('Error printing invoice:', error);
+//     throw new Error('Failed to generate print document');
+//   }
+// };
+
+const printInvoice = async (
+  transaction: Transaction,
+  company?: Company,
+  party?: Party,
+  serviceNameById?: Map<string, string>
+) => {
+  try {
+    const pdfBlob = await generatePdfForTemplate1(
+      transaction,
+      company,
+      party,
+      serviceNameById
+    );
+
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+
+    // Create iframe for printing
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = pdfUrl;
+
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      try {
+        // Wait a bit for PDF to load completely
+        setTimeout(() => {
+          iframe.contentWindow?.print();
+
+          // Clean up after printing
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+            URL.revokeObjectURL(pdfUrl);
+          }, 1000);
+        }, 500);
+      } catch (printError) {
+        console.error("Print failed:", printError);
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(pdfUrl);
+        throw new Error("Printing failed - please try downloading instead");
+      }
+    };
+  } catch (error) {
+    console.error("Error printing invoice:", error);
+    throw new Error("Failed to generate print document");
+  }
 };
 
 export const columns = ({
@@ -1004,9 +1104,10 @@ export const columns = ({
         const [isLoadingParty, setIsLoadingParty] = useState(false);
         const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
 
-         const [dropdownOpen, setDropdownOpen] = useState(false);
+        const [dropdownOpen, setDropdownOpen] = useState(false);
         // Invoice actions are allowed for sales and proforma
-        const isInvoiceable = transaction.type === "sales" || transaction.type === "proforma";
+        const isInvoiceable =
+          transaction.type === "sales" || transaction.type === "proforma";
 
         // WhatsApp allowed for both sales and receipts
         const isWhatsAppAllowed =
@@ -1078,85 +1179,109 @@ export const columns = ({
           return pv && typeof pv === "object" ? (pv as Party) : undefined;
         };
 
-        const handleDownload = () => {
-          const doc = generatePdfForTemplate1(
-            transaction,
-            buildCompany(),
-            buildPartyForInvoice(),
-            serviceNameById
-          );
-          const fname = `Invoice-${(transaction._id ?? "INV")
-            .toString()
-            .slice(-6)
-            .toUpperCase()}.pdf`;
-          // doc.save(fname);
+        // const handleDownload = () => {
+        //   const doc = generatePdfForTemplate1(
+        //     transaction,
+        //     buildCompany(),
+        //     buildPartyForInvoice(),
+        //     serviceNameById
+        //   );
+        //   const fname = `Invoice-${(transaction._id ?? "INV")
+        //     .toString()
+        //     .slice(-6)
+        //     .toUpperCase()}.pdf`;
+        //   // doc.save(fname);
+        // };
+
+        const handleDownload = async () => {
+          if (!isInvoiceable) {
+            toast({
+              variant: "destructive",
+              title: "Cannot Download",
+              description:
+                "Only sales and proforma transactions can be downloaded as invoices.",
+            });
+            return;
+          }
+
+          try {
+            const pdfBlob = await generatePdfForTemplate1(
+              transaction,
+              buildCompany(),
+              buildPartyForInvoice(),
+              serviceNameById
+            );
+
+            // Create download link
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement("a");
+            link.href = url;
+
+            const invoiceNumber =
+              transaction.invoiceNumber || transaction.referenceNumber;
+            const fname = `Invoice-${
+              invoiceNumber ||
+              (transaction._id ?? "INV").toString().slice(-6).toUpperCase()
+            }.pdf`;
+            link.download = fname;
+
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Clean up
+            URL.revokeObjectURL(url);
+
+            toast({
+              title: "Invoice Downloaded",
+              description: `Invoice saved as ${fname}`,
+            });
+          } catch (error) {
+            console.error("Error downloading invoice:", error);
+            toast({
+              variant: "destructive",
+              title: "Download Failed",
+              description: "Could not download invoice. Please try again.",
+            });
+          }
         };
 
-        // const handleSendWhatsApp = async () => {
-        //   // Fetch party details if we don't have them
-        //   let partyToUse = partyDetails;
-        //   if (!partyToUse && basicParty?._id) {
-        //     partyToUse = await fetchPartyDetails();
-        //   }
+        const handlePrintInvoice = () => {
+          setDropdownOpen(false);
+          if (!isInvoiceable) {
+            toast({
+              variant: "destructive",
+              title: "Cannot Print",
+              description:
+                "Only sales transactions can be printed as invoices.",
+            });
+            return;
+          }
 
-        //   if (!partyToUse) {
-        //     toast({
-        //       variant: "destructive",
-        //       title: "Customer Information Missing",
-        //       description: "Unable to find customer details for this transaction.",
-        //     });
-        //     return;
-        //   }
+          try {
+            printInvoice(
+              transaction,
+              buildCompany(),
+              buildPartyForInvoice(),
+              serviceNameById
+            );
 
-        //   // Check for contact number in the detailed party data
-        //   const hasContactNumber = partyToUse.contactNumber && partyToUse.contactNumber.trim().length > 0;
+            toast({
+              title: "Printing Invoice",
+              description: "Opening print dialog...",
+            });
+          } catch (error) {
+            console.error("Print error:", error);
+            toast({
+              variant: "destructive",
+              title: "Print Failed",
+              description:
+                "Could not print invoice. Please try downloading instead.",
+            });
+          }
+        };
 
-        //   if (!hasContactNumber) {
-        //     toast({
-        //       variant: "destructive",
-        //       title: "No Contact Number",
-        //       description: "This customer doesn't have a contact number saved. Please add a phone number to send WhatsApp messages.",
-        //     });
-        //     return;
-        //   }
-
-        //   // Open the WhatsApp composer dialog
-        //   setIsWhatsAppDialogOpen(true);
-        // };
-        ////////////////////
-
-        // In your columns component, update the WhatsApp handler:
-        //         const handleSendWhatsApp = async () => {
-        //   // Fetch party details if we don't have them
-        //   let partyToUse = partyDetails;
-        //   if (!partyToUse && basicParty?._id) {
-        //     partyToUse = await fetchPartyDetails();
-        //   }
-
-        //   if (!partyToUse) {
-        //     toast({
-        //       variant: "destructive",
-        //       title: "Customer Information Missing",
-        //       description: "Unable to find customer details for this transaction.",
-        //     });
-        //     return;
-        //   }
-
-        //   // Check if WhatsApp is connected
-        //   const isConnected = whatsappConnectionService.isWhatsAppConnected();
-
-        //   if (!isConnected) {
-        //     toast({
-        //       title: "Connect WhatsApp",
-        //       description: "Please connect your WhatsApp to send messages.",
-        //     });
-        //   }
-
-        //   // If connected, open the composer directly
-        //   setIsWhatsAppDialogOpen(true); // Change this line
-        // };
-
-        ////////////////////
         const handleSendWhatsApp = async () => {
           setDropdownOpen(false);
           // Fetch party details if we don't have them
@@ -1240,13 +1365,31 @@ export const columns = ({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onClick={handleDownload}
+                  // onClick={handleDownload}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await handleDownload();
+                  }}
                   disabled={!isInvoiceable}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   <span>
                     Download Invoice {!isInvoiceable && "(Sales only)"}
                   </span>
+                </DropdownMenuItem>
+
+                {/* 🖨️ Print Invoice - Only for sales */}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handlePrintInvoice();
+                  }}
+                  disabled={!isInvoiceable}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  <span>Print Invoice {!isInvoiceable && "(Sales only)"}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />

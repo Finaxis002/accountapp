@@ -23,7 +23,6 @@ import {
 } from "./pdf-utils";
 import { template8Styles } from "./pdf-template-styles";
 import { capitalizeWords } from "./utils";
-const logo = "/assets/invoice-logos/R.png";
 const convertNumberToWords = (num: number): string => {
     if (num === 0) return "Zero";
 
@@ -159,6 +158,9 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
         totalItems,
         totalQty,
     } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+      const logoSrc = company?.logo
+    ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}`
+    : null;
     const billing = capitalizeWords(getBillingAddress(party));
     let shippingLabel = "";
     let shippingState = "N/A";
@@ -174,10 +176,13 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
             <Page size="A4" style={styles.page}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Image
-                        src={logo}
-                        style={{ width: 80, height: 80, marginRight: 15 }}
-                    />
+                     {logoSrc && (
+                <Image
+                  src={logoSrc}
+                   style={{ width: 80, height: 80, marginRight: 15 }}
+                />
+              )}
+                    
                     <View style={[styles.companyDetails, { marginLeft: 10 }]}>
                         <Text style={[styles.companyName, { marginBottom: 5 }]}>
                             {capitalizeWords(company?.businessName)}
@@ -195,7 +200,11 @@ const Template12PDF: React.FC<Template12PDFProps> = ({
                 </View>
 
                 <Text style={styles.title}>
-                    {isGSTApplicable ? "TAX INVOICE" : "INVOICE"}
+                    {transaction.type === "proforma"
+                      ? "PROFORMA INVOICE"
+                      : isGSTApplicable
+                      ? "TAX INVOICE"
+                      : "INVOICE"}
                 </Text>
                 <View style={styles.divider} />
                 {/* Buyer / Consignee / Invoice Info in One Row */}

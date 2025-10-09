@@ -1,6 +1,3 @@
-
-
-
 // // lib/api/whatsapp-api.ts
 // const API_BASE = `${process.env.NEXT_PUBLIC_BASE_URL}/api/whatsapp`;
 
@@ -61,10 +58,10 @@
 //   private getAuthHeaders() {
 //     const token = localStorage.getItem('token');
 //     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
+
 //     // Use the correct user ID - from user object or localStorage _id
 //     const userId = user?.id || user?._id || localStorage.getItem('_id');
-    
+
 //     const headers = {
 //       'Authorization': `Bearer ${token}`,
 //       'Content-Type': 'application/json',
@@ -88,13 +85,13 @@
 //         headers: this.getAuthHeaders(),
 //       });
 //       const result = await response.json();
-      
+
 //       console.log('🔍 Get Connection API Response:', {
 //         url: `${API_BASE}/connection`,
 //         status: response.status,
 //         data: result
 //       });
-      
+
 //       return result;
 //     } catch (error) {
 //       console.error('Error fetching WhatsApp connection:', error);
@@ -113,13 +110,13 @@
 //         headers: this.getAuthHeaders(),
 //       });
 //       const result = await response.json();
-      
+
 //       console.log('🔍 Check Status API Response:', {
 //         url: `${API_BASE}/connection/status`,
 //         status: response.status,
 //         data: result
 //       });
-      
+
 //       return result;
 //     } catch (error) {
 //       console.error('Error checking WhatsApp status:', error);
@@ -135,7 +132,7 @@
 //   async createConnection(phoneNumber: string, connectionData?: any): Promise<ExtendedAPIResponse<WhatsAppConnection>> {
 //     try {
 //       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
 //       const requestBody = {
 //         phoneNumber,
 //         connectionData: {
@@ -159,14 +156,14 @@
 //         headers: this.getAuthHeaders(),
 //         body: JSON.stringify(requestBody),
 //       });
-      
+
 //       const result = await response.json();
-      
+
 //       console.log('🔍 Create Connection API Response:', {
 //         status: response.status,
 //         data: result
 //       });
-      
+
 //       return result;
 //     } catch (error) {
 //       console.error('Error creating WhatsApp connection:', error);
@@ -185,14 +182,14 @@
 //         method: 'DELETE',
 //         headers: this.getAuthHeaders(),
 //       });
-      
+
 //       const result = await response.json();
-      
+
 //       console.log('🔍 Delete Connection API Response:', {
 //         status: response.status,
 //         data: result
 //       });
-      
+
 //       return result;
 //     } catch (error) {
 //       console.error('Error deleting WhatsApp connection:', error);
@@ -210,14 +207,14 @@
 //       const response = await fetch(`${API_BASE}/connection/history`, {
 //         headers: this.getAuthHeaders(),
 //       });
-      
+
 //       const result = await response.json();
-      
+
 //       console.log('🔍 Connection History API Response:', {
 //         status: response.status,
 //         data: result
 //       });
-      
+
 //       return result;
 //     } catch (error) {
 //       console.error('Error fetching connection history:', error);
@@ -231,30 +228,6 @@
 // }
 
 // export const whatsappAPI = new WhatsAppAPI();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // // lib/whatsapp-api.ts
 // export interface WhatsAppStatusResponse {
@@ -305,10 +278,10 @@
 //   private baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8745';
 //   private getAuthToken(): string | null {
 //     if (typeof window === 'undefined') return null;
-    
+
 //     try {
 //       // Try multiple possible token storage locations
-//       return localStorage.getItem('token') || 
+//       return localStorage.getItem('token') ||
 //              localStorage.getItem('authToken') ||
 //              sessionStorage.getItem('token') ||
 //              sessionStorage.getItem('authToken');
@@ -321,10 +294,10 @@
 //   // Helper to get user data for debugging
 //   private debugAuth() {
 //     if (typeof window === 'undefined') return {};
-    
+
 //     const token = this.getAuthToken();
 //     const userData = localStorage.getItem('user');
-    
+
 //     console.log('🔐 Auth Debug:', {
 //       hasToken: !!token,
 //       tokenLength: token?.length,
@@ -332,19 +305,19 @@
 //       hasUserData: !!userData,
 //       userData: userData ? JSON.parse(userData) : null
 //     });
-    
+
 //     return { token, userData };
 //   }
 
 //    private async fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
 //     const url = `${this.baseURL}/api/whatsapp${endpoint}`;
-    
+
 //     // Debug authentication
 //     this.debugAuth();
-    
+
 //     // Get auth token
 //     const token = this.getAuthToken();
-    
+
 //     const headers: Record<string, string> = {
 //       'Content-Type': 'application/json',
 //       ...(token && { Authorization: `Bearer ${token}` }),
@@ -370,7 +343,7 @@
 //         localStorage.removeItem('authToken');
 //         sessionStorage.removeItem('token');
 //         sessionStorage.removeItem('authToken');
-        
+
 //         throw new Error('Authentication failed. Please login again.');
 //       }
 
@@ -475,12 +448,12 @@
 //   }
 
 //   // Compatibility methods for your existing frontend
-//   async getConnection(): Promise<{ 
-//     success: boolean; 
-//     data?: { 
-//       connection?: any; 
-//       hasAccess?: boolean 
-//     }; 
+//   async getConnection(): Promise<{
+//     success: boolean;
+//     data?: {
+//       connection?: any;
+//       hasAccess?: boolean
+//     };
 //     error?: string;
 //   }> {
 //     try {
@@ -525,26 +498,14 @@
 
 // export const whatsappAPI = new WhatsAppAPI();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // lib/whatsapp-api.ts
 export interface WhatsAppStatusResponse {
-  status: 'not_initialized' | 'authenticating' | 'authenticated' | 'disconnected' | 'error';
+  status:
+    | "not_initialized"
+    | "authenticating"
+    | "authenticated"
+    | "disconnected"
+    | "error";
   phoneNumber?: string;
   profileName?: string;
   lastActivity?: string;
@@ -601,36 +562,41 @@ export interface APIResponse<T = any> {
 }
 
 class WhatsAppAPI {
-  private baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8745';
-  
+  private baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8745";
+
   private getAuthToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    
+    if (typeof window === "undefined") return null;
+
     try {
-      return localStorage.getItem('token') || 
-             localStorage.getItem('authToken') ||
-             sessionStorage.getItem('token') ||
-             sessionStorage.getItem('authToken');
+      return (
+        localStorage.getItem("token") ||
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("token") ||
+        sessionStorage.getItem("authToken")
+      );
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      console.error("Error getting auth token:", error);
       return null;
     }
   }
 
-  private async fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async fetchAPI<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
     const url = `${this.baseURL}/api/whatsapp${endpoint}`;
-    
+
     const token = this.getAuthToken();
-    
+
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
     };
 
-    console.log('🔗 API Request:', {
+    console.log("🔗 API Request:", {
       url,
       hasToken: !!token,
-      method: options.method || 'GET'
+      method: options.method || "GET",
     });
 
     try {
@@ -639,39 +605,41 @@ class WhatsAppAPI {
         headers,
       });
 
-      console.log('🔗 Response status:', response.status);
+      console.log("🔗 Response status:", response.status);
 
       if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('authToken');
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('authToken');
-        throw new Error('Authentication failed. Please login again.');
+        localStorage.removeItem("token");
+        localStorage.removeItem("authToken");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("authToken");
+        throw new Error("Authentication failed. Please login again.");
       }
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('🔗 API Error Response:', errorText);
+        console.error("🔗 API Error Response:", errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('🔗 API Success Response:', data);
+      console.log("🔗 API Success Response:", data);
       return data;
     } catch (error: any) {
-      console.error('🔗 WhatsApp API Error:', error);
+      console.error("🔗 WhatsApp API Error:", error);
       throw error;
     }
   }
 
   // Initialize WhatsApp session
-  async initialize(): Promise<APIResponse<{ sessionId: string; message: string }>> {
+  async initialize(): Promise<
+    APIResponse<{ sessionId: string; message: string }>
+  > {
     try {
-      return await this.fetchAPI('/initialize', { method: 'POST' });
+      return await this.fetchAPI("/initialize", { method: "POST" });
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to initialize WhatsApp'
+        error: error.message || "Failed to initialize WhatsApp",
       };
     }
   }
@@ -679,25 +647,25 @@ class WhatsAppAPI {
   // Get session status
   async checkStatus(): Promise<WhatsAppStatusResponse> {
     try {
-      return await this.fetchAPI('/status', { method: 'GET' });
+      return await this.fetchAPI("/status", { method: "GET" });
     } catch (error: any) {
-      console.error('Error checking WhatsApp status:', error);
-      return { status: 'error' };
+      console.error("Error checking WhatsApp status:", error);
+      return { status: "error" };
     }
   }
 
   // ✅ NEW: Send message to party (using phone number directly)
   async sendMessage(params: SendMessageParams): Promise<SendMessageResponse> {
     try {
-      return await this.fetchAPI('/send-message', {
-        method: 'POST',
+      return await this.fetchAPI("/send-message", {
+        method: "POST",
         body: JSON.stringify(params),
       });
     } catch (error: any) {
-      console.error('Error sending WhatsApp message:', error);
+      console.error("Error sending WhatsApp message:", error);
       return {
         success: false,
-        error: error.message || 'Failed to send message'
+        error: error.message || "Failed to send message",
       };
     }
   }
@@ -710,45 +678,47 @@ class WhatsAppAPI {
     manualSend?: boolean;
   }): Promise<SendMessageResponse> {
     try {
-      return await this.fetchAPI('/send-message', {
-        method: 'POST',
+      return await this.fetchAPI("/send-message", {
+        method: "POST",
         body: JSON.stringify({
           ...params,
           // Convert vendorId to phoneNumber if needed, or handle differently
-          phoneNumber: params.vendorId // This might need adjustment based on your backend
+          phoneNumber: params.vendorId, // This might need adjustment based on your backend
         }),
       });
     } catch (error: any) {
-      console.error('Error sending WhatsApp message:', error);
+      console.error("Error sending WhatsApp message:", error);
       return {
         success: false,
-        error: error.message || 'Failed to send message'
+        error: error.message || "Failed to send message",
       };
     }
   }
 
   // ✅ NEW: Send bulk messages to multiple parties
-  async sendBulkMessages(params: BulkMessageParams): Promise<BulkMessageResponse> {
+  async sendBulkMessages(
+    params: BulkMessageParams
+  ): Promise<BulkMessageResponse> {
     try {
-      return await this.fetchAPI('/send-bulk-messages', {
-        method: 'POST',
+      return await this.fetchAPI("/send-bulk-messages", {
+        method: "POST",
         body: JSON.stringify({
           phoneNumbers: params.phoneNumbers,
           message: params.message,
-          templateId: params.templateId
+          templateId: params.templateId,
         }),
       });
     } catch (error: any) {
-      console.error('Error sending bulk WhatsApp messages:', error);
+      console.error("Error sending bulk WhatsApp messages:", error);
       return {
         total: params.phoneNumbers.length,
         successful: 0,
         failed: params.phoneNumbers.length,
         results: [],
-        errors: params.phoneNumbers.map(phone => ({
+        errors: params.phoneNumbers.map((phone) => ({
           phoneNumber: phone,
-          error: error.message || 'Failed to send bulk messages'
-        }))
+          error: error.message || "Failed to send bulk messages",
+        })),
       };
     }
   }
@@ -760,22 +730,26 @@ class WhatsAppAPI {
     templateId?: string;
   }): Promise<BulkMessageResponse> {
     try {
-      return await this.fetchAPI('/send-bulk-messages', {
-        method: 'POST',
+      return await this.fetchAPI("/send-bulk-messages", {
+        method: "POST",
         body: JSON.stringify(params),
       });
     } catch (error: any) {
-      console.error('Error sending bulk WhatsApp messages:', error);
+      console.error("Error sending bulk WhatsApp messages:", error);
       return {
         total: 0,
         successful: 0,
         failed: 0,
         results: [],
-        errors: [{
-          vendorId: '',
-          vendorName: '',
-          error: error.message || 'Failed to send bulk messages'
-        }]
+
+        errors: [
+          {
+            phoneNumber: "", // Use phoneNumber instead of vendorId
+            partyName: "",
+            error: error.message || "Failed to send bulk messages",
+          },
+        ],
+
       };
     }
   }
@@ -783,44 +757,47 @@ class WhatsAppAPI {
   // Logout from WhatsApp
   async logout(): Promise<APIResponse> {
     try {
-      return await this.fetchAPI('/logout', { method: 'POST' });
+      return await this.fetchAPI("/logout", { method: "POST" });
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to logout'
+        error: error.message || "Failed to logout",
       };
     }
   }
 
   // Compatibility methods
-  async getConnection(): Promise<{ 
-    success: boolean; 
-    data?: { 
-      connection?: any; 
-      hasAccess?: boolean 
-    }; 
+  async getConnection(): Promise<{
+    success: boolean;
+    data?: {
+      connection?: any;
+      hasAccess?: boolean;
+    };
     error?: string;
   }> {
     try {
       const status = await this.checkStatus();
       return {
-        success: status.status === 'authenticated',
+        success: status.status === "authenticated",
         data: {
-          connection: status.status === 'authenticated' ? {
-            _id: 'temp-id',
-            client_id: 'current-client',
-            phone_number: status.phoneNumber || '',
-            connected_by: 'current-user',
-            last_connected: new Date().toISOString(),
-            status: 'authenticated'
-          } : undefined,
-          hasAccess: status.status === 'authenticated'
-        }
+          connection:
+            status.status === "authenticated"
+              ? {
+                  _id: "temp-id",
+                  client_id: "current-client",
+                  phone_number: status.phoneNumber || "",
+                  connected_by: "current-user",
+                  last_connected: new Date().toISOString(),
+                  status: "authenticated",
+                }
+              : undefined,
+          hasAccess: status.status === "authenticated",
+        },
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -836,7 +813,7 @@ class WhatsAppAPI {
   async getConnectionHistory(): Promise<APIResponse<any[]>> {
     return {
       success: true,
-      data: []
+      data: [],
     };
   }
 }
