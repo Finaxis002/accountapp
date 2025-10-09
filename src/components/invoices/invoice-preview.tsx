@@ -268,7 +268,7 @@ if (transaction?.shippingAddress) {
                 bank,
                 client
               );
-
+              break;
              case "templateA5_3":
               pdfBlob = await generatePdfForTemplateA5_3(
                 transaction,

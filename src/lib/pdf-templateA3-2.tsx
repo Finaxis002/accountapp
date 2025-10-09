@@ -75,6 +75,7 @@ const TemplateA5_2PDF: React.FC<TemplateA5PDFProps> = ({
     showCGSTSGST,
     showNoTax,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+  console.log("pdf-templateA5-2 is getting render")
    const logoSrc = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
   // For IGST (Interstate)
   const colWidthsIGST = ["4%", "25%", "10%", "8%", "10%", "15%", "20%", "12%"];
@@ -206,7 +207,7 @@ const TemplateA5_2PDF: React.FC<TemplateA5PDFProps> = ({
               <View style={templateA5_3Styles.threeColSection}>
                 {/* Column 1 - Details of Buyer */}
                 <View
-                  style={[templateA5_3Styles.column, { borderLeft: "none" }]}
+                  style={[templateA5_3Styles.column2, { borderLeft: "none" }]}
                 >
                   <View style={templateA5_3Styles.columnHeader}>
                     <Text style={templateA5_3Styles.threecoltableHeader}>
@@ -253,10 +254,6 @@ const TemplateA5_2PDF: React.FC<TemplateA5PDFProps> = ({
                         : "-"}
                     </Text>
                   </View>
-                </View>
-
-                {/* Column 2 - Details of Consigned */}
-                <View style={templateA5_3Styles.column}>
                   <View style={templateA5_3Styles.columnHeader}>
                     <Text style={templateA5_3Styles.threecoltableHeader}>
                       Details of Consigned | Shipped to:
@@ -309,9 +306,11 @@ const TemplateA5_2PDF: React.FC<TemplateA5PDFProps> = ({
                   </View>
                 </View>
 
+              
+
                 {/* Column 3 - Invoice Details */}
                 <View
-                  style={[templateA5_3Styles.column, { borderRight: "none" }]}
+                  style={[templateA5_3Styles.column2, { borderRight: "none" }]}
                 >
                   <View
                     style={[
