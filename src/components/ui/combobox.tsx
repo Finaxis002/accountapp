@@ -48,8 +48,6 @@ export function Combobox({
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("");
   const [filteredOptions, setFilteredOptions] = React.useState(options);
-  const [updateKey, setUpdateKey] = React.useState(0);
-  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const selectedOption = options.find((option) => option.value === value);
 
@@ -63,7 +61,6 @@ export function Combobox({
         await onCreate(searchValue);
         setSearchValue("");
         setFilteredOptions(options);
-        setUpdateKey(prev => prev + 1);
     }
   }
 
@@ -73,7 +70,6 @@ export function Combobox({
       typeof option.label === 'string' &&
       (text === "" || option.label.toLowerCase().includes(text.toLowerCase()))
     ));
-    setUpdateKey(prev => prev + 1);
     if (!open) {
       setOpen(true);
     }
@@ -84,52 +80,32 @@ export function Combobox({
     const newSelected = options.find((option) => option.value === selectedValue);
     setSearchValue(newSelected?.label || "");
     setFilteredOptions(options);
-    setUpdateKey(prev => prev + 1);
     setOpen(false);
   }
-
-  React.useEffect(() => {
-    if (open && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [open]);
 
   const showCreateOption = creatable && searchValue && !filteredOptions.some(opt => opt.label.toLowerCase() === searchValue.toLowerCase());
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className="relative">
-          <input
-            ref={inputRef}
-            type="text"
-            value={searchValue}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onClick={() => setOpen(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent form submission
-                if (open) {
-                  if (showCreateOption) {
-                    handleCreate();
-                  } else if (filteredOptions.length > 0) {
-                    handleSelect(filteredOptions[0].value);
-                  }
-                }
-              }
-            }}
-            placeholder={searchValue ? "" : placeholder}
-            disabled={disabled}
-            className={cn(
-              "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-              className
-            )}
-          />
-          <ChevronsUpDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 pointer-events-none" />
-        </div>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn("w-full justify-between", className)}
+          disabled={disabled}
+        >
+          {selectedOption?.label || placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={searchValue}
+            onValueChange={handleInputChange}
+          />
           <CommandList>
             <CommandEmpty>
                 {showCreateOption ? (

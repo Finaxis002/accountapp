@@ -356,19 +356,25 @@ export const generatePdfForTemplate19 = async (
         // Logo
         const logoSize = 60;
         const logoX = getW() - M - logoSize;
-        doc.setFillColor(242, 133, 49);
-        doc.triangle(
-            logoX + logoSize * 0.4,
-            M,
-            logoX + logoSize,
-            M,
-            logoX + logoSize * 0.4,
-            M + logoSize,
-            "F"
-        );
-        doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
-        doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
-
+        if (logoUrl) {
+          try {
+            doc.addImage(logoUrl, 'PNG', logoX, M, logoSize, logoSize);
+          } catch (e) {
+            // Fallback to default logo
+            doc.setFillColor(242, 133, 49);
+            doc.triangle(
+              logoX + logoSize * 0.4,
+              M,
+              logoX + logoSize,
+              M,
+              logoX + logoSize * 0.4,
+              M + logoSize,
+              "F"
+            );
+            doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
+            doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
+          }
+        } 
         // Separator
         y = Math.max(y, M + logoSize + 20);
         doc.setDrawColor(0, 110, 200);
@@ -657,28 +663,6 @@ export const generatePdfForTemplate19 = async (
     }
 
 
-    // Logo
-    const logoSize = 60;
-    const logoX = getW() - M - logoSize;
-    if (logoUrl) {
-      try {
-        doc.addImage(logoUrl, 'PNG', logoX, M, logoSize, logoSize);
-      } catch (e) {
-        // Fallback to default logo
-        doc.setFillColor(242, 133, 49);
-        doc.triangle(
-          logoX + logoSize * 0.4,
-          M,
-          logoX + logoSize,
-          M,
-          logoX + logoSize * 0.4,
-          M + logoSize,
-          "F"
-        );
-        doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
-        doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
-      }
-    } 
 
 
     // Total Items / Qty line

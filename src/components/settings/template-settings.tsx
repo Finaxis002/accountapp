@@ -22,6 +22,8 @@ import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
 import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
+import { generatePdfForTemplate20 } from "@/lib/pdf-template20"; 
+import { generatePdfForTemplate21 } from "@/lib/pdf-template21";
 import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
 import { generatePdfForTemplateA5_2 } from "@/lib/pdf-templateA3-2";
 import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
@@ -39,6 +41,8 @@ const templateOptions: { value: TemplateKey; label: string; color: string }[] = 
   { value: "template16", label: "Template 5", color: "bg-amber-600" },
   { value: "template17", label: "Template 6", color: "bg-indigo-600" },
   { value: "template19", label: "Template 7", color: "bg-teal-600" },
+   { value: "template20", label: "Template 8", color: "bg-indigo-600" },
+  { value: "template21", label: "Template 9", color: "bg-teal-600" },
   { value: "templateA5", label: "Template A5", color: "bg-pink-500" },
   { value: "templateA5_2", label: "Template A5-2", color: "bg-green-500" },
   { value: "templateA5_3", label: "Template A5-3", color: "bg-orange-500" },
@@ -168,6 +172,8 @@ type TemplateKey =
   | "template16"
   | "template17"
   | "template19"
+   | "template20"
+  | "template21"
   | "templateA5"
   | "templateA5_2"
   | "templateA5_3"
@@ -217,6 +223,8 @@ const TemplateThumbnail = React.memo(({
           template.value === "template12" ||
           template.value === "templateA5" ||
           template.value === "template18" ||
+          template.value === "template20" ||
+          template.value === "template21" ||
           template.value === "templateA5_2" ||
           template.value === "templateA5_3" ||
           template.value === "templateA5_4" ||
@@ -253,6 +261,26 @@ const TemplateThumbnail = React.memo(({
                 dummyBank
               );
               break;
+            case "template20":
+              pdfBlob = await generatePdfForTemplate20(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
+            case "template21":
+              pdfBlob = await generatePdfForTemplate21(
+                simplifiedTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
             case "templateA5":
               pdfBlob = await generatePdfForTemplateA5(
                 simplifiedTransaction,
@@ -264,17 +292,7 @@ const TemplateThumbnail = React.memo(({
                 dummyClient
               );
               break;
-            case "template18":
-              pdfBlob = await generatePdfForTemplate18(
-                simplifiedTransaction,
-                dummyCompany,
-                dummyParty,
-                dummyServiceNames,
-                null,
-                dummyBank
-              );
-              break;
-               case "templateA5_2":
+            case "templateA5_2":
               pdfBlob = await generatePdfForTemplateA5_2(
                 simplifiedTransaction,
                 dummyCompany,
@@ -530,6 +548,8 @@ export function TemplateSettings() {
           selectedTemplate === "template12" ||
           selectedTemplate === "templateA5" ||
           selectedTemplate === "template18" ||
+           selectedTemplate === "template20" ||
+            selectedTemplate === "template21" ||
           selectedTemplate === "templateA5_2" ||
           selectedTemplate === "templateA5_3" ||
           selectedTemplate === "templateA5_4" ||
@@ -558,6 +578,26 @@ export function TemplateSettings() {
               break;
             case "template12":
               pdfBlob = await generatePdfForTemplate12(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
+            case "template20":
+              pdfBlob = await generatePdfForTemplate20(
+                dummyTransaction,
+                dummyCompany,
+                dummyParty,
+                dummyServiceNames,
+                null,
+                dummyBank
+              );
+              break;
+            case "template21":
+              pdfBlob = await generatePdfForTemplate21(
                 dummyTransaction,
                 dummyCompany,
                 dummyParty,
@@ -871,7 +911,7 @@ export function TemplateSettings() {
               </Badge>
             </div>
 
-            <div className="border rounded-lg overflow-hidden bg-secondary h-[80vh]">
+            <div className="border rounded-lg overflow-hidden bg-secondary h-[100vh]">
               {isGeneratingPreview ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
