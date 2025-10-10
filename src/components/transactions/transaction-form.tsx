@@ -104,6 +104,202 @@ import {
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { State, City } from "country-state-city";
+import { searchHSNCodes, type HSNCode } from "@/lib/hsnProduct";
+import { searchSACCodes, type SACCode } from "@/lib/sacService";
+
+// HSN Search Input Component
+function HSNSearchInput({ onSelect, placeholder }: { onSelect: (hsn: HSNCode) => void; placeholder: string }) {
+  const [inputValue, setInputValue] = React.useState("");
+  const [suggestions, setSuggestions] = React.useState<HSNCode[]>([]);
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (inputValue.length >= 2) {
+        setIsLoading(true);
+        try {
+          const results = await searchHSNCodes(inputValue);
+          setSuggestions(results);
+          setShowSuggestions(true);
+        } catch (error) {
+          console.error("HSN search error:", error);
+          setSuggestions([]);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setShowSuggestions(false);
+        setSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
+  const handleSelect = (hsn: HSNCode) => {
+    setInputValue(hsn.code);
+    setShowSuggestions(false);
+    onSelect(hsn);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setShowSuggestions(false), 200);
+  };
+
+  return (
+    <div className="relative">
+      <Input
+        ref={inputRef}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onFocus={() => {
+          if (inputValue.length >= 2 && suggestions.length > 0) {
+            setShowSuggestions(true);
+          }
+        }}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className="h-9 text-sm"
+      />
+      {isLoading && (
+        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+      )}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+          {suggestions.map((hsn) => (
+            <div
+              key={hsn.code}
+              className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer border-b dark:border-gray-700 last:border-b-0 transition-colors"
+              onClick={() => handleSelect(hsn)}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <div className="flex justify-between items-start">
+                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                  {hsn.code}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                  HSN
+                </div>
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                {hsn.description}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {showSuggestions && inputValue.length >= 2 && suggestions.length === 0 && !isLoading && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-3">
+          <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+            No matching HSN codes found.
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 text-center mt-1">
+            Please check the code or enter manually.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// SAC Search Input Component
+function SACSearchInput({ onSelect, placeholder }: { onSelect: (sac: SACCode) => void; placeholder: string }) {
+  const [inputValue, setInputValue] = React.useState("");
+  const [suggestions, setSuggestions] = React.useState<SACCode[]>([]);
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (inputValue.length >= 2) {
+        setIsLoading(true);
+        try {
+          const results = await searchSACCodes(inputValue);
+          setSuggestions(results);
+          setShowSuggestions(true);
+        } catch (error) {
+          console.error("SAC search error:", error);
+          setSuggestions([]);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setShowSuggestions(false);
+        setSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
+  const handleSelect = (sac: SACCode) => {
+    setInputValue(sac.code);
+    setShowSuggestions(false);
+    onSelect(sac);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setShowSuggestions(false), 200);
+  };
+
+  return (
+    <div className="relative">
+      <Input
+        ref={inputRef}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onFocus={() => {
+          if (inputValue.length >= 2 && suggestions.length > 0) {
+            setShowSuggestions(true);
+          }
+        }}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className="h-9 text-sm"
+      />
+      {isLoading && (
+        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+      )}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+          {suggestions.map((sac) => (
+            <div
+              key={sac.code}
+              className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer border-b dark:border-gray-700 last:border-b-0 transition-colors"
+              onClick={() => handleSelect(sac)}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <div className="flex justify-between items-start">
+                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                  {sac.code}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                  SAC
+                </div>
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                {sac.description}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {showSuggestions && inputValue.length >= 2 && suggestions.length === 0 && !isLoading && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-3">
+          <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+            No matching SAC codes found.
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 text-center mt-1">
+            Please check the code or enter manually.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // reads gstin from various possible shapes/keys
 const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
@@ -347,6 +543,7 @@ export function TransactionForm({
   const [originalQuantities, setOriginalQuantities] = React.useState<
     Map<string, number>
   >(new Map());
+
 
   // Shipping address states
   const [shippingAddresses, setShippingAddresses] = React.useState<any[]>([]);
@@ -2260,6 +2457,93 @@ export function TransactionForm({
     }
   };
 
+
+  const handleHSNSelect = async (hsnCode: HSNCode, index: number) => {
+    const productId = form.watch(`items.${index}.product`);
+    if (!productId) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      // Use PATCH to only update the HSN field
+      const res = await fetch(`${baseURL}/api/products/${productId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ hsn: hsnCode.code }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update product HSN");
+      }
+
+      // Update local products state
+      setProducts((prev) =>
+        prev.map((p) =>
+          p._id === productId ? { ...p, hsn: hsnCode.code } : p
+        )
+      );
+
+      toast({
+        title: "HSN Updated",
+        description: `HSN ${hsnCode.code} saved to product.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to save HSN to product.",
+      });
+    }
+  };
+
+  const handleSACSelect = async (sacCode: SACCode, index: number) => {
+    const serviceId = form.watch(`items.${index}.service`);
+    if (!serviceId) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found.");
+
+      // Use PATCH to only update the SAC field
+      const res = await fetch(`${baseURL}/api/services/${serviceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sac: sacCode.code }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update service SAC");
+      }
+
+      // Update local services state
+      setServices((prev) =>
+        prev.map((s) =>
+          s._id === serviceId ? { ...s, sac: sacCode.code } : s
+        )
+      );
+
+      toast({
+        title: "SAC Updated",
+        description: `SAC ${sacCode.code} saved to service.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to save SAC to service.",
+      });
+    }
+  };
+
   const paymentMethod = useWatch({
     control: form.control,
     name: "paymentMethod",
@@ -3360,25 +3644,38 @@ export function TransactionForm({
                       />
                     </div>
                      {/* HSN Code */}
-                        <div className="min-w-[100px] flex-1">
-                          <FormItem>
-                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                              HSN Code
-                            </FormLabel>
-                            <div className="h-9 flex items-center px-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
-                              <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                {(() => {
-                                  const selectedProduct = products.find(
-                                    (p) =>
-                                      p._id ===
-                                      form.watch(`items.${index}.product`)
-                                  );
-                                  return selectedProduct?.hsn || "-";
-                                })()}
-                              </span>
-                            </div>
-                          </FormItem>
-                        </div>
+                       <div className="min-w-[100px] flex-1">
+                         <FormItem>
+                           <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                             HSN Code
+                           </FormLabel>
+                           {(() => {
+                             const selectedProduct = products.find(
+                               (p) =>
+                                 p._id ===
+                                 form.watch(`items.${index}.product`)
+                             );
+                             const hasHSN = selectedProduct?.hsn;
+
+                             if (hasHSN) {
+                               return (
+                                 <div className="h-9 flex items-center px-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
+                                   <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                     {selectedProduct.hsn}
+                                   </span>
+                                 </div>
+                               );
+                             } else {
+                               return (
+                                 <HSNSearchInput
+                                   onSelect={(hsnCode) => handleHSNSelect(hsnCode, index)}
+                                   placeholder="Search HSN..."
+                                 />
+                               );
+                             }
+                           })()}
+                         </FormItem>
+                       </div>
 
                     {gstEnabled && (
                       <>
@@ -3602,25 +3899,38 @@ export function TransactionForm({
                       />
                     </div>
                       {/* SAC Code */}
-                        <div className="md:col-span-2">
-                          <FormItem>
-                            <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                              SAC Code
-                            </FormLabel>
-                            <div className="h-9 flex items-center px-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
-                              <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                {(() => {
-                                  const selectedService = services.find(
-                                    (s) =>
-                                      s._id ===
-                                      form.watch(`items.${index}.service`)
-                                  );
-                                  return selectedService?.sac || "-";
-                                })()}
-                              </span>
-                            </div>
-                          </FormItem>
-                        </div>
+                       <div className="md:col-span-2">
+                         <FormItem>
+                           <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                             SAC Code
+                           </FormLabel>
+                           {(() => {
+                             const selectedService = services.find(
+                               (s) =>
+                                 s._id ===
+                                 form.watch(`items.${index}.service`)
+                             );
+                             const hasSAC = selectedService?.sac;
+
+                             if (hasSAC) {
+                               return (
+                                 <div className="h-9 flex items-center px-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
+                                   <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                     {selectedService.sac}
+                                   </span>
+                                 </div>
+                               );
+                             } else {
+                               return (
+                                 <SACSearchInput
+                                   onSelect={(sacCode) => handleSACSelect(sacCode, index)}
+                                   placeholder="Search SAC..."
+                                 />
+                               );
+                             }
+                           })()}
+                         </FormItem>
+                       </div>
 
                     {gstEnabled && (
                       <>

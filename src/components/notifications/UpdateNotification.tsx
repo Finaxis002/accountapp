@@ -55,7 +55,8 @@ const UpdateNotification = () => {
     useState<UpdateNotification | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [isPropagating, setIsPropagating] = useState(false);
+  const [isPropagatingAll, setIsPropagatingAll] = useState(false);
+  const [isPropagatingAdmins, setIsPropagatingAdmins] = useState(false);
   const [dismissAlertOpen, setDismissAlertOpen] = useState(false);
   const [notificationToDismiss, setNotificationToDismiss] = useState<
     string | null
@@ -539,7 +540,7 @@ const UpdateNotification = () => {
 
   const handlePropagateToAllUsers = async (notificationId: string) => {
     try {
-      setIsPropagating(true);
+      setIsPropagatingAll(true);
       const token = localStorage.getItem("token");
       await axios.post(
         `${baseURL}/api/update-notifications/propagate-all/${notificationId}`,
@@ -571,13 +572,13 @@ const UpdateNotification = () => {
         variant: "destructive",
       });
     } finally {
-      setIsPropagating(false);
+      setIsPropagatingAll(false);
     }
   };
 
   const handlePropagateToAdminsOnly = async (notificationId: string) => {
     try {
-      setIsPropagating(true);
+      setIsPropagatingAdmins(true);
       const token = localStorage.getItem("token");
       await axios.post(
         `${baseURL}/api/update-notifications/propagate-admins/${notificationId}`,
@@ -609,7 +610,7 @@ const UpdateNotification = () => {
         variant: "destructive",
       });
     } finally {
-      setIsPropagating(false);
+      setIsPropagatingAdmins(false);
     }
   };
 
@@ -811,10 +812,10 @@ const UpdateNotification = () => {
                           onClick={() =>
                             handlePropagateToAllUsers(notification._id)
                           }
-                          disabled={isPropagating}
-                          className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+                          disabled={isPropagatingAll}
+                          className="border-border dark:border-border/60 dark:hover:bg-muted/80"
                         >
-                          {isPropagating ? (
+                          {isPropagatingAll ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           ) : (
                             <Users className="h-4 w-4 mr-2" />
@@ -827,10 +828,10 @@ const UpdateNotification = () => {
                           onClick={() =>
                             handlePropagateToAdminsOnly(notification._id)
                           }
-                          disabled={isPropagating}
-                          className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+                          disabled={isPropagatingAdmins}
+                          className="border-border dark:border-border/60 dark:hover:bg-muted/80"
                         >
-                          {isPropagating ? (
+                          {isPropagatingAdmins ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           ) : (
                             <Users className="h-4 w-4 mr-2" />
@@ -859,7 +860,7 @@ const UpdateNotification = () => {
                                 [notification._id]: true,
                               }))
                             }
-                            className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+                            className="border-border dark:border-border/60  dark:hover:bg-muted/80"
                           >
                             Change Notification
                           </Button>
@@ -879,10 +880,10 @@ const UpdateNotification = () => {
                             onClick={() =>
                               handlePropagateToAllUsers(notification._id)
                             }
-                            disabled={isPropagating}
-                            className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+                            disabled={isPropagatingAll}
+                            className="border-border dark:border-border/60 dark:hover:bg-muted/80"
                           >
-                            {isPropagating ? (
+                            {isPropagatingAll ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             ) : (
                               <Users className="h-4 w-4 mr-2" />
@@ -895,10 +896,10 @@ const UpdateNotification = () => {
                             onClick={() =>
                               handlePropagateToAdminsOnly(notification._id)
                             }
-                            disabled={isPropagating}
-                            className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+                            disabled={isPropagatingAdmins}
+                            className="border-border dark:border-border/60 dark:hover:bg-muted/80"
                           >
-                            {isPropagating ? (
+                            {isPropagatingAdmins ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             ) : (
                               <Users className="h-4 w-4 mr-2" />
@@ -1073,10 +1074,10 @@ const UpdateNotification = () => {
             onClick={() =>
               handlePropagateToAllUsers(notification._id)
             }
-            disabled={isPropagating}
-            className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+            disabled={isPropagatingAll}
+            className="w-full text-xs py-1.5 border-border dark:border-border/60 dark:hover:bg-muted/80"
           >
-            {isPropagating ? (
+            {isPropagatingAll ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
             ) : (
               <Users className="h-3.5 w-3.5 mr-2" />
@@ -1089,10 +1090,10 @@ const UpdateNotification = () => {
             onClick={() =>
               handlePropagateToAdminsOnly(notification._id)
             }
-            disabled={isPropagating}
-            className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+            disabled={isPropagatingAdmins}
+            className="w-full text-xs py-1.5 border-border dark:border-border/60 dark:hover:bg-muted/80"
           >
-            {isPropagating ? (
+            {isPropagatingAdmins ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
             ) : (
               <Users className="h-3.5 w-3.5 mr-2" />
@@ -1141,10 +1142,10 @@ const UpdateNotification = () => {
               onClick={() =>
                 handlePropagateToAllUsers(notification._id)
               }
-              disabled={isPropagating}
-              className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+              disabled={isPropagatingAll}
+              className="w-full text-xs py-1.5 border-border dark:border-border/60 dark:hover:bg-muted/80"
             >
-              {isPropagating ? (
+              {isPropagatingAll ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
               ) : (
                 <Users className="h-3.5 w-3.5 mr-2" />
@@ -1157,10 +1158,10 @@ const UpdateNotification = () => {
               onClick={() =>
                 handlePropagateToAdminsOnly(notification._id)
               }
-              disabled={isPropagating}
-              className="w-full text-xs py-1.5 border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+              disabled={isPropagatingAdmins}
+              className="w-full text-xs py-1.5 border-border dark:border-border/60 dark:hover:bg-muted/80"
             >
-              {isPropagating ? (
+              {isPropagatingAdmins ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
               ) : (
                 <Users className="h-3.5 w-3.5 mr-2" />

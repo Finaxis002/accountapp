@@ -91,10 +91,10 @@ const UpdateWalkthrough = () => {
         return;
       }
 
-      console.log("Fetching from:", `${baseURL}/api/update-notifications/client/${userId}`);
+      console.log("Fetching from:", `${baseURL}/api/update-notifications/user/${userId}`);
 
       // Fetch update notifications directly from backend
-      const response = await axios.get(`${baseURL}/api/update-notifications/client/${userId}`, {
+      const response = await axios.get(`${baseURL}/api/update-notifications/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -447,14 +447,14 @@ const UpdateWalkthrough = () => {
                         📅 <strong>Note:</strong> Click 'Remove Notification' when you've explored all features.
                       </p>
                     </div>
-                    <Button
+                    {/* <Button
                       onClick={handleTryItNow}
                       size="sm"
                       className="bg-primary hover:bg-primary/90"
                     >
                       Try it now
                       <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
+                    </Button> */}
                   </div>
                 </CardContent>
               </Card>

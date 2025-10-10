@@ -66,6 +66,8 @@ export function ProductForm({
   const [hsnSuggestions, setHsnSuggestions] = React.useState<HSNCode[]>([]);
   const [showHsnSuggestions, setShowHsnSuggestions] = React.useState(false);
   const [isLoadingHsnSuggestions, setIsLoadingHsnSuggestions] = React.useState(false);
+  const [focusedHsnIndex, setFocusedHsnIndex] = React.useState(-1);
+  const hsnInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleDeleteUnit = async (unitId: string) => {
     try {
@@ -474,17 +476,47 @@ export function ProductForm({
                 <FormControl>
                   <div className="relative">
                     <div className="relative">
-                      <Input 
+                      <Input
                         placeholder="Search HSN code (e.g., 85)"
                         {...field}
                         onChange={(e) => {
                           field.onChange(e);
                           setShowHsnSuggestions(true);
+                          setFocusedHsnIndex(-1); // Reset focus when typing
                         }}
                         onBlur={handleHSNInputBlur}
                         onFocus={() => {
                           if (field.value && field.value.length >= 2) {
                             setShowHsnSuggestions(true);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (!showHsnSuggestions || hsnSuggestions.length === 0) return;
+
+                          switch (e.key) {
+                            case 'ArrowDown':
+                              e.preventDefault();
+                              setFocusedHsnIndex(prev =>
+                                prev < hsnSuggestions.length - 1 ? prev + 1 : 0
+                              );
+                              break;
+                            case 'ArrowUp':
+                              e.preventDefault();
+                              setFocusedHsnIndex(prev =>
+                                prev > 0 ? prev - 1 : hsnSuggestions.length - 1
+                              );
+                              break;
+                            case 'Enter':
+                              e.preventDefault();
+                              if (focusedHsnIndex >= 0 && focusedHsnIndex < hsnSuggestions.length) {
+                                handleHSNSelect(hsnSuggestions[focusedHsnIndex]);
+                              }
+                              break;
+                            case 'Escape':
+                              e.preventDefault();
+                              setShowHsnSuggestions(false);
+                              setFocusedHsnIndex(-1);
+                              break;
                           }
                         }}
                       />
@@ -496,10 +528,15 @@ export function ProductForm({
                     {/* HSN Suggestions Dropdown */}
                     {showHsnSuggestions && hsnSuggestions.length > 0 && (
                       <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
-                        {hsnSuggestions.map((hsn) => (
+                        {hsnSuggestions.map((hsn, index) => (
                           <div
                             key={hsn.code}
-                            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer border-b dark:border-gray-700 last:border-b-0 transition-colors"
+                            className={cn(
+                              "px-3 py-2 cursor-pointer border-b dark:border-gray-700 last:border-b-0 transition-colors",
+                              index === focusedHsnIndex
+                                ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                            )}
                             onClick={() => handleHSNSelect(hsn)}
                             onMouseDown={(e) => e.preventDefault()}
                           >
