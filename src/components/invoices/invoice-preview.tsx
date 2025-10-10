@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Edit } from "lucide-react";
 import type { Company, Party, Transaction } from "@/lib/types";
 import { DialogFooter } from "../ui/dialog";
 // import {
@@ -42,9 +42,11 @@ import { generatePdfForTemplateA5_2 } from "@/lib/pdf-templateA3-2";
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
 import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
-import { generatePdfForTemplate20 } from "@/lib/pdf-template20";
+
+//aditya
+import { generatePdfForTemplate20 } from "@/lib/pdf-template20"; 
 import { generatePdfForTemplate21 } from "@/lib/pdf-template21";
-  import jsPDF from "jspdf";
+import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
 
@@ -66,10 +68,10 @@ type TemplateKey =
   | "template-t3"
   | "template16"
   | "template17"
-  | "template20"
-  | "template21";
   | "template18"
-  | "template19";
+  | "template19"
+  | "template20"
+  | "template21"
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
@@ -80,22 +82,6 @@ interface InvoicePreviewProps {
   onSave?: (updatedTransaction: Transaction) => void;
   onCancel?: () => void;
 }
-
-// 🐛 यहाँ 'shippingAddress' जोड़ा गया था।
-type PdfGeneratorBaseArgs = [
-  Transaction | null,
-  Company | null,
-  Party | null,
-  Map<string, string> | undefined,
-  any | null // shippingAddress
-];
-
-// ✅ CORRECTED: JsPdfGenerator type definition
-type JsPdfGenerator = (...args: PdfGeneratorBaseArgs) => jsPDF | Promise<jsPDF>;
-
-// ✅ CORRECTED: ReactPdfGenerator type definition (needs bank in addition to base args)
-type ReactPdfGenerator = (...args: [...PdfGeneratorBaseArgs, any]) => Promise<Blob>;
-
 
 export function InvoicePreview({
   transaction,
@@ -112,6 +98,7 @@ export function InvoicePreview({
 
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  // Use the editMode prop instead of internal state
   const [pdfBlob, setPdfBlob] = React.useState<Blob | null>(null);
   const [bank, setBank] = React.useState<any>(null);
   const [client, setClient] = React.useState<any>(null);
@@ -191,86 +178,309 @@ export function InvoicePreview({
         return;
       }
       setIsLoading(true);
-
-      let pdfBlob: Blob | null = null; 
-
       try {
-        const shippingAddress = transaction?.shippingAddress && typeof transaction.shippingAddress === 'object'
-          ? transaction.shippingAddress as any
-          : null;
-        
-        // Base arguments array for all generators
-        const baseArgs: PdfGeneratorBaseArgs = [
-            transaction,
-            company,
-            party,
-            serviceNameById,
-            shippingAddress
-        ];
+        // ✅ forward serviceNameById to the PDF generators
+        let pdfBlob: Blob;
 
-        // Use a single switch to handle all templates cleanly
-        switch (selectedTemplate) {
-          // --- REACT-PDF TEMPLATES (Return Blob directly, need bank) ---
-          case "template8":
-          case "template20":
-          case "template21": {
-            // Map the template key to the correct generator function
-            const generator: ReactPdfGenerator = {
-              "template8": generatePdfForTemplate8,
-              "template20": generatePdfForTemplate20,
-              "template21": generatePdfForTemplate21,
-            }[selectedTemplate] as ReactPdfGenerator;
+        // Extract shipping address from transaction
+      let shippingAddress = null;
 
-            pdfBlob = await generator(
-                ...baseArgs,
-                bank // Additional argument for React-PDF templates
+if (transaction?.shippingAddress) {
+  const addr = transaction.shippingAddress as any;
+  if (addr instanceof Map || addr?.size > 0) {
+    // it's a Map of services, not an address
+    shippingAddress = null;
+  } else if (typeof addr === "object" && (addr.address || addr.city || addr.state)) {
+    // it's a real address object
+    shippingAddress = addr;
+  }
+}
+
+        if (
+
+          selectedTemplate === "template1" ||
+          selectedTemplate === "template8" ||
+          selectedTemplate === "templateA5" ||
+          selectedTemplate === "template18"  ||
+          selectedTemplate === "template20"  ||
+          selectedTemplate === "template21"  ||
+          selectedTemplate === "template12" ||
+           selectedTemplate === "templateA5_2" ||
+          selectedTemplate === "templateA5_3"||
+          selectedTemplate === "templateA5_4"||
+          selectedTemplate === "template-t3"
+        ) {
+          // Template 8 and Template A5 use react-pdf and return Blob directly
+          switch (selectedTemplate) {
+             case "template1":
+              pdfBlob = await generatePdfForTemplate1(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
+            case "template8":
+              pdfBlob = await generatePdfForTemplate8(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
+            case "template12":
+              pdfBlob = await generatePdfForTemplate12(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              );
+              break;
+            case "templateA5":
+              pdfBlob = await generatePdfForTemplateA5(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+
+              case "template18":
+                pdfBlob = await generatePdfForTemplate18(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank,
+                  
+                  
+                );
+                break;
+                case "template20":
+                pdfBlob = await generatePdfForTemplate20(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank,
+                );
+                break;
+                case "template21":
+                pdfBlob = await generatePdfForTemplate21(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank,
+                );
+                break;
+              case "templateA5_2":
+              pdfBlob = await generatePdfForTemplateA5_2(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+             case "templateA5_3":
+              pdfBlob = await generatePdfForTemplateA5_3(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+              case "templateA5_4":
+              pdfBlob = await generatePdfForTemplateA5_4(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank,
+                client
+              );
+              break;
+               case "template-t3":
+              pdfBlob = await generatePdfForTemplatet3(
+                transaction,
+                company,
+                party,
+                shippingAddress,
+                bank,
+              );
+              break;
+
+          }
+        } else {
+          // Other templates use jsPDF
+          let docPromise: Promise<jsPDF>;
+
+          switch (selectedTemplate) {
+          
+            case "template2":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate2(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+            case "template3":
+              docPromise = generatePdfForTemplate3(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress
+              );
+              break;
+            case "template4":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate4(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+            case "template5":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate5(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+            case "template6":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate6(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+            case "template7":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate7(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress
+                )
+              );
+              break;
+          case "template11":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate11(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
+
+          case "template16":
+            docPromise = Promise.resolve(
+              generatePdfForTemplate16(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress,
+                bank
+              )
             );
             break;
+               case "template17":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate17(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
+                
+            case "template19":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate17(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
+               case "template19":
+              docPromise = Promise.resolve(
+                generatePdfForTemplate19(
+                  transaction,
+                  company,
+                  party,
+                  serviceNameById,
+                  shippingAddress,
+                  bank
+                )
+              );
+              break;
+            default:
+              docPromise = generatePdfForTemplate3(
+                transaction,
+                company,
+                party,
+                serviceNameById,
+                shippingAddress
+              );
           }
 
-          // --- JSPDF TEMPLATES (Return jsPDF document) ---
-          case "template1":
-          case "template2":
-          case "template3":
-          case "template4":
-          case "template5":
-          case "template6":
-          case "template7":
-          case "template16":
-          case "template17":
-          default: {
-            // Map the template key to the correct generator function
-            const generator: JsPdfGenerator = ({
-                "template1": generatePdfForTemplate1,
-                "template2": generatePdfForTemplate2,
-                "template3": generatePdfForTemplate3,
-                "template4": generatePdfForTemplate4,
-                "template5": generatePdfForTemplate5,
-                "template6": generatePdfForTemplate6,
-                "template7": generatePdfForTemplate7,
-                "template16": generatePdfForTemplate16,
-                "template17": generatePdfForTemplate17,
-            }[selectedTemplate] as JsPdfGenerator) || generatePdfForTemplate3; 
-            
-            // Execute the generator using spread syntax
-            const doc = await Promise.resolve(generator(...baseArgs));
-            
-            pdfBlob = doc.output("blob");
-            break;
-          }
+          const doc = await docPromise;
+          pdfBlob = doc.output("blob");
         }
-
-        if (pdfBlob) {
-          objectUrl = URL.createObjectURL(pdfBlob);
-          setPdfUrl(objectUrl);
-          setPdfBlob(pdfBlob);
-        } else {
-            throw new Error("PDF Blob was not generated.");
-        }
+        objectUrl = URL.createObjectURL(pdfBlob);
+        setPdfUrl(objectUrl);
+        setPdfBlob(pdfBlob);
       } catch (err) {
-        console.error("PDF Generation Error:", err);
+        console.error(err);
         setPdfUrl(null);
-        setPdfBlob(null);
       } finally {
         setIsLoading(false);
       }
@@ -282,33 +492,6 @@ export function InvoicePreview({
     };
   }, [selectedTemplate, transaction, company, party, serviceNameById, bank, client]);
 
-  // Fetch bank details
-  React.useEffect(() => {
-    // console.log('transaction.bank:', transaction?.bank);
-    if (transaction?.bank) {
-      if (typeof transaction.bank === 'object' && (transaction.bank as any).bankName) {
-        // Already populated Bank object
-        setBank(transaction.bank);
-      } else {
-        // Need to fetch
-        const bankId = typeof transaction.bank === 'string' ? transaction.bank : (transaction.bank as any)?.$oid || (transaction.bank as any)?._id;
-        // console.log('bankId:', bankId);
-        if (bankId && baseURL) {
-          fetch(`${baseURL}/api/bank-details/${bankId}`)
-            .then(res => res.json())
-            .then(data => {
-              // console.log('fetched bank:', data);
-              setBank(data);
-            })
-            .catch(err => console.error('Failed to fetch bank:', err));
-        } else {
-            setBank(null);
-        }
-      }
-    } else {
-      setBank(null);
-    }
-  }, [transaction?.bank, baseURL]);
 
 
   const handleDownload = () => {
@@ -322,6 +505,7 @@ export function InvoicePreview({
     }
   };
 
+  // add a small adapter so types match Select's signature
   const handleTemplateChange = React.useCallback((v: string) => {
     setSelectedTemplate(v as TemplateKey);
   }, []);
@@ -391,12 +575,6 @@ export function InvoicePreview({
               <SelectItem value="template4">Minimal</SelectItem>
               <SelectItem value="template5">Refined</SelectItem>
               <SelectItem value="template6">Standard</SelectItem>
-              <SelectItem value="template7">Prestige</SelectItem>
-              <SelectItem value="template8">Template 8 (React)</SelectItem>
-              <SelectItem value="template16">new</SelectItem>
-              <SelectItem value="template17">new2</SelectItem>
-              <SelectItem value="template20">Template20 (React)</SelectItem>
-              <SelectItem value="template21">Template21 (React)</SelectItem>
               <SelectItem value="template7">Prestige</SelectItem> */}
               {/* priya  */}
               <SelectItem value="template8">Template 2</SelectItem>
@@ -406,6 +584,8 @@ export function InvoicePreview({
                 <SelectItem value="template16">Template 5</SelectItem>
                 <SelectItem value="template17">Template 6</SelectItem>
                 <SelectItem value="template19">Template 7</SelectItem>
+                 <SelectItem value="template20">Template 8</SelectItem>
+                <SelectItem value="template21">Template 9</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
               <SelectItem value="templateA5_2">Template A5-2</SelectItem>
               <SelectItem value="templateA5_3">Template A5-3</SelectItem>
@@ -418,6 +598,7 @@ export function InvoicePreview({
             </SelectContent>
           </Select>
         </div>
+        {/* Edit button removed - now controlled by parent component */}
         <Button onClick={handleDownload} disabled={isLoading || !pdfUrl}>
           <Download className="mr-2 h-4 w-4" />
           Download PDF
