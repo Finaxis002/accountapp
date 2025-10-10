@@ -438,18 +438,18 @@ if (transaction?.shippingAddress) {
               );
               break;
                 
-            case "template19":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate17(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress,
-                  bank
-                )
-              );
-              break;
+            // case "template19":
+            //   docPromise = Promise.resolve(
+            //     generatePdfForTemplate17(
+            //       transaction,
+            //       company,
+            //       party,
+            //       serviceNameById,
+            //       shippingAddress,
+            //       bank
+            //     )
+            //   );
+            //   break;
                case "template19":
               docPromise = Promise.resolve(
                 generatePdfForTemplate19(
