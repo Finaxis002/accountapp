@@ -9,18 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, FileText, Loader2, Edit } from "lucide-react";
+import { Download, FileText, Loader2 } from "lucide-react";
 import type { Company, Party, Transaction } from "@/lib/types";
 import { DialogFooter } from "../ui/dialog";
-// import {
-//   generatePdfForTemplate1,
-//   generatePdfForTemplate2,
-//   generatePdfForTemplate3,
-//   generatePdfForTemplate4,
-//   generatePdfForTemplate5,
-//   generatePdfForTemplate6,
-//   generatePdfForTemplate7,
-// } from "@/lib/pdf-templates";
+
+// JS-PDF TEMPLATES (return jsPDF doc)
 import { generatePdfForTemplate1 } from "@/lib/pdf-template1";
 import { generatePdfForTemplate2 } from "@/lib/pdf-template2";
 import { generatePdfForTemplate3 } from "@/lib/pdf-template3";
@@ -28,10 +21,14 @@ import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
 import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
-
-import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
 import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
 import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
+
+// REACT-PDF TEMPLATES (return Blob directly)
+import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplate20 } from "@/lib/pdf-template20";
+import { generatePdfForTemplate21 } from "@/lib/pdf-template21";
+
 import jsPDF from "jspdf";
 import { EnhancedInvoicePreview } from "./enhanced-invoice-preview";
 
@@ -45,8 +42,9 @@ type TemplateKey =
   | "template7"
   | "template8"
   | "template16"
-  | "template17";
-
+  | "template17"
+  | "template20"
+  | "template21";
 
 interface InvoicePreviewProps {
   transaction: Transaction | null;
@@ -57,6 +55,22 @@ interface InvoicePreviewProps {
   onSave?: (updatedTransaction: Transaction) => void;
   onCancel?: () => void;
 }
+
+// 🐛 यहाँ 'shippingAddress' जोड़ा गया था।
+type PdfGeneratorBaseArgs = [
+  Transaction | null,
+  Company | null,
+  Party | null,
+  Map<string, string> | undefined,
+  any | null // shippingAddress
+];
+
+// ✅ CORRECTED: JsPdfGenerator type definition
+type JsPdfGenerator = (...args: PdfGeneratorBaseArgs) => jsPDF | Promise<jsPDF>;
+
+// ✅ CORRECTED: ReactPdfGenerator type definition (needs bank in addition to base args)
+type ReactPdfGenerator = (...args: [...PdfGeneratorBaseArgs, any]) => Promise<Blob>;
+
 
 export function InvoicePreview({
   transaction,
@@ -73,7 +87,6 @@ export function InvoicePreview({
 
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  // Use the editMode prop instead of internal state
   const [pdfBlob, setPdfBlob] = React.useState<Blob | null>(null);
   const [bank, setBank] = React.useState<any>(null);
 
@@ -87,148 +100,86 @@ export function InvoicePreview({
         return;
       }
       setIsLoading(true);
-      try {
-        // ✅ forward serviceNameById to the PDF generators
-        let pdfBlob: Blob;
 
-        // Extract shipping address from transaction
+      let pdfBlob: Blob | null = null; 
+
+      try {
         const shippingAddress = transaction?.shippingAddress && typeof transaction.shippingAddress === 'object'
           ? transaction.shippingAddress as any
           : null;
-
-        if (selectedTemplate === "template8") {
-          
-          // Template 8 uses react-pdf and returns Blob directly
-          pdfBlob = await generatePdfForTemplate8(
+        
+        // Base arguments array for all generators
+        const baseArgs: PdfGeneratorBaseArgs = [
             transaction,
             company,
             party,
             serviceNameById,
-            shippingAddress,
-            bank
-          );
-        } else {
-          // Other templates use jsPDF
-          let docPromise: Promise<jsPDF>;
+            shippingAddress
+        ];
 
-          switch (selectedTemplate) {
-            case "template1":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate1(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
-            case "template2":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate2(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
-            case "template3":
-              docPromise = generatePdfForTemplate3(
-                transaction,
-                company,
-                party,
-                serviceNameById,
-                shippingAddress
-              );
-              break;
-            case "template4":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate4(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
-            case "template5":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate5(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
-            case "template6":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate6(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
-            case "template7":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate7(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress
-                )
-              );
-              break;
-        
+        // Use a single switch to handle all templates cleanly
+        switch (selectedTemplate) {
+          // --- REACT-PDF TEMPLATES (Return Blob directly, need bank) ---
+          case "template8":
+          case "template20":
+          case "template21": {
+            // Map the template key to the correct generator function
+            const generator: ReactPdfGenerator = {
+              "template8": generatePdfForTemplate8,
+              "template20": generatePdfForTemplate20,
+              "template21": generatePdfForTemplate21,
+            }[selectedTemplate] as ReactPdfGenerator;
+
+            pdfBlob = await generator(
+                ...baseArgs,
+                bank // Additional argument for React-PDF templates
+            );
+            break;
+          }
+
+          // --- JSPDF TEMPLATES (Return jsPDF document) ---
+          case "template1":
+          case "template2":
+          case "template3":
+          case "template4":
+          case "template5":
+          case "template6":
+          case "template7":
           case "template16":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate16(
-                transaction,
-                company,
-                party,
-                serviceNameById,
-                shippingAddress
-              )
-            );
+          case "template17":
+          default: {
+            // Map the template key to the correct generator function
+            const generator: JsPdfGenerator = ({
+                "template1": generatePdfForTemplate1,
+                "template2": generatePdfForTemplate2,
+                "template3": generatePdfForTemplate3,
+                "template4": generatePdfForTemplate4,
+                "template5": generatePdfForTemplate5,
+                "template6": generatePdfForTemplate6,
+                "template7": generatePdfForTemplate7,
+                "template16": generatePdfForTemplate16,
+                "template17": generatePdfForTemplate17,
+            }[selectedTemplate] as JsPdfGenerator) || generatePdfForTemplate3; 
+            
+            // Execute the generator using spread syntax
+            const doc = await Promise.resolve(generator(...baseArgs));
+            
+            pdfBlob = doc.output("blob");
             break;
-            case "template17":
-            docPromise = Promise.resolve(
-              generatePdfForTemplate17(
-                transaction,
-                company,
-                party,
-                serviceNameById,
-                shippingAddress
-              )
-            );
-            break;
-          default:
-            docPromise = generatePdfForTemplate3(
-              transaction,
-              company,
-              party,
-              serviceNameById,
-              shippingAddress
-            );
+          }
         }
 
-          const doc = await docPromise;
-          pdfBlob = doc.output("blob");
+        if (pdfBlob) {
+          objectUrl = URL.createObjectURL(pdfBlob);
+          setPdfUrl(objectUrl);
+          setPdfBlob(pdfBlob);
+        } else {
+            throw new Error("PDF Blob was not generated.");
         }
-        objectUrl = URL.createObjectURL(pdfBlob);
-        setPdfUrl(objectUrl);
-        setPdfBlob(pdfBlob);
       } catch (err) {
-        console.error(err);
+        console.error("PDF Generation Error:", err);
         setPdfUrl(null);
+        setPdfBlob(null);
       } finally {
         setIsLoading(false);
       }
@@ -242,32 +193,31 @@ export function InvoicePreview({
 
   // Fetch bank details
   React.useEffect(() => {
-    console.log('transaction.bank:', transaction?.bank);
+    // console.log('transaction.bank:', transaction?.bank);
     if (transaction?.bank) {
-      if (typeof transaction.bank === 'object' && transaction.bank.bankName) {
+      if (typeof transaction.bank === 'object' && (transaction.bank as any).bankName) {
         // Already populated Bank object
-        console.log('bank already populated:', transaction.bank);
         setBank(transaction.bank);
       } else {
         // Need to fetch
         const bankId = typeof transaction.bank === 'string' ? transaction.bank : (transaction.bank as any)?.$oid || (transaction.bank as any)?._id;
-        console.log('bankId:', bankId);
-        if (bankId) {
+        // console.log('bankId:', bankId);
+        if (bankId && baseURL) {
           fetch(`${baseURL}/api/bank-details/${bankId}`)
             .then(res => res.json())
             .then(data => {
-              console.log('fetched bank:', data);
+              // console.log('fetched bank:', data);
               setBank(data);
             })
             .catch(err => console.error('Failed to fetch bank:', err));
+        } else {
+            setBank(null);
         }
       }
     } else {
       setBank(null);
     }
-  }, [transaction?.bank]);
-
-    console.log("bank details:", bank);
+  }, [transaction?.bank, baseURL]);
 
 
   const handleDownload = () => {
@@ -281,14 +231,13 @@ export function InvoicePreview({
     }
   };
 
-  // add a small adapter so types match Select's signature
   const handleTemplateChange = React.useCallback((v: string) => {
     setSelectedTemplate(v as TemplateKey);
   }, []);
 
   // If in edit mode, render the enhanced editor
   if (editMode) {
-    console.log('🎨 Edit mode active, PDF blob available:', !!pdfBlob, 'Loading:', isLoading);
+    // console.log('🎨 Edit mode active, PDF blob available:', !!pdfBlob, 'Loading:', isLoading);
     return (
       <div className="max-h-[80vh] overflow-auto"><EnhancedInvoicePreview
         transaction={transaction}
@@ -346,13 +295,14 @@ export function InvoicePreview({
               <SelectItem value="template5">Refined</SelectItem>
               <SelectItem value="template6">Standard</SelectItem>
               <SelectItem value="template7">Prestige</SelectItem>
-              <SelectItem value="template8">Template 8</SelectItem>
+              <SelectItem value="template8">Template 8 (React)</SelectItem>
               <SelectItem value="template16">new</SelectItem>
               <SelectItem value="template17">new2</SelectItem>
+              <SelectItem value="template20">Template20 (React)</SelectItem>
+              <SelectItem value="template21">Template21 (React)</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        {/* Edit button removed - now controlled by parent component */}
         <Button onClick={handleDownload} disabled={isLoading || !pdfUrl}>
           <Download className="mr-2 h-4 w-4" />
           Download PDF
