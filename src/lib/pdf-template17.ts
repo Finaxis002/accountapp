@@ -417,7 +417,7 @@ export const generatePdfForTemplate17 = async (
             address: company?.addressState || "Company Address Missing", // Will be capitalized in drawHeaderContent
             gstin: companyGSTIN || "N/A",
             pan: company?.panNumber || "N/A", 
-            state: company?.City || "N/A", // Will be capitalized in drawHeaderContent
+            state: company?.addressState || "N/A", // Will be capitalized in drawHeaderContent
             phone: company?.mobileNumber || company?.Telephone || "N/A",
             email: company?.email || company?.emailId || "N/A", 
         },
@@ -484,8 +484,8 @@ export const generatePdfForTemplate17 = async (
     // ⭐ Calculate initial header height for autotable margin
     
     // Draw on Page 1 to establish the layout and determine the repeating height
-    drawBorderFrame(doc, M); 
-    const initialHeaderBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
+    drawBorderFrame(doc, M);
+    const initialHeaderBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate, transaction, isGSTApplicable, logoUrl);
     // Calculate the start Y for the buyer/consignee block after the initial header
     let initialBuyerBlockStart = initialHeaderBottomY;
     // Get the Y position after the first buyer block draw
@@ -499,12 +499,12 @@ export const generatePdfForTemplate17 = async (
     // ========================================================
     // 1. Draw Company/Metadata block and capture header bottom for repeating header
     let headerBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate, transaction, isGSTApplicable, logoUrl);
-    let cursorY = headerBottomY;
-
+    // let cursorY = headerBottomY;
+    let cursorY = initialBuyerBlockBottomY;
     // 2. Draw Buyer/Consignee block and get starting Y for the table
     cursorY = drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, cursorY);
 
-    let cursorY = initialBuyerBlockBottomY;
+
     
     const totalWidth = getW() - M * 2;
     const fixedWidths = 380; 
@@ -635,7 +635,7 @@ export const generatePdfForTemplate17 = async (
         didDrawPage: (data) => {
             // ⭐ Draw frame and the static header on every page
             drawBorderFrame(doc, M);
-            const headerBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
+            const headerBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate, transaction, isGSTApplicable, logoUrl);
             // ⭐ Draw Buyer/Consignee block on every page, starting right after the header
             drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, headerBottomY);
             
@@ -665,21 +665,32 @@ export const generatePdfForTemplate17 = async (
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.text("Total", M + 5, afterTableY);
-    
-    const totalWidthPost = getW() - M * 2;
-    const fixedWidthsPost = 380; 
-    const itemColWidthPost = totalWidthPost - fixedWidthsPost; 
-    const currentX = M;
-    const colPositions = [
-        currentX + 30 + itemColWidthPost + 40, 
-        currentX + 30 + itemColWidthPost + 40 + 30 + 30 + 40, 
-        currentX + 30 + itemColWidthPost + 40 + 30 + 30 + 40 + 45, 
-        getW() - M - 45, 
-    ];
 
-    doc.text(totalQuantity.toFixed(2), colPositions[1] - 110, afterTableY, { align: 'right' }); 
-    doc.text(totalTaxableAmount, colPositions[2] - 30, afterTableY, { align: 'right' }); 
-    doc.text(finalTotalAmount, getW() - M - 8, afterTableY, { align: 'right' }); 
+    const totalWidthPost = getW() - M * 2;
+    const fixedWidthsPost = 380;
+    const itemColWidthPost = totalWidthPost - fixedWidthsPost;
+
+    let colWidths: number[];
+    if (showCGSTSGST) {
+        colWidths = [28, itemColWidthPost - 40, 38, 32, 32, 42, 52, 26, 42, 26, 42, 52];
+    } else if (showIGST) {
+        colWidths = [30, itemColWidthPost, 40, 34, 34, 45, 56, 30, 52, 58];
+    } else {
+        colWidths = [30, itemColWidthPost, 40, 34, 34, 45, 56, 58];
+    }
+
+    const colPositions: number[] = [];
+    let currentX = M;
+    colWidths.forEach((w, i) => {
+        if (i === 3) colPositions.push(currentX + w); // qty
+        if (i === 6) colPositions.push(currentX + w); // taxable
+        if (i === (showCGSTSGST ? 11 : showIGST ? 9 : 7)) colPositions.push(currentX + w); // total
+        currentX += w;
+    });
+
+    doc.text(totalQuantity.toFixed(2), colPositions[0], afterTableY, { align: 'right' });
+    doc.text(totalTaxableAmount, colPositions[1], afterTableY, { align: 'right' });
+    doc.text(finalTotalAmount, colPositions[2], afterTableY, { align: 'right' });
     
     afterTableY += 13; 
     // ---------------- END MANUAL TOTAL ROW DRAWING ----------------
@@ -704,7 +715,7 @@ export const generatePdfForTemplate17 = async (
             
             // ⭐ Manually draw the frame, header, and buyer/consignee block on the new page.
             drawBorderFrame(doc, M);
-            const newPageHeaderBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate);
+            const newPageHeaderBottomY = drawHeaderContent(doc, M, COL_W, invoiceData, getW, fmtDate, transaction, isGSTApplicable, logoUrl);
             drawBuyerConsigneeBlock(doc, M, COL_W, invoiceData, getW, newPageHeaderBottomY);
             
             // Print Page Number on the new page's footer
