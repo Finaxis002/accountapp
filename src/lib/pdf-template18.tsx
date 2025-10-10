@@ -62,7 +62,14 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
     const mmToPt = (mm: number) => (mm * 72) / 25.4;
     const THERMAL_WIDTH_MM = 100; // common 80mm paper; change to 58 if needed
     const thermalPageWidth = mmToPt(THERMAL_WIDTH_MM);
-    
+    const estimateThermalHeight = (itemCount: number) => {
+        // Rough estimate: header/meta/billed-to ≈ 180pt, per item ≈ 34pt, summary/QR ≈ 240pt
+        const headerHeight = 180;
+        const perItemHeight = 34;
+        const footerHeight = 240;
+        const minHeight = 400; // ensure non-zero height for very small invoices
+        return Math.max(minHeight, headerHeight + itemCount * perItemHeight + footerHeight);
+    };
     const {
         totalTaxable,
         totalAmount,
@@ -78,18 +85,16 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
         showIGST,
         showCGSTSGST,
         showNoTax,
-    } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+    } = prepareTemplate8Data(transaction, company, party, shippingAddress); // --- START LOGIC COPY FROM TEMPLATE 8 (for item presentation/pagination) ---
 
     // For thermal receipts, render all items on a single page so height grows with content
     const itemsPerPage = itemsWithGST.length || 12;
     const pages = [];
     for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
         pages.push(itemsWithGST.slice(i, i + itemsPerPage));
-    }
-
-    // Simplified items breakdown structure for visual appearance, matching the image.
+    } // Simplified items breakdown structure for visual appearance, matching the image. // Group by item name/HSN to show the essential lines.
     const itemsBreakdown = itemsWithGST.map((item) => ({
-        name: capitalizeWords(item.name),
+        name: capitalizeWords(item.name), // ⭐ Applied here
         qty: item.quantity || 0,
         unit: item.unit || "BDL",
         rate: item.pricePerUnit || 0,
@@ -98,60 +103,77 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
         taxableValue: item.taxableValue,
         total: item.total,
         tax: item.igst || item.cgst + item.sgst,
-    }));
-
-    // Use the total tax amount based on GST type
+    })); // Use the total tax amount based on GST type
     const totalTaxAmount = totalIGST || totalCGST + totalSGST;
-    const taxLabel = getTaxLabel(showIGST, totalCGST, totalSGST);
+    const taxLabel = getTaxLabel(showIGST, totalCGST, totalSGST); // --- END LOGIC COPY FROM TEMPLATE 8 ---
 
     return (
         <Document>
+            {" "}
             {pages.map((pageItems, pageIndex) => {
                 const isLastPage = pageIndex === pages.length - 1;
-                const estimatedHeight = pageItems.length * 34 + 420; // Rough estimate for thermal height
-                
+                const dynamicHeight = estimateThermalHeight(pageItems.length);
                 return (
-                    <Page 
-                        key={pageIndex} 
-                        size={[thermalPageWidth, estimatedHeight]} 
-                        style={template18Styles.page}
+                    <Page
+                        key={pageIndex}
+                        size={{ width: thermalPageWidth, height: dynamicHeight }}
+                        style={[template18Styles.page, { paddingHorizontal: 8, paddingVertical: 8 }]}
                     >
+                        {" "}
                         <View style={template18Styles.pageContent}>
-                            {/* Company Header - Centered */}
+                            {/* Company Header - Centered */}{" "}
                             <View style={template18Styles.companyHeaderSection}>
+                                {" "}
                                 <Text style={template18Styles.companyNameTop}>
+                                    {" "}
+                                    
                                     {capitalizeWords(company?.businessName ||
                                         company?.companyName ||
                                         "Global Securities")}
+                                    {" "}
                                 </Text>
+                                {" "}
                                 <Text style={template18Styles.address}>
+                                    {" "}
+                                   
                                     {capitalizeWords(getBillingAddress(company as unknown as Party) ||
                                         "Address Line 1")}
+                                    {" "}
                                 </Text>
-                                {company?.mobileNumber && (
+                                {" "}
+
+                                    {company?.mobileNumber && (
                                     <Text style={template18Styles.gstin}>
-                                        Phone no: {company.mobileNumber}
+                                        Phone no: {company.mobileNumber}{" "}
                                     </Text>
+                                    
                                 )}
                                 {company?.gstin && (
                                     <Text style={template18Styles.gstin}>
-                                        GSTIN: {company.gstin}
+                                        GSTIN: {company.gstin}{" "}
                                     </Text>
+                                    
                                 )}
+                            
+                                {" "}
                             </View>
-
                             {/* TAX INVOICE Header (Centered Text) */}
+                            {" "}
                             <View style={template18Styles.invoiceTitleContainer}>
+                                {" "}
                                 <Text style={template18Styles.invoiceTitle}>
                                     ========================TAX INVOICE=======================
                                 </Text>
+                                {" "}
                             </View>
-
-                            {/* INVOICE # and DATE (Spread Left/Right) */}
+                            {" "}
+                            {/* INVOICE # and DATE (Spread Left/Right) */}{" "}
                             <View style={template18Styles.invoiceMetaRow}>
+                                {" "}
                                 <Text style={template18Styles.invoiceMetaTextLeft}>
                                     INVOICE #: {transaction.invoiceNumber || "N/A"}
                                 </Text>
+                                {" "}
                                 <Text style={template18Styles.invoiceMetaTextRight}>
                                     DATE:{" "}
                                     {new Date(transaction.date)
@@ -163,33 +185,42 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                         .toUpperCase()
                                         .replace(/\./g, "-")}
                                 </Text>
+                                {" "}
                             </View>
-
-                            {/* Billed To Section */}
+                            {/*               <Text style={template18Styles.separatorBold}></Text> */}
+                            {/* Billed To Section */}{" "}
                             <View style={template18Styles.billedToBox}>
+                                {" "}
                                 <Text style={template18Styles.billedToHeader}>
-                                    ============================BILLED TO============================
+                                ============================BILLED TO============================
                                 </Text>
+                                {" "}
                                 <Text style={template18Styles.billedToText}>
+                                    
                                     Name : {capitalizeWords(party?.name || "Jay Enterprises")}
                                 </Text>
+                                {" "}
                                 {party?.gstin && (
                                     <Text style={template18Styles.billedToText}>
                                         GSTIN : {party.gstin}
                                     </Text>
                                 )}
+                                {" "}
                                 {party?.pan && (
                                     <Text style={template18Styles.billedToText}>
                                         PAN : {party.pan}
                                     </Text>
                                 )}
+                                {" "}
                                 <Text style={template18Styles.billedToHeader}>
                                     =================================================================
                                 </Text>
+                                {" "}
                             </View>
-
-                            {/* Items Table Header */}
+                            {/*               <Text style={template18Styles.separatorBold}></Text> */}
+                            {/* Items Table Header */}{" "}
                             <View style={template18Styles.itemsTableHeaderSimple}>
+                                {" "}
                                 <Text
                                     style={[
                                         template18Styles.itemsHeaderColumn,
@@ -198,6 +229,9 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                 >
                                     Items x Qty
                                 </Text>
+                                {" "}
+                                {/* ORDER REVERTED: Taxable + GST is now second */}
+                                {" "}
                                 <Text
                                     style={[
                                         template18Styles.itemsHeaderColumn,
@@ -206,6 +240,8 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                 >
                                     Taxable + GST
                                 </Text>
+                                {/* ORDER REVERTED: Total is now third */}
+                                {" "}
                                 <Text
                                     style={[
                                         template18Styles.itemsHeaderColumn,
@@ -214,62 +250,71 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                 >
                                     Total
                                 </Text>
+                                
+                                {" "}
                             </View>
-                            
-                            <Text>
-                                ==========================================================
-                            </Text>
-
-                            {/* Items Table Body */}
+                            <Text >
+                                    ==========================================================
+                                </Text>
+                            {/*               <Text style={template18Styles.separatorDouble}></Text> */}
+                            {/* Items Table Body */}{" "}
                             <View style={template18Styles.itemsTableSimple}>
+                                {" "}
                                 {pageItems.map((item, index) => (
                                     <View
                                         key={index}
                                         style={template18Styles.itemsTableRowSimple}
                                     >
+                                        {" "}
                                         {/* Item Details (Name, Qty, HSN, Rate) - Position 1 (50%) */}
+                                        {" "}
                                         <View
                                             style={[
                                                 template18Styles.itemDetailsCell,
                                                 { width: "50%" },
                                             ]}
                                         >
+                                            {" "}
                                             <Text style={template18Styles.itemNameText}>
-                                                {item.name}
+                                                {/* ⭐ Used capitalized name from itemsBreakdown */}
+                                                {item.name} 
                                             </Text>
+                                            {" "}
                                             <Text style={template18Styles.itemSubText}>
-                                                {item.quantity || 0} {item.unit || "BDL"}
+                                                {item.quantity || 0} {item.unit} BDL
                                             </Text>
+                                            {" "}
                                             <Text style={template18Styles.itemSubText}>
                                                 HSN: {item.code || "-"}
                                             </Text>
+                                            {" "}
                                             <Text style={template18Styles.itemSubText}>
                                                 Rate: {formatCurrency(item.pricePerUnit || 0)}
                                             </Text>
+                                            {" "}
                                         </View>
-
-                                        {/* Taxable + GST - Position 2 */}
+                                        {/* Taxable + GST - Position 2 (25%) */}
                                         <View
                                             style={[
                                                 template18Styles.taxablePlusGSTCell,
-                                                { width: "25%" },
+                                                { width: "110%" },
                                             ]}
                                         >
                                             <Text style={template18Styles.taxableValueText}>
                                                 {formatCurrency(item.taxableValue)}
-                                                + {item.gstRate?.toFixed(2) || "0.00"} %
+                                                + {item.gstRate.toFixed(2)} %
                                             </Text>
                                             
                                             {/* GST Breakdown per item */}
                                             {showIGST ? (
                                                 <Text style={template18Styles.gstRateText}>
                                                     IGST @{" "}
-                                                    {(item.gstRate ?? item.gstRate)?.toFixed(2) || "0.00"}
+                                                    {((item as any).igstRate ?? item.gstRate).toFixed(2)}
                                                     %:{" "}
                                                     {formatCurrency(
-                                                        item.igst ??
+                                                        (item as any).igst ??
                                                         (item.taxableValue *
-                                                            (item.gstRate ?? item.gstRate)) /
+                                                            ((item as any).igstRate ?? item.gstRate)) /
                                                         100
                                                     )}
                                                 </Text>
@@ -278,13 +323,13 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                                     <Text style={template18Styles.gstRateText}>
                                                         CGST @{" "}
                                                         {(
-                                                            (item.gstRate ?? item.gstRate / 2)
-                                                        )?.toFixed(2) || "0.00"}
+                                                            (item as any).cgstRate ?? item.gstRate / 2
+                                                        ).toFixed(2)}
                                                         %:{" "}
                                                         {formatCurrency(
-                                                            item.cgst ??
+                                                            (item as any).cgst ??
                                                             (item.taxableValue *
-                                                                (item.gstRate ??
+                                                                ((item as any).cgstRate ??
                                                                     item.gstRate / 2)) /
                                                             100
                                                         )}
@@ -292,13 +337,13 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                                     <Text style={template18Styles.gstRateText}>
                                                         SGST @{" "}
                                                         {(
-                                                            (item.gstRate ?? item.gstRate / 2)
-                                                        )?.toFixed(2) || "0.00"}
+                                                            (item as any).sgstRate ?? item.gstRate / 2
+                                                        ).toFixed(2)}
                                                         %:{" "}
                                                         {formatCurrency(
-                                                            item.sgst ??
+                                                            (item as any).sgst ??
                                                             (item.taxableValue *
-                                                                (item.gstRate ??
+                                                                ((item as any).sgstRate ??
                                                                     item.gstRate / 2)) /
                                                             100
                                                         )}
@@ -306,22 +351,24 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                                 </>
                                             ) : null}
                                         </View>
-
-                                        {/* Total - Position 3 */}
-                                        <View
+                                        {/* Total - Position 3  */}
+                                        {" "}
+                                        <Text
                                             style={[
                                                 template18Styles.totalCellSimple,
-                                                { width: "25%" },
+                                                { width: "70%" },
                                             ]}
                                         >
                                             <Text style={template18Styles.taxableValueTextrs}>
                                                 {formatCurrency(item.total)}
                                             </Text>
-                                        </View>
+                                            {" "}
+                                        </Text>
+                                        {" "}
                                     </View>
                                 ))}
+                                {" "}
                             </View>
-
                             {/* Summary Section (Only on last page) */}
                             {isLastPage && (
                                 <View style={template18Styles.summaryContainer}>
@@ -401,25 +448,34 @@ const Template18PDF: React.FC<Template18PDFProps> = ({
                                         </View>
                                         <Text style={template18Styles.separatorDouble}></Text>
                                     </View>
-
                                     {/* QR Code and UPI Text */}
+                                    {" "}
                                     <View style={template18Styles.qrCodeSection}>
                                         {/* Placeholder for QR Code */}
+                                        {" "}
                                         <View style={template18Styles.qrCodePlaceholder}>
+                                            {" "}
                                             <Text
                                                 style={template18Styles.qrCodePlaceholderText}
                                             ></Text>
+                                            {" "}
                                         </View>
+                                        {" "}
                                         <Text style={template18Styles.payUsingUpi}>
                                             Pay using UPI
                                         </Text>
+                                        {" "}
                                     </View>
+                                    {" "}
                                 </View>
                             )}
+                            {" "}
                         </View>
+                        {" "}
                     </Page>
                 );
             })}
+            {" "}
         </Document>
     );
 };
