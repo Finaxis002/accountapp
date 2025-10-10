@@ -411,7 +411,7 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
   const {
     totalTaxable,
     totalAmount,
-    items, 
+    items,
     totalItems,
     totalQty,
     totalCGST,
@@ -420,9 +420,13 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
     isGSTApplicable,
     showIGST,
     showCGSTSGST,
-    pages,
-    itemsPerPage,
   } = preparedData;
+
+  const itemsPerPage = 12; // Number of items per page
+  const pages: typeof items[] = [];
+  for (let i = 0; i < items.length; i += itemsPerPage) {
+    pages.push(items.slice(i, i + itemsPerPage));
+  }
 
   const typedItems: ItemWithCalculations[] = items || [];
 
@@ -626,131 +630,6 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
         ]}
       >
         {party?.name || "-"}
-      </Text>
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { width: "70%", fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        {getBillingAddress(party) || "-"}
-      </Text>
-
-      {/* GSTIN detail - Only show if GST is applicable and available */}
-      {isGSTApplicable && party?.gstin && (
-        <Text
-          style={[
-            template21Styles.addressText,
-            template21Styles.grayColor,
-            { fontSize: 10 }, // INCREASED SIZE
-          ]}
-        >
-          <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-            GSTIN:{" "}
-          </Text>
-          <Text>{party.gstin}</Text>
-        </Text>
-      )}
-
-      {/* PAN detail */}
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-          PAN:{" "}
-        </Text>
-        <Text>{party?.pan || "-"}</Text>
-      </Text>
-
-      {/* State detail */}
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-          State:{" "}
-        </Text>
-        <Text>{party?.state || "-"}</Text>
-      </Text>
-    </View>
-
-    {/* Shipping Address - Bottom Section (Shipped to) */}
-    <View>
-      <Text
-        style={[
-          template21Styles.sectionHeader,
-          template21Styles.grayColor,
-          { fontSize: 11 }, // INCREASED SIZE
-        ]}
-      >
-        Details of Consignee | Shipped to :
-      </Text>
-      <Text
-        style={[
-          template21Styles.companyName,
-          template21Styles.grayColor,
-          { fontSize: 14 }, // INCREASED SIZE
-        ]}
-      >
-        {shippingAddress?.label || party?.name || " "}
-      </Text>
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        {getShippingAddress(
-          shippingAddress,
-          getBillingAddress(party)
-        ) || "-"}
-      </Text>
-
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-          State:{" "}
-        </Text>
-        <Text>{shippingAddress?.state || "-"}</Text>
-      </Text>
-    </View>
-  </View>
-
-  {/* Left Side - Two Address Sections Stacked (Second Duplicated Section) */}
-  <View style={{ flex: 2, paddingRight: 10 }}>
-    {/* Customer Details - Top Section (Shipping address) */}
-    <View style={{ marginBottom: 15 }}>
-      <Text
-        style={[
-          template21Styles.grayColor,
-          template21Styles.sectionHeader,
-          { fontSize: 11 }, // INCREASED SIZE
-        ]}
-      >
-        Shipping address:
-      </Text>
-      <Text
-        style={[
-          template21Styles.companyName,
-          template21Styles.grayColor,
-          { fontSize: 14 }, // INCREASED SIZE
-        ]}
-      >
-        {shippingAddress?.label || party?.name || "-"}
       </Text>
       <Text
         style={[

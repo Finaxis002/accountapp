@@ -384,9 +384,13 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
     showIGST,
     showCGSTSGST,
     showNoTax,
-    pages,
-    itemsPerPage,
   } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+
+  const itemsPerPage = 12; // Number of items per page
+  const pages: typeof itemsWithGST[] = [];
+  for (let i = 0; i < itemsWithGST.length; i += itemsPerPage) {
+    pages.push(itemsWithGST.slice(i, i + itemsPerPage));
+  }
 
   const IGST_COL_WIDTHS = [30, 150, 50, 60, 40, 80, 40, 60, 80];
   const NON_GST_COL_WIDTHS = [30, 190, 70, 70, 50, 90, 90];
