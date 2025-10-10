@@ -438,18 +438,6 @@ if (transaction?.shippingAddress) {
               );
               break;
                 
-            case "template19":
-              docPromise = Promise.resolve(
-                generatePdfForTemplate17(
-                  transaction,
-                  company,
-                  party,
-                  serviceNameById,
-                  shippingAddress,
-                  bank
-                )
-              );
-              break;
                case "template19":
               docPromise = Promise.resolve(
                 generatePdfForTemplate19(
@@ -582,8 +570,9 @@ if (transaction?.shippingAddress) {
               <SelectItem value="template11">Template 3</SelectItem>
                <SelectItem value="template12">Template 4</SelectItem>
                 <SelectItem value="template16">Template 5</SelectItem>
-                <SelectItem value="template17">Template 6</SelectItem>
-                <SelectItem value="template19">Template 7</SelectItem>
+                 <SelectItem value="template19">Template 6</SelectItem>
+                  <SelectItem value="template17">Template 7</SelectItem>
+
                  <SelectItem value="template20">Template 8</SelectItem>
                 <SelectItem value="template21">Template 9</SelectItem>
               <SelectItem value="templateA5">Template A5</SelectItem>
