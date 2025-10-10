@@ -812,7 +812,7 @@ const UpdateNotification = () => {
                             handlePropagateToAllUsers(notification._id)
                           }
                           disabled={isPropagating}
-                          className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+                          className="border-border dark:border-border/60 dark:hover:bg-muted/80"
                         >
                           {isPropagating ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -828,7 +828,7 @@ const UpdateNotification = () => {
                             handlePropagateToAdminsOnly(notification._id)
                           }
                           disabled={isPropagating}
-                          className="border-border dark:border-border/60 hover:bg-muted/50 dark:hover:bg-muted/80"
+                          className="border-border dark:border-border/60 dark:hover:bg-muted/80"
                         >
                           {isPropagating ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
