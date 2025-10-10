@@ -1,5 +1,10 @@
-// template16.ts
-import type { Company, Party, Transaction, ShippingAddress, Bank } from "@/lib/types";
+import type {
+    Company,
+    Party,
+    Transaction,
+    ShippingAddress,
+    Bank,
+} from "@/lib/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -14,62 +19,98 @@ import {
     numberToWords,
     getStateCode,
 } from "./pdf-utils";
-import { capitalizeWords } from "./utils";
+import { capitalizeWords } from "./utils"; // ⭐ ADDED capitalizeWords IMPORT
 
 // FIX: Interfaces simplified to minimally include 'email' and core fields.
 // We use type assertions inside the function to handle dynamic/non-standard fields (like panNumber, stateCode).
-interface ExtendedCompany extends Company { email?: string; panNumber?: string; stateCode?: string; }
-interface ExtendedParty extends Party { email?: string; panNumber?: string; stateCode?: string; }
-interface ExtendedShippingAddress extends ShippingAddress { stateCode?: string; }
-
+interface ExtendedCompany extends Company {
+    email?: string;
+    panNumber?: string;
+    stateCode?: string;
+}
+interface ExtendedParty extends Party {
+    email?: string;
+    panNumber?: string;
+    stateCode?: string;
+}
+interface ExtendedShippingAddress extends ShippingAddress {
+    stateCode?: string;
+}
 
 interface BaseLineItem {
-    name: string; description: string; quantity: number; pricePerUnit: number;
-    amount: number; gstPercentage: number; lineTax: number; lineTotal: number;
+    name: string;
+    description: string;
+    quantity: number;
+    pricePerUnit: number;
+    amount: number;
+    gstPercentage: number;
+    lineTax: number;
+    lineTotal: number;
 }
-interface DynamicLineItem extends BaseLineItem { hsnSac?: string; unit?: string; }
+interface DynamicLineItem extends BaseLineItem {
+    hsnSac?: string;
+    unit?: string;
+}
 interface DynamicTransaction extends Transaction {
-    poNumber?: string; poDate?: string | Date | number; eWayBillNo?: string; notes?: string;
+    poNumber?: string;
+    poDate?: string | Date | number;
+    eWayBillNo?: string;
+    notes?: string;
 }
 
 // --- Constants & Placeholders (UI unchanged) ---
-const LOGO_DATA_URL = 'data:image/png;base64,...'; 
-const STAMP_DATA_URL = 'data:image/png;base64,...'; 
-const QR_CODE_DATA_URL = 'data:image/png;base64,...'; 
+const LOGO_DATA_URL = "data:image/png;base64,...";
+const STAMP_DATA_URL = "data:image/png;base64,...";
+const QR_CODE_DATA_URL = "data:image/png;base64,...";
 
-// *** REMOVED: IMAGE_DEFAULT_TERMS hardcoded constant ***
+// Hardcoded Terms for default use when transaction.notes is empty (NO LONGER USED AS FALLBACK)
+const IMAGE_DEFAULT_TERMS = `Subject to our Home Jurisdiction.
+Our Responsibility Ceases as soon as goods leaves our Premises.
+Goods once sold will not taken back.
+Delivery Ex-Premises.`;
 
-export const generatePdfForTemplate16 = async (
-    transaction: DynamicTransaction, 
-    company: ExtendedCompany | null | undefined, 
-    party: ExtendedParty | null | undefined, 
+export const generatePdfForTemplate19 = async (
+    transaction: DynamicTransaction,
+    company: ExtendedCompany | null | undefined,
+    party: ExtendedParty | null | undefined,
     serviceNameById?: Map<string, string>,
     shippingAddress?: ExtendedShippingAddress | null,
     bank?: Bank | null | undefined
 ): Promise<jsPDF> => {
+    console.log("bank details from template 16 :", bank);
 
-    console.log("bank details from template 16 :",bank)
-    
-    // --- START: Hardcoded Bank Details (MODIFIED to act as an N/A fallback) ---
+    // --- START: Bank Details N/A fallback (Modified from template 16) ---
     const getBankDetails = () => ({
         name: "Bank Details Not Available",
         branch: "N/A",
-        accNumber: "N/A", 
-        ifsc: "N/A", 
-        upiId: "N/A", 
+        accNumber: "N/A",
+        ifsc: "N/A",
+        upiId: "N/A",
     });
-    // --- END: Hardcoded Bank Details ---
-    
+    // --- END: Bank Details N/A fallback ---
+
     // ---------------- DYNAMIC HELPERS ----------------
     const _getGSTIN = (x?: any): string | null =>
-        x?.gstin ?? x?.gstIn ?? x?.gstNumber ?? x?.gst_no ?? x?.gst ?? x?.gstinNumber ?? x?.tax?.gstin ?? null;
+        x?.gstin ??
+        x?.gstIn ??
+        x?.gstNumber ??
+        x?.gst_no ??
+        x?.gst ??
+        x?.gstinNumber ??
+        x?.tax?.gstin ??
+        null;
 
     const money = (n: number) =>
-        Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        Number(n || 0).toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
 
     const fmtDate = (d?: string | number | Date | null) =>
-        d ? new Intl.DateTimeFormat("en-GB").format(new Date(d)).replace(/\//g, '-') : "N/A"; 
-    
+        d
+            ? new Intl.DateTimeFormat("en-GB").format(new Date(d)).replace(/\//g, "-")
+            : "N/A";
+
     // Use the actual numberToWords function from pdf-utils
     const convertNumberToWords = (n: number): string => {
         return numberToWords(n);
@@ -96,8 +137,9 @@ export const generatePdfForTemplate16 = async (
     const logoUrl = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
 
     // Convert itemsWithGST to the format expected by template16
-    const lines = itemsWithGST.map(item => ({
-        name: item.name,
+    const lines = itemsWithGST.map((item) => ({
+        // ⭐ Apply capitalizeWords
+        name: capitalizeWords(item.name),
         description: item.description || "",
         quantity: item.quantity || 0,
         pricePerUnit: item.pricePerUnit || 0,
@@ -105,9 +147,11 @@ export const generatePdfForTemplate16 = async (
         gstPercentage: item.gstRate,
         lineTax: item.cgst + item.sgst + item.igst,
         lineTotal: item.total,
-        hsnSac: item.code || 'N/A',
-        unit: item.unit || 'PCS',
-        formattedDescription: item.description ? item.description.split('\n').join(' / ') : '',
+        hsnSac: item.code || "N/A",
+        unit: item.unit || "PCS",
+        formattedDescription: item.description
+            ? item.description.split("\n").join(" / ")
+            : "",
     }));
 
     const subtotal = totalTaxable;
@@ -118,110 +162,125 @@ export const generatePdfForTemplate16 = async (
 
     const totalTaxableAmount = money(subtotal);
     const finalTotalAmount = money(invoiceTotal);
-    
+
     const shippingAddressSource = shippingAddress;
-    
-    // APPLY capitalizeWords HERE
+   
     const billingAddress = capitalizeWords(getBillingAddress(party));
-    const shippingAddressStr = capitalizeWords(getShippingAddress(shippingAddressSource, getBillingAddress(party))); 
     
+    const shippingAddressStr = capitalizeWords(getShippingAddress(
+        shippingAddressSource,
+        billingAddress
+    ));
+
     const companyGSTIN = _getGSTIN(company);
     const partyGSTIN = _getGSTIN(party);
 
-    // ----------------- FIX FOR FULL WIDTH TABLE -----------------
-    const getColWidths = () => {
-        const totalPageWidth = 595.28; // A4 width in pt
-        const M = 36; // Margin
-        const availableWidth = totalPageWidth - (M * 2); // 595.28 - 72 = 523.28
-
+    // ----------------- FIX FOR FULL WIDTH TABLE (COPIED FROM TEMPLATE 16) -----------------
+    const getColWidths = (availableWidth: number) => {
         // Base fixed column widths (Sr.No, HSN/SAC, Rate, Qty, Taxable Value, Total)
-        const fixedWidthSum = 292; // 32 + 50 + 50 + 30 + 70 + 60 = 292 pt
+        const fixedWidthSum = 292;
 
         if (showCGSTSGST) {
-            // CGST/SGST layout: 11 columns
-            const taxWidth = 180; // 35 + 55 + 35 + 55 = 180 pt
+            const taxWidth = 180;
             const nameColWidth = availableWidth - (fixedWidthSum + taxWidth);
             return [32, nameColWidth, 50, 50, 30, 70, 35, 55, 35, 55, 60];
         } else if (showIGST) {
-            // IGST layout: 9 columns
-            const taxWidth = 100; // 40 + 60 = 100 pt
+            const taxWidth = 100;
             const nameColWidth = availableWidth - (fixedWidthSum + taxWidth);
             return [32, nameColWidth, 50, 50, 30, 70, 40, 60, 60];
         } else {
-            // Non-GST layout: 7 columns
             const nameColWidth = availableWidth - fixedWidthSum;
             return [32, nameColWidth, 50, 50, 30, 70, 60];
         }
     };
     // ----------------- END FIX -----------------
 
-    const colWidths = getColWidths();
-
     // --- Dynamic Invoice Data Object ---
     const invoiceData = {
         invoiceNumber: invNo(transaction),
         date: fmtDate(transaction.date) || fmtDate(new Date()),
-        poNumber: transaction.poNumber || "N/A", 
+        poNumber: transaction.poNumber || "N/A",
         poDate: fmtDate(transaction.poDate) || "N/A",
         eWayNo: transaction.eWayBillNo || "N/A",
-        
-        placeOfSupply: party?.state ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})` : "N/A", 
-        
+       
+        placeOfSupply: party?.state
+            ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})`
+            : "N/A",
+
         company: {
-            
+           
             name: capitalizeWords(company?.businessName || "Your Company Name"),
+            
             address: capitalizeWords(company?.address || "Company Address Missing"),
             gstin: companyGSTIN || "N/A",
-            pan: company?.panNumber || "N/A", 
+            pan: company?.panNumber || "N/A",
             
-            state: company?.addressState  ? `${capitalizeWords(company?.addressState) } (${getStateCode(company?.addressState ) || "-"})` : "N/A", 
+            state: company?.addressState
+                ? `${capitalizeWords(company?.addressState)} (${
+                      getStateCode(company?.addressState) || "-"
+                  })`
+                : "N/A",
+            
             city: capitalizeWords(company?.City || "N/A"),
             phone: company?.mobileNumber || "N/A",
-            email: company?.email || company?.emailId || "N/A", 
+            email: company?.email || company?.emailId || "N/A", // ADDED EMAIL ACCESS
         },
         invoiceTo: {
-           
+            
             name: capitalizeWords(party?.name || "Client Name"),
             billingAddress: billingAddress,
             gstin: partyGSTIN || "N/A",
-            pan: party?.panNumber || "N/A", 
-            
-            state: party?.state ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})` : "N/A",
-            email: party?.email || "N/A", 
+            pan: party?.panNumber || "N/A",
+           
+            state: party?.state
+                ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})`
+                : "N/A",
+            email: party?.email || "N/A", // ADDED EMAIL ACCESS
         },
         shippingAddress: {
             
-            name: capitalizeWords((shippingAddressSource as any)?.name || party?.name || 'Client Name'),
+            name:
+                capitalizeWords((shippingAddressSource as any)?.name || party?.name || "Client Name"),
             address: shippingAddressStr,
             
-            state: (shippingAddressSource as any)?.state ? 
-                `${capitalizeWords((shippingAddressSource as any).state)} (${getStateCode((shippingAddressSource as any).state) || "-"})` : 
-                party?.state ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})` : 'N/A', 
-        }
+            state: (shippingAddressSource as any)?.state
+                ? `${capitalizeWords((shippingAddressSource as any).state)} (${
+                      getStateCode((shippingAddressSource as any).state) || "-"
+                  })`
+                : party?.state
+                ? `${capitalizeWords(party.state)} (${getStateCode(party.state) || "-"})`
+                : "N/A",
+        },
     };
-    
-    // ---------------- PARSE TERMS AND CONDITIONS (A5 LOGIC) ----------------
+
+
+    // ---------------- PARSE TERMS AND CONDITIONS (COPIED FROM TEMPLATE 16) ----------------
     let termsTitle = "Terms and Conditions";
     let termsList: string[] = [];
-    const notesHtml = transaction.notes || ""; 
+    const notesHtml = transaction.notes || "";
 
     if (notesHtml.trim().length > 0) {
+        // Match bold title span (like in the A5 template)
         const titleMatch = notesHtml.match(
             /<span class="ql-size-large">(.*?)<\/span>/
         );
         termsTitle = titleMatch
-            ? titleMatch[1].replace(/&amp;/g, "&") 
-            : "Terms and Conditions"; 
+            ? capitalizeWords(titleMatch[1].replace(/&/g, "&"))
+            : "Terms and Conditions"; // Fallback title
 
+        // Match list items
         const liRegex = /<li[^>]*>(.*?)<\/li>/g;
         let match;
         while ((match = liRegex.exec(notesHtml)) !== null) {
-            const cleanItem = match[1]
+            // Strip any remaining HTML tags from the item and decode &
+
+            const cleanItem = capitalizeWords(match[1]
                 .replace(/<[^>]*>/g, "")
-                .replace(/&amp;/g, "&");
+                .replace(/&/g, "&"));
             termsList.push(cleanItem);
         }
     } else {
+        // If notes are empty, the list remains empty
         termsList = [];
     }
     // ---------------- END PARSE TERMS AND CONDITIONS ----------------
@@ -229,9 +288,11 @@ export const generatePdfForTemplate16 = async (
     // ---------------- doc + theme ----------------
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const getW = () => doc.internal.pageSize.getWidth();
-    const M = 36; 
+    const M = 36;
+    const totalPageWidth = getW();
+    const availableWidth = totalPageWidth - (M * 2);
 
-    const BLUE: [number, number, number] = [24, 115, 204]; 
+    const BLUE: [number, number, number] = [24, 115, 204];
     const DARK: [number, number, number] = [45, 55, 72];
     const MUTED: [number, number, number] = [105, 112, 119];
     const BORDER: [number, number, number] = [220, 224, 228];
@@ -244,59 +305,74 @@ export const generatePdfForTemplate16 = async (
     const drawStaticHeader = (): number => {
         let y = M;
         // Title
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.setTextColor(...DARK);
-        doc.text(transaction.type === "proforma" ? "PROFORMA INVOICE" : gstEnabled ? "TAX INVOICE" : "INVOICE", M, y);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.setTextColor(...DARK);
+        doc.text("TAX INVOICE", M, y);
         y += 28;
 
         // Company Details
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        // ⭐ Apply capitalizeWords
         doc.text(capitalizeWords(invoiceData.company.name.toUpperCase()), M, y);
         y += 16;
 
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-        if (invoiceData.company.gstin !== 'N/A') { doc.text(`GSTIN ${invoiceData.company.gstin}`, M, y); y += 14; }
-        const headerAddr = doc.splitTextToSize(invoiceData.company.address, 250);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        if (invoiceData.company.gstin !== "N/A") {
+            doc.text(`GSTIN ${invoiceData.company.gstin}`, M, y);
+            y += 14;
+        }
+        // ⭐ Apply capitalizeWords
+        const headerAddr = doc.splitTextToSize(capitalizeWords(invoiceData.company.address), 250);
         if (headerAddr.length) {
-            for (let i = 0; i < Math.min(headerAddr.length, 2); i++) { doc.text(headerAddr[i], M, y); y += 2; }
+            for (let i = 0; i < Math.min(headerAddr.length, 2); i++) {
+                doc.text(headerAddr[i], M, y);
+                y += 2;
+            }
         }
         y += 12;
-        if (invoiceData.company.city !== 'N/A') { doc.text(`${invoiceData.company.city}`, M, y); }
+        // ⭐ Apply capitalizeWords
+        if (invoiceData.company.city !== "N/A") {
+            doc.text(`${capitalizeWords(invoiceData.company.city)}`, M, y);
+        }
         y += 1;
-        if (invoiceData.company.pan !== 'N/A') { doc.text(`PAN: ${invoiceData.company.pan}`, M, y + 11); y += 11; }
-        if (invoiceData.company.phone !== 'N/A') { y += 12; doc.text(`Phone: ${invoiceData.company.phone}`, M, y); }
+        if (invoiceData.company.pan !== "N/A") {
+            doc.text(`PAN: ${invoiceData.company.pan}`, M, y + 11);
+            y += 11;
+        }
+        if (invoiceData.company.phone !== "N/A") {
+            y += 12;
+            doc.text(`Phone: ${invoiceData.company.phone}`, M, y);
+        }
         y += 14;
-        if (invoiceData.company.state !== 'N/A') { doc.text(`State: ${invoiceData.company.state}`, M, y); }
+        // ⭐ Apply capitalizeWords
+        if (invoiceData.company.state !== "N/A") {
+            doc.text(`State: ${capitalizeWords(invoiceData.company.state)}`, M, y);
+        }
 
         // Logo
-        const logoSize = 60; const logoX = getW() - M - logoSize;
-        if (logoUrl) {
-          try {
-            doc.addImage(logoUrl, 'PNG', logoX, M, logoSize, logoSize);
-          } catch (e) {
-            // Fallback to default logo
-            doc.setFillColor(242, 133, 49);
-            doc.triangle(logoX + logoSize * 0.4, M, logoX + logoSize, M, logoX + logoSize * 0.4, M + logoSize, 'F');
-            doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
-            doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, 'F');
-          }
-        } else {
-          // Default logo
-          doc.setFillColor(242, 133, 49);
-          doc.triangle(logoX + logoSize * 0.4, M, logoX + logoSize, M, logoX + logoSize * 0.4, M + logoSize, 'F');
-          doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
-          doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, 'F');
-        }
+        const logoSize = 60;
+        const logoX = getW() - M - logoSize;
+        doc.setFillColor(242, 133, 49);
+        doc.triangle(
+            logoX + logoSize * 0.4,
+            M,
+            logoX + logoSize,
+            M,
+            logoX + logoSize * 0.4,
+            M + logoSize,
+            "F"
+        );
+        doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
+        doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
 
         // Separator
         y = Math.max(y, M + logoSize + 20);
-    doc.setDrawColor(0, 110, 200);
-    doc.setLineWidth(1.5);
+        doc.setDrawColor(0, 110, 200);
+        doc.setLineWidth(1.5);
         doc.line(M, y + 4, getW() - M, y + 4);
         return y + 16;
     };
@@ -308,65 +384,112 @@ export const generatePdfForTemplate16 = async (
     const drawCustomerMetaBlock = (startY: number): number => {
         let detailY = startY;
         // LEFT: Customer Details
-    let leftY = detailY;
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.setFontSize(10);
-    doc.text("Customer Details:", M, leftY);
+        let leftY = detailY;
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...DARK);
+        doc.setFontSize(10);
+        doc.text("Customer Details:", M, leftY);
         leftY += 16;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-        
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        // ⭐ Apply capitalizeWords
         doc.text(capitalizeWords(invoiceData.invoiceTo.name), M, leftY);
         leftY += 12;
-       
-        const billAddressLines = doc.splitTextToSize(invoiceData.invoiceTo.billingAddress, 200);
+        // ⭐ Apply capitalizeWords
+        const billAddressLines = doc.splitTextToSize(capitalizeWords(invoiceData.invoiceTo.billingAddress), 200);
         if (billAddressLines.length) doc.text(billAddressLines, M, leftY);
         leftY += billAddressLines.length * 12;
-        if (invoiceData.invoiceTo.email !== 'N/A') { doc.text(`Email: ${invoiceData.invoiceTo.email}`, M, leftY); leftY += 12; }
-        if (invoiceData.invoiceTo.gstin !== 'N/A') { doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, M, leftY); leftY += 12; }
-        if (invoiceData.invoiceTo.pan !== 'N/A') { doc.text(`PAN: ${invoiceData.invoiceTo.pan}`, M, leftY); leftY += 12; }
-        if (invoiceData.invoiceTo.state !== 'N/A') { doc.text(`State: ${invoiceData.invoiceTo.state}`, M, leftY); leftY += 12; }
-        doc.text(`Place of Supply: ${invoiceData.placeOfSupply}`, M, leftY); leftY += 14;
+        if (invoiceData.invoiceTo.email !== "N/A") {
+            doc.text(`Email: ${invoiceData.invoiceTo.email}`, M, leftY);
+            leftY += 12;
+        }
+        if (invoiceData.invoiceTo.gstin !== "N/A") {
+            doc.text(`GSTIN: ${invoiceData.invoiceTo.gstin}`, M, leftY);
+            leftY += 12;
+        }
+        if (invoiceData.invoiceTo.pan !== "N/A") {
+            doc.text(`PAN: ${invoiceData.invoiceTo.pan}`, M, leftY);
+            leftY += 12;
+        }
+        // ⭐ Apply capitalizeWords
+        if (invoiceData.invoiceTo.state !== "N/A") {
+            doc.text(`State: ${capitalizeWords(invoiceData.invoiceTo.state)}`, M, leftY);
+            leftY += 12;
+        }
+        // ⭐ Apply capitalizeWords
+        doc.text(`Place of Supply: ${capitalizeWords(invoiceData.placeOfSupply)}`, M, leftY);
+        leftY += 14;
 
         // MIDDLE: Shipping
-        const middleX = M + 200; let middleY = detailY;
-        doc.setFont("helvetica", "bold"); doc.setTextColor(...DARK); doc.setFontSize(10);
-        doc.text("Shipping address:", middleX, middleY); middleY += 16; doc.setFontSize(9); doc.setFont("helvetica", "normal");
-        
-        doc.text(capitalizeWords(invoiceData.shippingAddress.name), middleX, middleY); middleY += 14;
-        
-        const shipAddressLines = doc.splitTextToSize(invoiceData.shippingAddress.address, 180);
+        const middleX = M + 200;
+        let middleY = detailY;
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...DARK);
+        doc.setFontSize(10);
+        doc.text("Shipping address:", middleX, middleY);
+        middleY += 16;
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        // ⭐ Apply capitalizeWords
+        doc.text(capitalizeWords(invoiceData.shippingAddress.name), middleX, middleY);
+        middleY += 14;
+        // ⭐ Apply capitalizeWords
+        const shipAddressLines = doc.splitTextToSize(capitalizeWords(invoiceData.shippingAddress.address), 180);
         if (shipAddressLines.length) doc.text(shipAddressLines, middleX, middleY);
         middleY += shipAddressLines.length * 12;
-        if (invoiceData.shippingAddress.state !== 'N/A') { doc.text(`State: ${invoiceData.shippingAddress.state}`, middleX, middleY); middleY += 14; }
+        // ⭐ Apply capitalizeWords
+        if (invoiceData.shippingAddress.state !== "N/A") {
+            doc.text(`State: ${capitalizeWords(invoiceData.shippingAddress.state)}`, middleX, middleY);
+            middleY += 14;
+        }
 
         // RIGHT: Invoice meta
-        const rightX = getW() - M - 120; let rightY = detailY; doc.setFontSize(9); doc.setFont("helvetica", "bold");
+        const rightX = getW() - M - 120;
+        let rightY = detailY;
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
         const metaLabels = ["Invoice #:", "Invoice Date:", "P.O. No.:", "P.O. Date:", "E-Way No.:"];
-        const metaValues = [invoiceData.invoiceNumber, invoiceData.date, invoiceData.poNumber, invoiceData.poDate, invoiceData.eWayNo];
+        const metaValues = [
+            invoiceData.invoiceNumber,
+            invoiceData.date,
+            invoiceData.poNumber,
+            invoiceData.poDate,
+            invoiceData.eWayNo,
+        ];
         for (let i = 0; i < metaLabels.length; i++) {
             doc.text(metaLabels[i], rightX, rightY);
-            doc.setFont("helvetica", "normal"); doc.text(metaValues[i], rightX + 60, rightY);
-            doc.setFont("helvetica", "bold"); rightY += 14;
+            doc.setFont("helvetica", "normal");
+            doc.text(metaValues[i], rightX + 60, rightY);
+            doc.setFont("helvetica", "bold");
+            rightY += 14;
         }
         return Math.max(leftY, middleY, rightY) + 10;
     };
 
     // Draw block on first page and get its bottom for table margin
     let blockBottomY = drawCustomerMetaBlock(headerBottomY);
+    
+    // Calculate the fixed height of the repeating header blocks for page break management
+    const REPEATING_HEADER_HEIGHT = blockBottomY; 
+
     let cursorY = blockBottomY;
 
+    // Get final column widths
+    const colWidths = getColWidths(availableWidth);
 
     // ---------------- items table (DYNAMIC with GST logic) ----------------
-    
+
     // Build dynamic column styles based on GST type
     const columnStyles: any = {};
     colWidths.forEach((width, index) => {
-        columnStyles[index] = { 
+        columnStyles[index] = {
             cellWidth: width,
-            halign: index === 0 || index === 2 || index === 4 ? "center" : 
-                    (index >= 3 && index <= 9) ? "right" : "left"
+            halign:
+                index === 0 || index === 2 || index === 4
+                    ? "center"
+                    : index >= 3 && index <= 9
+                    ? "right"
+                    : "left",
         };
     });
 
@@ -378,13 +501,20 @@ export const generatePdfForTemplate16 = async (
             "HSN /\nSAC",
             "Rate",
             "Qty",
-            "Taxable\nValue"
+            "Taxable\nValue",
         ];
 
         if (showIGST) {
             return [...baseHeaders, "IGST\n%", "IGST\nAmount", "Total"];
         } else if (showCGSTSGST) {
-            return [...baseHeaders, "CGST\n%", "CGST\nAmount", "SGST\n%", "SGST\nAmount", "Total"];
+            return [
+                ...baseHeaders,
+                "CGST\n%",
+                "CGST\nAmount",
+                "SGST\n%",
+                "SGST\nAmount",
+                "Total",
+            ];
         } else {
             return [...baseHeaders, "Total"];
         }
@@ -393,24 +523,38 @@ export const generatePdfForTemplate16 = async (
     // Build dynamic body data based on GST type
     const buildBodyData = () => {
         return lines.map((it: DynamicLineItem, i: number) => {
-           
-            const nameAndDesc = `${capitalizeWords(it.name || "")}\n${it.description ? it.description.split('\n').join(' / ') : ""}`;
-            
+            // ⭐ Apply capitalizeWords
+            const nameAndDesc = `${capitalizeWords(it.name || "")}\n${
+                it.description ? it.description.split("\n").join(" / ") : ""
+            }`;
+
             const baseData = [
                 i + 1,
                 nameAndDesc,
                 it.hsnSac || "N/A",
                 money(it.pricePerUnit),
                 Number(it.quantity).toFixed(2),
-                money(it.amount)
+                money(it.amount),
             ];
 
             if (showIGST) {
-                return [...baseData, `${it.gstPercentage || 0}`, money(it.lineTax), money(it.lineTotal)];
+                return [
+                    ...baseData,
+                    `${it.gstPercentage || 0}`,
+                    money(it.lineTax),
+                    money(it.lineTotal),
+                ];
             } else if (showCGSTSGST) {
                 const cgst = (it.lineTax || 0) / 2;
                 const sgst = (it.lineTax || 0) / 2;
-                return [...baseData, `${(it.gstPercentage || 0) / 2}`, money(cgst), `${(it.gstPercentage || 0) / 2}`, money(sgst), money(it.lineTotal)];
+                return [
+                    ...baseData,
+                    `${(it.gstPercentage || 0) / 2}`,
+                    money(cgst),
+                    `${(it.gstPercentage || 0) / 2}`,
+                    money(sgst),
+                    money(it.lineTotal),
+                ];
             } else {
                 return [...baseData, money(it.lineTotal)];
             }
@@ -432,7 +576,7 @@ export const generatePdfForTemplate16 = async (
             textColor: [255, 255, 255],
             fontStyle: "bold",
             fontSize: 9,
-            minCellHeight: 24
+            minCellHeight: 24,
         },
         columnStyles,
         head: [buildHeaders()],
@@ -447,8 +591,9 @@ export const generatePdfForTemplate16 = async (
             const hdrY = drawStaticHeader();
             drawCustomerMetaBlock(hdrY);
         },
-        margin: { left: M, right: M, top: blockBottomY },
-        theme: 'grid',
+        // IMPORTANT: Use the calculated repeating height for the top margin
+        margin: { left: M, right: M, top: REPEATING_HEADER_HEIGHT },
+        theme: "grid",
     });
 
     let afterTableY = (doc as any).lastAutoTable.finalY || cursorY + 20;
@@ -461,12 +606,18 @@ export const generatePdfForTemplate16 = async (
     const pageH = doc.internal.pageSize.getHeight();
     if (afterTableY + 140 > pageH - M) {
         doc.addPage();
-        headerBottomY = drawStaticHeader();
-        afterTableY = headerBottomY;
+        drawStaticHeader();
+        drawCustomerMetaBlock(REPEATING_HEADER_HEIGHT - 16); // Redraw customer/meta block manually
+        afterTableY = REPEATING_HEADER_HEIGHT; // Reset Y to below the repeated header block
     }
     const totalsY = afterTableY + 10;
 
-    const putTotalLine = (label: string, val: string, y: number, bold = false) => {
+    const putTotalLine = (
+        label: string,
+        val: string,
+        y: number,
+        bold = false
+    ) => {
         doc.setFont("helvetica", bold ? "bold" : "normal");
         doc.setFontSize(9);
         doc.text(label, totalsX + 12, y);
@@ -478,7 +629,7 @@ export const generatePdfForTemplate16 = async (
     // Row 1: Taxable Amount
     doc.setDrawColor(...BORDER);
     doc.setFillColor(255, 255, 255);
-    doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
+    doc.rect(totalsX, currentTotalsY, totalsW, 18, "FD");
     putTotalLine("Taxable Amount", totalTaxableAmount, currentTotalsY + 12);
     currentTotalsY += 18;
 
@@ -487,88 +638,117 @@ export const generatePdfForTemplate16 = async (
         if (showIGST) {
             // IGST row
             doc.setFillColor(255, 255, 255);
-            doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
+            doc.rect(totalsX, currentTotalsY, totalsW, 18, "FD");
             putTotalLine("IGST", money(totalIGST), currentTotalsY + 12);
             currentTotalsY += 18;
         } else if (showCGSTSGST) {
             // CGST row
             doc.setFillColor(255, 255, 255);
-            doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
-            putTotalLine("CGST", money(totalCGST), currentTotalsY + 12);
+            doc.rect(totalsX, currentTotalsY, totalsW, 18, "FD");
+            putTotalLine("CGST", money(totalCGST), currentTotalsY + 18); // Adjusted Y for vertical centering
             currentTotalsY += 18;
-            
+
             // SGST row
             doc.setFillColor(255, 255, 255);
-            doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
+            doc.rect(totalsX, currentTotalsY, totalsW, 18, "FD");
             putTotalLine("SGST", money(totalSGST), currentTotalsY + 12);
             currentTotalsY += 18;
         }
     }
 
-    // Final Total Amount (Grand Total)
-    doc.setFillColor(240, 240, 240); 
-    doc.rect(totalsX, currentTotalsY, totalsW, 18, 'FD');
-    putTotalLine("Total Amount", finalTotalAmount, currentTotalsY + 12, true);
-    currentTotalsY += 24; // Extra space after total
-    
+
+    // Logo
+    const logoSize = 60;
+    const logoX = getW() - M - logoSize;
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, 'PNG', logoX, M, logoSize, logoSize);
+      } catch (e) {
+        // Fallback to default logo
+        doc.setFillColor(242, 133, 49);
+        doc.triangle(
+          logoX + logoSize * 0.4,
+          M,
+          logoX + logoSize,
+          M,
+          logoX + logoSize * 0.4,
+          M + logoSize,
+          "F"
+        );
+        doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]);
+        doc.triangle(logoX, M, logoX + logoSize * 0.6, M, logoX, M + logoSize, "F");
+      }
+    } 
+
+
     // Total Items / Qty line
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(`Total Items / Qty : ${totalItems} / ${totalQuantity.toFixed(2)}`, M, afterTableY + 16);
-
+    doc.text(
+        `Total Items / Qty : ${totalItems} / ${totalQuantity.toFixed(2)}`,
+        M,
+        afterTableY + 16
+    );
 
     // Amount in Words
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0); 
-    doc.setFontSize(8);
-    doc.text("Total amount (in words):", M , currentTotalsY + 10);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    doc.text("Total amount (in words):", M, currentTotalsY + 10);
     doc.setFont("helvetica", "normal");
-    doc.text(`INR ${convertNumberToWords(invoiceTotal)}`, M + 95, currentTotalsY + 10, { maxWidth: 420 });
-    
+    doc.text(
+        `INR ${convertNumberToWords(invoiceTotal)}`,
+        M + 110,
+        currentTotalsY + 10,{ maxWidth: 420 }
+    );
+
     cursorY = currentTotalsY + 25;
 
-
     // ---------------- Bank Details & UPI (Left Block) and Signature (Right Block) ----------------
-    
+
     const bankBlockH = 90;
     const requiredFooterSpace = bankBlockH + 10;
+    
+    // ⭐ FIX: Updated ensureSpace to use REPEATING_HEADER_HEIGHT
     const ensureSpace = (needed: number): number => {
         const H = doc.internal.pageSize.getHeight();
-        const bottomSafe = H - M; 
+        const bottomSafe = H - M;
         if (cursorY + needed > bottomSafe) {
             doc.addPage();
-            headerBottomY = drawStaticHeader();
-            // We need to re-draw the customer/meta block after the static header on new pages
-            drawCustomerMetaBlock(headerBottomY);
-            return blockBottomY + 10; // This should be the Y after the entire header block
+            const newHeaderBottomY = drawStaticHeader();
+            drawCustomerMetaBlock(newHeaderBottomY); // Redraw customer/meta block
+            return REPEATING_HEADER_HEIGHT; // Reset Y to below the repeating header height
         }
         return cursorY;
     };
-    
+
     cursorY = ensureSpace(requiredFooterSpace);
-    
+
     const blockY = cursorY + 10; // Increased space
-    
+
     // LEFT: Bank Details & UPI (Dynamic)
     let bankY = blockY;
 
-    // --- Dynamic Bank Details Acquisition ---
+    // --- Dynamic Bank Details Acquisition (COPIED FROM TEMPLATE 16 FIXED VERSION) ---
+    // Prefer passed-in 'bank' details, fall back to the N/A placeholders
     const dynamicBankDetails = (bank && typeof bank === 'object' && (bank as any).bankName) ? {
         
         name: capitalizeWords((bank as any).bankName || "N/A"),
+        
         branch: capitalizeWords((bank as any).branchName || (bank as any).branchAddress || "N/A"),
         accNumber: (bank as any).accountNumber || "N/A",
+        
         ifsc: capitalizeWords((bank as any).ifscCode || "N/A"),
         upiId: (bank as any).upiId || "N/A",
     } : getBankDetails(); // Calls the N/A fallback
 
     const areBankDetailsAvailable = dynamicBankDetails.name !== "Bank Details Not Available";
-
+    
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
     
-    // Only display 'Pay using UPI' and QR code if details are available
+    // Only display 'Pay using UPI' and QR code title if details are available
     if (areBankDetailsAvailable) {
         doc.text("Pay using UPI:", M, bankY);
         doc.text("Bank Details:", M + 120, bankY);
@@ -595,6 +775,7 @@ export const generatePdfForTemplate16 = async (
         doc.setFont("helvetica", "normal");
         doc.text(label, bankX, y);
         doc.setFont("helvetica", "bold");
+        // ⭐ Bank details values are already capitalized in dynamicBankDetails object
         doc.text(val, bankX + 50, y);
     };
 
@@ -607,49 +788,47 @@ export const generatePdfForTemplate16 = async (
     } else {
         // Display the "NOT AVAILABLE" message prominently
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
+        doc.setFontSize(9);
         doc.setTextColor(128,128,128);
         doc.text("BANK DETAILS NOT AVAILABLE", bankX, bankDetailY + 20);
         bankDetailY += 40; 
     }
-    
-    
-    
+    // --- END Dynamic Bank Details Acquisition ---
+
     // RIGHT: Signature Block (DYNAMIC Company Name)
     const sigX = getW() - M - 150;
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
-  
+    // ⭐ Apply capitalizeWords
     doc.text(`For ${capitalizeWords(invoiceData.company.name)}`, sigX + 20, blockY + 5);
 
     // Signature/Stamp Placeholder
     const sigHeight = 50;
     const sigWidth = 150;
     doc.setDrawColor(0, 0, 0);
-    doc.rect(sigX, blockY + 15, sigWidth, sigHeight, 'S'); // Signature box placeholder
+    doc.rect(sigX, blockY + 15, sigWidth, sigHeight, "S"); // Signature box placeholder
 
-    
     cursorY = Math.max(bankY + qrSize, blockY + sigHeight) + 20; // Increased space
-    
-    
+
     // ---------------- Terms and Conditions (DYNAMIC Notes) ----------------
     // Footer separator line
-    cursorY = ensureSpace(120);
+    const termsHeightEstimate = (termsList.length > 0 ? termsList.length * 10 : 20) + 30; // Estimate required height
+    cursorY = ensureSpace(termsHeightEstimate);
+
     doc.setDrawColor(0, 110, 200);
     doc.setLineWidth(1);
     doc.line(M, cursorY, getW() - M, cursorY);
     cursorY += 20;
 
     let termsY = cursorY;
-    const TERMS_START_Y = termsY;
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
     
     // Render Title
-    doc.text(`${termsTitle}:`, M, termsY);
+    doc.text(`${termsTitle}:`, M, termsY); // Note: termsTitle is already capitalized
     termsY += 13;
 
     doc.setFont("helvetica", "normal");
@@ -657,11 +836,11 @@ export const generatePdfForTemplate16 = async (
     doc.setTextColor(...DARK);
     
     // RENDER LOGIC: Display parsed terms or the "No terms..." message
+    const TERMS_COL_WIDTH = 300;
     if (termsList.length > 0) {
         termsList.forEach((item, index) => {
-            // Split line into multiple lines if too long for the left-hand column (approx 300pt wide)
-            
-            const itemLines = doc.splitTextToSize(`• ${item}`, 300); 
+            // item is already capitalized (from parsing logic)
+            const itemLines = doc.splitTextToSize(`• ${item}`, TERMS_COL_WIDTH); 
             doc.text(itemLines, M, termsY);
             termsY += itemLines.length * 10; // 10pt line height
         });
@@ -670,7 +849,6 @@ export const generatePdfForTemplate16 = async (
         doc.text("No terms and conditions added yet", M, termsY);
         termsY += 10;
     }
-
 
     return doc;
 };

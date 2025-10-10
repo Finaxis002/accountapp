@@ -1,223 +1,291 @@
-import type { Company, Party, Transaction, ShippingAddress } from "@/lib/types";
+import type {
+    Company,
+    Party,
+    Transaction,
+    ShippingAddress,
+    Bank,
+} from "@/lib/types";
 import jsPDF from "jspdf";
-import autoTable, { RowInput } from "jspdf-autotable";
 import {
-  renderNotes,
-  getUnifiedLines,
-  invNo,
-  getBillingAddress,
-  getShippingAddress,
+    deriveTotals,
+    formatCurrency,
+    getBillingAddress,
+    getShippingAddress,
+    getItemsBody,
+    calculateGST,
+    getUnifiedLines
 } from "./pdf-utils";
+import autoTable, { RowInput, Styles } from "jspdf-autotable";
+import {
+    renderNotes,
+    invNo,
+} from "./pdf-utils";
+import { capitalizeWords } from "./utils";
 
-/**
- * Left-aligned invoice matching your sample layout.
- * - Uses only company.businessName (or optional displayCompanyName) for header name
- * - Everything draws from a left margin; no right drift
- */
+
 export const generatePdfForTemplate11 = async (
-  transaction: Transaction,
-  company: Company | null | undefined,
-  party: Party | null | undefined,
-  serviceNameById?: Map<string, string>,
-  shippingAddress?: ShippingAddress | null,
-  opts?: { displayCompanyName?: string; logoUrl?: string }
+    transaction: Transaction,
+    company: Company | null | undefined,
+    party: Party | null | undefined,
+    serviceNameById?: Map<string, string>,
+    shippingAddress?: ShippingAddress | null,
+    opts?: { displayCompanyName?: string; logoUrl?: string },
+    bank?: Bank | null
 ): Promise<jsPDF> => {
-  // ---------- palette ----------
- const COLOR = {
-  PRIMARY: [38, 70, 83] as [number, number, number],   // teal (current)
-  TEXT: [52, 58, 64] as [number, number, number],
-  SUB: [108, 117, 125] as [number, number, number],
-  BORDER: [206, 212, 218] as [number, number, number],
-  BG: [248, 249, 250] as [number, number, number],
-  WHITE: [255, 255, 255] as [number, number, number],
-  BLUE: [0, 102, 204] as [number, number, number],     // 👈 new royal blue
+    
+
+    console.log("Transactions data from template 11", transaction)
+    console.log("Bank details from template 11:", bank)
+
+    console.log("Bank details from temp11 :", bank)
+
+    // ---------- palette ----------
+
+    const COLOR = {
+        PRIMARY: [38, 70, 83] as [number, number, number],
+        TEXT: [52, 58, 64] as [number, number, number],
+        SUB: [108, 117, 125] as [number, number, number],
+        BORDER: [206, 212, 218] as [number, number, number],
+        BG: [248, 249, 250] as [number, number, number],
+        WHITE: [255, 255, 255] as [number, number, number],
+        BLUE: [0, 102, 204] as [number, number, number],
+    };
+
+    function checkPageBreak(doc: jsPDF, y: number, neededSpace: number = 40) {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const bottomMargin = 40; // safe space at bottom
+        if (y + neededSpace > pageHeight - bottomMargin) {
+            doc.addPage();
+            return 40; // new Y position at top of next page
+        }
+        return y;
+    }
+
+    // ---------- helpers ----------
+const detectGSTIN = (x?: Partial<Company | Party> | null): string | null => {
+    const a = x as any;
+    const gstin =
+    a?.gstin ??
+    a?.GSTIN ??
+    a?.gstIn ??
+    a?.GSTIn ??
+    a?.gstNumber ??
+    a?.GSTNumber ??
+    a?.gst_no ??
+    a?.GST_no ??
+    a?.GST ??
+    a?.gstinNumber ??
+    a?.tax?.gstin;
+    return gstin || null;
 };
 
-  // ---------- helpers ----------
-  const detectGSTIN = (x?: Partial<Company | Party> | null): string | null => {
-    const a = x as any;
-    return (
-      a?.gstin ??
-      a?.gstIn ??
-      a?.gstNumber ??
-      a?.gst_no ??
-      a?.gst ??
-      a?.gstinNumber ??
-      a?.tax?.gstin ??
-      null
-    );
-  };
+    const money = (n: number) =>
+        Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
-const money = (n: number) =>
-  Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+    // ---------------- NEW: Convert number to words ----------------
+    function numberToWords(num: number): string {
+        const a = [
+            '', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN',
+            'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'
+        ];
+        const b = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
 
-// ---------------- NEW: Convert number to words ----------------
-function numberToWords(num: number): string {
-  const a = [
-    '', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN',
-    'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'
-  ];
-  const b = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
+        if ((num = Math.floor(num)) === 0) return 'ZERO';
 
-  if ((num = Math.floor(num)) === 0) return 'ZERO';
+        let str = '';
 
-  let str = '';
+        const crore = Math.floor(num / 10000000);
+        num %= 10000000;
+        const lakh = Math.floor(num / 100000);
+        num %= 100000;
+        const thousand = Math.floor(num / 1000);
+        num %= 1000;
+        const hundred = Math.floor(num / 100);
+        num %= 100;
 
-  const crore = Math.floor(num / 10000000);
-  num %= 10000000;
-  const lakh = Math.floor(num / 100000);
-  num %= 100000;
-  const thousand = Math.floor(num / 1000);
-  num %= 1000;
-  const hundred = Math.floor(num / 100);
-  num %= 100;
+        if (crore) str += `${numberToWords(crore)} CRORE `;
+        if (lakh) str += `${numberToWords(lakh)} LAKH `;
+        if (thousand) str += `${numberToWords(thousand)} THOUSAND `;
+        if (hundred) str += `${numberToWords(hundred)} HUNDRED `;
+        if (num > 0) str += (str !== '' ? 'AND ' : '') + (num < 20 ? a[num] : b[Math.floor(num / 10)] + (num % 10 ? ' ' + a[num % 10] : ''));
 
-  if (crore) str += `${numberToWords(crore)} CRORE `;
-  if (lakh) str += `${numberToWords(lakh)} LAKH `;
-  if (thousand) str += `${numberToWords(thousand)} THOUSAND `;
-  if (hundred) str += `${numberToWords(hundred)} HUNDRED `;
-  if (num > 0) str += (str !== '' ? 'AND ' : '') + (num < 20 ? a[num] : b[Math.floor(num / 10)] + (num % 10 ? ' ' + a[num % 10] : ''));
-
-  return str.trim();
-}
-
-const rupeesInWords = (n: number) => `${numberToWords(n)} RUPEES ONLY`;
-
- 
-  const fetchAsDataURL = async (url?: string) => {
-    if (!url) return "";
-    try {
-      const res = await fetch(url, { mode: "cors" });
-      const blob = await res.blob();
-      return await new Promise<string>((resolve) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(fr.result as string);
-        fr.readAsDataURL(blob);
-      });
-    } catch {
-      return "";
+        return str.trim();
     }
-  };
+    const rupeesInWords = (n: number) => `${numberToWords(n)} RUPEES ONLY`;
 
-  // ---------- derive ----------
-  const lines = getUnifiedLines(transaction, serviceNameById);
-  const fallbackAmount = Number((transaction as any)?.amount ?? 0);
-  const fallbackGST = Number((transaction as any)?.gstPercentage ?? 0);
+    const fetchAsDataURL = async (url?: string) => {
+        if (!url) return "";
+        try {
+            const res = await fetch(url, { mode: "cors" });
+            const blob = await res.blob();
+            return await new Promise<string>((resolve) => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result as string);
+                fr.readAsDataURL(blob);
+            });
+        } catch {
+            return "";
+        }
+    };
 
-  const items =
-    lines?.length
-      ? lines
-      : [
-          {
-            name: transaction.description || "Service Rendered",
-            quantity: 1,
-            pricePerUnit: fallbackAmount,
-            amount: fallbackAmount,
-            gstPercentage: fallbackGST,
-            lineTax: (fallbackAmount * fallbackGST) / 100,
-            lineTotal: fallbackAmount + (fallbackAmount * fallbackGST) / 100,
-            hsn: (transaction as any)?.hsn || "",
-            description: "",
-          },
+    
+    // ---------- derive ----------
+    const lines = getUnifiedLines(transaction, serviceNameById);
+    const fallbackAmount = Number((transaction as any)?.amount ?? 0);
+    const fallbackGST = Number((transaction as any)?.gstPercentage ?? 0);
+
+    const items =
+        lines?.length
+        ? lines
+        : [
+            {
+                name: transaction.description || "Service Rendered",
+                quantity: 1,
+                pricePerUnit: fallbackAmount,
+                amount: fallbackAmount,
+                gstPercentage: fallbackGST,
+                lineTax: (fallbackAmount * fallbackGST) / 100,
+                lineTotal: fallbackAmount + (fallbackAmount * fallbackGST) / 100,
+                hsn: (transaction as any)?.hsn || "",
+                description: "",
+            },
         ];
 
-  const subtotal = items.reduce((s: number, it: any) => s + (Number(it.amount) || 0), 0);
-  const totalTax = items.reduce((s: number, it: any) => s + (Number(it.lineTax) || 0), 0);
-  const invoiceTotal = items.reduce(
-    (s: number, it: any) => s + (Number(it.lineTotal ?? it.amount) || 0),
-    0
-  );
+        
+        
+const companyGSTIN = detectGSTIN(company)?.trim() || "";
+const partyGSTIN = detectGSTIN(party)?.trim() || "";
+const stateCode = (gst: string) => {
+    if (!gst || typeof gst !== "string") return "";
+    const code = gst.slice(0, 2);
+    return /^\d+$/.test(code) ? code : "";
+};
 
-  const companyGSTIN = detectGSTIN(company)?.trim() || "";
-  const partyGSTIN = detectGSTIN(party)?.trim() || "";
-  const gstEnabled = totalTax > 0 && !!companyGSTIN;
+const gstEnabled = !!companyGSTIN && items.some((it: any) => Number(it?.gstPercentage || 0) > 0);
 
-  const stateCode = (gst: string) => (gst?.length >= 2 ? gst.slice(0, 2) : "");
-  const isInterState =
-    gstEnabled &&
-    companyGSTIN &&
-    partyGSTIN &&
-    stateCode(companyGSTIN) !== stateCode(partyGSTIN);
 
-  const billingAddress = getBillingAddress(party);
-  const shippingAddressStr = getShippingAddress(shippingAddress, billingAddress);
-
-  const displayedCompanyName =
-    opts?.displayCompanyName?.trim() || (company?.businessName || "").trim();
-
-  const invoiceData = {
-    invoiceNumber: invNo(transaction),
-    date: transaction.date
-      ? new Intl.DateTimeFormat("en-GB").format(new Date(transaction.date))
-      : new Intl.DateTimeFormat("en-GB").format(new Date()),
-    company: {
-      name: displayedCompanyName || " ",
-      address: company?.address || "",
-      email: company?.emailId || "",
-      phone: company?.mobileNumber || "",
-      gstin: companyGSTIN,
-      logoUrl: opts?.logoUrl || (company as any)?.logoUrl || "",
-    },
-    billTo: {
-      name: party?.name || "",
-      billing: billingAddress || "",
-      shipping: shippingAddressStr || "",
-      email: (party as any)?.email || "",
-      gstin: partyGSTIN || "",
-    },
-    notes: transaction?.notes || "",
-    totalInWords: rupeesInWords(invoiceTotal),
-  };
-
-  // ---------- doc ----------
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const pw = doc.internal.pageSize.getWidth();
-  const ph = doc.internal.pageSize.getHeight();
-
-  // >>> STRICT LEFT-ALIGNED CONTENT <<<
-  const margin = 36;                    // ~0.5"
-  const contentWidth = pw - margin * 2; // full printable width inside margins
-  const gutter = 12;
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...COLOR.TEXT);
-
-  // ---------- header (matches sample: left company block + right INVOICE) ----------
-  const headerH = 90;
-
-  const drawHeader = async () => {
-    // background strip inside content area (left aligned)
-    doc.setFillColor(...COLOR.BG);
-    doc.rect(margin, 0, contentWidth, headerH, "F");
-
-    // optional logo
-    const dataURL = await fetchAsDataURL(invoiceData.company.logoUrl);
-    if (dataURL) {
-      try {
-        doc.addImage(dataURL, "PNG", margin + gutter, 28, 80, 40);
-      } catch {}
+function extractStateFromAddress(address: string): string {
+    if (!address) return "";
+    const parts = address.split(",").map(p => p.trim());
+    if (parts.length < 2) return "";
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const part = parts[i];
+        if (/^[A-Za-z\s]+$/.test(part)) return part;
     }
-    const hasLogo = !!invoiceData.company.logoUrl;
-    const nameX = hasLogo ? margin + gutter + 100 : margin + gutter;
-    // company name (left)
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(...COLOR.PRIMARY);
-    doc.text(
-      (invoiceData.company.name || "").toUpperCase(),
-      nameX,
-      42
-    );
+    return parts[parts.length - 2] || "";
+}
+const companyState = company?.addressState || "";
+const partyState = party?.state || "";
+let isInterState = false;
+if (companyState && partyState) {
+    isInterState = companyState.toLowerCase() !== partyState.toLowerCase();
+}
+const buyerState = party?.state || "State not available";
+const consigneeState =
+    shippingAddress?.state || party?.state || "State not available";
 
-    // divider
-    doc.setDrawColor(...COLOR.BORDER);
-    doc.setLineWidth(0.7);
-    doc.line(margin, headerH, margin + contentWidth, headerH);
+    const billingAddress = capitalizeWords(getBillingAddress(party));
+    const shippingAddressStr = capitalizeWords(getShippingAddress(shippingAddress, billingAddress));
+    const displayedCompanyName =
+        opts?.displayCompanyName?.trim() || (company?.businessName || "").trim();
+
+    const invoiceData = {
+
+        invoiceNumber: invNo(transaction),
+        date: transaction.date
+            ? new Intl.DateTimeFormat("en-GB").format(new Date(transaction.date))
+            : new Intl.DateTimeFormat("en-GB").format(new Date()),
+        company: {
+            name: displayedCompanyName || " ",
+            address: company?.address || "",
+            email: company?.emailId || "",
+            phone: company?.mobileNumber || "",
+            gstin: companyGSTIN,
+            logoUrl: opts?.logoUrl || (company as any)?.logoUrl || "",
+            state: companyState || "State not available",
+        },
+        billTo: {
+            name: party?.name || "",
+            billing: billingAddress || "",
+            shipping: shippingAddressStr || "",
+            email: (party as any)?.email || "",
+            gstin: partyGSTIN || "",
+        },
+        notes: transaction?.notes || "",
+        totalInWords: "",
+    };
+
+    // ---------- doc ----------
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pw = doc.internal.pageSize.getWidth();
+    const ph = doc.internal.pageSize.getHeight();
+
+    // >>> STRICT LEFT-ALIGNED CONTENT <<<
+    const margin = 36;
+    const contentWidth = pw - margin * 2;
+    const gutter = 12;
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLOR.TEXT);
+
+    // ---------- header (matches sample: left company block + right INVOICE) ----------
+    const headerH = 90;
+
+    const drawHeader = async () => {
+        // background strip inside content area (left aligned)
+        const headerH = 90;
+        doc.setFillColor(...COLOR.BG);
+        (doc as any).rect(margin, 0, contentWidth, headerH, "F");
+
+        // fetch logo first
+        const dataURL = await fetchAsDataURL(invoiceData.company.logoUrl);
+        const hasLogo = !!dataURL;
+
+        const nameX = hasLogo ? margin + gutter + 100 : margin + gutter;
+
+        // optional logo
+        if (hasLogo) {
+            try {
+                doc.addImage(dataURL, "PNG", margin + gutter, 28, 80, 40);
+            } catch { }
+        }
+
+        // company name 
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(...COLOR.PRIMARY);
+        doc.text(
+            capitalizeWords((invoiceData.company.name || "").toUpperCase()),
+            nameX,
+            42
+        );
+
+        // address
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(...COLOR.SUB);
+const addr = (invoiceData.company.address || "").trim();
+const stateText = company?.addressState ? `, ${company.addressState}` : "";
+if (addr || stateText) {
+    doc.text(addr + stateText, nameX, 58, { maxWidth: contentWidth - (nameX - margin) - 12 });
+}
   };
 
   await drawHeader();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  const infoBoxW = 100, infoBoxH = 34;
+  const infoX = margin + contentWidth - infoBoxW - 4, infoY = 16;
 
-  // ---------- company & bill-to/meta ----------
+  doc.text("Name :", infoX + 6, infoY + 12);
+  doc.setFont("helvetica", "normal");
+  doc.text(capitalizeWords(invoiceData.billTo.name || "-"), infoX + 60, infoY + 12, { align: "left" });
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Phone :", infoX + 6, infoY + 24);
+  doc.setFont("helvetica", "normal");
+  doc.text(((party as any)?.phone || company?.mobileNumber || "-"), infoX + 60, infoY + 24);
+  // ---------- company & bill-to ----------
   const infoTop = headerH + 18;
 
   const gstText = invoiceData.company.gstin
@@ -227,23 +295,37 @@ const rupeesInWords = (n: number) => `${numberToWords(n)} RUPEES ONLY`;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...COLOR.TEXT);
-
-  // Left side → GSTIN
-  doc.text(gstText, margin + gutter, 78);
-
-  // Center → TAX INVOICE
-  doc.text("TAX INVOICE", margin + contentWidth / 2, 78, { align: "center" });
-
-  // Right side → ORIGINAL FOR RECIPIENT
-  doc.text("ORIGINAL FOR RECIPIENT", margin + contentWidth - gutter, 78, {
-    align: "right",
-  });
-
   // ---------- 3-SECTION BLUE HEADER BLOCK (BUYER / CONSIGNEE / META) ----------
-  const topY = 96;                // just below the GSTIN/TAX INVOICE bar
-  const boxH = 120;               // total height of the blue framed block
+  const topY = 96;
+  const boxH = 120;
   const bw = contentWidth;
+  // 2️⃣ TAX INVOICE strip 
+  const headerBarY = topY - 6;
 
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+  doc.line(margin, headerBarY - 10, margin + contentWidth, headerBarY - 10);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...COLOR.TEXT);
+  doc.text(gstText, margin + gutter, headerBarY);
+  doc.text(transaction.type === "proforma" ? "PROFORMA INVOICE" : gstEnabled ? "TAX INVOICE" : "INVOICE", margin + contentWidth / 2, headerBarY, { align: "center" });
+  doc.text("ORIGINAL FOR RECIPIENT", margin + contentWidth - gutter, headerBarY, { align: "right" });
+
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+  doc.line(margin, topY, margin + contentWidth, topY);
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+
+  doc.line(margin, headerBarY - 10, margin, topY);
+
+  doc.line(margin + contentWidth, headerBarY - 10, margin + contentWidth, topY);
+  // buyer / consignee
+  doc.setDrawColor(...COLOR.BLUE);
+  doc.setLineWidth(1);
+  (doc as any).rect(margin, topY, bw, boxH, "S" as "S");
   // Column widths (equally distributed)
   const w1 = bw * 0.33;           // Buyer
   const w2 = bw * 0.33;           // Consignee
@@ -253,498 +335,695 @@ const rupeesInWords = (n: number) => `${numberToWords(n)} RUPEES ONLY`;
   const x2 = margin + w1;
   const x3 = margin + w1 + w2;
 
-  // Outer blue frame
- doc.setDrawColor(...COLOR.BLUE);   // 👈 royal blue now
-doc.setLineWidth(1);
-doc.rect(margin, topY, bw, boxH, "S");
+  // Vertical separators
+  doc.setLineWidth(0.7);
+  doc.line(x2, topY, x2, topY + boxH);
+  doc.line(x3, topY, x3, topY + boxH);
 
-// Vertical separators
-doc.setLineWidth(0.7);
-doc.line(x2, topY, x2, topY + boxH);
-doc.line(x3, topY, x3, topY + boxH);
+  const headH = 18;
+  doc.line(x1, topY + headH, x1 + w1, topY + headH);
+  doc.line(x2, topY + headH, x2 + w2, topY + headH);
+  doc.line(x3, topY + headH, x3 + w3, topY + headH);
 
-// Small underline for headers
-const headH = 18;
-doc.line(x1, topY + headH, x1 + w1, topY + headH);
-doc.line(x2, topY + headH, x2 + w2, topY + headH);
-doc.line(x3, topY + headH, x3 + w3, topY + headH);
+  doc.line(x1, topY + headH, x1 + w1, topY + headH);
+  doc.line(x2, topY + headH, x2 + w2, topY + headH);
+  doc.line(x3, topY + headH, x3 + w3, topY + headH);
 
-// underline across all 3 columns
-doc.line(x1, topY + headH, x1 + w1, topY + headH);
-doc.line(x2, topY + headH, x2 + w2, topY + headH);
-doc.line(x3, topY + headH, x3 + w3, topY + headH);
-
-// Headings (now normal text, no background)
-doc.setFont("helvetica", "bold");
-doc.setFontSize(10);
-doc.setTextColor(...COLOR.TEXT);  
-doc.text("Details of Buyer :", x1 + 6, topY + 12);
-doc.text("Details of Consignee", x2 + 6, topY + 12);
-doc.text("Shipped to :", x3 + 6, topY + 12); // 👈 left-aligned
-
-  // Helper to print label/value rows
+  // Helper to print label
   const row = (
-    label: string,
-    value: string | string[] | undefined,
-    x: number,
-    y: number,
-    colW: number
+      label: string,
+      value: string | string[] | undefined,
+      x: number,
+      y: number,
+      colW: number
   ) => {
-    const labelW = 72; // left label width
+      const labelW = 72; // left label width
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...COLOR.TEXT);
+      doc.text(label, x + 6, y);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COLOR.TEXT);
+      const txX = x + 6 + labelW;
+      const txW = colW - (txX - x) - 6;
+      const lines = doc.splitTextToSize((value || "-") as string, txW);
+      doc.text(lines, txX, y);
+      const used = (Array.isArray(lines) ? lines.length : 1) * 11 - 1;
+      return y + Math.max(12, used + 4);
+  };
+
+    // 2)  Buyer
+    let yL = topY + headH + 12;
+    yL = row("Name", invoiceData.billTo.name, x1, yL, w1);
+    yL = row("Address", invoiceData.billTo.billing || "Address not ", x1, yL, w1);
+yL = row("State", buyerState, x1, yL, w1);
+    yL = row("Phone", (party as any)?.phone || "-", x1, yL, w1);
+    yL = row("GSTIN", invoiceData.billTo.gstin, x1, yL, w1);
+
+    // 3) Consignee / Shipped to
+    let yM = topY + headH + 12;
+    const consigneeName = (party as any)?.consigneeName || invoiceData.billTo.name || "";
+    const consigneeAddr = invoiceData.billTo.shipping || invoiceData.billTo.billing || "";
+    const consigneeCountry =
+        (shippingAddress as any)?.country || (party as any)?.country || "India";
+    const consigneePhone = (shippingAddress as any)?.phone || (party as any)?.phone || "-";
+    const consigneeGST = (party as any)?.consigneeGSTIN || "-";
+
+    yM = row("Name", consigneeName, x2, yM, w2);
+    yM = row("Address", consigneeAddr, x2, yM, w2);
+    yM = row("State", consigneeState, x2, yM, w2);
+    yM = row("Country", consigneeCountry, x2, yM, w2);
+    yM = row("Phone", consigneePhone, x2, yM, w2);
+    yM = row("GSTIN", consigneeGST, x2, yM, w2);
+
+    // 4) RIGHT COLUMN — Invoice Meta
+    let yR = topY + headH + 12;
+    const meta = {
+        "Invoice No.": invoiceData.invoiceNumber,
+        "Invoice Date": invoiceData.date,
+        "Due Date": (transaction as any)?.dueDate
+            ? new Intl.DateTimeFormat("en-GB").format(new Date((transaction as any).dueDate))
+            : "-",
+        "P.O. No.": (transaction as any)?.poNumber || "-",
+        "P.O. Date": (transaction as any)?.poDate
+            ? new Intl.DateTimeFormat("en-GB").format(new Date((transaction as any).poDate))
+            : "-",
+        "E-Way No.": (transaction as any)?.ewayBillNo || "-",
+    };
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...COLOR.TEXT);
-    doc.text(label, x + 6, y);
 
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...COLOR.TEXT);
-    const txX = x + 6 + labelW;
-    const txW = colW - (txX - x) - 6;
-    const lines = doc.splitTextToSize((value || "-") as string, txW);
-    doc.text(lines, txX, y);
-    const used = (Array.isArray(lines) ? lines.length : 1) * 11 - 1;
-    return y + Math.max(12, used + 4);
-  };
-
-  // 2) LEFT COLUMN — Buyer
-  let yL = topY + headH + 12;
-  yL = row("Name", invoiceData.billTo.name, x1, yL, w1);
-  yL = row("Address", invoiceData.billTo.billing, x1, yL, w1);
-  yL = row("Phone", (party as any)?.phone || "-", x1, yL, w1);
-  yL = row("GSTIN", invoiceData.billTo.gstin, x1, yL, w1);
-
-  // 3) MIDDLE COLUMN — Consignee / Shipped to
-  let yM = topY + headH + 12;
-  const consigneeName = (party as any)?.consigneeName || invoiceData.billTo.name || "";
-  const consigneeAddr = invoiceData.billTo.shipping || invoiceData.billTo.billing || "";
-  const consigneeCountry =
-    (shippingAddress as any)?.country || (party as any)?.country || "India";
-  const consigneePhone = (shippingAddress as any)?.phone || (party as any)?.phone || "-";
-  const consigneeGST = (party as any)?.consigneeGSTIN || "-";
-  const consigneeState =
-    (shippingAddress as any)?.state || (party as any)?.state || "";
-
-  yM = row("Name", consigneeName, x2, yM, w2);
-  yM = row("Address", consigneeAddr, x2, yM, w2);
-  yM = row("Country", consigneeCountry, x2, yM, w2);
-  yM = row("Phone", consigneePhone, x2, yM, w2);
-  yM = row("GSTIN", consigneeGST, x2, yM, w2);
-
-  // 4) RIGHT COLUMN — Invoice Meta
-  let yR = topY + headH + 12;
-  const meta = {
-    "Invoice No.": invoiceData.invoiceNumber,
-    "Invoice Date": invoiceData.date,
-    "Due Date": (transaction as any)?.dueDate
-      ? new Intl.DateTimeFormat("en-GB").format(new Date((transaction as any).dueDate))
-      : "-",
-    "P.O. No.": (transaction as any)?.poNumber || "-",
-    "P.O. Date": (transaction as any)?.poDate
-      ? new Intl.DateTimeFormat("en-GB").format(new Date((transaction as any).poDate))
-      : "-",
-    "E-Way No.": (transaction as any)?.ewayBillNo || "-",
-  };
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...COLOR.TEXT);
-
-  Object.entries(meta).forEach(([k, v]) => {
-    // draw small row with label left, value right-aligned
-    doc.setFont("helvetica", "bold");
-    doc.text(k, x3 + 6, yR);
-    doc.setFont("helvetica", "normal");
-    doc.text(String(v || "-"), x3 + w3 - 6, yR, { align: "right" });
-    yR += 12;
-  });
-
-  // Sample Table Data (use dynamic data as required)
-  const head: RowInput[] = [
-    [
-      { content: "Sr. No.", styles: { halign: "left" } },
-      { content: "Name of Product / Service", styles: { halign: "left" } },
-      { content: "HSN / SAC", styles: { halign: "left" } },
-      { content: "Qty", styles: { halign: "right" } },
-      { content: "Rate", styles: { halign: "right" } },
-      { content: "Taxable Value", styles: { halign: "right" } },
-      { content: "GST %", styles: { halign: "right" } },
-      { content: "GST Amount", styles: { halign: "right" } },
-      { content: "Total", styles: { halign: "right" } },
-    ],
-  ];
-const totalTaxableValue = items.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
-const totalGSTAmount = items.reduce((sum: number, it: any) => sum + (Number(it.lineTax) || 0), 0);
-const totalInvoiceAmount = items.reduce(
-  (sum: number, it: any) => sum + (Number(it.lineTotal ?? it.amount) || 0),
-  0
-);
-  // Generate sample data for the body of the table
-  const body: RowInput[] = items.map((it: any, i: number) => {
-    const qty = Number(it.quantity || 1);
-    const rate = Number(it.pricePerUnit ?? it.amount ?? 0) / qty || 0;
-    const taxable = Number(it.amount ?? 0);
-    const gstPct = Number(it.gstPercentage ?? 0);
-    const taxAmt = Number(it.lineTax ?? (taxable * gstPct) / 100);
-    const total = Number(it.lineTotal ?? taxable + taxAmt);
-    const desc = `${it?.name || ""}${it?.description ? " — " + it.description : ""}`;
-
-    return [
-      String(i + 1),
-      { content: desc },
-      it?.hsn || "",
-      { content: Math.round(qty).toString(), styles: { halign: "right" } },
-      { content: rate.toFixed(2), styles: { halign: "right" } },
-        { content: taxable.toFixed(2), styles: { halign: "center" } },  
-      { content: `${gstPct}%`, styles: { halign: "center" } },
-      { content: taxAmt.toFixed(2), styles: { halign: "center" } },   
-       { content: money(total), styles: { halign: "center" } },         
-    ];
-  });
-const foot: RowInput[] = [
-  [
-    { 
-      content: "Total", 
-      colSpan: 5, 
-      styles: { halign: "right", fontStyle: "bold", cellPadding: 10 }
-    },
-    { 
-      content: totalTaxableValue.toLocaleString("en-IN", { maximumFractionDigits: 2 }), 
-      styles: { halign: "center", fontStyle: "bold", cellPadding: 10 } 
-    },
-    { content: "", styles: { halign: "center", cellPadding: 10 } },
-    { 
-      content: totalGSTAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 }), 
-      styles: { halign: "center", fontStyle: "bold", cellPadding: 10 } 
-    },
-    { 
-      content: totalInvoiceAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 }), 
-      styles: { halign: "center", fontStyle: "bold", cellPadding: 10 } 
-    },
-  ],
-  [
-    { 
-      content: ["Total in Words:", invoiceData.totalInWords],
-      colSpan: 9, 
-      styles: { halign: "left", fontStyle: "bold", cellPadding: 10 } 
-    }
-  ]
-];
-  let startY = yR + 22;
-
-  // Code to generate the table using `autoTable`
-  autoTable(doc, {
-    head,
-    body,
-     foot, 
-    startY: startY, // Adjust the starting Y coordinate based on previous content
-    theme: "grid",
-   styles: {
-  font: "helvetica",
-  fontSize: 9,
-  textColor: COLOR.TEXT as any,
-  lineColor: COLOR.BLUE as any,   // 👈 BLUE use karo
-  lineWidth: 0.2,
-  cellPadding: 6,
-  valign: "middle",
-},
-     headStyles: {
-    fillColor: [255, 255, 255],   // 👈 heading background pure white
-    textColor: [0, 0, 0],         // black text
-    fontStyle: "bold",
-  },
-  alternateRowStyles: {
-    fillColor: [255, 255, 255],   // 👈 remove grey striping
-  },
-  footStyles: {
-    fillColor: [255, 255, 255],   // 👈 footer bhi white
-    textColor: [0, 0, 0],
-    fontStyle: "bold",
-  },
-  //   alternateRowStyles: { fillColor: COLOR.BG as any },
-  // footStyles: {      // 👈 add this block
-  //   fillColor: [255, 255, 255],  // pure white background
-  //   textColor: [0, 0, 0],        // black text
-  //   fontStyle: "bold"
-  // },
-    columnStyles: {
-      0: { cellWidth: 40 },
-      1: { cellWidth: 80 },
-      2: { cellWidth: 50 },
-      3: { cellWidth: 45 },
-      4: { cellWidth: 45 },
-      5: { cellWidth: 70 },
-      6: { cellWidth: 45 },
-      7: { cellWidth: 65 },
-      8: { cellWidth: 85 },
-      
-    },
-    
-    didDrawPage: () => {
-      // header on pages > 1 (still left-aligned)
-      if (doc.getCurrentPageInfo().pageNumber > 1) {
-        doc.setFillColor(...COLOR.BG);
-        doc.rect(margin, 0, contentWidth, headerH, "F");
+    Object.entries(meta).forEach(([k, v]) => {
+        // draw small row with label left, value right-aligned
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        doc.setTextColor(...COLOR.PRIMARY);
-        doc.text((invoiceData.company.name || "").toUpperCase(), margin + gutter, 42);
-        doc.setFontSize(20);
+        doc.text(k, x3 + 6, yR);
+        doc.setFont("helvetica", "normal");
+        doc.text(String(v || "-"), x3 + w3 - 6, yR, { align: "right" });
+        yR += 12;
+    });
+
+    //  GST helpers + totals  
+    const gstBreakup = (taxable: number, gstPct: number, inter: boolean) => {
+        const base = Number(taxable || 0);
+        const rate = Number(gstPct || 0);
+
+        if (rate <= 0 || base <= 0) {
+            return { cgst: 0, sgst: 0, igst: 0, totalTax: 0, total: base };
+        }
+
+        if (inter) {
+            // Apply IGST for inter-state
+            const igst = (base * rate) / 100;
+            return { cgst: 0, sgst: 0, igst, totalTax: igst, total: base + igst };
+        }
+
+        // Apply CGST/SGST for intra-state
+        const halfRate = rate / 2;
+        const cgst = (base * halfRate) / 100;
+        const sgst = (base * halfRate) / 100;
+        return { cgst, sgst, igst: 0, totalTax: cgst + sgst, total: base + cgst + sgst };
+    };
+    type RowCalc = {
+        sr: number;
+        desc: string;
+        hsn: string;
+        qty: number;
+        unit?: string;
+        rate: number;
+        taxable: number;
+        gstPct: number;
+        cgst: number;
+        sgst: number;
+        igst: number;
+        total: number;
+    };
+    
+    const calcRows: RowCalc[] = items.map((it: any, i: number) => {
+        const qty = Number(it.quantity || 1);
+        const rate = Number(it.pricePerUnit ?? it.amount ?? 0) / (qty || 1);
+        const taxable = Number(it.amount ?? qty * rate);
+        const gstPct = Number(it.gstPercentage ?? 0);
+        const { cgst, sgst, igst, total } = gstBreakup(taxable, gstPct, isInterState);
+        const desc = `${capitalizeWords(it?.name || "")}${it?.description ? " — " + it.description : ""}`;
+        return {
+            sr: i + 1,
+            desc,
+            hsn: it?.code || "N/A",
+            qty: Math.round(qty),
+            unit: it?.unit || it?.uom || "",
+            rate,
+            taxable,
+            gstPct,
+            cgst,
+            sgst,
+            igst,
+            total,
+        };
+        
+    });
+    
+
+    const totalTaxableValue = calcRows.reduce((s, r) => s + r.taxable, 0);
+    const totalCGST = calcRows.reduce((s, r) => s + r.cgst, 0);
+    const totalSGST = calcRows.reduce((s, r) => s + r.sgst, 0);
+    const totalIGST = calcRows.reduce((s, r) => s + r.igst, 0);
+    const totalGSTAmount = isInterState ? totalIGST : (totalCGST + totalSGST);
+    const totalInvoiceAmount = calcRows.reduce((s, r) => s + r.total, 0);
+    invoiceData.totalInWords = rupeesInWords(totalInvoiceAmount);
+
+    // FIX: Determine if CGST/SGST columns are needed based on GST being applicable AND not being inter-state
+    const shouldShowCGSTSGSTColumns = gstEnabled && !isInterState;
+    const shouldShowIGSTColumns = gstEnabled && isInterState;
+
+    // --- Dynamic Column Widths ---
+    // Recalculate dynamic width for Name/Desc (index 1) to properly use available space
+    const fixedWidthsIGST = 40 + 50 + 40 + 45 + 70 + 50 + 65 + 85; // Sum of fixed IGST columns (0, 2-8) = 445. 
+    const fixedWidthsCGSTSGST = 35 + 35 + 35 + 35 + 50 + 40 + 60 + 40 + 60 + 80; // Sum of fixed CGST/SGST columns (0, 2-10) = 470.
+    const fixedWidthsNoGST = 35 + 35 + 35 + 50 + 80; // Sum of fixed No-GST columns (0, 2, 3, 4, 5, 6) = 315
+
+    const dynamicNameColIGST = contentWidth - 445; 
+    const dynamicNameColCGSTSGST = contentWidth - 400;
+    const dynamicNameColNoGST = contentWidth - 315; 
+
+
+    // BLOCK-2 (IGST vs CGST/SGST)
+    const head: RowInput[] = shouldShowIGSTColumns
+        ? [[
+            { content: "Sr. No.", styles: { halign: "left" } },
+            { content: "Name of Product / Service", styles: { halign: "left" } },
+            { content: "HSN / SAC", styles: { halign: "left" } },
+            { content: "Qty", styles: { halign: "right" } },
+            { content: "Rate", styles: { halign: "right" } },
+            { content: "Taxable Value", styles: { halign: "right" } },
+            { content: "IGST %", styles: { halign: "center" } },
+            { content: "IGST Amount", styles: { halign: "center" } },
+            { content: "Total", styles: { halign: "right" } },
+        ]]
+        : shouldShowCGSTSGSTColumns ? [[
+            { content: "Sr. No.", styles: { halign: "left" } },
+            { content: "Name of Product / Service", styles: { halign: "left" } },
+            { content: "HSN / SAC", styles: { halign: "left" } },
+            { content: "Qty", styles: { halign: "right" } },
+            { content: "Rate", styles: { halign: "right" } },
+            { content: "Taxable Value", styles: { halign: "right" } },
+            { content: "CGST %", styles: { halign: "center" } },
+            { content: "CGST Amount", styles: { halign: "center" } },
+            { content: "SGST %", styles: { halign: "center" } },
+            { content: "SGST Amount", styles: { halign: "center" } },
+            { content: "Total", styles: { halign: "right" } },
+        ]]
+        : [[
+            { content: "Sr. No.", styles: { halign: "left" } },
+            { content: "Name of Product / Service", styles: { halign: "left" } },
+            { content: "HSN / SAC", styles: { halign: "left" } },
+            { content: "Qty", styles: { halign: "right" } },
+            { content: "Rate", styles: { halign: "right" } },
+            { content: "Taxable Value", styles: { halign: "right" } },
+            { content: "Total", styles: { halign: "right" } },
+        ]]; // 7 columns for No-GST
+
+    const body: RowInput[] = calcRows.map((r) => {
+        const qtyCell = r.unit ? `${r.qty} ${r.unit}` : String(r.qty);
+
+        // Case 1: IGST (Inter-state)
+        if (shouldShowIGSTColumns) {
+            return [
+                String(r.sr),
+                { content: r.desc },
+                r.hsn, // HSN/SAC
+                { content: qtyCell, styles: { halign: "right" } },
+                { content: r.rate.toFixed(2), styles: { halign: "right" } },
+                { content: r.taxable.toFixed(2), styles: { halign: "right" } },
+                { content: `${r.gstPct}%`, styles: { halign: "center" } },
+                { content: r.igst.toFixed(2), styles: { halign: "right" } }, 
+                { content: money(r.total), styles: { halign: "right" } }, 
+            ];
+        } 
+        
+        // Case 2: CGST/SGST (Intra-state)
+        else if (shouldShowCGSTSGSTColumns) {
+            const halfPct = (r.gstPct / 2).toFixed(2);
+            return [
+                String(r.sr),
+                { content: r.desc },
+                r.hsn, // HSN/SAC
+                { content: qtyCell, styles: { halign: "right" } },
+                { content: r.rate.toFixed(2), styles: { halign: "right" } },
+                { content: r.taxable.toFixed(2), styles: { halign: "right" } },
+                { content: `${halfPct}%`, styles: { halign: "center" } }, 
+                { content: r.cgst.toFixed(2), styles: { halign: "right" } }, 
+                { content: `${halfPct}%`, styles: { halign: "center" } }, 
+                { content: r.sgst.toFixed(2), styles: { halign: "right" } }, 
+                { content: money(r.total), styles: { halign: "right" } },
+            ];
+        } 
+        
+        // Case 3: NO GST (7 columns)
+        else {
+            return [
+                String(r.sr),
+                { content: r.desc },
+                r.hsn, // HSN/SAC is correctly placed
+                { content: qtyCell, styles: { halign: "right" } },
+                { content: r.rate.toFixed(2), styles: { halign: "right" } },
+                { content: r.taxable.toFixed(2), styles: { halign: "right" } },
+                { content: money(r.total), styles: { halign: "right" } },
+            ];
+        }
+    });
+
+    // Foot logic adapted for three scenarios (IGST, CGST/SGST, No GST)
+    const foot: RowInput[] = shouldShowIGSTColumns
+        ? [
+            [
+                { content: "Total", colSpan: 6, styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } }, 
+                { content: totalTaxableValue.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } }, 
+                { content: "", styles: { halign: "center", cellPadding: 10 } },
+                { content: totalIGST.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+                { content: totalInvoiceAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+            ],
+        ]
+        : shouldShowCGSTSGSTColumns ? [
+            [
+                { content: "Total", colSpan: 6, styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } }, 
+                { content: totalTaxableValue.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+                { content: "", styles: { halign: "center", cellPadding: 10 } },
+                { content: totalCGST.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+                { content: "", styles: { halign: "center", cellPadding: 10 } },
+                { content: totalSGST.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+                { content: totalInvoiceAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+            ],
+        ]
+        : [
+            [
+                { content: "Total", colSpan: 4, styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+                { content: totalTaxableValue.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+                { content: totalInvoiceAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 }), styles: { halign: "right", fontStyle: "bold", cellPadding: 10 } },
+            ],
+        ];
+
+
+    const columnStyles: Record<string, Partial<Styles>> = shouldShowIGSTColumns
+        ? {
+            "0": { cellWidth: 40 },
+            "1": { cellWidth: dynamicNameColIGST }, 
+            "2": { cellWidth: 50 }, // HSN/SAC
+            "3": { cellWidth: 40 },
+            "4": { cellWidth: 45 },
+            "5": { cellWidth: 70 },
+            "6": { cellWidth: 50 },
+            "7": { cellWidth: 65 },
+            "8": { cellWidth: 85 },
+        }
+        : shouldShowCGSTSGSTColumns ? {
+            "0": { cellWidth: 35 },
+            "1": { cellWidth: dynamicNameColCGSTSGST }, 
+            "2": { cellWidth: 35 }, // HSN/SAC
+            "3": { cellWidth: 35 },
+            "4": { cellWidth: 35 },
+            "5": { cellWidth: 50 },
+            "6": { cellWidth: 40 },
+            "7": { cellWidth: 40 },
+            "8": { cellWidth: 40 },
+            "9": { cellWidth: 40 },
+            "10": { cellWidth: 50 },
+        }
+        : {
+            // No GST (7 columns) - HSN/SAC is column 2
+            "0": { cellWidth: 35 },
+            "1": { cellWidth: dynamicNameColNoGST }, 
+            "2": { cellWidth: 50 }, // HSN/SAC
+            "3": { cellWidth: 35 }, // Qty
+            "4": { cellWidth: 50 }, // Rate
+            "5": { cellWidth: 80 }, // Taxable Value
+            "6": { cellWidth: 60 }, // Total
+        };
+
+    let startY = yR + 22;
+
+    autoTable(doc, {
+        head,
+        body,
+        pageBreak: "auto",
+        foot,
+        startY,
+        theme: "grid",
+        styles: {
+            font: "helvetica",
+            fontSize: 8,
+            textColor: COLOR.TEXT as any,
+            lineColor: COLOR.BLUE as any,
+            lineWidth: 0.2,
+            cellPadding: 6,
+            valign: "middle",
+        },
+        headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [255, 255, 255] },
+        footStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold" },
+        columnStyles, 
+didDrawPage: (data) => {
+
+},
+    });
+    let footerStartY = (doc as any).lastAutoTable.finalY + 20;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const bottomMargin = 40; 
+    
+    if (footerStartY + 250 > pageHeight - bottomMargin) {
+        doc.addPage();
+        footerStartY = 60;
+    }
+    // Split area into 2 columns
+    const colW = contentWidth / 2;
+    const col1X = margin;
+    const col2X = margin + colW;
+    const blockHeight = 250;
+
+    doc.setDrawColor(...COLOR.BLUE);
+    doc.setLineWidth(1);
+    (doc as any).rect(col1X, footerStartY, contentWidth, blockHeight, "S");
+    doc.setLineWidth(0.6);
+    doc.line(col2X, footerStartY, col2X, footerStartY + blockHeight);
+    const drawHeading = (
+        title: string,
+        x: number,
+        y: number,
+        width: number
+    ): number => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
         doc.setTextColor(...COLOR.TEXT);
-        doc.text("INVOICE", margin + contentWidth - gutter, 42, { align: "right" });
-        doc.setDrawColor(...COLOR.BORDER);
-        doc.setLineWidth(0.7);
-        doc.line(margin, headerH, margin + contentWidth, headerH);
-      }
 
-      // footer (notes + page no.) within left-aligned content area
-      const footerTop = ph - 90;
-      doc.setDrawColor(...COLOR.PRIMARY);
-      doc.setLineWidth(0.8);
-      doc.line(margin, footerTop, margin + contentWidth, footerTop);
+        const headingW = doc.getTextWidth(title);
+        const headingX = x + (width - headingW) / 2;
+        doc.text(title, headingX, y);
 
-      const afterNotesY = renderNotes(
-        doc,
-        invoiceData.notes,
-        margin + gutter,
-        footerTop + 14,
-        contentWidth - gutter * 2,
-        pw,
-        ph
-      );
+        
+        doc.setDrawColor(...COLOR.BLUE);
+        doc.setLineWidth(1);
+        doc.line(x, y + 4, x + width, y + 4);
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...COLOR.SUB);
-      const contactLine = [
-        invoiceData.company.address,
-        invoiceData.company.email,
-        invoiceData.company.phone,
-      ]
-        .filter(Boolean)
-        .join(" | ");
-      if (contactLine) {
-        doc.text(contactLine, margin + gutter, afterNotesY + 12);
-      }
+        return y + 12;
+    };
 
-      const page = doc.getCurrentPageInfo().pageNumber;
-      const pages = (doc as any).internal.getNumberOfPages();
-      doc.text(`Page ${page} of ${pages}`, margin + contentWidth - gutter, afterNotesY + 12, {
-        align: "right",
-      });
-    },
-    margin: { left: margin, right: margin }, // stays left-aligned inside margins
-  });
-// 👇 Start just below autoTable
-let footerStartY = (doc as any).lastAutoTable.finalY + 20;
+    let y1 = footerStartY + 16;
 
-// --------------------------
-// ⚙️ Three Column Layout Setup
-const colW = contentWidth / 2; // Now two columns instead of three
-const col1X = margin;
-const col2X = margin + colW; // Adjusted position for second column
+    // === Total in Words ===
+    y1 = drawHeading("Total in Words", col1X, y1, colW);
 
-// Border box for both columns (instead of 3)
-const blockHeight = 180;
-doc.setDrawColor(...COLOR.BLUE);
-doc.setLineWidth(1);
-doc.rect(col1X, footerStartY, contentWidth, blockHeight, "S");
+    // add tax summary heading
+    const WORDS_HEADING_GAP = 8;
+    y1 += WORDS_HEADING_GAP;
 
-// Vertical separator between two columns
-doc.setLineWidth(0.6);
-doc.line(col2X, footerStartY, col2X, footerStartY + blockHeight);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
 
-// --------------------------
-/// --------------------------
-// --------------------------
-// 🧾 Column 1: Total in Words + Bank Details + QR
-// --------------------------
+    const totalWordsLines = doc.splitTextToSize(invoiceData.totalInWords, colW - 16);
+    doc.text(totalWordsLines, col1X + 8, y1);
 
-let y1 = footerStartY + 5;
+    y1 += totalWordsLines.length * 12 + 8;
 
-// Set Y-coordinate to leave enough space between each line of text
-y1 += 10; // Add some space after "Total in words" for the next text
+    // thin section divider
+    doc.setDrawColor(...COLOR.BLUE);
+    doc.setLineWidth(0.5);
+    doc.line(col1X, y1, col1X + colW, y1);
+    y1 += 10;
 
-// Bank Details
-doc.setFont("helvetica", "bold");
+    // === Bank Details ===
+y1 = drawHeading("Bank Details", col1X, y1, colW);
 
-doc.setDrawColor(...COLOR.BLUE); // Royal blue
-doc.setLineWidth(0.7);
-doc.line(col1X, y1, col1X + colW, y1);
+doc.setFont("helvetica", "normal");
+doc.setFontSize(10);
+    y1 += 4;
 
-doc.text("Bank Details", col1X + 8, y1);
-y1 += 12;  // Add some space after "Bank Details" title
+
 
 const bankLines = [
-  `Name: ${(company as any)?.bankName || "-"}`,
-  `Branch: ${(company as any)?.bankBranch || "-"}`,
-  `Acc. Number: ${(company as any)?.bankAccount || "-"}`,
-  `IFSC: ${(company as any)?.bankIFSC || "-"}`,
-  `UPI ID: ${(company as any)?.upiId || "-"}`,
-];
-doc.setFont("helvetica", "normal");
-
-// Iterate through each line and print it with proper spacing
-bankLines.forEach((text: string, index: number) => {
-  const splitLines = doc.splitTextToSize(text, colW - 16);
-  splitLines.forEach((line: string, idx: number) => {
-    doc.text(line, col1X + 8, y1 + (index + idx) * 12);
-  });
-});
-y1 += bankLines.length * 12 + 6;  // Update y1 for QR code positioning
-
-// --------------------------
-// 🧾 Terms & Conditions: Section
-// --------------------------
-
-// Add the royal blue separation line between Bank Details and Terms & Conditions
-doc.line(col1X, y1, col1X + colW, y1) // Draw the separation line
-
-// Update y1 for Terms & Conditions section after the line
-y1 += 10;  // Adding some space after the separation line
-
-// Terms & Conditions: Top Box
-doc.setFont("helvetica", "bold");
-doc.text("Terms & Conditions", col1X + 8, y1);
-y1 += 12;  // Add some space after the title
-// Draw blue line below "Terms & Conditions" heading
-doc.setDrawColor(...COLOR.BLUE); // Royal blue
-doc.setLineWidth(0.7);
-doc.line(col1X, y1, col1X + colW, y1);
-// Terms content
-doc.setFont("helvetica", "normal");
-doc.setFontSize(9);
-const terms = [
-  "Subject to our home Jurisdiction.",
-  "Our Responsibility Ceases as goods leaves our Premises.",
-  "Goods once sold will not be taken back.",
-  "Delivery Ex-Premises.",
+    `Bank Name: ${capitalizeWords(bank?.bankName || "-")}`,
+    `Branch: ${capitalizeWords(bank?.branchAddress || "-")}`,
+    `City: ${capitalizeWords(bank?.city || "-")}`,
+    `IFSC Code: ${capitalizeWords(bank?.ifscCode || "-")}`,
+    `Contact Number: ${bank?.contactNumber || "-"}`,
 ];
 
-
-// Adding each term below the header
-terms.forEach((t, i) => {
-  doc.text(t, col1X + 8, y1 + 14 + (i * 12));  // Adjust this to align inside the box
-  y1 += 0;  // Increase y-coordinate to move to next line
+// Draw lines in PDF
+bankLines.forEach((line, i) => {
+    const lineY = y1 + i * 14; 
+    const split = doc.splitTextToSize(line, colW - 16);
+    doc.text(split, col1X + 8, lineY);
 });
+y1 += bankLines.length * 14 + 8;
+    
+    doc.setDrawColor(...COLOR.BLUE);
+    doc.setLineWidth(0.5);
+    doc.line(col1X, y1, col1X + colW, y1);
+    y1 += 10;
 
-
-// --------------------------
-// 🧾 Column 2: Tax Summary (Top Box)
-// --------------------------
-let y2 = footerStartY + 18; // Start just below top of the footer row
-
-const middleColPadding = 8;
-const middleColWidth = colW; // Adjusted for 2-column layout
-const labelX = col2X + 10;  // Adjust label position here (Shift right)
-const valueX = col2X + 180; // Adjust value position here (Shift right)
-
-// Tax rows
-const taxRows = [
-  ["Taxable Amount", money(totalTaxableValue)],
-  ["Add: IGST", money(totalGSTAmount)],
-  ["Total Tax", money(totalGSTAmount)],
-];
+    // === Terms & Conditions ===
+y1 = drawHeading("Terms & Conditions", col1X, y1, colW);
 
 doc.setFont("helvetica", "normal");
-doc.setFontSize(9);
-
-taxRows.forEach(([label, val]) => {
-  // Ensure the label fits inside the box and does not overflow
-  doc.text(label, labelX, y2, { maxWidth: middleColWidth - 2 * middleColPadding });
-
-  // Split the value if it is too long and ensure it fits inside the box
-  const valueLines = doc.splitTextToSize(val, middleColWidth - 2 * middleColPadding); // Split value into lines
-  
-  // Ensure no unwanted number or extra space before value
-  if (valueLines && valueLines.length > 0) {
-    doc.text(valueLines, valueX, y2);
-  }
-
-  // Update the Y-coordinate after each row
-  y2 += Math.max(14, valueLines.length * 12); // Make sure there's enough space for wrapped text
-});
-
-// Add spacing before total
-y2 += 6;
-
-doc.setFont("helvetica", "bold");
 doc.setFontSize(10);
-doc.text("Total Amount After Tax : Rs", labelX, y2, { maxWidth: middleColWidth - 2 * middleColPadding });
-doc.text(money(totalInvoiceAmount), valueX, y2, { align: "left" });
 
-// --------------------------
-// Draw a blue horizontal line between Tax Summary and GST Cert + Stamp
-// --------------------------
+if (transaction?.notes) {
+    const notesHtml = transaction.notes;
 
-// Calculate the Y-coordinate where the line will go (after Tax Summary)
-const lineY = y2 + 20; // Adjust this for space after the tax section
+    // Extract optional title from <span class="ql-size-large">
+    const titleMatch = notesHtml.match(/<span class="ql-size-large">(.*?)<\/span>/);
+    const title = titleMatch ? titleMatch[1].replace(/&/g, "&") : "Terms and Conditions";
 
-// Set the line color to blue (as per your original request)
-doc.setDrawColor(...COLOR.BLUE);  // Use the same blue color as your theme
-doc.setLineWidth(0.7);  // Set line thickness
+    // Extract <li> items
+    const listItems: string[] = [];
+    const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+    let match;
+    while ((match = liRegex.exec(notesHtml)) !== null) {
+        const cleanItem = match[1].replace(/<[^>]*>/g, "").replace(/&/g, "&");
+        listItems.push(cleanItem);
+    }
 
-// Draw the line (horizontal)
-doc.line(col2X, lineY, col2X + middleColWidth, lineY);  // Draw line from col2X to col2X + middleColWidth
+    // Render title
+    doc.setFont("helvetica", "bold");
+    doc.text(title, col1X + 8, y1);
+    y1 += 12;
 
-// --------------------------
-// 🧾 Column 2: GST Cert + Stamp (Bottom Box)
-// --------------------------
-y2 = lineY + 10; // Start the next section below the line
-
-doc.setFont("helvetica", "bold");
-doc.setFontSize(9);
-doc.text("GST Payable on Reverse Charge", col2X + 8, y2);
-
-doc.setFont("helvetica", "normal");
-doc.text("N.A.", col2X + 8, y2 + 14);
-y2 += 30;
-
-const certText =
-  "Certified that the particulars given above are true and correct.";
-const certLines = doc.splitTextToSize(certText, middleColWidth - 16);
-doc.text(certLines, col2X + 8, y2);
-
-y2 += certLines.length * 12 + 14;
-
-doc.setFont("helvetica", "bold");
-doc.text("For Global Securities", col2X + middleColWidth / 2, y2, { align: "center" });
-
-try {
-  const stamp = await fetchAsDataURL("/path/to/stamp.png"); // ⬅️ Replace with actual stamp image
-  doc.addImage(stamp, "PNG", col2X + middleColWidth / 2 - 35, y2 + 4, 70, 70);
-} catch {
-  doc.text("[Stamp]", col2X + middleColWidth / 2, y2 + 20, { align: "center" });
+    // Render each item
+    doc.setFont("helvetica", "normal");
+    listItems.forEach((item) => {
+        const lines = doc.splitTextToSize(`• ${item}`, colW - 16);
+        doc.text(lines, col1X + 8, y1);
+        y1 += lines.length * 12;
+    });
+    y1 += 8;
+} else {
+    // Fallback
+    y1 += 4;
+    doc.text("No terms and conditions added yet", col1X + 8, y1);
+    y1 += 2;
 }
 
-doc.setFont("helvetica", "normal");
-doc.text("Authorised Signatory", col2X + middleColWidth / 2, y2 + 80, { align: "center" });
+    /* ================= RIGHT SIDE BOX (Drop-in) ================= */
 
-// --------------------------
-// 📜 Terms & Conditions (Placed Above Footer Line)
-// --------------------------
+    const RIGHT_PAD = 8;
+    const LINE_H = 12;
+    const HEADING_FS = 11;
+    const BODY_FS = 10;
+    const SEP_THICK = 0.5;
+    const UNDER_THICK = 1;
+    const MARGIN_GAP = 6;
 
-// Set the Y-coordinate for Terms & Conditions to be just above the footer line
-const termsY = ph - 140;  
+
+    const rightBoxX = col2X;
+    const rightBoxW = colW;
+    const rightBoxTopY = footerStartY;
+
+    // Inner text area (text padding same)
+    const innerRX = rightBoxX + RIGHT_PAD;
+    const innerRW = rightBoxW - RIGHT_PAD * 2;
+
+    // 👇 NEW: full box edges for lines
+    const BOX_LEFT = rightBoxX;
+    const BOX_RIGHT = rightBoxX + rightBoxW;
+
+    // FULL-WIDTH divider (touches vertical borders)
+    const rDivider = (y: number) => {
+        doc.setDrawColor(...COLOR.BLUE);
+        doc.setLineWidth(0.5);
+        doc.line(BOX_LEFT, y, BOX_RIGHT, y);  
+    };
+
+    const rHeading = (title: string, y: number): number => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(HEADING_FS);
+        doc.setTextColor(...COLOR.TEXT);
+
+        const w = doc.getTextWidth(title);
+        const x = innerRX + (innerRW - w) / 2;
+        doc.text(title, x, y);
+
+        // royal underline across inner width
+        doc.setDrawColor(...COLOR.BLUE);
+        doc.setLineWidth(UNDER_THICK);
+        doc.line(BOX_LEFT, y + 4, BOX_RIGHT, y + 4);
+
+        return y + 12;
+    };
+
+    // start cursor
+    const TOP_GAP = 16;
+    let y2 = rightBoxTopY + TOP_GAP;
+
+    // ================= Tax Summary =================
+    y2 = rHeading("Tax Summary", y2);
 
 
-// // Terms & Conditions header
-// doc.setFont("helvetica", "bold");
-// doc.setFontSize(9);
-// doc.text("Terms & Condition", margin + 4, termsY);
+    const TAX_HEADING_GAP = 8;
+    y2 += TAX_HEADING_GAP + MARGIN_GAP;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(BODY_FS);
 
-// // Terms content
-// doc.setFont("helvetica", "normal");
-// doc.setFontSize(9);
-// const terms = [
-//   "Subject to our home Jurisdiction.",
-//   "Our Responsibility Ceases as soon as goods leaves our Premises.",
-//   "Goods once sold will not be taken back.",
-//   "Delivery Ex-Premises.",
-// ];
+    const labelX = innerRX;
+    const valueX = innerRX + innerRW;
 
-// // Adding each term below the header
-// terms.forEach((t, i) => {
-//   doc.text(t, margin + 4, termsY + 14 + (i * 12));  // Adjust this to align inside the box
-// });
-  return doc;
+    // BLOCK-3: Tax Summary rows (conditional)
+    const taxRows: Array<[string, string]> = isInterState
+        ? [
+            ["Taxable Amount", money(totalTaxableValue)],
+            ["Add: IGST", money(totalIGST)],
+            ["Total Tax", money(totalIGST)],
+        ]
+        : [
+            ["Taxable Amount", money(totalTaxableValue)],
+            ["Add: CGST", money(totalCGST)],
+            ["Add: SGST", money(totalSGST)],
+            ["Total Tax", money(totalCGST + totalSGST)],
+        ];
+
+    taxRows.forEach(([label, value]) => {
+        doc.text(label, labelX, y2);
+        doc.text(value, valueX, y2, { align: "right" });
+        y2 += LINE_H + 2;
+    });
+    rDivider(y2);
+    y2 += 10;
+
+    y2 += 6;
+    doc.setFont("helvetica", "bold");
+    doc.text("Total Amount After Tax : Rs", labelX, y2);
+    doc.text(money(totalInvoiceAmount), valueX, y2, { align: "right" });
+    y2 += LINE_H - 4;
+    rDivider(y2);
+    const RC_TOP_GAP = 14;
+    y2 += RC_TOP_GAP;
+
+
+    // ========== Reverse Charge ==========
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(HEADING_FS);
+    doc.setTextColor(...COLOR.TEXT);
+
+    const rcLabel = "GST Payable on Reverse Charge : ";
+    const rcValue = "N.A.";
+    doc.text(rcLabel, rightBoxX + 8, y2);
+    const labelWidth = doc.getTextWidth(rcLabel);
+    doc.setFont("helvetica", "normal");
+    doc.text(rcValue, rightBoxX + 8 + labelWidth + 2, y2);
+
+    y2 += LINE_H - 3;
+
+    // ✅ ADD THIS LINE (to draw the royal blue divider)
+    doc.setDrawColor(...COLOR.BLUE);
+    doc.setLineWidth(0.5);
+    doc.line(rightBoxX, y2, rightBoxX + rightBoxW, y2);
+
+    const CERT_TOP_GAP = 12;
+    y2 += CERT_TOP_GAP;
+
+    // certificate 
+    const certText =
+        "Certified that the particulars given above are true and correct.";
+    const certLines = doc.splitTextToSize(certText, innerRW);
+    doc.text(certLines, innerRX, y2);
+    y2 += certLines.length * LINE_H + 6;
+
+    // ================= Signature / Stamp =================
+    const companyDisplayName =
+        capitalizeWords((company as any)?.legalName || (company as any)?.name || "Company Name");
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`For ${companyDisplayName}`, rightBoxX + rightBoxW / 2, y2, {
+        align: "center",
+    });
+    y2 += 8;
+
+    // stamp centered & safe inside the box
+    const stampW = 70;
+    const stampH = 70;
+    const stampX = rightBoxX + rightBoxW / 2 - stampW / 2;
+    let stampPlaced = false;
+
+    try {
+        const stampUrl = (company as any)?.stampDataUrl || "/path/to/stamp.png";
+        const stamp = await fetchAsDataURL(stampUrl);
+        if (stamp) {
+            doc.addImage(stamp, "PNG", stampX, y2 + 6, stampW, stampH);
+            stampPlaced = true;
+        }
+    } catch {
+        // ignore and fallback to text
+    }
+
+    if (!stampPlaced) {
+        doc.setFont("helvetica", "italic");
+        doc.text("[Stamp]", rightBoxX + rightBoxW / 2, y2 + 22, { align: "center" });
+    }
+
+    // sign text placed based on whether image printed
+    const signY = y2 + (stampPlaced ? stampH + 34 : 50);
+
+    doc.setDrawColor(...COLOR.BLUE);
+    doc.setLineWidth(0.8);
+    doc.line(rightBoxX, signY - 10, rightBoxX + rightBoxW, signY - 10);
+
+    // ✅ add a clean margin before the text (to avoid touching divider)
+    const SIGN_TOP_GAP = 2;
+    const finalSignY = signY + SIGN_TOP_GAP;
+
+    // "Authorised Signatory
+    doc.setFont("helvetica", "normal");
+    doc.text("Authorised Signatory", rightBoxX + rightBoxW / 2, finalSignY, { align: "center" });
+    y2 = finalSignY + 6;
+    y2 = checkPageBreak(doc, y2, 120);
+    doc.text("", innerRX, y2);
+
+const pageCount = doc.getNumberOfPages(); // total pages
+
+for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i); // current page select karo
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginBottom = 20; 
+    const marginRight = 15;  
+
+    const pageNum = (doc.internal as any).getCurrentPageInfo().pageNumber;
+    const totalPages = (doc.internal as any).getNumberOfPages();
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(0, 0, 0);
+
+    doc.text(
+        `Page ${pageNum} of ${totalPages}`,
+        pageWidth - marginRight,
+        pageHeight - marginBottom,
+        { align: "right" }
+    );
+}
+
+    return doc;
 };

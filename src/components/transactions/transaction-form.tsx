@@ -70,6 +70,20 @@ import { generatePdfForTemplate4 } from "@/lib/pdf-template4";
 import { generatePdfForTemplate5 } from "@/lib/pdf-template5";
 import { generatePdfForTemplate6 } from "@/lib/pdf-template6";
 import { generatePdfForTemplate7 } from "@/lib/pdf-template7";
+// priya
+import { generatePdfForTemplate8 } from "@/lib/pdf-template8";
+import { generatePdfForTemplate11 } from "@/lib/pdf-template11";
+import { generatePdfForTemplate12 } from "@/lib/pdf-template12";
+import { generatePdfForTemplateA5 } from "@/lib/pdf-templateA5";
+import { generatePdfForTemplateA5_3 } from "@/lib/pdf-templateA5-3";
+import { generatePdfForTemplateA5_4 } from "@/lib/pdf-templateA5-4";
+import { generatePdfForTemplatet3 } from "@/lib/pdf-template-t3";
+import { generatePdfForTemplateA5_2 } from "@/lib/pdf-templateA3-2";
+//amit
+import { generatePdfForTemplate16 } from "@/lib/pdf-template16";
+import { generatePdfForTemplate17 } from "@/lib/pdf-template17";
+import { generatePdfForTemplate18 } from "@/lib/pdf-template18";
+import { generatePdfForTemplate19 } from "@/lib/pdf-template19";
 import { getUnifiedLines } from "@/lib/getUnifiedLines";
 
 import QuillEditor from "@/components/ui/quill-editor";
@@ -206,7 +220,7 @@ const itemSchema = z
 
 const formSchema = z
   .object({
-    type: z.enum(["sales", "purchases", "receipt", "payment", "journal"]),
+    type: z.enum(["sales", "purchases", "receipt", "payment", "journal","proforma"]),
     company: z.string().min(1, "Please select a company."),
     party: z.string().optional(),
     date: z.date({ required_error: "A date is required." }),
@@ -1724,14 +1738,137 @@ export function TransactionForm({
                 );
                 break;
               case "template7":
-                pdfDoc = generatePdfForTemplate7(
-                  enrichedTransaction,
-                  companyDoc as any,
-                  partyDoc as any,
-                  serviceNameById
-                );
-                break;
-              default:
+              pdfDoc = generatePdfForTemplate7(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById
+              );
+              break;
+              case "template8":
+              pdfDoc = generatePdfForTemplate8(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank
+              );
+              break;
+            case "template11":
+              pdfDoc = generatePdfForTemplate11(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                undefined,
+                enrichedTransaction.bank
+              );
+              break;
+            case "template12":
+              pdfDoc = generatePdfForTemplate12(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank
+              );
+              break;
+            case "template16":
+              pdfDoc = generatePdfForTemplate16(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress
+              );
+              break;
+            case "template17":
+              pdfDoc = generatePdfForTemplate17(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank
+              );
+              break;
+            case "template18":
+              pdfDoc = generatePdfForTemplate18(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank
+              );
+              break;
+            case "template19":
+              pdfDoc = generatePdfForTemplate19(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank
+              );
+              break;
+            case "templateA5":
+              pdfDoc = generatePdfForTemplateA5(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank,
+                null
+              );
+              break;
+            case "templateA5_2":
+              pdfDoc = generatePdfForTemplateA5_2(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank,
+                null
+              );
+              break;
+            case "templateA5_3":
+              pdfDoc = generatePdfForTemplateA5_3(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank,
+                null
+              );
+              break;
+            case "templateA5_4":
+              pdfDoc = generatePdfForTemplateA5_4(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                serviceNameById,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank,
+                null
+              );
+              break;
+            case "template-t3":
+              pdfDoc = generatePdfForTemplatet3(
+                enrichedTransaction,
+                companyDoc as any,
+                partyDoc as any,
+                enrichedTransaction.shippingAddress,
+                enrichedTransaction.bank
+              );
+              break;
+            default:
                 pdfDoc = generatePdfForTemplate1(
                   enrichedTransaction,
                   companyDoc as any,
@@ -1740,8 +1877,22 @@ export function TransactionForm({
                 );
             }
 
+            
             const pdfInstance = await pdfDoc;
-            const pdfBase64 = pdfInstance.output("datauristring").split(",")[1];
+            let pdfBase64: string;
+            if (pdfInstance instanceof Blob) {
+              // For @react-pdf/renderer templates (return Blob)
+              const reader = new FileReader();
+              reader.readAsDataURL(pdfInstance);
+              await new Promise<void>((resolve) => {
+                reader.onload = () => resolve();
+              });
+              const dataUrl = reader.result as string;
+              pdfBase64 = dataUrl.split(",")[1];
+            } else {
+              // For jsPDF templates (return jsPDF instance)
+              pdfBase64 = pdfInstance.output("datauristring").split(",")[1];
+            }
 
             const subject = `Invoice From ${
               companyDoc?.businessName ?? "Your Company"
@@ -3208,10 +3359,7 @@ export function TransactionForm({
                         )}
                       />
                     </div>
-
-                    {gstEnabled && (
-                      <>
-                        {/* HSN Code */}
+                     {/* HSN Code */}
                         <div className="min-w-[100px] flex-1">
                           <FormItem>
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -3231,6 +3379,10 @@ export function TransactionForm({
                             </div>
                           </FormItem>
                         </div>
+
+                    {gstEnabled && (
+                      <>
+                       
 
                         {/* GST % */}
                         <div className="min-w-[100px] flex-1">
@@ -3449,10 +3601,7 @@ export function TransactionForm({
                         )}
                       />
                     </div>
-
-                    {gstEnabled && (
-                      <>
-                        {/* SAC Code */}
+                      {/* SAC Code */}
                         <div className="md:col-span-2">
                           <FormItem>
                             <FormLabel className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -3472,6 +3621,10 @@ export function TransactionForm({
                             </div>
                           </FormItem>
                         </div>
+
+                    {gstEnabled && (
+                      <>
+                      
 
                         {/* GST % */}
                         <div className="md:col-span-2">

@@ -61,7 +61,7 @@ export type Transaction = {
    items?: any[];
    quantity?: number;
    pricePerUnit?: number;
-   type: "sales" | "purchases" | "receipt" | "payment" | "journal";
+   type: "sales" | "purchases" | "receipt" | "payment" | "journal" | "proforma";
    unitType?:
      | "Kg"
      | "Litre"
@@ -281,6 +281,8 @@ export type Vendor = Party & {
     | "Unknown";
   pan?: string;
   isTDSApplicable?: boolean;
+  contactNumber?: string; // For vendor compatibility
+  email?: string; // For vendor compatibility
 };
 
 export type ShippingAddress = {
