@@ -134,6 +134,8 @@ export const generatePdfForTemplate19 = async (
         showNoTax,
     } = prepareTemplate8Data(transaction, company, party, shippingAddress);
 
+    const logoUrl = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
+
     // Convert itemsWithGST to the format expected by template16
     const lines = itemsWithGST.map((item) => ({
         // ⭐ Apply capitalizeWords
@@ -251,84 +253,34 @@ export const generatePdfForTemplate19 = async (
         },
     };
 
-  const fmtDate = (d?: string | number | Date | null) =>
-    d
-      ? new Intl.DateTimeFormat("en-GB").format(new Date(d)).replace(/\//g, "-")
-      : "N/A";
 
-  // Use the actual numberToWords function from pdf-utils
-  const convertNumberToWords = (n: number): string => {
-    return numberToWords(n);
-  };
+    // ---------------- PARSE TERMS AND CONDITIONS (COPIED FROM TEMPLATE 16) ----------------
+    let termsTitle = "Terms and Conditions";
+    let termsList: string[] = [];
+    const notesHtml = transaction.notes || "";
 
-  // getStateCode is imported from pdf-utils to keep mapping consistent with template8
+    if (notesHtml.trim().length > 0) {
+        // Match bold title span (like in the A5 template)
+        const titleMatch = notesHtml.match(
+            /<span class="ql-size-large">(.*?)<\/span>/
+        );
+        termsTitle = titleMatch
+            ? capitalizeWords(titleMatch[1].replace(/&/g, "&"))
+            : "Terms and Conditions"; // Fallback title
 
-  // Use template8 data preparation logic
-  const {
-    totalTaxable,
-    totalAmount,
-    items,
-    totalItems,
-    totalQty,
-    itemsWithGST,
-    totalCGST,
-    totalSGST,
-    totalIGST,
-    isGSTApplicable,
-    isInterstate,
-    showIGST,
-    showCGSTSGST,
-    showNoTax,
-  } = prepareTemplate8Data(transaction, company, party, shippingAddress);
+        // Match list items
+        const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+        let match;
+        while ((match = liRegex.exec(notesHtml)) !== null) {
+            // Strip any remaining HTML tags from the item and decode &
 
-  const logoUrl = company?.logo ? `${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}` : null;
-
-  // Convert itemsWithGST to the format expected by template16
-  const lines = itemsWithGST.map((item) => ({
-    name: item.name,
-    description: item.description || "",
-    quantity: item.quantity || 0,
-    pricePerUnit: item.pricePerUnit || 0,
-    amount: item.taxableValue,
-    gstPercentage: item.gstRate,
-    lineTax: item.cgst + item.sgst + item.igst,
-    lineTotal: item.total,
-    hsnSac: item.code || "N/A",
-    unit: item.unit || "PCS",
-    formattedDescription: item.description
-      ? item.description.split("\n").join(" / ")
-      : "",
-  }));
-
-  const subtotal = totalTaxable;
-  const tax = totalCGST + totalSGST + totalIGST;
-  const invoiceTotal = totalAmount;
-  const gstEnabled = isGSTApplicable;
-  const totalQuantity = totalQty;
-
-  const totalTaxableAmount = money(subtotal);
-  const finalTotalAmount = money(invoiceTotal);
-
-  const shippingAddressSource = shippingAddress;
-  const billingAddress = getBillingAddress(party);
-  const shippingAddressStr = getShippingAddress(
-    shippingAddressSource,
-    billingAddress
-  );
-
-  const companyGSTIN = _getGSTIN(company);
-  const partyGSTIN = _getGSTIN(party);
-
-  // Define column widths based on GST applicability (like template8)
-  const getColWidths = () => {
-    if (!isGSTApplicable) {
-      // Non-GST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, Total
-      return [32, 122, 50, 50, 30, 70, 60];
-    } else if (showIGST) {
-      // IGST layout: Sr.No, Name, HSN/SAC, Rate, Qty, Taxable Value, IGST%, IGST Amt, Total
-      return [32, 100, 50, 50, 30, 70, 40, 60, 60];
+            const cleanItem = capitalizeWords(match[1]
+                .replace(/<[^>]*>/g, "")
+                .replace(/&/g, "&"));
+            termsList.push(cleanItem);
+        }
     } else {
-        // If notes are empty, the list remains empty, and we use the explicit fallback message below
+        // If notes are empty, the list remains empty
         termsList = [];
     }
     // ---------------- END PARSE TERMS AND CONDITIONS ----------------
