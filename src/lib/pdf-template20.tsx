@@ -95,17 +95,20 @@ const template20Styles = StyleSheet.create({
     marginBottom: 5,
     textDecoration: "underline",
   },
-  invoiceDateRow: {
+    invoiceDateRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginBottom: 2,
+    marginRight: 1,
+    alignItems: "center", 
   },
   label: {
     fontSize: 9,
     width: 80,
     textAlign: "left",
     fontWeight: "bold",
-  },
+    marginLeft: 35,
+  }, 
   value: {
     fontSize: 9,
     width: 100,
@@ -155,7 +158,7 @@ const template20Styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
     fontWeight: "bold",
-    fontSize: 9,
+    fontSize: 7,
   },
   tableRow: {
     flexDirection: "row",
@@ -172,7 +175,7 @@ const template20Styles = StyleSheet.create({
     borderRightColor: "#999",
     borderRightWidth: 1,
     padding: 4,
-    fontSize: 9,
+    fontSize: 7,
     textAlign: "right",
   },
   tableCellLeft: {
@@ -185,7 +188,7 @@ const template20Styles = StyleSheet.create({
 
   // --- Totals and Amount in Words ---
   totalsSection: {
-    flexDirection: "row",
+    flexDirection: "row", 
     justifyContent: "flex-end",
     alignItems: "flex-start",
     marginTop: 5,
@@ -193,15 +196,16 @@ const template20Styles = StyleSheet.create({
     paddingBottom: 5,
   },
   totalsLeft: {
-    width: "65%", // Adjusted width to give more space for totalsRight
+    width: "70 %", // Adjusted width to give more space for totalsRight
     marginRight: 10,
     paddingTop: 5,
-    fontSize: 9,
+    fontSize: 8,
     alignSelf: "flex-end",
+    
     // Note: We don't add full border here, we add it to a wrapper inside the render function.
   },
   totalsRight: {
-    width: "35%",
+    width: "35 %",
     // borderStyle: "solid",
     // borderWidth: 1,
     // borderColor: PRIMARY_BLUE,
@@ -419,6 +423,15 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
 
   const bankData: Bank = bank || ({} as Bank);
 
+  // ********** MODIFIED LOGIC: Check if any bank detail is available **********
+  const isBankDetailAvailable =
+    bankData?.bankName ||
+    bankData?.ifscCode ||
+    bankData?.branchAddress ||
+    bankData?.accountNumber ||
+    bankData?.upiId;
+  // *************************************************************************
+
   // Calculate amount in words
   const amountInWords = numberToWords(Math.round(totalAmount));
 
@@ -430,45 +443,45 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
   };
 
   /**
- * Extracts terms and conditions from a potentially HTML-formatted 'notes' string,
- * falling back to provided default terms if no list items are found in 'notes'.
- *
- * @param notes An optional string containing HTML-formatted notes (e.g., from a rich text editor).
- * @param defaultTerms An array of strings representing the default terms and conditions.
- * @returns An object with the extracted title and an array of term items.
- */
-const getTermsAndConditions = (notes?: string, defaultTerms: string[] = []) => {
-  // If no notes are provided, return the default terms.
-  if (!notes) return { title: "Terms and Conditions:", items: defaultTerms };
+  * Extracts terms and conditions from a potentially HTML-formatted 'notes' string,
+  * falling back to provided default terms if no list items are found in 'notes'.
+  *
+  * @param notes An optional string containing HTML-formatted notes (e.g., from a rich text editor).
+  * @param defaultTerms An array of strings representing the default terms and conditions.
+  * @returns An object with the extracted title and an array of term items.
+  */
+  const getTermsAndConditions = (notes?: string, defaultTerms: string[] = []) => {
+    // If no notes are provided, return the default terms.
+    if (!notes) return { title: "Terms and Conditions:", items: defaultTerms };
 
-  // --- Dynamic Title Extraction ---
-  // Look for a title formatted with '<span class="ql-size-large">...</span>'
-  const titleMatch = notes.match(/<span class="ql-size-large">(.*?)<\/span>/);
-  let title = titleMatch
-    ? // Decode HTML entities like '&amp;' to '&'
-      titleMatch[1].replace(/&amp;/g, "&")
-    : "Terms and Conditions:";
+    // --- Dynamic Title Extraction ---
+    // Look for a title formatted with '<span class="ql-size-large">...</span>'
+    const titleMatch = notes.match(/<span class="ql-size-large">(.*?)<\/span>/);
+    let title = titleMatch
+      ? // Decode HTML entities like '&amp;' to '&'
+        titleMatch[1].replace(/&amp;/g, "&")
+      : "Terms and Conditions:";
 
-  // --- Dynamic List Item Extraction ---
-  const listItems: string[] = [];
-  // Regex to find all list items: '<li>...</li>'
-  const liRegex = /<li[^>]*>(.*?)<\/li>/g;
-  let match;
+    // --- Dynamic List Item Extraction ---
+    const listItems: string[] = [];
+    // Regex to find all list items: '<li>...</li>'
+    const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+    let match;
 
-  while ((match = liRegex.exec(notes)) !== null) {
-    const cleanItem = match[1]
-      // Remove any nested HTML tags (e.g., <b>, <i>) within the list item
-      .replace(/<[^>]*>/g, "")
-      // Decode HTML entities
-      .replace(/&amp;/g, "&");
-    listItems.push(cleanItem);
-  }
+    while ((match = liRegex.exec(notes)) !== null) {
+      const cleanItem = match[1]
+        // Remove any nested HTML tags (e.g., <b>, <i>) within the list item
+        .replace(/<[^>]*>/g, "")
+        // Decode HTML entities
+        .replace(/&amp;/g, "&");
+      listItems.push(cleanItem);
+    }
 
-  // --- Final Return ---
-  // If list items were successfully parsed, use them. Otherwise, fall back to the provided default terms.
-  // The 'defaultTerms' array is now the dynamic fallback data.
-  return { title, items: listItems.length > 0 ? listItems : defaultTerms };
-};
+    // --- Final Return ---
+    // If list items were successfully parsed, use them. Otherwise, fall back to the provided default terms.
+    // The 'defaultTerms' array is now the dynamic fallback data.
+    return { title, items: listItems.length > 0 ? listItems : defaultTerms };
+  };
 
   const termsData = getTermsAndConditions(transaction?.notes);
 
@@ -787,6 +800,7 @@ const getTermsAndConditions = (notes?: string, defaultTerms: string[] = []) => {
 
               {/* Table Rows (Renders items for the current page) */}
               {pageItems.map((item, index) => (
+                  
                 <View
                   key={`${pageIndex}-${index}`}
                   style={template20Styles.tableRow}
@@ -816,7 +830,7 @@ const getTermsAndConditions = (notes?: string, defaultTerms: string[] = []) => {
                       { width: colWidths[2] },
                     ]}
                   >
-                    {item.code || ""}
+                    {item.code  || ""}
                   </Text>
                   <Text
                     style={[
@@ -918,6 +932,7 @@ const getTermsAndConditions = (notes?: string, defaultTerms: string[] = []) => {
                 </View>
               ))}
             </View>
+            
 
             {/* --- Footer and Totals (Rendered only if this is the last page) --- */}
             {isLastPage && (
@@ -1000,138 +1015,164 @@ const getTermsAndConditions = (notes?: string, defaultTerms: string[] = []) => {
                   </View>
                 </View>
 
-                {/* --- Footer (UPI, Bank, Terms) --- */}
+                {/* --- MODIFIED Footer (UPI, Bank, Terms) --- */}
                 <View style={template20Styles.bankTermsSection}>
-                  {/* UPI Section */}
-                  <View
-                    style={{
-                      width: "30%",
-                      // borderStyle: "solid",
-                      // borderWidth: 1,
-                      // borderColor: "#999",
-                      padding: 5,
-                      marginRight: 5,
-                    }}
-                  >
-                    <Text style={template20Styles.boldText}>
-                      Pay using UPI:
-                    </Text>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        marginTop: 5,
-                        alignItems: "center",
-                      }}
-                    >
-                      {/* QR Code Placeholder */}
+                  
+                  {isBankDetailAvailable ? (
+                    <>
+                      {/* UPI Section (Left Column) - QR Code is back! */}
                       <View
                         style={{
-                          width: 60,
-                          height: 60,
-                          borderStyle: "solid",
-                          borderWidth: 0.5,
-                          borderColor: "#666",
-                          backgroundColor: "#f5f5f5",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginRight: 10,
+                          width: "30%",
+                          padding: 5,
+                          marginRight: 5,
                         }}
                       >
-                        <Text style={{ fontSize: 6 }}>QR Code</Text>
+                        <Text style={template20Styles.boldText}>
+                          Pay using UPI:
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            marginTop: 5,
+                            alignItems: "center",
+                          }}
+                        >
+                          {/* QR Code Placeholder */}
+                          <View
+                            style={{
+                              width: 60,
+                              height: 60,
+                              borderStyle: "solid",
+                              borderWidth: 0.5,
+                              borderColor: "#666",
+                              backgroundColor: "#f5f5f5",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginRight: 10,
+                            }}
+                          >
+                            <Text style={{ fontSize: 6 }}>QR Code</Text>
+                          </View>
+
+                          {/* Dynamic UPI/Account Details Snippet */}
+                          <View style={{ fontSize: 7 }}>
+                            {bankData?.upiId && (
+                              <Text>
+                                <Text style={template20Styles.boldText}>
+                                  UPI ID:
+                                </Text>{" "}
+                                {bankData.upiId}
+                              </Text>
+                            )}
+                            {bankData?.accountNumber && (
+                              <Text>
+                                <Text style={template20Styles.boldText}>
+                                  Acc. Number:
+                                </Text>{" "}
+                                {bankData.accountNumber}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
                       </View>
 
-                      {/* Dynamic UPI/Account Details Snippet */}
-                      <View style={{ fontSize: 7 }}>
-                        {bankData?.upiId && (
-                          <Text>
-                            <Text style={template20Styles.boldText}>
-                              UPI ID:
-                            </Text>{" "}
-                            {bankData.upiId}
-                          </Text>
-                        )}
-                        {bankData?.accountNumber && (
-                          <Text>
-                            <Text style={template20Styles.boldText}>
+                      {/* Bank Details Section (Middle Column) */}
+                      <View style={template20Styles.bankDetailsBlock}>
+                        <Text style={template20Styles.bankHeader}>
+                          Bank Details:
+                        </Text>
+                        <View style={{ marginTop: 4 }}>
+                          {bankData?.bankName && (
+                            <View style={template20Styles.bankRow}>
+                              <Text style={template20Styles.bankLabel}>
+                                Bank Name:
+                              </Text>
+                              <Text style={template20Styles.smallText}>
+                                {bankData.bankName}
+                              </Text>
+                            </View>
+                          )}
+                          {bankData?.ifscCode && (
+                            <View style={template20Styles.bankRow}>
+                              <Text style={template20Styles.bankLabel}>
+                                IFSC Code:
+                              </Text>
+                              <Text style={template20Styles.smallText}>
+                                {bankData.ifscCode}
+                              </Text>
+                            </View>
+                          )}
+                          {bankData?.branchAddress && (
+                            <View style={template20Styles.bankRow}>
+                              <Text style={template20Styles.bankLabel}>
+                                Branch:
+                              </Text>
+                              <Text style={template20Styles.smallText}>
+                                {bankData.branchAddress}
+                              </Text>
+                            </View>
+                          )}
+                          <View style={template20Styles.bankRow}>
+                            <Text style={template20Styles.bankLabel}>
                               Acc. Number:
-                            </Text>{" "}
-                            {bankData.accountNumber}
-                          </Text>
-                        )}
+                            </Text>
+                            <Text style={template20Styles.smallText}>
+                              {bankData?.accountNumber || "-"}
+                            </Text>
+                          </View>
+                          <View style={template20Styles.bankRow}>
+                            <Text style={template20Styles.bankLabel}>UPI ID:</Text>
+                            <Text style={template20Styles.smallText}>
+                              {bankData?.upiId || "-"}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                    </View>
-                  </View>
-
-                  {/* Bank Details Section (Dynamically Set) */}
-                  <View style={template20Styles.bankDetailsBlock}>
-                    <Text style={template20Styles.bankHeader}>
-                      Bank Details:
-                    </Text>
-                    <View style={{ marginTop: 4 }}>
-                      {bankData?.bankName && (
-                        <View style={template20Styles.bankRow}>
-                          <Text style={template20Styles.bankLabel}>
-                            Bank Name:
-                          </Text>
-                          <Text style={template20Styles.smallText}>
-                            {bankData.bankName}
-                          </Text>
-                        </View>
-                      )}
-                      {bankData?.ifscCode && (
-                        <View style={template20Styles.bankRow}>
-                          <Text style={template20Styles.bankLabel}>
-                            IFSC Code:
-                          </Text>
-                          <Text style={template20Styles.smallText}>
-                            {bankData.ifscCode}
-                          </Text>
-                        </View>
-                      )}
-
+                    </>
+                  ) : (
+                    /* --- Bank Details Not Available View (Split to maintain column widths) --- */
+                    <>
+                      {/* UPI/QR Placeholder Block (30% width) - Keeps the space reserved */}
+                      <View
+                        style={{
+                          width: "30%",
+                          padding: 5,
+                          marginRight: 5,
+                        }}
+                      >
+                         <Text style={template20Styles.boldText}>
+                          Pay using UPI:
+                        </Text>
+                         {/* This empty view reserves the height/space for the QR/Text block */}
+                         <View style={{
+                              width: 60,
+                              height: 60,
+                              borderStyle: "dashed",
+                              borderWidth: 0.5,
+                              borderColor: "#eee",
+                              backgroundColor: "#fcfcfc",
+                              marginTop: 5,
+                         }}>
+                             <Text style={{ fontSize: 6, textAlign: 'center', marginTop: 25, color: '#999',}}>N/A</Text>
+                         </View>
+                      </View>
                       
-                      {/* {bankData?.bankName && (
-                        <View style={template20Styles.bankRow}>
-                          <Text style={template20Styles.bankLabel}>
-                            Bank Name:
-                          </Text>
-                          <Text style={template20Styles.smallText}>
-                            {bankData.bankName}
-                          </Text>
-                        </View>
-                      )} */}
-
-                     
-                      {bankData?.branchAddress && (
-                        <View style={template20Styles.bankRow}>
-                          <Text style={template20Styles.bankLabel}>
-                            Branch:
-                          </Text>
-                          <Text style={template20Styles.smallText}>
-                            {bankData.branchAddress}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={template20Styles.bankRow}>
-                        <Text style={template20Styles.bankLabel}>
-                          Acc. Number:
+                      {/* Bank Details Not Available Block (45% width) */}
+                      <View style={template20Styles.bankDetailsBlock}>
+                        <Text style={template20Styles.bankHeader}>
+                          Bank Details:
                         </Text>
-                        <Text style={template20Styles.smallText}>
-                          {bankData?.accountNumber || ""}{" "}
-                          
+                        <Text
+                            style={[template20Styles.boldText, {fontSize: 9.5, marginTop: 5, color: '#cc0000'}]}
+                        >
+                            BANK DETAILS NOT AVAILABLE
                         </Text>
                       </View>
+                    </>
+                  )}
+                  {/* END OF CONDITIONAL BANK DETAILS BLOCK */}
 
-                   
-                      <View style={template20Styles.bankRow}>
-                        <Text style={template20Styles.bankLabel}>UPI ID:</Text>
-                        <Text style={template20Styles.smallText}>
-                          {bankData?.upiId || ""}{" "}
-                          
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
 
                   {/* Stamp/Signature Section */}
                   <View
