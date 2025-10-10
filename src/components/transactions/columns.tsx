@@ -94,27 +94,25 @@ const makeCustomFilterFn = (
   };
 };
 
-// const printInvoice = (
+// const printInvoice = async (
 //   transaction: Transaction,
 //   company?: Company,
 //   party?: Party,
 //   serviceNameById?: Map<string, string>
 // ) => {
 //   try {
-//     const pdfDoc = generatePdfForTemplate1(
+//     const pdfBlob = await generatePdfForTemplate1(
 //       transaction,
 //       company,
 //       party,
 //       serviceNameById
 //     );
 
-//     // ✅ Use the same approach as download but for printing
-//     const pdfBlob = pdfDoc.output('blob');
 //     const pdfUrl = URL.createObjectURL(pdfBlob);
 
 //     // Create iframe for printing
-//     const iframe = document.createElement('iframe');
-//     iframe.style.display = 'none';
+//     const iframe = document.createElement("iframe");
+//     iframe.style.display = "none";
 //     iframe.src = pdfUrl;
 
 //     document.body.appendChild(iframe);
@@ -132,16 +130,15 @@ const makeCustomFilterFn = (
 //           }, 1000);
 //         }, 500);
 //       } catch (printError) {
-//         console.error('Print failed:', printError);
+//         console.error("Print failed:", printError);
 //         document.body.removeChild(iframe);
 //         URL.revokeObjectURL(pdfUrl);
-//         throw new Error('Printing failed - please try downloading instead');
+//         throw new Error("Printing failed - please try downloading instead");
 //       }
 //     };
-
 //   } catch (error) {
-//     console.error('Error printing invoice:', error);
-//     throw new Error('Failed to generate print document');
+//     console.error("Error printing invoice:", error);
+//     throw new Error("Failed to generate print document");
 //   }
 // };
 
@@ -163,7 +160,12 @@ const printInvoice = async (
 
     // Create iframe for printing
     const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
     iframe.src = pdfUrl;
 
     document.body.appendChild(iframe);
@@ -172,14 +174,28 @@ const printInvoice = async (
       try {
         // Wait a bit for PDF to load completely
         setTimeout(() => {
+          iframe.contentWindow?.focus(); // Focus on the iframe first
           iframe.contentWindow?.print();
 
-          // Clean up after printing
-          setTimeout(() => {
+          // Listen for afterprint event to clean up
+          const cleanup = () => {
             document.body.removeChild(iframe);
             URL.revokeObjectURL(pdfUrl);
-          }, 1000);
-        }, 500);
+            iframe.contentWindow?.removeEventListener('afterprint', cleanup);
+          };
+
+          // Add afterprint event listener
+          iframe.contentWindow?.addEventListener('afterprint', cleanup);
+          
+          // Fallback cleanup in case afterprint doesn't fire
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+              URL.revokeObjectURL(pdfUrl);
+            }
+          }, 30000); // 30 second fallback
+
+        }, 1000); // Increased to 1 second for better loading
       } catch (printError) {
         console.error("Print failed:", printError);
         document.body.removeChild(iframe);
@@ -187,11 +203,21 @@ const printInvoice = async (
         throw new Error("Printing failed - please try downloading instead");
       }
     };
+
+    // Handle iframe loading errors
+    iframe.onerror = () => {
+      console.error("Failed to load PDF in iframe");
+      document.body.removeChild(iframe);
+      URL.revokeObjectURL(pdfUrl);
+      throw new Error("Failed to load PDF for printing");
+    };
+
   } catch (error) {
     console.error("Error printing invoice:", error);
     throw new Error("Failed to generate print document");
   }
 };
+
 
 export const columns = ({
   onPreview,
