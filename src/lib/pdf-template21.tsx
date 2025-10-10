@@ -19,7 +19,8 @@ import {
   formatCurrency,
   getBillingAddress,
   getShippingAddress,
-  prepareTemplate8Data, 
+  prepareTemplate8Data,
+  numberToWords, // ADDED: Assuming this utility is available
 } from "./pdf-utils";
 
 // --- Constants and Styles Definition (template21.tsx) ---
@@ -36,7 +37,7 @@ const template21Styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    fontSize: 9 ,
+    fontSize: 9,
     fontFamily: "Helvetica",
     color: DARK_TEXT,
   },
@@ -59,7 +60,7 @@ const template21Styles = StyleSheet.create({
     marginBottom: 4,
   },
   companyName: {
-    fontSize: 11, 
+    fontSize: 11,
     fontWeight: "bold",
     color: DARK_TEXT,
     marginBottom: 2,
@@ -75,7 +76,7 @@ const template21Styles = StyleSheet.create({
     lineHeight: 1.3,
     color: DARK_TEXT,
   },
-  emailText: { 
+  emailText: {
     fontSize: 7,
     lineHeight: 1.3,
     color: DARK_TEXT,
@@ -83,7 +84,7 @@ const template21Styles = StyleSheet.create({
 
   // --- Logo & Original Text ---
   rightHeaderBlock: {
-    width: "35  %",
+    width: "35 %",
     alignItems: "flex-end",
     paddingBottom: 10,
   },
@@ -95,12 +96,12 @@ const template21Styles = StyleSheet.create({
     textAlign: "right",
   },
   logoContainer: {
-    width: 80, 
+    width: 80,
     height: 80,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
 
-  // --- Invoice Info Section ---
+  // --- Invoice Info Section (Keeping original styles for unused block for completeness) ---
   invoiceInfoSection: {
     flexDirection: "row",
     marginBottom: 8,
@@ -124,9 +125,9 @@ const template21Styles = StyleSheet.create({
   },
   label: {
     fontSize: 8,
-    width: 70, 
+    width: 70,
     fontWeight: "normal",
-    color: DARK_TEXT, 
+    color: DARK_TEXT,
   },
   value: {
     fontSize: 8,
@@ -134,7 +135,7 @@ const template21Styles = StyleSheet.create({
     fontWeight: "normal",
   },
 
-  // --- Party Section ---
+  // --- Party Section (Keeping original styles for unused block for completeness) ---
   partySection: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -166,11 +167,11 @@ const template21Styles = StyleSheet.create({
     marginBottom: 2,
     color: DARK_TEXT,
   },
-  
+
   // --- Items Table ---
   table: {
     width: "auto",
-    borderWidth: 1, 
+    borderWidth: 1,
     borderColor: BORDER_COLOR,
     marginBottom: 5,
   },
@@ -187,23 +188,23 @@ const template21Styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottomColor: BORDER_COLOR,
-    borderBottomWidth: 0.5, 
+    borderBottomWidth: 0.5,
     minHeight: 16,
   },
   tableCellHeader: {
     borderRightColor: "white",
-    borderRightWidth: 0.5, 
+    borderRightWidth: 0.5,
     padding: 3,
-    textAlign: 'center',
-    justifyContent: 'center',
+    textAlign: "center",
+    justifyContent: "center",
   },
   tableCell: {
     borderRightColor: BORDER_COLOR,
-    borderRightWidth: 0.5, 
+    borderRightWidth: 0.5,
     padding: 2.5,
     fontSize: 7,
     textAlign: "right",
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   tableCellLeft: {
     textAlign: "left",
@@ -287,13 +288,13 @@ const template21Styles = StyleSheet.create({
     fontSize: 7,
   },
   bankLabel: {
-    width: 55, 
+    width: 55,
     fontWeight: "bold",
     marginRight: 4,
   },
   termsSection: {
     width: "100%",
-    borderWidth: 1, 
+    borderWidth: 1,
     borderColor: BORDER_COLOR,
     padding: 5,
   },
@@ -317,66 +318,36 @@ const template21Styles = StyleSheet.create({
     padding: 3,
   },
 
-   grayColor:{
-    color:"#262626"
+  grayColor: {
+    color: "#262626",
   },
 
-   sectionHeader: {
+  sectionHeader: {
     fontSize: 9,
     marginBottom: 3,
   },
 });
 
-// Interface Definitions
-interface Template21PDFProps {
-  company?: (Company & { logoUrl?: string; emailId?: string }) | null; 
-  party?: Party | null;
-  transaction: Transaction;
-  shippingAddress?: ShippingAddress | null;
-  bank?: Bank | null;
+// Types for calculated data (as used in Template8PDF logic)
+interface Template8Data {
+  totals: any;
+  totalTaxable: number;
+  totalAmount: number;
+  items: ItemWithCalculations[];
+  itemsWithGST: ItemWithCalculations[];
+  totalItems: number;
+  totalQty: number;
+  itemsBody: any;
+  totalCGST: number;
+  totalSGST: number;
+  totalIGST: number;
+  isGSTApplicable: boolean;
+  isInterstate: boolean;
+  showIGST: boolean;
+  showCGSTSGST: boolean;
+  showNoTax: boolean;
 }
 
-// Helper: Number to Words
-const numberToWords = (num: number): string => {
-  if (num === 0) return "Zero";
-  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
-  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-  const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-
-  const convertHundreds = (n: number): string => {
-    let str = "";
-    if (n > 99) {
-      str += ones[Math.floor(n / 100)] + " Hundred ";
-      n %= 100;
-    }
-    if (n > 19) {
-      str += tens[Math.floor(n / 10)] + " ";
-      n %= 10;
-    } else if (n > 9) {
-      str += teens[n - 10] + " ";
-      return str;
-    }
-    if (n > 0) {
-      str += ones[n] + " ";
-    }
-    return str;
-  };
-
-  const crore = Math.floor(num / 10000000);
-  const lakh = Math.floor((num % 10000000) / 100000);
-  const thousand = Math.floor((num % 100000) / 1000);
-  const hundred = Math.floor(num % 1000);
-
-  let result = "";
-  if (crore > 0) result += convertHundreds(crore) + "Crore ";
-  if (lakh > 0) result += convertHundreds(lakh) + "Lakh ";
-  if (thousand > 0) result += convertHundreds(thousand) + "Thousand ";
-  if (hundred > 0) result += convertHundreds(hundred);
-
-  return result.trim() + " Only";
-};
-
-// Types for calculated data
 type ItemWithCalculations = Item & {
   code?: string;
   unit?: string;
@@ -399,6 +370,50 @@ interface TaxSummaryItem {
   total: number;
 }
 
+// Interface Definitions
+interface Template21PDFProps {
+  company?: (Company & { logoUrl?: string; emailId?: string }) | null;
+  party?: Party | null;
+  transaction: Transaction;
+  shippingAddress?: ShippingAddress | null;
+  bank?: Bank | null;
+}
+
+// Helper: Terms and Conditions extraction logic from Template8PDF
+const getTermsAndConditions = (notes?: string) => {
+  const defaultTerms = [
+    "Subject to our home Jurisdiction.",
+    "Our Responsibility Ceases as soon as goods leaves our Premises.",
+    "Goods once sold will not taken back.",
+    "Delivery Ex-Premises.",
+  ];
+
+  if (!notes)
+    return { title: "Terms & Conditions:", items: defaultTerms.slice(0, 4) };
+
+  const notesHtml = notes;
+  const titleMatch = notesHtml.match(
+    /<span class="ql-size-large">(.*?)<\/span>/
+  );
+  const title = titleMatch
+    ? titleMatch[1].replace(/&amp;/g, "&")
+    : "Terms & Conditions:";
+
+  const listItems = [];
+  const liRegex = /<li[^>]*>(.*?)<\/li>/g;
+  let match;
+  while ((match = liRegex.exec(notesHtml || "")) !== null) {
+    // Strip HTML tags from item and replace HTML entities
+    const cleanItem = match[1].replace(/<[^>]*>/g, "").replace(/&amp;/g, "&");
+    listItems.push(cleanItem);
+  }
+
+  return {
+    title: title,
+    items: listItems.length > 0 ? listItems : defaultTerms.slice(0, 4),
+  };
+};
+
 const Template21PDF: React.FC<Template21PDFProps> = ({
   transaction,
   company,
@@ -406,12 +421,18 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
   shippingAddress,
   bank,
 }) => {
-  const preparedData = prepareTemplate8Data(transaction, company, party, shippingAddress) as any;
+  // FIX: Using 'as unknown as Template8Data' to satisfy TypeScript compiler
+  const preparedData: Template8Data = prepareTemplate8Data(
+    transaction,
+    company,
+    party,
+    shippingAddress
+  ) as unknown as Template8Data; // <-- FIX APPLIED HERE
 
   const {
     totalTaxable,
     totalAmount,
-    items,
+    items: allItems, // Rename to avoid conflict with `items` in scope
     totalItems,
     totalQty,
     totalCGST,
@@ -422,37 +443,103 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
     showCGSTSGST,
   } = preparedData;
 
+  // Use itemsWithGST if it exists and contains the calculated fields, otherwise fall back to items.
+  const typedItems: ItemWithCalculations[] = (preparedData.itemsWithGST ||
+    allItems) as ItemWithCalculations[];
+
   const itemsPerPage = 12; // Number of items per page
-  const pages: typeof items[] = [];
-  for (let i = 0; i < items.length; i += itemsPerPage) {
-    pages.push(items.slice(i, i + itemsPerPage));
+  const pages: ItemWithCalculations[][] = [];
+  for (let i = 0; i < typedItems.length; i += itemsPerPage) {
+    pages.push(typedItems.slice(i, i + itemsPerPage));
   }
 
-  const typedItems: ItemWithCalculations[] = items || [];
-
-  // --- Column Width Definitions ---
+  // --- Column Width Definitions (Adjusted for fixed width based on GST columns) ---
   const COL_WIDTH_SR_NO = 22;
-  const COL_WIDTH_NAME = 180; 
-  const COL_WIDTH_HSN = 50;
-  const COL_WIDTH_QTY = 45;
-  const COL_WIDTH_RATE = 50;
+  const COL_WIDTH_NAME = showIGST ? 140 : showCGSTSGST ? 110 : 195;
+  const COL_WIDTH_HSN = 45;
+  const COL_WIDTH_QTY = 35;
+  const COL_WIDTH_RATE = 55;
   const COL_WIDTH_TAXABLE = 65;
-  const COL_WIDTH_GST_PCT = 28;
-  const COL_WIDTH_GST_AMT = 60;
+  const COL_WIDTH_GST_PCT_HALF = 25; // For CGST/SGST %
+  const COL_WIDTH_GST_AMT_HALF = 50; // For CGST/SGST Amt
+  const COL_WIDTH_IGST_PCT = 40;
+  const COL_WIDTH_IGST_AMT = 60;
   const COL_WIDTH_TOTAL = 65;
 
-  const colWidths = [
-    COL_WIDTH_SR_NO, COL_WIDTH_NAME, COL_WIDTH_HSN, COL_WIDTH_QTY, COL_WIDTH_RATE,
-    COL_WIDTH_TAXABLE, COL_WIDTH_GST_PCT, COL_WIDTH_GST_AMT, COL_WIDTH_TOTAL
-  ];
-  
-  const totalColumnIndex = colWidths.length - 1; 
+  const getColWidths = () => {
+    let widths = [
+      COL_WIDTH_SR_NO,
+      COL_WIDTH_NAME,
+      COL_WIDTH_HSN,
+      COL_WIDTH_QTY,
+      COL_WIDTH_RATE,
+      COL_WIDTH_TAXABLE,
+    ];
+
+    if (showIGST) {
+      widths.push(COL_WIDTH_IGST_PCT, COL_WIDTH_IGST_AMT);
+    } else if (showCGSTSGST) {
+      widths.push(
+        COL_WIDTH_GST_PCT_HALF,
+        COL_WIDTH_GST_AMT_HALF,
+        COL_WIDTH_GST_PCT_HALF,
+        COL_WIDTH_GST_AMT_HALF
+      );
+    }
+    widths.push(COL_WIDTH_TOTAL);
+
+    return widths;
+  };
+
+  const colWidths = getColWidths();
+  const totalColumnIndex = colWidths.length - 1; // Index of the 'Total' column
+
+  // Calculate the combined width of the columns preceding the 'Total Amount' label in the summary row
+  const calculateTotalLabelWidth = () => {
+    if (showIGST) {
+      // SR_NO + Name + HSN + Qty + Rate + Taxable Value + IGST% + IGST Amt
+      return (
+        COL_WIDTH_SR_NO +
+        COL_WIDTH_NAME +
+        COL_WIDTH_HSN +
+        COL_WIDTH_QTY +
+        COL_WIDTH_RATE +
+        COL_WIDTH_TAXABLE +
+        COL_WIDTH_IGST_PCT +
+        COL_WIDTH_IGST_AMT
+      );
+    } else if (showCGSTSGST) {
+      // SR_NO + Name + HSN + Qty + Rate + Taxable Value + CGST% + CGST Amt + SGST% + SGST Amt
+      return (
+        COL_WIDTH_SR_NO +
+        COL_WIDTH_NAME +
+        COL_WIDTH_HSN +
+        COL_WIDTH_QTY +
+        COL_WIDTH_RATE +
+        COL_WIDTH_TAXABLE +
+        COL_WIDTH_GST_PCT_HALF * 2 +
+        COL_WIDTH_GST_AMT_HALF * 2
+      );
+    } else {
+      // SR_NO + Name + HSN + Qty + Rate + Taxable Value
+      return (
+        COL_WIDTH_SR_NO +
+        COL_WIDTH_NAME +
+        COL_WIDTH_HSN +
+        COL_WIDTH_QTY +
+        COL_WIDTH_RATE +
+        COL_WIDTH_TAXABLE
+      );
+    }
+  };
 
   const getAddressLines = (address: string | undefined) =>
     address ? address.split("\n").filter((line) => line.trim() !== "") : [];
 
   const bankData: Bank = bank || ({} as Bank);
-  const amountInWords = numberToWords(Math.round(totalAmount));
+  // Using the imported numberToWords utility
+  const totalAmountRounded = Math.round(totalAmount);
+  const amountInWords = numberToWords(totalAmountRounded);
 
   const extendedTransaction = transaction as Transaction & {
     poNumber?: string;
@@ -461,12 +548,12 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
   };
 
   // --- Tax Summary Data Grouped by HSN/SAC ---
-  const taxSummary = typedItems.reduce((acc, item) => { 
-    const key = `${item.code || '-'}-${item.gstRate || 0}`;
-    
+  const taxSummary = typedItems.reduce((acc, item) => {
+    const key = `${item.code || "-"}-${item.gstRate || 0}`;
+
     if (!acc[key]) {
       acc[key] = {
-        hsn: item.code || '-',
+        hsn: item.code || "-",
         taxableValue: 0,
         rate: item.gstRate || 0,
         igst: 0,
@@ -480,55 +567,29 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
     acc[key].igst += item.igst || 0;
     acc[key].cgst += item.cgst || 0;
     acc[key].sgst += item.sgst || 0;
+    // Sum of all tax for the HSN row
     acc[key].total += (item.igst || 0) + (item.cgst || 0) + (item.sgst || 0);
 
     return acc;
   }, {} as Record<string, TaxSummaryItem>);
-  
+
   const taxSummaryArray: TaxSummaryItem[] = Object.values(taxSummary);
-
-  const getTermsAndConditions = (notes?: string) => {
-    const defaultTerms = [
-      "Subject to our home Jurisdiction.",
-      "Our Responsibility Ceases as soon as goods leaves our Premises.",
-      "Goods once sold will not taken back.",
-      "Delivery Ex-Premises.",
-    ];
-
-    if (!notes) return defaultTerms.slice(0, 4);
-
-    const listItems = [];
-    const liRegex = /<li[^>]*>(.*?)<\/li>/g;
-    let match;
-    while ((match = liRegex.exec(notes || "")) !== null) {
-      const cleanItem = match[1].replace(/<[^>]*>/g, "").replace(/&amp;/g, "&");
-      listItems.push(cleanItem);
-    }
-    
-    return listItems.length > 0 ? listItems : defaultTerms.slice(0, 4);
-  };
-
-  const termsItems = getTermsAndConditions(transaction?.notes);
+  const { title: termsTitle, items: termsItems } = getTermsAndConditions(
+    transaction?.notes
+  );
 
   return (
     <Document>
-      {pages.map((pageItems: ItemWithCalculations[], pageIndex: number) => { 
+      {pages.map((pageItems: ItemWithCalculations[], pageIndex: number) => {
         const isLastPage = pageIndex === pages.length - 1;
-        
-        const invoiceDate = transaction?.date 
-            ? new Date(transaction.date).toLocaleDateString("en-GB") 
-            : "-";
-        const poDate = extendedTransaction?.poDate
-            ? new Date(extendedTransaction.poDate).toLocaleDateString("en-GB")
-            : "-";
-            
-        const companyName = company?.businessName || company?.companyName || "-";
-        const partyName = party?.name || "-";
+
+        const companyName =
+          company?.businessName || company?.companyName || "-";
         const partyAddress = getBillingAddress(party);
-        const shippingAddressString = getShippingAddress(shippingAddress, partyAddress);
-        
-        const billingAddressLines = getAddressLines(partyAddress);
-        const shippingAddressLines = getAddressLines(shippingAddressString); 
+        const shippingAddressString = getShippingAddress(
+          shippingAddress,
+          partyAddress
+        );
 
         return (
           <Page key={pageIndex} size="A4" style={template21Styles.page}>
@@ -537,26 +598,32 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
               {/* Left Side: Tax Invoice & Company Details */}
               <View style={template21Styles.leftHeaderBlock}>
                 <Text style={template21Styles.taxInvoiceTitle}>
-                  {isGSTApplicable ? "TAX INVOICE" : "INVOICE"}
+                  {transaction.type === "proforma"
+                    ? "PROFORMA INVOICE"
+                    : isGSTApplicable
+                    ? "TAX INVOICE"
+                    : "INVOICE"}
                 </Text>
-                
-                <Text style={template21Styles.companyName}>
-                  {companyName}
-                </Text>
-                
+
+                <Text style={template21Styles.companyName}>{companyName}</Text>
+
                 {company?.gstin && (
                   <Text style={template21Styles.gstin}>
                     GSTIN: {company.gstin}
                   </Text>
                 )}
                 {getAddressLines(company?.address).map((line, idx) => (
-                  <Text key={`comp-addr-${idx}`} style={template21Styles.addressText}>
+                  <Text
+                    key={`comp-addr-${idx}`}
+                    style={template21Styles.addressText}
+                  >
                     {line}
                   </Text>
                 ))}
                 {company?.addressState && (
                   <Text style={template21Styles.addressText}>
-                    {company.addressState}{company?.Pincode ? ` - ${company.Pincode}` : ""}
+                    {company.addressState}
+                    {company?.Pincode ? ` - ${company.Pincode}` : ""}
                   </Text>
                 )}
                 <Text style={template21Styles.addressText}>
@@ -576,372 +643,590 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                 </Text>
 
                 <View style={template21Styles.logoContainer}>
-                  {company?.logoUrl ? (
+                  {company?.logo ? (
                     <Image
-                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      src={company.logoUrl} 
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                      }}
+                      src={`${process.env.NEXT_PUBLIC_BASE_URL}${company.logo}`}
                     />
                   ) : (
-                    <View style={{ width: 80, height: 80, backgroundColor: '#e6f2ff', borderRadius: 40 }} />
+                    <View
+                      style={{
+                        width: 80,
+                        height: 80,
+                        backgroundColor: "#e6f2ff",
+                        borderRadius: 40,
+                      }}
+                    />
                   )}
                 </View>
               </View>
             </View>
 
-           {/* Two Column Section */}
-                     <View
-  style={{
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  }}
->
-  {/* NEW: Full-width blue line added at the very top */}
-  <View
-    style={{
-      position: "absolute",
-      top: -15,
-      left: -20,
-      right: -20,
-      height: 1.5,
-      backgroundColor: "#007AFF",
-    }}
-  />
-  {/* End of NEW: Blue line */}
+            {/* Two Column Section */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: 10,
+              }}
+            >
+              {/* NEW: Full-width blue line added at the very top */}
+              <View
+                style={{
+                  position: "absolute",
+                  top: -15,
+                  left: -20,
+                  right: -20,
+                  height: 1.5,
+                  backgroundColor: "#007AFF",
+                }}
+              />
+              {/* End of NEW: Blue line */}
 
-  {/* Left Side - Two Address Sections Stacked (First Duplicated Section) */}
-  <View style={{ flex: 2, paddingRight: 10 }}>
-    {/* Customer Details - Top Section (Billed to) */}
-    <View style={{ marginBottom: 15 }}>
-      <Text
-        style={[
-          template21Styles.grayColor,
-          template21Styles.sectionHeader,
-          { fontSize: 11 }, // INCREASED SIZE
-        ]}
-      >
-        Customer Details | 
-      </Text>
-      <Text
-        style={[
-          template21Styles.companyName,
-          template21Styles.grayColor,
-          { fontSize: 14 }, // INCREASED SIZE
-        ]}
-      >
-        {party?.name || "-"}
-      </Text>
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { width: "70%", fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        {getBillingAddress(party) || "-"}
-      </Text>
+              {/* Left Side - Two Address Sections Stacked */}
+              <View style={{ flex: 2, paddingRight: 10 }}>
+                {/* Customer Details - Top Section (Billed to) */}
+                <View style={{ marginBottom: 15 }}>
+                  <Text
+                    style={[
+                      template21Styles.grayColor,
+                      template21Styles.sectionHeader,
+                      { fontSize: 11 },
+                    ]}
+                  >
+                    Customer Details |
+                  </Text>
+                  <Text
+                    style={[
+                      template21Styles.companyName,
+                      template21Styles.grayColor,
+                      { fontSize: 14 },
+                    ]}
+                  >
+                    {party?.name || "-"}
+                  </Text>
+                  <Text
+                    style={[
+                      template21Styles.addressText,
+                      template21Styles.grayColor,
+                      { width: "70%", fontSize: 10 },
+                    ]}
+                  >
+                    {partyAddress || "-"}
+                  </Text>
 
-      {/* GSTIN detail - Only show if GST is applicable and available */}
-      {isGSTApplicable && party?.gstin && (
-        <Text
-          style={[
-            template21Styles.addressText,
-            template21Styles.grayColor,
-            { fontSize: 10 }, // INCREASED SIZE
-          ]}
-        >
-          <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-            GSTIN:{" "}
-          </Text>
-          <Text>{party.gstin}</Text>
-        </Text>
-      )}
+                  {/* GSTIN detail - Only show if GST is applicable and available */}
+                  {isGSTApplicable && party?.gstin && (
+                    <Text
+                      style={[
+                        template21Styles.addressText,
+                        template21Styles.grayColor,
+                        { fontSize: 10 },
+                      ]}
+                    >
+                      <Text
+                        style={[template21Styles.boldText, { fontSize: 10 }]}
+                      >
+                        GSTIN:{" "}
+                      </Text>
+                      <Text>{party.gstin}</Text>
+                    </Text>
+                  )}
 
-      {/* PAN detail */}
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-          PAN:{" "}
-        </Text>
-        <Text>{party?.pan || "-"}</Text>
-      </Text>
+                  {/* PAN detail */}
+                  <Text
+                    style={[
+                      template21Styles.addressText,
+                      template21Styles.grayColor,
+                      { fontSize: 10 },
+                    ]}
+                  >
+                    <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
+                      PAN:{" "}
+                    </Text>
+                    <Text>{party?.pan || "-"}</Text>
+                  </Text>
 
-      {/* State detail */}
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-          State:{" "}
-        </Text>
-        <Text>{party?.state || "-"}</Text>
-      </Text>
-    </View>
+                  {/* State detail */}
+                  <Text
+                    style={[
+                      template21Styles.addressText,
+                      template21Styles.grayColor,
+                      { fontSize: 10 },
+                    ]}
+                  >
+                    <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
+                      State:{" "}
+                    </Text>
+                    <Text>{party?.state || "-"}</Text>
+                  </Text>
+                </View>
+              </View>
 
-    {/* Shipping Address - Bottom Section (Shipped to) */}
-    <View>
-      <Text
-        style={[
-          template21Styles.sectionHeader,
-          template21Styles.grayColor,
-          { fontSize: 11 }, // INCREASED SIZE
-        ]}
-      >
-        Details of Consignee | Shipped to :
-      </Text>
-      <Text
-        style={[
-          template21Styles.companyName,
-          template21Styles.grayColor,
-          { fontSize: 14 }, // INCREASED SIZE
-        ]}
-      >
-        {shippingAddress?.label || party?.name || " "}
-      </Text>
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        {getShippingAddress(
-          shippingAddress,
-          getBillingAddress(party)
-        ) || "-"}
-      </Text>
+              {/* Center  */}
+              <View style={{ flex: 2, paddingRight: 10 }}>
+                {/* Shipping Address - Bottom Section (Shipped to) */}
+                <View>
+                  <Text
+                    style={[
+                      template21Styles.sectionHeader,
+                      template21Styles.grayColor,
+                      { fontSize: 11 },
+                    ]}
+                  >
+                    Details of Consignee | Shipped to :
+                  </Text>
+                  <Text
+                    style={[
+                      template21Styles.companyName,
+                      template21Styles.grayColor,
+                      { fontSize: 14 },
+                    ]}
+                  >
+                    {shippingAddress?.label || party?.name || " "}
+                  </Text>
+                  <Text
+                    style={[
+                      template21Styles.addressText,
+                      template21Styles.grayColor,
+                      { fontSize: 10 },
+                    ]}
+                  >
+                    {shippingAddressString || "-"}
+                  </Text>
 
-      <Text
-        style={[
-          template21Styles.addressText,
-          template21Styles.grayColor,
-          { fontSize: 10 }, // INCREASED SIZE
-        ]}
-      >
-        <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
-          State:{" "}
-        </Text>
-        <Text>{shippingAddress?.state || "-"}</Text>
-      </Text>
-    </View>
-  </View>
+                  <Text
+                    style={[
+                      template21Styles.addressText,
+                      template21Styles.grayColor,
+                      { fontSize: 10 },
+                    ]}
+                  >
+                    <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
+                      State:{" "}
+                    </Text>
+                    <Text>{shippingAddress?.state|| "-"}</Text>
+                  </Text>
+                </View>
+              </View>
 
-  {/* Right Side - Invoice Details */}
-  <View style={{ width: "30%", textAlign: "right" }}>
-    {/* Invoice # */}
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 4,
-      }}
-    >
-      <Text style={{ fontSize: 10, fontWeight: "bold" }}>Invoice #:</Text> {/* INCREASED SIZE */}
-      <Text style={{ fontSize: 10 }}>
-        {transaction?.invoiceNumber?.toString() || "-"}
-      </Text>
-    </View>
-    {/* Invoice Date */}
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 4,
-      }}
-    >
-      <Text style={{ fontSize: 10, fontWeight: "bold" }}>Invoice Date:</Text> {/* INCREASED SIZE */}
-      <Text style={{ fontSize: 10, fontWeight: "bold" }}> {/* INCREASED SIZE */}
-        {transaction?.date
-          ? new Date(transaction.date).toLocaleDateString("en-GB")
-          : "-"}
-      </Text>
-    </View>
-    {/* P.O. No. */}
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 4,
-      }}
-    >
-      <Text style={{ fontSize: 10 }}>P.O. No.:</Text> {/* INCREASED SIZE */}
-      <Text style={{ fontSize: 10 }}> {/* INCREASED SIZE */}
-        {(transaction as any)?.poNumber || "-"}
-      </Text>
-    </View>
-    {/* P.O. Date */}
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 4,
-      }}
-    >
-      <Text style={{ fontSize: 10 }}>P.O. Date:</Text> {/* INCREASED SIZE */}
-      <Text style={{ fontSize: 10 }}> {/* INCREASED SIZE */}
-        {(transaction as any)?.poDate
-          ? new Date((transaction as any).poDate).toLocaleDateString("en-GB")
-          : "-"}
-      </Text>
-    </View>
-    {/* E-Way No. - Only show if GST is applicable */}
-    {isGSTApplicable && (
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginBottom: 4,
-        }}
-      >
-        <Text style={{ fontSize: 10 }}>E-Way No.:</Text> {/* INCREASED SIZE */}
-        <Text style={{ fontSize: 10 }}> {/* INCREASED SIZE */}
-          {(transaction as any)?.ewayNumber || "-"}
-        </Text>
-      </View>
-    )}
-    {/* Place of Supply */}
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-      }}
-    >
-      <Text style={{ fontSize: 10 }}>Place of Supply:</Text> {/* INCREASED SIZE */}
-      <Text style={{ fontSize: 10 }}> {/* INCREASED SIZE */}
-        {shippingAddress?.state || party?.state || "-"}
-      </Text>
-    </View>
-  </View>
-</View>
+              {/* Right Side - Invoice Details */}
+              <View style={{ width: "30%", textAlign: "right" }}>
+                {/* Invoice # */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "bold" }}>
+                    Invoice #:
+                  </Text>
+                  <Text style={{ fontSize: 10 }}>
+                    {transaction?.invoiceNumber?.toString() || "-"}
+                  </Text>
+                </View>
+                {/* Invoice Date */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "bold" }}>
+                    Invoice Date:
+                  </Text>
+                  <Text style={{ fontSize: 10, fontWeight: "bold" }}>
+                    {transaction?.date
+                      ? new Date(transaction.date).toLocaleDateString("en-GB")
+                      : "-"}
+                  </Text>
+                </View>
+                {/* P.O. No. */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 10 }}>P.O. No.:</Text>
+                  <Text style={{ fontSize: 10 }}>
+                    {extendedTransaction?.poNumber || "-"}
+                  </Text>
+                </View>
+                {/* P.O. Date */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 10 }}>P.O. Date:</Text>
+                  <Text style={{ fontSize: 10 }}>
+                    {extendedTransaction?.poDate
+                      ? new Date(extendedTransaction.poDate).toLocaleDateString(
+                          "en-GB"
+                        )
+                      : "-"}
+                  </Text>
+                </View>
+                {/* E-Way No. - Only show if GST is applicable */}
+                {isGSTApplicable && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 10 }}>E-Way No.:</Text>
+                    <Text style={{ fontSize: 10 }}>
+                      {extendedTransaction?.ewayNumber || "-"}
+                    </Text>
+                  </View>
+                )}
+                
+              </View>
+            </View>
 
             {/* --- Items Table --- */}
             <View style={template21Styles.table}>
               {/* Table Header */}
               <View style={template21Styles.tableHeader}>
-                <Text style={[template21Styles.tableCellHeader, { width: colWidths[0] }]}>Sr.{'\n'}No.</Text>
-                <Text style={[template21Styles.tableCellHeader, template21Styles.tableCellLeft, { width: colWidths[1] }]}>Name of Product / Service</Text>
-                <Text style={[template21Styles.tableCellHeader, { width: colWidths[2] }]}>HSN/{'\n'}SAC</Text>
-                <Text style={[template21Styles.tableCellHeader, { width: colWidths[3] }]}>Qty</Text> 
-                <Text style={[template21Styles.tableCellHeader, { width: colWidths[4] }]}>Rate</Text> 
-                <Text style={[template21Styles.tableCellHeader, { width: colWidths[5] }]}>Taxable{'\n'}Value</Text>
-                
+                <Text
+                  style={[
+                    template21Styles.tableCellHeader,
+                    { width: colWidths[0] },
+                  ]}
+                >
+                  Sr.{"\n"}No.
+                </Text>
+                <Text
+                  style={[
+                    template21Styles.tableCellHeader,
+                    template21Styles.tableCellLeft,
+                    { width: colWidths[1] },
+                  ]}
+                >
+                  Name of Product / Service
+                </Text>
+                <Text
+                  style={[
+                    template21Styles.tableCellHeader,
+                    { width: colWidths[2] },
+                  ]}
+                >
+                  HSN/{"\n"}SAC
+                </Text>
+                <Text
+                  style={[
+                    template21Styles.tableCellHeader,
+                    { width: colWidths[3] },
+                  ]}
+                >
+                  Qty
+                </Text>
+                <Text
+                  style={[
+                    template21Styles.tableCellHeader,
+                    { width: colWidths[4] },
+                  ]}
+                >
+                  Rate
+                </Text>
+                <Text
+                  style={[
+                    template21Styles.tableCellHeader,
+                    { width: colWidths[5] },
+                  ]}
+                >
+                  Taxable{"\n"}Value
+                </Text>
+
                 {showIGST ? (
                   <>
-                    <Text style={[template21Styles.tableCellHeader, { width: colWidths[6] }]}>IGST{'\n'}%</Text>
-                    <Text style={[template21Styles.tableCellHeader, { width: colWidths[7] }]}>IGST{'\n'}Amt</Text>
+                    <Text
+                      style={[
+                        template21Styles.tableCellHeader,
+                        { width: colWidths[6] },
+                      ]}
+                    >
+                      IGST{"\n"}%
+                    </Text>
+                    <Text
+                      style={[
+                        template21Styles.tableCellHeader,
+                        { width: colWidths[7] },
+                      ]}
+                    >
+                      IGST{"\n"}Amt
+                    </Text>
                   </>
                 ) : showCGSTSGST ? (
                   <>
-                    <Text style={[template21Styles.tableCellHeader, { width: COL_WIDTH_GST_PCT/2 }]}>CGST{'\n'}%</Text>
-                    <Text style={[template21Styles.tableCellHeader, { width: COL_WIDTH_GST_AMT/2 }]}>CGST{'\n'}Amt</Text>
-                    <Text style={[template21Styles.tableCellHeader, { width: COL_WIDTH_GST_PCT/2 }]}>SGST{'\n'}%</Text>
-                    <Text style={[template21Styles.tableCellHeader, { width: COL_WIDTH_GST_AMT/2 }]}>SGST{'\n'}Amt</Text>
+                    <Text
+                      style={[
+                        template21Styles.tableCellHeader,
+                        { width: colWidths[6] },
+                      ]}
+                    >
+                      CGST{"\n"}%
+                    </Text>
+                    <Text
+                      style={[
+                        template21Styles.tableCellHeader,
+                        { width: colWidths[7] },
+                      ]}
+                    >
+                      CGST{"\n"}Amt
+                    </Text>
+                    <Text
+                      style={[
+                        template21Styles.tableCellHeader,
+                        { width: colWidths[8] },
+                      ]}
+                    >
+                      SGST{"\n"}%
+                    </Text>
+                    <Text
+                      style={[
+                        template21Styles.tableCellHeader,
+                        { width: colWidths[9] },
+                      ]}
+                    >
+                      SGST{"\n"}Amt
+                    </Text>
                   </>
                 ) : null}
 
-                <Text style={[template21Styles.tableCellHeader, { width: colWidths[totalColumnIndex], borderRightWidth: 0 }]}>Total</Text>
+                <Text
+                  style={[
+                    template21Styles.tableCellHeader,
+                    { width: colWidths[totalColumnIndex], borderRightWidth: 0 },
+                  ]}
+                >
+                  Total
+                </Text>
               </View>
 
               {/* Table Rows */}
-              {pageItems.map((item, index: number) => { 
+              {pageItems.map((item, index: number) => {
                 const isLastItemInPage = index === pageItems.length - 1;
 
                 return (
                   <View
                     key={`${pageIndex}-${index}`}
-                    style={[template21Styles.tableRow, isLastItemInPage && !isLastPage ? { borderBottomWidth: 0 } : {}]} 
+                    style={[
+                      template21Styles.tableRow,
+                      isLastItemInPage && !isLastPage
+                        ? { borderBottomWidth: 0 }
+                        : {},
+                    ]}
                   >
-                    <Text style={[template21Styles.tableCell, template21Styles.tableCellCenter, { width: colWidths[0] }]}>
+                    <Text
+                      style={[
+                        template21Styles.tableCell,
+                        template21Styles.tableCellCenter,
+                        { width: colWidths[0], padding: 4 },
+                      ]}
+                    >
                       {pageIndex * itemsPerPage + index + 1}
                     </Text>
 
-                    <View style={[template21Styles.tableCell, template21Styles.tableCellLeft, { width: colWidths[1] }]}>
-                      <Text style={template21Styles.smallText}>{item.name}</Text>
+                    <View
+                      style={[
+                        template21Styles.tableCell,
+                        template21Styles.tableCellLeft,
+                        { width: colWidths[1], padding: 3 },
+                      ]}
+                    >
+                      <Text style={template21Styles.smallText}>
+                        {item.name}
+                      </Text>
                       {(item.details || []).map((detail, dIdx) => (
-                        <Text key={dIdx} style={[template21Styles.smallText, { fontSize: 6, color: '#666', marginTop: 0.5 }]}>
+                        <Text
+                          key={dIdx}
+                          style={[
+                            template21Styles.smallText,
+                            { fontSize: 6, color: "#666", marginTop: 0.5 },
+                          ]}
+                        >
                           {detail}
                         </Text>
                       ))}
                     </View>
 
-                    <Text style={[template21Styles.tableCell, template21Styles.tableCellCenter, { width: colWidths[2] }]}>
+                    <Text
+                      style={[
+                        template21Styles.tableCell,
+                        template21Styles.tableCellCenter,
+                        { width: colWidths[2], padding: 4 },
+                      ]}
+                    >
                       {item.code || ""}
                     </Text>
-                    <Text style={[template21Styles.tableCell, template21Styles.tableCellCenter, { width: colWidths[3] }]}>
+                    <Text
+                      style={[
+                        template21Styles.tableCell,
+                        template21Styles.tableCellCenter,
+                        { width: colWidths[3], padding: 4 },
+                      ]}
+                    >
                       {item.quantity || 0} {item.unit || ""}
                     </Text>
-                    <Text style={[template21Styles.tableCell, { width: colWidths[4] }]}>
+                    <Text
+                      style={[
+                        template21Styles.tableCell,
+                        { width: colWidths[4], padding: 4 },
+                      ]}
+                    >
                       {formatCurrency(item.pricePerUnit || 0)}
                     </Text>
-                    <Text style={[template21Styles.tableCell, { width: colWidths[5] }]}>
+                    <Text
+                      style={[
+                        template21Styles.tableCell,
+                        { width: colWidths[5], padding: 4 },
+                      ]}
+                    >
                       {formatCurrency(item.taxableValue || 0)}
                     </Text>
 
                     {showIGST ? (
                       <>
-                        <Text style={[template21Styles.tableCell, template21Styles.tableCellCenter, { width: colWidths[6] }]}>
+                        <Text
+                          style={[
+                            template21Styles.tableCell,
+                            template21Styles.tableCellCenter,
+                            { width: colWidths[6], padding: 4 },
+                          ]}
+                        >
                           {(item.gstRate || 0).toFixed(2)}
                         </Text>
-                        <Text style={[template21Styles.tableCell, { width: colWidths[7] }]}>
+                        <Text
+                          style={[
+                            template21Styles.tableCell,
+                            { width: colWidths[7], padding: 4 },
+                          ]}
+                        >
                           {formatCurrency(item.igst || 0)}
                         </Text>
                       </>
                     ) : showCGSTSGST ? (
                       <>
-                        <Text style={[template21Styles.tableCell, template21Styles.tableCellCenter, { width: COL_WIDTH_GST_PCT/2 }]}>
+                        <Text
+                          style={[
+                            template21Styles.tableCell,
+                            template21Styles.tableCellCenter,
+                            { width: colWidths[6], padding: 4 },
+                          ]}
+                        >
                           {((item.gstRate || 0) / 2).toFixed(2)}
                         </Text>
-                        <Text style={[template21Styles.tableCell, { width: COL_WIDTH_GST_AMT/2 }]}>
+                        <Text
+                          style={[
+                            template21Styles.tableCell,
+                            { width: colWidths[7], padding: 4 },
+                          ]}
+                        >
                           {formatCurrency(item.cgst || 0)}
                         </Text>
-                        <Text style={[template21Styles.tableCell, template21Styles.tableCellCenter, { width: COL_WIDTH_GST_PCT/2 }]}>
+                        <Text
+                          style={[
+                            template21Styles.tableCell,
+                            template21Styles.tableCellCenter,
+                            { width: colWidths[8], padding: 4 },
+                          ]}
+                        >
                           {((item.gstRate || 0) / 2).toFixed(2)}
                         </Text>
-                        <Text style={[template21Styles.tableCell, { width: COL_WIDTH_GST_AMT/2 }]}>
+                        <Text
+                          style={[
+                            template21Styles.tableCell,
+                            { width: colWidths[9], padding: 4 },
+                          ]}
+                        >
                           {formatCurrency(item.sgst || 0)}
                         </Text>
                       </>
                     ) : null}
 
-                    <Text style={[template21Styles.tableCell, { width: colWidths[totalColumnIndex], fontWeight: "bold", borderRightWidth: 0 }]}>
+                    <Text
+                      style={[
+                        template21Styles.tableCell,
+                        {
+                          width: colWidths[totalColumnIndex],
+                          fontWeight: "bold",
+                          borderRightWidth: 0,
+                          padding: 4,
+                        },
+                      ]}
+                    >
                       {formatCurrency(item.total || 0)}
                     </Text>
                   </View>
                 );
               })}
 
-              {/* Total Row */}
+              {/* Total Row (Last Page Only) */}
               {isLastPage && (
-                <View style={[template21Styles.tableRow, { backgroundColor: LIGHT_GRAY, borderBottomWidth: 0 }]}>
-                  <Text style={[template21Styles.tableCell, template21Styles.tableCellLeft, { 
-                    width: colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], 
-                    fontWeight: "bold",
-                    paddingLeft: 3,
-                  }]}>
+                <View
+                  style={[
+                    template21Styles.tableRow,
+                    { backgroundColor: LIGHT_GRAY, borderBottomWidth: 0 },
+                  ]}
+                >
+                  {/* Left part for Total Items / Qty */}
+                  <Text
+                    style={[
+                      template21Styles.tableCell,
+                      template21Styles.tableCellLeft,
+                      {
+                        width:
+                          calculateTotalLabelWidth() -
+                          colWidths[4] -
+                          colWidths[5],
+                        fontWeight: "bold",
+                        paddingLeft: 3,
+                        borderRightWidth: 0.5,
+                      },
+                    ]}
+                  >
                     Total Items / Qty: {totalItems} / {totalQty.toFixed(2)}
                   </Text>
-                  <Text style={[template21Styles.tableCell, { 
-                    width: colWidths[4] + colWidths[5] + (showIGST ? colWidths[6] + colWidths[7] : 0) + (showCGSTSGST ? COL_WIDTH_GST_PCT + COL_WIDTH_GST_AMT : 0), 
-                    fontWeight: "bold",
-                    textAlign: 'right',
-                    paddingRight: 5,
-                  }]}>
-                    Total Amount:
+                  {/* Taxable Value Label/Amount */}
+                  <Text
+                    style={[
+                      template21Styles.tableCell,
+                      {
+                        width: colWidths[4] + colWidths[5],
+                        fontWeight: "bold",
+                        textAlign: "right",
+                        paddingRight: 5,
+                        borderRightWidth: isGSTApplicable ? 0.5 : 0,
+                      },
+                    ]}
+                  >
+                    Taxable Total:
                   </Text>
-                  <Text style={[template21Styles.tableCell, { 
-                    width: colWidths[totalColumnIndex], 
-                    fontWeight: "bold", 
-                    borderRightWidth: 0 
-                  }]}>
-                    {formatCurrency(totalAmount)}
+                  <Text
+                    style={[
+                      template21Styles.tableCell,
+                      {
+                        width: colWidths[totalColumnIndex],
+                        fontWeight: "bold",
+                        borderRightWidth: 0,
+                      },
+                    ]}
+                  >
+                    {formatCurrency(totalTaxable)}
                   </Text>
                 </View>
               )}
@@ -950,10 +1235,20 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
             {/* --- Footer and Totals (Last page only) --- */}
             {isLastPage && (
               <>
+                {/* Tax Summary Totals (Just showing a simple total) */}
+                <View style={[template21Styles.amountInWords]}>
+                  <Text style={template21Styles.boldText}>
+                    GRAND TOTAL: {formatCurrency(totalAmount)}
+                  </Text>
+                </View>
+
                 {/* Amount in Words */}
                 <View style={template21Styles.amountInWords}>
                   <Text>
-                    Total Amount (in words): <Text style={template21Styles.boldText}>{amountInWords}</Text>
+                    Total Amount (in words):{" "}
+                    <Text style={template21Styles.boldText}>
+                      {amountInWords}
+                    </Text>
                   </Text>
                 </View>
 
@@ -962,59 +1257,255 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                   <View style={template21Styles.taxSummaryTable}>
                     {/* Tax Header */}
                     <View style={template21Styles.taxHeader}>
-                      <Text style={[template21Styles.taxCell, { width: 100, borderRightWidth: 0.5, borderRightColor: 'white' }]}>HSN/SAC</Text>
-                      <Text style={[template21Styles.taxCell, { width: 150, borderRightWidth: 0.5, borderRightColor: 'white' }]}>Taxable Value</Text>
-                      <Text style={[template21Styles.taxCell, { width: 50, borderRightWidth: 0.5, borderRightColor: 'white' }]}>%</Text>
+                      <Text
+                        style={[
+                          template21Styles.taxCell,
+                          {
+                            width: 100,
+                            borderRightWidth: 0.5,
+                            borderRightColor: "white",
+                          },
+                        ]}
+                      >
+                        HSN/SAC
+                      </Text>
+                      <Text
+                        style={[
+                          template21Styles.taxCell,
+                          {
+                            width: 150,
+                            borderRightWidth: 0.5,
+                            borderRightColor: "white",
+                          },
+                        ]}
+                      >
+                        Taxable Value
+                      </Text>
+                      <Text
+                        style={[
+                          template21Styles.taxCell,
+                          {
+                            width: 50,
+                            borderRightWidth: 0.5,
+                            borderRightColor: "white",
+                          },
+                        ]}
+                      >
+                        %
+                      </Text>
                       {showIGST ? (
                         <>
-                          <Text style={[template21Styles.taxCell, { width: 120, borderRightWidth: 0.5, borderRightColor: 'white' }]}>IGST</Text>
-                          <Text style={[template21Styles.taxCell, { width: 135, borderRightWidth: 0 }]}>Total</Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              {
+                                width: 120,
+                                borderRightWidth: 0.5,
+                                borderRightColor: "white",
+                              },
+                            ]}
+                          >
+                            IGST
+                          </Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              { width: 135, borderRightWidth: 0 },
+                            ]}
+                          >
+                            Total
+                          </Text>
                         </>
                       ) : (
                         <>
-                          <Text style={[template21Styles.taxCell, { width: 90, borderRightWidth: 0.5, borderRightColor: 'white' }]}>CGST</Text>
-                          <Text style={[template21Styles.taxCell, { width: 90, borderRightWidth: 0.5, borderRightColor: 'white' }]}>SGST</Text>
-                          <Text style={[template21Styles.taxCell, { width: 75, borderRightWidth: 0 }]}>Total</Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              {
+                                width: 90,
+                                borderRightWidth: 0.5,
+                                borderRightColor: "white",
+                              },
+                            ]}
+                          >
+                            CGST
+                          </Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              {
+                                width: 90,
+                                borderRightWidth: 0.5,
+                                borderRightColor: "white",
+                              },
+                            ]}
+                          >
+                            SGST
+                          </Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              { width: 75, borderRightWidth: 0 },
+                            ]}
+                          >
+                            Total
+                          </Text>
                         </>
                       )}
                     </View>
 
                     {/* Tax Rows */}
                     {taxSummaryArray.map((summary, index) => (
-                      <View key={index} style={[template21Styles.taxRow, index === taxSummaryArray.length - 1 ? { borderBottomWidth: 0 } : {}]}>
-                        <Text style={[template21Styles.taxCell, { width: 100 }]}>{summary.hsn}</Text>
-                        <Text style={[template21Styles.taxCell, { width: 150 }]}>{formatCurrency(summary.taxableValue)}</Text>
-                        <Text style={[template21Styles.taxCell, { width: 50, textAlign: 'center' }]}>{summary.rate.toFixed(2)}</Text>
+                      <View
+                        key={index}
+                        style={[
+                          template21Styles.taxRow,
+                          index === taxSummaryArray.length - 1
+                            ? { borderBottomWidth: 0 }
+                            : {},
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            template21Styles.taxCell,
+                            { width: 100, textAlign: "center" },
+                          ]}
+                        >
+                          {summary.hsn}
+                        </Text>
+                        <Text
+                          style={[template21Styles.taxCell, { width: 150 }]}
+                        >
+                          {formatCurrency(summary.taxableValue)}
+                        </Text>
+                        <Text
+                          style={[
+                            template21Styles.taxCell,
+                            { width: 50, textAlign: "center" },
+                          ]}
+                        >
+                          {summary.rate.toFixed(2)}
+                        </Text>
                         {showIGST ? (
                           <>
-                            <Text style={[template21Styles.taxCell, { width: 120 }]}>{formatCurrency(summary.igst)}</Text>
-                            <Text style={[template21Styles.taxCell, { width: 135, borderRightWidth: 0 }]}>{formatCurrency(summary.total)}</Text>
+                            <Text
+                              style={[template21Styles.taxCell, { width: 120 }]}
+                            >
+                              {formatCurrency(summary.igst)}
+                            </Text>
+                            <Text
+                              style={[
+                                template21Styles.taxCell,
+                                { width: 135, borderRightWidth: 0 },
+                              ]}
+                            >
+                              {formatCurrency(summary.total)}
+                            </Text>
                           </>
                         ) : (
                           <>
-                            <Text style={[template21Styles.taxCell, { width: 90 }]}>{formatCurrency(summary.cgst)}</Text>
-                            <Text style={[template21Styles.taxCell, { width: 90 }]}>{formatCurrency(summary.sgst)}</Text>
-                            <Text style={[template21Styles.taxCell, { width: 75, borderRightWidth: 0 }]}>{formatCurrency(summary.total)}</Text>
+                            <Text
+                              style={[template21Styles.taxCell, { width: 90 }]}
+                            >
+                              {formatCurrency(summary.cgst)}
+                            </Text>
+                            <Text
+                              style={[template21Styles.taxCell, { width: 90 }]}
+                            >
+                              {formatCurrency(summary.sgst)}
+                            </Text>
+                            <Text
+                              style={[
+                                template21Styles.taxCell,
+                                { width: 75, borderRightWidth: 0 },
+                              ]}
+                            >
+                              {formatCurrency(summary.total)}
+                            </Text>
                           </>
                         )}
                       </View>
                     ))}
 
                     {/* Tax Total Row */}
-                    <View style={[template21Styles.taxRow, { backgroundColor: LIGHT_GRAY, borderBottomWidth: 0 }]}>
-                      <Text style={[template21Styles.taxCell, { width: 100, fontWeight: 'bold' }]}>Total</Text>
-                      <Text style={[template21Styles.taxCell, { width: 150, fontWeight: 'bold' }]}>{formatCurrency(totalTaxable)}</Text>
-                      <Text style={[template21Styles.taxCell, { width: 50 }]}> </Text>
+                    <View
+                      style={[
+                        template21Styles.taxRow,
+                        { backgroundColor: LIGHT_GRAY, borderBottomWidth: 0 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          template21Styles.taxCell,
+                          { width: 100, fontWeight: "bold", textAlign: "left" },
+                        ]}
+                      >
+                        Total Tax
+                      </Text>
+                      <Text
+                        style={[
+                          template21Styles.taxCell,
+                          { width: 150, fontWeight: "bold" },
+                        ]}
+                      >
+                        {formatCurrency(totalTaxable)}
+                      </Text>
+                      <Text style={[template21Styles.taxCell, { width: 50 }]}>
+                        {" "}
+                      </Text>
                       {showIGST ? (
                         <>
-                          <Text style={[template21Styles.taxCell, { width: 120, fontWeight: 'bold' }]}>{formatCurrency(totalIGST)}</Text>
-                          <Text style={[template21Styles.taxCell, { width: 135, fontWeight: 'bold', borderRightWidth: 0 }]}>{formatCurrency(totalIGST)}</Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              { width: 120, fontWeight: "bold" },
+                            ]}
+                          >
+                            {formatCurrency(totalIGST)}
+                          </Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              {
+                                width: 135,
+                                fontWeight: "bold",
+                                borderRightWidth: 0,
+                              },
+                            ]}
+                          >
+                            {formatCurrency(totalIGST)}
+                          </Text>
                         </>
                       ) : (
                         <>
-                          <Text style={[template21Styles.taxCell, { width: 90, fontWeight: 'bold' }]}>{formatCurrency(totalCGST)}</Text>
-                          <Text style={[template21Styles.taxCell, { width: 90, fontWeight: 'bold' }]}>{formatCurrency(totalSGST)}</Text>
-                          <Text style={[template21Styles.taxCell, { width: 75, fontWeight: 'bold', borderRightWidth: 0 }]}>{formatCurrency(totalCGST + totalSGST)}</Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              { width: 90, fontWeight: "bold" },
+                            ]}
+                          >
+                            {formatCurrency(totalCGST)}
+                          </Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              { width: 90, fontWeight: "bold" },
+                            ]}
+                          >
+                            {formatCurrency(totalSGST)}
+                          </Text>
+                          <Text
+                            style={[
+                              template21Styles.taxCell,
+                              {
+                                width: 75,
+                                fontWeight: "bold",
+                                borderRightWidth: 0,
+                              },
+                            ]}
+                          >
+                            {formatCurrency(totalCGST + totalSGST)}
+                          </Text>
                         </>
                       )}
                     </View>
@@ -1025,53 +1516,77 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                 <View style={template21Styles.qrBankSection}>
                   {/* QR Code Block */}
                   <View style={template21Styles.qrBlock}>
-                    <Text style={template21Styles.sectionTitle}>Pay using UPI:</Text>
-                    <View style={{
-                      width: 60,
-                      height: 60,
-                      borderWidth: 0.5,
-                      borderColor: "#999",
-                      backgroundColor: "#fff",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginTop: 3,
-                    }}>
-                      <Text style={{ fontSize: 6, color: '#999' }}>QR Code</Text>
+                    <Text style={template21Styles.sectionTitle}>
+                      Pay using UPI:
+                    </Text>
+                    <View
+                      style={{
+                        width: 60,
+                        height: 60,
+                        borderWidth: 0.5,
+                        borderColor: "#999",
+                        backgroundColor: "#fff",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginTop: 3,
+                      }}
+                    >
+                      <Text style={{ fontSize: 6, color: "#999" }}>
+                        QR Code
+                      </Text>
                     </View>
                   </View>
 
                   {/* Bank Details Block */}
                   <View style={template21Styles.bankBlock}>
-                    <Text style={template21Styles.sectionTitle}>Bank Details:</Text>
+                    <Text style={template21Styles.sectionTitle}>
+                      Bank Details:
+                    </Text>
                     <View style={{ marginTop: 2 }}>
                       {bankData?.bankName && (
                         <View style={template21Styles.bankRow}>
                           <Text style={template21Styles.bankLabel}>Name:</Text>
-                          <Text style={template21Styles.smallText}>{bankData.bankName}</Text>
+                          <Text style={template21Styles.smallText}>
+                            {bankData.bankName}
+                          </Text>
                         </View>
                       )}
                       {bankData?.branchAddress && (
                         <View style={template21Styles.bankRow}>
-                          <Text style={template21Styles.bankLabel}>Branch:</Text>
-                          <Text style={template21Styles.smallText}>{bankData.branchAddress}</Text>
+                          <Text style={template21Styles.bankLabel}>
+                            Branch:
+                          </Text>
+                          <Text style={template21Styles.smallText}>
+                            {bankData.branchAddress}
+                          </Text>
                         </View>
                       )}
                       {bankData?.accountNumber && (
                         <View style={template21Styles.bankRow}>
-                          <Text style={template21Styles.bankLabel}>Acc. Number:</Text>
-                          <Text style={template21Styles.smallText}>{bankData.accountNumber}</Text>
+                          <Text style={template21Styles.bankLabel}>
+                            Acc. Number:
+                          </Text>
+                          <Text style={template21Styles.smallText}>
+                            {bankData.accountNumber}
+                          </Text>
                         </View>
                       )}
                       {bankData?.ifscCode && (
                         <View style={template21Styles.bankRow}>
                           <Text style={template21Styles.bankLabel}>IFSC:</Text>
-                          <Text style={template21Styles.smallText}>{bankData.ifscCode}</Text>
+                          <Text style={template21Styles.smallText}>
+                            {bankData.ifscCode}
+                          </Text>
                         </View>
                       )}
                       {bankData?.upiId && (
                         <View style={template21Styles.bankRow}>
-                          <Text style={template21Styles.bankLabel}>UPI ID:</Text>
-                          <Text style={template21Styles.smallText}>{bankData.upiId}</Text>
+                          <Text style={template21Styles.bankLabel}>
+                            UPI ID:
+                          </Text>
+                          <Text style={template21Styles.smallText}>
+                            {bankData.upiId}
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -1079,25 +1594,34 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
 
                   {/* Signature Block */}
                   <View style={template21Styles.signatureBlock}>
-                    <Text style={[template21Styles.sectionTitle, { textAlign: 'center', fontSize: 7 }]}>
+                    <Text
+                      style={[
+                        template21Styles.sectionTitle,
+                        { textAlign: "center", fontSize: 7 },
+                      ]}
+                    >
                       For {companyName}
                     </Text>
-                    
-                    <View style={{
-                      height: 40,
-                      width: '100%',
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}>
+
+                    <View
+                      style={{
+                        height: 40,
+                        width: "100%",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
                       {/* Signature image placeholder */}
                     </View>
-                    
-                    <View style={{ 
-                      borderTopWidth: 1, 
-                      borderTopColor: BORDER_COLOR, 
-                      width: '100%', 
-                      paddingTop: 2 
-                    }}>
+
+                    <View
+                      style={{
+                        borderTopWidth: 1,
+                        borderTopColor: BORDER_COLOR,
+                        width: "100%",
+                        paddingTop: 2,
+                      }}
+                    >
                       <Text style={{ fontSize: 6, textAlign: "center" }}>
                         Authorised Signatory
                       </Text>
@@ -1107,8 +1631,10 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
 
                 {/* Terms and Conditions Section */}
                 <View style={template21Styles.termsSection}>
-                  <Text style={[template21Styles.sectionTitle, { marginBottom: 2 }]}>
-                    Terms & Conditions:
+                  <Text
+                    style={[template21Styles.sectionTitle, { marginBottom: 2 }]}
+                  >
+                    {termsTitle}
                   </Text>
                   {termsItems.map((item, index) => (
                     <Text key={index} style={template21Styles.termsText}>
@@ -1118,6 +1644,21 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                 </View>
               </>
             )}
+            {/* Page Number */}
+            <Text
+              style={{
+                position: "absolute",
+                bottom: 5,
+                left: 0,
+                right: 0,
+                textAlign: "center",
+                fontSize: 7,
+                color: "#666",
+              }}
+              render={({ pageNumber, totalPages }) =>
+                `${pageNumber} / ${totalPages} Page`
+              }
+            />
           </Page>
         );
       })}
@@ -1146,4 +1687,4 @@ export const generatePdfForTemplate21 = async (
   );
 
   return await pdfDoc.toBlob();
-};  
+};
