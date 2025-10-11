@@ -157,12 +157,11 @@ export function getCurrentUser():
 
 
 export async function loginClientBySlug(
-  slug: string,
   clientUsername: string,
   password: string,
   captchaToken?: string
 ) {
-  const res = await fetch(`${baseURL}/api/clients/${slug}/login`, {
+  const res = await fetch(`${baseURL}/api/clients/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientUsername, password, captchaToken }),
@@ -171,7 +170,7 @@ export async function loginClientBySlug(
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Login failed");
 
-  const user: User = {
+  const user: User & { slug?: string } = {
     name: data.client.contactName,
     username: data.client.clientUsername,
     email: data.client.email,
@@ -179,6 +178,7 @@ export async function loginClientBySlug(
     initials: data.client.contactName.substring(0, 2).toUpperCase(),
     role: "customer",
     token: data.token,
+    slug: data.client.slug,
   };
 
   if (typeof window !== "undefined") {
@@ -187,15 +187,15 @@ export async function loginClientBySlug(
     localStorage.setItem("username", user.username!);
     localStorage.setItem("name", user.name!);
     localStorage.setItem("email", user.email!);
-    localStorage.setItem("tenantSlug", slug);
+    localStorage.setItem("tenantSlug", data.client.slug);
   }
 
   return user;
 }
 
 
-export async function requestClientOtp(slug: string, clientUsername: string) {
-  const res = await fetch(`${baseURL}/api/clients/${slug}/request-otp`, {
+export async function requestClientOtp(clientUsername: string) {
+  const res = await fetch(`${baseURL}/api/clients/request-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientUsername }),
@@ -206,8 +206,8 @@ export async function requestClientOtp(slug: string, clientUsername: string) {
 }
 
 
-export async function loginClientBySlugWithOtp(slug: string, clientUsername: string, otp: string, captchaToken?: string) {
-  const res = await fetch(`${baseURL}/api/clients/${slug}/login-otp`, {
+export async function loginClientBySlugWithOtp(clientUsername: string, otp: string, captchaToken?: string) {
+  const res = await fetch(`${baseURL}/api/clients/login-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientUsername, otp, captchaToken }),
@@ -216,12 +216,13 @@ export async function loginClientBySlugWithOtp(slug: string, clientUsername: str
   if (!res.ok) throw new Error(data?.message || "OTP login failed");
 
   // normalize result like your password login
-  const user = {
+  const user: User & { slug?: string } = {
     name: data?.client?.contactName,
     username: data?.client?.clientUsername,
     email: data?.client?.email,
     role: "customer",
     token: data?.token,
+    slug: data?.client?.slug,
   };
 
   if (typeof window !== "undefined") {
@@ -229,8 +230,8 @@ export async function loginClientBySlugWithOtp(slug: string, clientUsername: str
     localStorage.setItem("role", "customer");
     localStorage.setItem("username", user.username || "");
     localStorage.setItem("clientUsername", user.username || "");
-    localStorage.setItem("slug", data?.client?.slug || slug);
-    localStorage.setItem("tenantSlug", data?.client?.slug || slug);
+    localStorage.setItem("slug", data?.client?.slug || "");
+    localStorage.setItem("tenantSlug", data?.client?.slug || "");
     localStorage.setItem("name", user.name || "");
     localStorage.setItem("email", user.email || "");
   }
@@ -286,14 +287,10 @@ export async function loginUser(userId: string, password: string, captchaToken?:
 export function logout(): string {
   // read BEFORE clearing
   const role = localStorage.getItem("role");
-  const slug =
-    localStorage.getItem("tenantSlug") ||
-    localStorage.getItem("slug") ||
-    localStorage.getItem("clientUsername");
 
   // clear everything
   localStorage.clear();
 
   // return the correct target
-  return role === "customer" && slug ? `/client-login/${slug}` : "/login";
+  return role === "customer" ? "/client-login" : "/login";
 }

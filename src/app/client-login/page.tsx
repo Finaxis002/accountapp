@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from "react";
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,6 @@ export default function ClientLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { theme } = useTheme();
-  const { slug } = useParams() as { slug: string };
 
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -50,7 +49,7 @@ export default function ClientLoginPage() {
   // ✅ guard: if already logged in, never show client login
   React.useEffect(() => {
     const s = getSession();          // null if token missing/expired (also clears it)
-    if (!s) return;    
+    if (!s) return;
     const u = getCurrentUser();
     if (u) {
       if (u.role === "customer") router.replace("/dashboard"); // or "/"
@@ -78,9 +77,9 @@ export default function ClientLoginPage() {
     setIsLoading(true);
 
     try {
-      // Login (slug first)
-      const user = await loginClientBySlug(slug, username, password, captchaToken);
-      
+      // Login
+      const user = await loginClientBySlug(username, password, captchaToken);
+
       // DEBUG: Check what properties the user object actually has
       console.log("User object from login:", user);
       console.log("User object keys:", Object.keys(user || {}));
@@ -109,16 +108,16 @@ export default function ClientLoginPage() {
         name: user.name,
         email: user.email,
         id: userId,
-        slug,
+        slug: user.slug,
       });
 
       // Keep legacy/local keys other parts of the app use
-      localStorage.setItem("tenantSlug", slug);
-      localStorage.setItem("slug", slug);
+      localStorage.setItem("tenantSlug", user.slug || "");
+      localStorage.setItem("slug", user.slug || "");
       localStorage.setItem("role", "customer");
       localStorage.setItem("username", user.username || "");
       localStorage.setItem("id", userId); // Save the extracted ID
-      
+
       // Save the complete user object with all properties
       localStorage.setItem("user", JSON.stringify({
         id: userId,
@@ -127,18 +126,13 @@ export default function ClientLoginPage() {
         username: user.username,
         name: user.name,
         email: user.email,
-        slug: slug,
+        slug: user.slug,
       }));
 
-      // Auto-logout exactly at JWT expiry → back to this tenant's login page
+      // Auto-logout exactly at JWT expiry → back to client login page
       scheduleAutoLogout(user.token, () => {
-        const tenant =
-          localStorage.getItem("tenantSlug") ||
-          localStorage.getItem("slug") ||
-          localStorage.getItem("clientUsername") ||
-          slug; // fallback to URL param
         localStorage.clear();
-        router.replace(`/client-login/${tenant}`);
+        router.replace(`/client-login`);
       });
 
       // Success
@@ -160,6 +154,7 @@ export default function ClientLoginPage() {
   };
 
   const onSendOtp = async () => {
+   
     if (!username.trim()) {
       toast({ variant: "destructive", title: "Username required", description: "Enter your client username first." });
       return;
@@ -168,7 +163,7 @@ export default function ClientLoginPage() {
 
     setSendingOtp(true);
     try {
-      await requestClientOtp(slug, username); // calls /api/clients/:slug/request-otp
+      await requestClientOtp(username); // calls /api/clients/request-otp
       setResendIn(45); // match server throttle
       toast({ title: "OTP sent", description: "Check your registered email for the OTP." });
     } catch (error) {
@@ -195,8 +190,8 @@ export default function ClientLoginPage() {
     setIsLoading(true);
 
     try {
-      const user = await loginClientBySlugWithOtp(slug, username, otp, captchaToken); // calls /api/clients/:slug/login-otp
-      
+      const user = await loginClientBySlugWithOtp(username, otp, captchaToken); // calls /api/clients/login-otp
+
       // DEBUG: Check what properties the user object actually has
       console.log("User object from OTP login:", user);
       console.log("User object keys:", Object.keys(user || {}));
@@ -221,15 +216,15 @@ export default function ClientLoginPage() {
         name: user.name,
         email: user.email,
         id: userId,
-        slug,
+        slug: user.slug,
       });
 
-      localStorage.setItem("tenantSlug", slug);
-      localStorage.setItem("slug", slug);
+      localStorage.setItem("tenantSlug", user.slug || "");
+      localStorage.setItem("slug", user.slug || "");
       localStorage.setItem("role", "customer");
       localStorage.setItem("username", user.username || "");
       localStorage.setItem("id", userId); // Save the extracted ID
-      
+
       // Save the complete user object with all properties
       localStorage.setItem("user", JSON.stringify({
         id: userId,
@@ -238,17 +233,12 @@ export default function ClientLoginPage() {
         username: user.username,
         name: user.name,
         email: user.email,
-        slug: slug,
+        slug: user.slug,
       }));
 
       scheduleAutoLogout(user.token, () => {
-        const tenant =
-          localStorage.getItem("tenantSlug") ||
-          localStorage.getItem("slug") ||
-          localStorage.getItem("clientUsername") ||
-          slug;
         localStorage.clear();
-        router.replace(`/client-login/${tenant}`);
+        router.replace(`/client-login`);
       });
 
       router.push("/dashboard");
@@ -266,10 +256,12 @@ export default function ClientLoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      
       <Card className="w-full max-w-sm shadow-2xl bg-card border">
         <CardHeader className="space-y-2 text-center">
+         
           <CardTitle className="text-2xl font-bold">Client Login</CardTitle>
-          <CardDescription>Tenant: <span className="font-mono">{slug}</span></CardDescription>
+          <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
 
         <CardContent className="pt-2">

@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/components/layout/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'AccounTech Pro',
-  description: 'Modern Accounting Software',
+  title: 'Vinimay',
+  description: 'Smart Financial Exchange',
 };
 
 export default function RootLayout({
