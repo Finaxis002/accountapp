@@ -787,13 +787,14 @@ export default function TransactionsPage() {
       companyMap,
       serviceNameById, // Add this line
       onSendInvoice: handleSendInvoice,
+      userRole: role || undefined,
     });
 
     if (companies.length <= 1) {
       return baseCols.filter((col) => col.id !== "company");
     }
     return baseCols;
-  }, [companyMap, companies.length, serviceNameById]); // Add serviceNameById to dependencies
+  }, [companyMap, companies.length, serviceNameById, role]); // Add serviceNameById to dependencies
 
   const renderContent = (data: Transaction[]) => {
     if (isLoading) {

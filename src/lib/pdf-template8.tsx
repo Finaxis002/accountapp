@@ -117,7 +117,7 @@ const Template8PDF: React.FC<Template8PDFProps> = ({
         const isLastPage = pageIndex === pages.length - 1;
         return (
           <Page key={pageIndex} size="A4" style={template8Styles.page}>
-            <View style={{ marginBottom: 4 }}>
+           <View style={{ marginBottom: 4 }}>
               {/* Header Section */}
               <View style={template8Styles.header}>
                 <Text style={template8Styles.title}>

@@ -203,6 +203,15 @@ export default function ProfilePage() {
   if (isUser) defaultTabs.push("my-permissions");
   if (isMember) defaultTabs.push("permissions");
 
+  // Check URL params for tab
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabFromUrl = urlParams.get('tab');
+    if (tabFromUrl && availableTabs.some(t => t.value === tabFromUrl)) {
+      setSelectedTab(tabFromUrl);
+    }
+  }, [availableTabs]);
+
   // Set the default tab to the first in the array
   const initialTab = defaultTabs.length > 0 ? defaultTabs[0] : "profile";
   const [selectedTab, setSelectedTab] = React.useState(initialTab);

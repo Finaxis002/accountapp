@@ -47,10 +47,12 @@ import { FaWhatsapp } from "react-icons/fa";
 import { useToast } from "@/components/ui/use-toast";
 import { PaymentMethodCell } from "./payment-method-cell";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Import the WhatsApp composer dialog
 import { WhatsAppComposerDialog } from "./whatsapp-composer-dialog";
 import { whatsappConnectionService } from "@/lib/whatsapp-connection";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface ColumnsProps {
   onPreview: (transaction: Transaction) => void;
@@ -63,6 +65,7 @@ interface ColumnsProps {
   onSendWhatsApp?: (transaction: Transaction) => void;
   serviceMap?: Map<string, string>;
   hideActions?: boolean;
+  userRole?: string;
 }
 
 /** Build a filter function that can match party/vendor, description and line names */
@@ -229,6 +232,7 @@ export const columns = ({
   onSendInvoice,
   onSendWhatsApp,
   hideActions = false,
+  userRole,
 }: ColumnsProps): ColumnDef<Transaction>[] => {
   const customFilterFn = makeCustomFilterFn(serviceNameById);
 
@@ -526,11 +530,13 @@ export const columns = ({
       cell: ({ row }) => {
         const transaction = row.original;
         const { toast } = useToast();
+        const router = useRouter();
         const [partyDetails, setPartyDetails] = useState<Party | null>(null);
         const [isLoadingParty, setIsLoadingParty] = useState(false);
         const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
 
         const [dropdownOpen, setDropdownOpen] = useState(false);
+        const [emailDialogOpen, setEmailDialogOpen] = useState(false);
         // Invoice actions are allowed for sales and proforma
         const isInvoiceable =
           transaction.type === "sales" || transaction.type === "proforma";
@@ -852,7 +858,7 @@ export const columns = ({
 
      const handleSendInvoiceEmail = async () => {
   setDropdownOpen(false);
-  
+
   if (!isInvoiceable) {
     toast({
       variant: "destructive",
@@ -864,11 +870,32 @@ export const columns = ({
 
   try {
     console.log("Starting email process...");
-    
+
+    // First, check email connection status
+    const token = localStorage.getItem("token");
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8745";
+
+    const statusRes = await fetch(`${baseURL}/api/integrations/gmail/status`, {
+      headers: { Authorization: `Bearer ${token || ""}` },
+    });
+
+    if (!statusRes.ok) {
+      throw new Error("Failed to check email status");
+    }
+
+    const emailStatus = await statusRes.json();
+    console.log("Email status:", emailStatus);
+
+    // If not connected, show the dialog
+    if (!emailStatus.connected) {
+      setEmailDialogOpen(true);
+      return;
+    }
+
     // Get party ID from transaction
     const pv = (transaction as any).party || (transaction as any).vendor;
     let partyId: string | null = null;
-    
+
     if (pv && typeof pv === 'object') {
       partyId = pv._id;
       console.log("Party/vendor from transaction:", pv);
@@ -886,7 +913,7 @@ export const columns = ({
     // ✅ FIX: Always fetch complete party details to get email
     console.log("Fetching complete party details for ID:", partyId);
     const partyToUse = await fetchPartyDetails();
-    
+
     if (!partyToUse) {
       toast({
         variant: "destructive",
@@ -913,7 +940,7 @@ export const columns = ({
     // Fetch company details
     const companyId = transaction.company as any;
     const companyIdStr = typeof companyId === "object" && companyId ? companyId._id : companyId;
-    
+
     if (!companyIdStr) {
       toast({
         variant: "destructive",
@@ -942,7 +969,7 @@ export const columns = ({
         partyToUse,
         serviceNameById
       );
-      
+
       // Convert blob to base64
       pdfBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -962,9 +989,6 @@ export const columns = ({
       });
       return;
     }
-
-    const token = localStorage.getItem("token");
-    const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8745";
 
     // Prepare email data
     const subject = `Invoice From ${companyToUse.businessName || "Your Company"}`;
@@ -1006,10 +1030,9 @@ export const columns = ({
       if (emailRes.ok) {
         const responseData = await emailRes.json();
         console.log("Email sent successfully:", responseData);
-        
+
         toast({
-          title: "Invoice emailed successfully",
-          description: `Invoice sent to ${partyToUse.email}`,
+          title: `Mail sent successfully to ${partyToUse.email}`,
         });
       } else {
         let errorData;
@@ -1018,12 +1041,11 @@ export const columns = ({
         } catch {
           errorData = { message: 'Unknown error occurred' };
         }
-        
+
         console.error("Email send failed:", errorData);
         toast({
           variant: "destructive",
-          title: "Failed to send email",
-          description: errorData.message || `Server returned ${emailRes.status} status`,
+          title: "Gmail not found",
         });
       }
     } catch (fetchError) {
@@ -1045,6 +1067,8 @@ export const columns = ({
   }
 };
 
+
+console.log("role :", userRole)
 
         return (
           <>
@@ -1157,6 +1181,50 @@ export const columns = ({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Email Not Connected Dialog */}
+            <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {userRole === "client"
+                      ? "Email invoicing is enabled for your account"
+                      : "Email invoicing requires setup"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {userRole === "client"
+                      ? "Your administrator has granted you permission to send invoices via email. Please review and accept the terms to activate this feature."
+                      : "Email invoicing has been enabled for your account, but you need to contact your administrator to set up the email integration."}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    <span className="text-sm font-medium">Email account</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {userRole === "client"
+                      ? "Accept terms first to connect an email."
+                      : "Please contact your administrator to configure email settings."}
+                  </p>
+                </div>
+                 {userRole === "client" &&
+                <DialogFooter>
+                  <Button
+                    onClick={() => {
+                      setEmailDialogOpen(false);
+                      if (userRole === "client") {
+                        router.push('/profile?tab=permissions');
+                      }
+                    }}
+                  >
+                    Go to Permissions
+                  </Button>
+                  
+                </DialogFooter>
+      }
+              </DialogContent>
+            </Dialog>
 
             {/* WhatsApp Composer Dialog */}
             <WhatsAppComposerDialog

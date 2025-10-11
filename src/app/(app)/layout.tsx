@@ -201,7 +201,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // 🔑 redirect logic
     if (role === "customer" && slug) {
       // customer → their own client login page
-      window.location.assign(`/client-login/${slug}`);
+      window.location.assign(`/client-login`);
     } else if (role === "master") {
       // master → generic login
       window.location.assign(`/login`);
