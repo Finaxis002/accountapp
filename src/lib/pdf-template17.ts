@@ -67,8 +67,8 @@ Delivery Ex-Premises.
 `;
 
 // --- FRAME & MARGIN CONSTANTS ---
-const TITLE_Y = 20;
-const FRAME_TOP_Y = 30;
+const TITLE_Y = 30;
+const FRAME_TOP_Y = 35;
 // Using a small offset, assuming you will adjust the PDF height for final space as discussed earlier.
 const BOTTOM_OFFSET = 20;
 
