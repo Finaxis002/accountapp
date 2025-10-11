@@ -95,7 +95,7 @@ export function CompanySwitcher() {
   }
 
   return (
-   <div className="">
+   <div className="w-60">
       <Combobox
         options={companyOptions}
         value={selectedCompanyId || "all"} // Default to "all" if no company is selected
