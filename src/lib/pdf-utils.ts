@@ -48,6 +48,11 @@ import { Rss } from "lucide-react";
     return stateCodeMap[stateName] || null;
   };
 
+  // Normalize state name by removing code suffix like " ( 23 )"
+  export const normalizeState = (state: string): string => {
+    return state.toLowerCase().trim().replace(/\s*\([^)]*\)\s*$/, '');
+  };
+
   // read a GSTIN off a company no matter the key
   export const getCompanyGSTIN = (c?: Partial<Company> | null): string | null => {
     const x = c as any;
@@ -528,7 +533,7 @@ import { Rss } from "lucide-react";
     // If shipping address exists, compare with shipping state, otherwise compare with party billing state
     const recipientState = shippingAddress?.state || party?.state;
     const supplierState = company?.addressState;
-    const isInterstate = supplierState && recipientState ? supplierState.toLowerCase().trim() !== recipientState.toLowerCase().trim() : false;
+    const isInterstate = supplierState && recipientState ? normalizeState(supplierState) !== normalizeState(recipientState) : false;
 
     // Calculate GST amounts
     let cgst = 0;
