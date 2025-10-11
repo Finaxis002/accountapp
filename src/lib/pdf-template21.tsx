@@ -84,7 +84,7 @@ const template21Styles = StyleSheet.create({
 
   // --- Logo & Original Text ---
   rightHeaderBlock: {
-    width: "35 %",
+    width: "35%",
     alignItems: "flex-end",
     paddingBottom: 10,
   },
@@ -303,6 +303,15 @@ const template21Styles = StyleSheet.create({
     lineHeight: 1.3,
     marginBottom: 1,
   },
+  // ADDED A5-4 style for Terms Title line
+  termLine: {
+    fontSize: 6.5,
+    lineHeight: 1.3,
+    marginBottom: 1,
+  },
+  termsBox: {
+    // This style is equivalent to template21Styles.termsSection content padding, but without the border
+  },
 
   // --- Reusable Styles ---
   smallText: {
@@ -379,39 +388,45 @@ interface Template21PDFProps {
   bank?: Bank | null;
 }
 
-// Helper: Terms and Conditions extraction logic from Template8PDF
-const getTermsAndConditions = (notes?: string) => {
-  const defaultTerms = [
-    "Subject to our home Jurisdiction.",
-    "Our Responsibility Ceases as soon as goods leaves our Premises.",
-    "Goods once sold will not taken back.",
-    "Delivery Ex-Premises.",
-  ];
-
-  if (!notes)
-    return { title: "Terms & Conditions:", items: defaultTerms.slice(0, 4) };
+// Helper: Terms and Conditions extraction logic (Adapted from Template A5-4 for direct inclusion)
+const extractTermsAndConditions = (notes?: string) => {
+  if (!notes) {
+    return {
+      title: "Terms and Conditions",
+      listItems: ["No terms and conditions added yet"],
+      isDefault: true,
+    };
+  }
 
   const notesHtml = notes;
   const titleMatch = notesHtml.match(
     /<span class="ql-size-large">(.*?)<\/span>/
   );
+  // Replace &amp; with & for HTML entity decoding if necessary
   const title = titleMatch
     ? titleMatch[1].replace(/&amp;/g, "&")
-    : "Terms & Conditions:";
+    : "Terms and Conditions";
 
   const listItems = [];
   const liRegex = /<li[^>]*>(.*?)<\/li>/g;
   let match;
   while ((match = liRegex.exec(notesHtml || "")) !== null) {
-    // Strip HTML tags from item and replace HTML entities
-    const cleanItem = match[1].replace(/<[^>]*>/g, "").replace(/&amp;/g, "&");
+    // Strip all HTML tags and replace &amp; with &
+    const cleanItem = match[1]
+      .replace(/<[^>]*>/g, "")
+      .replace(/&amp;/g, "&");
     listItems.push(cleanItem);
   }
 
-  return {
-    title: title,
-    items: listItems.length > 0 ? listItems : defaultTerms.slice(0, 4),
-  };
+  if (listItems.length === 0) {
+    return {
+      title: title || "Terms and Conditions",
+      listItems: ["No terms and conditions added yet"],
+      isDefault: true,
+    };
+  }
+
+  return { title: title, listItems: listItems, isDefault: false };
 };
 
 const Template21PDF: React.FC<Template21PDFProps> = ({
@@ -574,9 +589,11 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
   }, {} as Record<string, TaxSummaryItem>);
 
   const taxSummaryArray: TaxSummaryItem[] = Object.values(taxSummary);
-  const { title: termsTitle, items: termsItems } = getTermsAndConditions(
-    transaction?.notes
-  );
+
+  // Use the new, more robust extraction logic
+  const { title: termsTitle, listItems: termsItems } =
+    extractTermsAndConditions(transaction?.notes);
+  // End of Terms & Conditions integration
 
   return (
     <Document>
@@ -767,7 +784,7 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                 </View>
               </View>
 
-              {/* Center  */}
+              {/* Center */}
               <View style={{ flex: 2, paddingRight: 10 }}>
                 {/* Shipping Address - Bottom Section (Shipped to) */}
                 <View>
@@ -809,7 +826,7 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                     <Text style={[template21Styles.boldText, { fontSize: 10 }]}>
                       State:{" "}
                     </Text>
-                    <Text>{shippingAddress?.state|| "-"}</Text>
+                    <Text>{shippingAddress?.state || "-"}</Text>
                   </Text>
                 </View>
               </View>
@@ -1223,6 +1240,7 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                         width: colWidths[totalColumnIndex],
                         fontWeight: "bold",
                         borderRightWidth: 0,
+                        padding: 4,
                       },
                     ]}
                   >
@@ -1389,7 +1407,10 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                         {showIGST ? (
                           <>
                             <Text
-                              style={[template21Styles.taxCell, { width: 120 }]}
+                              style={[
+                                template21Styles.taxCell,
+                                { width: 120 },
+                              ]}
                             >
                               {formatCurrency(summary.igst)}
                             </Text>
@@ -1629,15 +1650,18 @@ const Template21PDF: React.FC<Template21PDFProps> = ({
                   </View>
                 </View>
 
-                {/* Terms and Conditions Section */}
+                {/* Terms and Conditions Section (UPDATED LOGIC) */}
                 <View style={template21Styles.termsSection}>
                   <Text
-                    style={[template21Styles.sectionTitle, { marginBottom: 2 }]}
+                    style={[
+                      template21Styles.termLine,
+                      { fontWeight: "bold", marginBottom: 2 },
+                    ]}
                   >
                     {termsTitle}
                   </Text>
                   {termsItems.map((item, index) => (
-                    <Text key={index} style={template21Styles.termsText}>
+                    <Text key={index} style={template21Styles.termLine}>
                       • {item}
                     </Text>
                   ))}

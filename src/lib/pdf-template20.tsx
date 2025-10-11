@@ -19,6 +19,7 @@ import {
   getBillingAddress,
   getShippingAddress,
   prepareTemplate8Data,
+  numberToWords, // ASSUMED IMPORT from pdf-utils, as used in original A5 template
 } from "./pdf-utils";
 
 // --- Constants and Styles Definition (template20.tsx) ---
@@ -95,12 +96,12 @@ const template20Styles = StyleSheet.create({
     marginBottom: 5,
     textDecoration: "underline",
   },
-    invoiceDateRow: {
+  invoiceDateRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginBottom: 2,
     marginRight: 1,
-    alignItems: "center", 
+    alignItems: "center",
   },
   label: {
     fontSize: 9,
@@ -108,7 +109,7 @@ const template20Styles = StyleSheet.create({
     textAlign: "left",
     fontWeight: "bold",
     marginLeft: 35,
-  }, 
+  },
   value: {
     fontSize: 9,
     width: 100,
@@ -188,7 +189,7 @@ const template20Styles = StyleSheet.create({
 
   // --- Totals and Amount in Words ---
   totalsSection: {
-    flexDirection: "row", 
+    flexDirection: "row",
     justifyContent: "flex-end",
     alignItems: "flex-start",
     marginTop: 5,
@@ -201,7 +202,7 @@ const template20Styles = StyleSheet.create({
     paddingTop: 5,
     fontSize: 8,
     alignSelf: "flex-end",
-    
+
     // Note: We don't add full border here, we add it to a wrapper inside the render function.
   },
   totalsRight: {
@@ -261,10 +262,10 @@ const template20Styles = StyleSheet.create({
   termsSection: {
     width: "100%",
     marginTop: 10,
-    // borderColor: PRIMARY_BLUE,
+    borderColor: PRIMARY_BLUE, // Added border for clarity, adjust as needed
     padding: 8,
-    // borderStyle: "solid",
-    // borderWidth: 1,
+    borderStyle: "solid",
+    borderWidth: 1,
   },
   termsText: {
     fontSize: 9,
@@ -277,6 +278,12 @@ const template20Styles = StyleSheet.create({
   },
   boldText: {
     fontWeight: "bold",
+   
+  },
+  ammountInWords: {
+    fontSize: 6,
+    fontStyle: "italic",
+    marginTop: 2,
   },
 });
 
@@ -289,80 +296,6 @@ interface Template20PDFProps {
   shippingAddress?: ShippingAddress | null;
   bank?: Bank | null;
 }
-
-// Helper function to convert number to words (simplified version)
-const numberToWords = (num: number): string => {
-  if (num === 0) return "Zero";
-
-  const ones = [
-    "",
-    "One",
-    "Two",
-    "Three",
-    "Four",
-    "Five",
-    "Six",
-    "Seven",
-    "Eight",
-    "Nine",
-  ];
-  const tens = [
-    "",
-    "",
-    "Twenty",
-    "Thirty",
-    "Forty",
-    "Fifty",
-    "Sixty",
-    "Seventy",
-    "Eighty",
-    "Ninety",
-  ];
-  const teens = [
-    "Ten",
-    "Eleven",
-    "Twelve",
-    "Thirteen",
-    "Fourteen",
-    "Fifteen",
-    "Sixteen",
-    "Seventeen",
-    "Eighteen",
-    "Nineteen",
-  ];
-
-  const convertHundreds = (n: number): string => {
-    let str = "";
-    if (n > 99) {
-      str += ones[Math.floor(n / 100)] + " Hundred ";
-      n %= 100;
-    }
-    if (n > 19) {
-      str += tens[Math.floor(n / 10)] + " ";
-      n %= 10;
-    } else if (n > 9) {
-      str += teens[n - 10] + " ";
-      return str;
-    }
-    if (n > 0) {
-      str += ones[n] + " ";
-    }
-    return str;
-  };
-
-  const crore = Math.floor(num / 10000000);
-  const lakh = Math.floor((num % 10000000) / 100000);
-  const thousand = Math.floor((num % 100000) / 1000);
-  const hundred = Math.floor(num % 1000);
-
-  let result = "";
-  if (crore > 0) result += convertHundreds(crore) + "Crore ";
-  if (lakh > 0) result += convertHundreds(lakh) + "Lakh ";
-  if (thousand > 0) result += convertHundreds(thousand) + "Thousand ";
-  if (hundred > 0) result += convertHundreds(hundred);
-
-  return result.trim() + " Only";
-};
 
 const Template20PDF: React.FC<Template20PDFProps> = ({
   transaction,
@@ -423,14 +356,13 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
 
   const bankData: Bank = bank || ({} as Bank);
 
-  // ********** MODIFIED LOGIC: Check if any bank detail is available **********
+  // Check if any bank detail is available
   const isBankDetailAvailable =
     bankData?.bankName ||
     bankData?.ifscCode ||
     bankData?.branchAddress ||
     bankData?.accountNumber ||
     bankData?.upiId;
-  // *************************************************************************
 
   // Calculate amount in words
   const amountInWords = numberToWords(Math.round(totalAmount));
@@ -443,24 +375,22 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
   };
 
   /**
-  * Extracts terms and conditions from a potentially HTML-formatted 'notes' string,
-  * falling back to provided default terms if no list items are found in 'notes'.
-  *
-  * @param notes An optional string containing HTML-formatted notes (e.g., from a rich text editor).
-  * @param defaultTerms An array of strings representing the default terms and conditions.
-  * @returns An object with the extracted title and an array of term items.
-  */
-  const getTermsAndConditions = (notes?: string, defaultTerms: string[] = []) => {
-    // If no notes are provided, return the default terms.
-    if (!notes) return { title: "Terms and Conditions:", items: defaultTerms };
+   * Extracts terms and conditions from a potentially HTML-formatted 'notes' string.
+   * Logic copied from pdf-templateA5.tsx.
+   *
+   * @param notes An optional string containing HTML-formatted notes (e.g., from a rich text editor).
+   * @returns An object with the extracted title and an array of term items.
+   */
+  const getTermsAndConditions = (notes?: string) => {
+    if (!notes) return { title: "Terms and Conditions", items: ["No terms and conditions added yet"] };
 
     // --- Dynamic Title Extraction ---
     // Look for a title formatted with '<span class="ql-size-large">...</span>'
     const titleMatch = notes.match(/<span class="ql-size-large">(.*?)<\/span>/);
+    // Use the matched title or a default. Replace HTML entities.
     let title = titleMatch
-      ? // Decode HTML entities like '&amp;' to '&'
-        titleMatch[1].replace(/&amp;/g, "&")
-      : "Terms and Conditions:";
+      ? titleMatch[1].replace(/&/g, "&")
+      : "Terms and Conditions";
 
     // --- Dynamic List Item Extraction ---
     const listItems: string[] = [];
@@ -473,17 +403,20 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
         // Remove any nested HTML tags (e.g., <b>, <i>) within the list item
         .replace(/<[^>]*>/g, "")
         // Decode HTML entities
-        .replace(/&amp;/g, "&");
+        .replace(/&/g, "&");
       listItems.push(cleanItem);
     }
 
     // --- Final Return ---
-    // If list items were successfully parsed, use them. Otherwise, fall back to the provided default terms.
-    // The 'defaultTerms' array is now the dynamic fallback data.
-    return { title, items: listItems.length > 0 ? listItems : defaultTerms };
+    // If list items were successfully parsed, use them. Otherwise, include a default.
+    return { 
+        title, 
+        items: listItems.length > 0 ? listItems : ["No terms and conditions added yet"] 
+    };
   };
 
   const termsData = getTermsAndConditions(transaction?.notes);
+
 
   return (
     <Document>
@@ -800,7 +733,6 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
 
               {/* Table Rows (Renders items for the current page) */}
               {pageItems.map((item, index) => (
-                  
                 <View
                   key={`${pageIndex}-${index}`}
                   style={template20Styles.tableRow}
@@ -830,7 +762,7 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                       { width: colWidths[2] },
                     ]}
                   >
-                    {item.code  || ""}
+                    {item.code || ""}
                   </Text>
                   <Text
                     style={[
@@ -932,7 +864,6 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                 </View>
               ))}
             </View>
-            
 
             {/* --- Footer and Totals (Rendered only if this is the last page) --- */}
             {isLastPage && (
@@ -940,7 +871,6 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                 {/* Totals Calculation Block */}
                 <View style={template20Styles.totalsSection}>
                   <View style={template20Styles.totalsLeft}>
-                    {/* UPDATED: Increased paddingBottom to 8 and marginBottom to 10 for more space */}
                     <View
                       style={{
                         paddingBottom: 80, // Increased padding for more space below text
@@ -1008,7 +938,7 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                       >
                         Total amount (in words):
                       </Text>
-                      <Text style={template20Styles.boldText}>
+                      <Text style={template20Styles.ammountInWords}>
                         {amountInWords}
                       </Text>
                     </View>
@@ -1141,11 +1071,10 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                           marginRight: 5,
                         }}
                       >
-                         <Text style={template20Styles.boldText}>
+                        <Text style={template20Styles.boldText}>
                           Pay using UPI:
                         </Text>
-                         {/* This empty view reserves the height/space for the QR/Text block */}
-                         <View style={{
+                        <View style={{
                               width: 60,
                               height: 60,
                               borderStyle: "dashed",
@@ -1153,9 +1082,9 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                               borderColor: "#eee",
                               backgroundColor: "#fcfcfc",
                               marginTop: 5,
-                         }}>
-                             <Text style={{ fontSize: 6, textAlign: 'center', marginTop: 25, color: '#999',}}>N/A</Text>
-                         </View>
+                            }}>
+                              <Text style={{ fontSize: 6, textAlign: 'center', marginTop: 25, color: '#999',}}>N/A</Text>
+                        </View>
                       </View>
                       
                       {/* Bank Details Not Available Block (45% width) */}
@@ -1166,7 +1095,7 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                         <Text
                             style={[template20Styles.boldText, {fontSize: 9.5, marginTop: 5, color: '#cc0000'}]}
                         >
-                            BANK DETAILS NOT AVAILABLE
+                          BANK DETAILS NOT AVAILABLE
                         </Text>
                       </View>
                     </>
@@ -1213,7 +1142,7 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                   </View>
                 </View>
 
-                {/* Terms and Conditions Section */}
+                {/* Terms and Conditions Section (UPDATED) */}
                 <View style={template20Styles.termsSection}>
                   <Text
                     style={[
@@ -1221,7 +1150,7 @@ const Template20PDF: React.FC<Template20PDFProps> = ({
                       { fontSize: 9, color: PRIMARY_BLUE, marginBottom: 4 },
                     ]}
                   >
-                    {termsData.title}
+                    {termsData.title}:
                   </Text>
                   {termsData.items.map((item, index) => (
                     <Text key={index} style={template20Styles.termsText}>
