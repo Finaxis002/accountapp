@@ -52,8 +52,17 @@ export function Combobox({
   const selectedOption = options.find((option) => option.value === value);
 
   React.useEffect(() => {
-    setSearchValue(selectedOption?.label || "");
-  }, [value, selectedOption?.label]);
+    if (open) {
+      setSearchValue("");
+      setFilteredOptions(options);
+    }
+  }, [open, options]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setSearchValue(selectedOption?.label || "");
+    }
+  }, [open, value, options]);
 
   const handleCreate = async () => {
     if (onCreate && searchValue) {
