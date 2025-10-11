@@ -221,7 +221,6 @@ const printInvoice = async (
   }
 };
 
-
 export const columns = ({
   onPreview,
   onViewItems,
@@ -1244,3 +1243,5 @@ console.log("role :", userRole)
 
   return baseColumns;
 };
+
+

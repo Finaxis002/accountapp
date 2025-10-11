@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { capitalizeWords } from "@/lib/utils";
 
 /* ---------- helpers ---------- */
 const inr = (n: number) =>
@@ -96,7 +97,7 @@ function getItems(
       "(product)";
     normalized.push({
       itemType: "product",
-      name,
+       name: capitalizeWords(name),
       quantity: p?.quantity ?? "",
       pricePerUnit: Number(p?.pricePerUnit ?? 0),
       amount: Number(p?.amount ?? 0),
@@ -125,7 +126,7 @@ function getItems(
 
     normalized.push({
       itemType: "service",
-      name: sName,
+      name: capitalizeWords(sName),
       quantity: "",
       pricePerUnit: 0,
       amount: Number(s?.amount ?? 0),
@@ -168,17 +169,29 @@ export function RecentTransactions({
         (tx.vendor.vendorName || "")) ||
       "";
     const date = safeDate(tx?.date);
-    setDialogTitle(party ? `Items · ${party} · ${date}` : `Items · ${date}`);
+    setDialogTitle(party ? `Items · ${capitalizeWords(party)} · ${date}` : `Items · ${date}`);
     setIsItemsOpen(true);
   };
 
-  const getPartyName = (tx: any) => {
+  // const getPartyName = (tx: any) => {
+  //   if (tx.type === "journal") return "Journal Entry";
+  //   if (tx.party && typeof tx.party === "object")
+  //     return tx.party.name || "Party";
+  //   if (tx.vendor && typeof tx.vendor === "object")
+  //     return tx.vendor.vendorName || "Vendor";
+  // };
+
+   const getPartyName = (tx: any) => {
     if (tx.type === "journal") return "Journal Entry";
+    let partyName = "";
     if (tx.party && typeof tx.party === "object")
-      return tx.party.name || "Party";
-    if (tx.vendor && typeof tx.vendor === "object")
-      return tx.vendor.vendorName || "Vendor";
+      partyName = tx.party.name || "Party";
+    else if (tx.vendor && typeof tx.vendor === "object")
+      partyName = tx.vendor.vendorName || "Vendor";
+    
+    return capitalizeWords(partyName); // Capitalize party name
   };
+
 
   const typeStyles: Record<string, string> = {
     sales: "bg-green-500/20 text-green-700 dark:text-green-300",
@@ -190,115 +203,6 @@ export function RecentTransactions({
 
   return (
     <>
-      {/* <Card className="w-full h-full flex flex-col">
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>
-            A summary of your most recent financial activities.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 flex-1">
-          <ScrollArea className="h-72">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Party</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="hidden md:table-cell">Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions?.length > 0 ? (
-                  transactions.map((tx: any) => {
-                    const item = getItems(tx, serviceNameById);
-                    // console.log(
-                    //   "getItems ->",
-                    //   tx._id,
-                    //   {
-                    //     products: tx.products,
-                    //     service: tx.service,
-                    //     services: tx.services,
-                    //   },
-                    //   item
-                    // );
-                    const amt = getAmount(tx);
-                    const clickable = item.items.length > 0; // click to view details if any items
-
-                    return (
-                      <TableRow key={tx._id}>
-                        <TableCell>
-                          <div className="font-medium">{getPartyName(tx)}</div>
-                          <div className="hidden text-sm text-muted-foreground md:block">
-                            {tx.description || tx.narration}
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          {item.icon === "product" ? (
-                            <button
-                              type="button"
-                              disabled={!clickable}
-                              onClick={() => openItemsDialog(tx, item.items)}
-                              className={`flex items-center gap-2 ${
-                                clickable ? "hover:underline text-left" : ""
-                              }`}
-                            >
-                              <Package className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{item.label}</span>
-                            </button>
-                          ) : item.icon === "service" ? (
-                            <button
-                              type="button"
-                              disabled={!clickable}
-                              onClick={() => openItemsDialog(tx, item.items)}
-                              className={`flex items-center gap-2 ${
-                                clickable ? "hover:underline text-left" : ""
-                              }`}
-                            >
-                              <Server className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{item.label}</span>
-                            </button>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
-
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge
-                            variant="secondary"
-                            className={typeStyles[tx.type] || ""}
-                          >
-                            {tx.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {safeDate(tx.date)}
-                        </TableCell>
-                        <TableCell className="text-right">{inr(amt)}</TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No recent transactions.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </CardContent>
-        <CardFooter className="justify-end pt-4">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/transactions">
-              View All Transactions <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card> */}
 
       <Card className="w-full h-full flex flex-col">
         <CardHeader>
