@@ -821,7 +821,6 @@ const printInvoice = async (
   }
 };
 
-
 export const columns = ({
   onPreview,
   onViewItems,
@@ -1456,3 +1455,5 @@ export const columns = ({
 
   return baseColumns;
 };
+
+

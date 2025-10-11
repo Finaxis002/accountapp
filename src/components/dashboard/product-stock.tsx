@@ -45,6 +45,7 @@ import { useCompany } from "@/contexts/company-context";
 import { Badge } from "../ui/badge";
 import { ServiceForm } from "../services/service-form";
 import { useUserPermissions } from "@/contexts/user-permissions-context";
+import { capitalizeWords } from "@/lib/utils";
 const baseURL = process.env.NEXT_PUBLIC_BASE_URL;
 
 function StockEditForm({
@@ -185,7 +186,8 @@ export function ProductStock() {
     setIsAddProductOpen(false); // close only product dialog
     toast({
       title: "Product Created!",
-      description: `${newProduct.name} added.`,
+      // description: `${newProduct.name} added.`,
+       description: `${capitalizeWords(newProduct.name)} added.`,
     });
   };
 
@@ -202,7 +204,8 @@ export function ProductStock() {
     setIsAddServiceOpen(false); // close service dialog
     toast({
       title: "Service Created!",
-      description: `${newService.serviceName} added.`,
+      // description: `${newService.serviceName} added.`,
+       description: `${capitalizeWords(newService.serviceName)} added.`,
     });
   };
 
@@ -337,7 +340,8 @@ export function ProductStock() {
                             ) : (
                               <Package className="h-4 w-4 text-muted-foreground" />
                             )}
-                            {product.name}
+                            {/* {product.name} */}
+                            {capitalizeWords(product.name)}
                             {product.type === "service" && (
                               <Badge variant="outline">Service</Badge>
                             )}
@@ -401,7 +405,8 @@ export function ProductStock() {
                           )}
                           <div>
                             <h3 className="font-semibold text-base">
-                              {product.name}
+                              {/* {product.name} */}
+                              {capitalizeWords(product.name)}
                             </h3>
                             {product.type === "service" && (
                               <Badge
